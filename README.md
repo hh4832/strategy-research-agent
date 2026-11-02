@@ -12,13 +12,14 @@ Phase 3 準備：自動量化策略研究 Agent 的架構、可驗證的策略�
 | [`STRATEGY_SPEC_SCHEMA.json`](STRATEGY_SPEC_SCHEMA.json) | 機器可驗證的策略規格；範例在 [`specs/examples/`](specs/examples) |
 | [`BENCHMARK_TEST_CASES.md`](BENCHMARK_TEST_CASES.md) | Execution Convention v1 與 12 個手算案例 |
 | [`QUANT_EVALUATION_PROTOCOL.md`](QUANT_EVALUATION_PROTOCOL.md) | 分區、walk-forward、purge／embargo、DSR、多重檢定、Gate |
-| [`PHASE3_IMPLEMENTATION_PLAN.md`](PHASE3_IMPLEMENTATION_PLAN.md) | 里程碑、Phase 2 驗收清單、介面風險與待確認事項 |
+| [`PHASE3_IMPLEMENTATION_PLAN.md`](PHASE3_IMPLEMENTATION_PLAN.md) | 里程碑、Phase 2 驗收清單、介面風險與待確認事項、審查決策 |
+| [`M2_GOVERNANCE.md`](M2_GOVERNANCE.md) | M2：Registry、holdout lock、family、budget、訊號純函式；GO／NO-GO |
 
 ## 快速開始
 
 ```bash
 pip install -e '.[test]'
-pytest -q                                                   # 78 tests
+pytest -q                                                   # 142 tests
 python -m strategy_agent.spec.validate specs/examples/*.json
 python -m benchmark.harness.crosscheck export out/csv       # Phase 2 交叉驗收用輸入
 ```
@@ -29,7 +30,9 @@ python -m benchmark.harness.crosscheck export out/csv       # Phase 2 交叉驗�
 benchmark/cases/        B01–B12 合成資料 + 手算預期值
 benchmark/oracle/       獨立參考引擎（stdlib + Decimal）
 benchmark/harness/      匯出 CSV、比對外部引擎輸出
-src/strategy_agent/     spec validator、evaluation、ports（整合介面）
+src/strategy_agent/     spec、evaluation、ports、registry、governance、family、signals、runner
+governance/             holdout locks、approvers、research budget、controls（CODEOWNERS）
+registry/               experiments.jsonl、families.jsonl（雜湊鏈、append-only）
 schemas/                Experiment Registry 紀錄 schema
 tests/                  oracle／mutants／harness／spec／evaluation／ports
 ```

@@ -59,6 +59,8 @@ class BacktestReport:
     open_position: Mapping[str, Any] | None
     provenance: Mapping[str, Any]
     status: str = "RESEARCH_BACKTEST"               # never "LIVE" / "TRADABLE"
+    # Q5: trades whose holding period spans an exclusion window; never counted as performance
+    invalidated_round_trips: Sequence[Mapping[str, Any]] = ()
 
 
 @runtime_checkable

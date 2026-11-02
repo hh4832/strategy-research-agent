@@ -2,7 +2,7 @@
   "spec_version": "1.0.0",
   "strategy_id": "atr_breakout_tsm_15m",
   "name": "Volatility breakout (ATR) — TSM ADR, 15-minute RTH bars",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "status": "DRAFT",
   "hypothesis": {
     "statement": "A 15-minute close that exceeds the prior close by more than k times the trailing ATR marks a volatility expansion that tends to continue within the same session.",
@@ -11,61 +11,188 @@
     "null_hypothesis": "Post-breakout returns have zero mean, i.e. large bars are as likely to reverse as to continue.",
     "rationale_category": "VOLATILITY_BREAKOUT",
     "expected_holding_period": "up to 8 bars (2 hours), always flat at RTH close",
-    "known_failure_modes": ["mean reversion after news overreaction", "ADR reacting to Taiwan-hours information"],
-    "references": ["Notion: §13 IBKR FINAL GATE — TSM GO, 2,193,372 rows"]
+    "known_failure_modes": [
+      "mean reversion after news overreaction",
+      "ADR reacting to Taiwan-hours information"
+    ],
+    "references": [
+      "Notion: §13 IBKR FINAL GATE — TSM GO, 2,193,372 rows"
+    ]
   },
   "universe": {
     "market": "IBKR",
-    "symbols": ["TSM"],
+    "symbols": [
+      "TSM"
+    ],
     "timeframe": "15m",
     "source_timeframe": "1m",
-    "aggregation": {"label": "start", "closed": "left", "require_complete": true, "session_anchored": true},
+    "aggregation": {
+      "label": "start",
+      "closed": "left",
+      "require_complete": true,
+      "session_anchored": true
+    },
     "timezone": "America/New_York",
-    "contract_policy": {"type": "NOT_APPLICABLE", "continuous_inferred": false, "indicator_series": "NOT_APPLICABLE"},
-    "sessions": {"allowed": ["RTH"], "calendar_ref": "NYSE RTH 09:30-16:00 America/New_York (DST-aware; source timestamps are UTC)", "exclude_closing_auction": true, "no_overnight": true}
+    "contract_policy": {
+      "type": "NOT_APPLICABLE",
+      "continuous_inferred": false,
+      "indicator_series": "NOT_APPLICABLE"
+    },
+    "sessions": {
+      "allowed": [
+        "RTH"
+      ],
+      "calendar_ref": "NYSE RTH 09:30-16:00 America/New_York (DST-aware; source timestamps are UTC)",
+      "exclude_closing_auction": true,
+      "no_overnight": true
+    }
   },
   "data_requirements": {
-    "datasets": [{
-      "dataset_id": "ibkr_tsm_1m_normalized",
-      "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
-      "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
-      "verdict": "GO",
-      "usage_scope": "BACKTEST",
-      "access_contract": "Data Access Contract v0.1 (MarketDataClient.load('TSM'))"
-    }],
+    "datasets": [
+      {
+        "dataset_id": "ibkr_tsm_1m_normalized",
+        "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+        "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
+        "verdict": "GO",
+        "usage_scope": "BACKTEST",
+        "access_contract": "Data Access Contract v0.1 (MarketDataClient.load('TSM'))"
+      }
+    ],
     "warmup_bars": 90,
-    "fields": ["open", "high", "low", "close", "volume"]
+    "fields": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume"
+    ]
   },
   "parameters": {
     "values": {
-      "atr_n": {"type": "integer", "default": 14, "min": 10, "max": 28, "step": 2},
-      "k": {"type": "number", "default": 1.5, "min": 1.0, "max": 3.0, "step": 0.25, "description": "breakout threshold in ATRs"},
-      "stop_atr": {"type": "number", "default": 2.0, "min": 1.0, "max": 3.0, "step": 0.5}
+      "atr_n": {
+        "type": "integer",
+        "default": 14,
+        "min": 10,
+        "max": 28,
+        "step": 2
+      },
+      "k": {
+        "type": "number",
+        "default": 1.5,
+        "min": 1.0,
+        "max": 3.0,
+        "step": 0.25,
+        "description": "breakout threshold in ATRs"
+      },
+      "stop_atr": {
+        "type": "number",
+        "default": 2.0,
+        "min": 1.0,
+        "max": 3.0,
+        "step": 0.5
+      }
     },
     "constraints": [],
-    "search": {"mode": "FIXED", "max_trials": 1}
+    "search": {
+      "mode": "FIXED",
+      "max_trials": 1
+    }
   },
   "signal": {
     "evaluation_time": "BAR_CLOSE",
     "indicators": [
-      {"id": "atr_prev", "type": "ATR_WILDER", "input": "hlc", "params": {"period": {"param": "atr_n"}}, "lag": 1, "series_scope": "CONTINUOUS_ELIGIBLE_BARS"},
-      {"id": "prev_close", "type": "PRICE", "input": "close", "params": {}, "lag": 1, "series_scope": "CONTINUOUS_ELIGIBLE_BARS"}
+      {
+        "id": "atr_prev",
+        "type": "ATR_WILDER",
+        "input": "hlc",
+        "params": {
+          "period": {
+            "param": "atr_n"
+          }
+        },
+        "lag": 1,
+        "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+      },
+      {
+        "id": "prev_close",
+        "type": "PRICE",
+        "input": "close",
+        "params": {},
+        "lag": 1,
+        "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+      }
     ],
-    "entry_rules": [{"id": "vol_breakout_up", "action": "ENTER_LONG",
-      "description": "ATR uses bars up to t-1 so the breakout bar does not inflate its own threshold",
-      "when": {"op": "and", "args": [
-        {"op": "is_flat"},
-        {"op": "time_lt", "time_local": "15:00"},
-        {"op": "gt", "left": {"ref": "close"},
-         "right": {"op": "add", "args": [{"ref": "prev_close"}, {"op": "mul", "args": [{"param": "k"}, {"ref": "atr_prev"}]}]}}]}}],
+    "entry_rules": [
+      {
+        "id": "vol_breakout_up",
+        "action": "ENTER_LONG",
+        "description": "ATR uses bars up to t-1 so the breakout bar does not inflate its own threshold",
+        "when": {
+          "op": "and",
+          "args": [
+            {
+              "op": "is_flat"
+            },
+            {
+              "op": "time_lt",
+              "time_local": "15:00"
+            },
+            {
+              "op": "gt",
+              "left": {
+                "ref": "close"
+              },
+              "right": {
+                "op": "add",
+                "args": [
+                  {
+                    "ref": "prev_close"
+                  },
+                  {
+                    "op": "mul",
+                    "args": [
+                      {
+                        "param": "k"
+                      },
+                      {
+                        "ref": "atr_prev"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
     "exit_rules": [],
     "max_entries_per_session": 2
   },
-  "position_sizing": {"method": "FIXED_UNITS", "units": 100, "max_units": 100, "initial_capital": 100000},
+  "position_sizing": {
+    "method": "FIXED_UNITS",
+    "units": 100,
+    "max_units": 100,
+    "initial_capital": 100000
+  },
   "risk_exits": {
-    "stop_loss": {"type": "ATR_MULTIPLE", "value": {"param": "stop_atr"}, "atr_indicator": "atr_prev", "reference": "ENTRY_FILL_PRICE", "evaluation": "BAR_CLOSE"},
-    "take_profit": {"type": "NONE"},
-    "time_exit": {"max_holding_bars": 8, "flatten_decision_time_local": "15:45", "flatten_before_session_end": true}
+    "stop_loss": {
+      "type": "ATR_MULTIPLE",
+      "value": {
+        "param": "stop_atr"
+      },
+      "atr_indicator": "atr_prev",
+      "reference": "SIGNAL_BAR_CLOSE",
+      "evaluation": "BAR_CLOSE"
+    },
+    "take_profit": {
+      "type": "NONE"
+    },
+    "time_exit": {
+      "max_holding_bars": 8,
+      "flatten_decision_time_local": "15:45",
+      "flatten_before_session_end": true
+    }
   },
   "execution": {
     "convention": "oracle-execution-convention-v1",
@@ -80,20 +207,52 @@
   },
   "costs": {
     "currency": "USD",
-    "fee": {"per_unit_side": 0.005, "rate_side": 0, "min_per_order": 1.0, "rounding": "NONE"},
-    "tax": {"rate_side": 0, "sell_rate": 0, "rounding": "NONE"},
-    "slippage": {"model": "BPS", "value": 2},
-    "sensitivity_multipliers": [0, 1, 2, 4]
+    "fee": {
+      "per_unit_side": 0.005,
+      "rate_side": 0,
+      "min_per_order": 1.0,
+      "rounding": "NONE"
+    },
+    "tax": {
+      "rate_side": 0,
+      "sell_rate": 0,
+      "rounding": "NONE"
+    },
+    "slippage": {
+      "model": "BPS",
+      "value": 2
+    },
+    "sensitivity_multipliers": [
+      0,
+      1,
+      2,
+      4
+    ]
   },
-  "risk_constraints": {"allowed_directions": ["LONG"], "max_position_units": 100, "max_trades_per_session": 2, "max_drawdown_halt": 0.2},
+  "risk_constraints": {
+    "allowed_directions": [
+      "LONG"
+    ],
+    "max_position_units": 100,
+    "max_trades_per_session": 2,
+    "max_drawdown_halt": 0.2
+  },
   "experiment": {
     "seed": 20261103,
     "evaluation_protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
     "split_ref": "SPLIT-TSM-15M-v1 (to be registered after Phase-2 GO)",
     "holdout_lock_id": "HOLDOUT-TSM-15M-v1",
     "trial_family_id": "FAM-VOLBRK-TSM",
-    "compute_budget": {"max_backtests": 1, "max_wall_minutes": 30}
+    "compute_budget": {
+      "max_backtests": 1,
+      "max_wall_minutes": 30
+    }
   },
-  "provenance": {"created_at": "2026-11-03T01:30:00+08:00", "created_by": "claude-phase3-prep", "parent_spec_id": null, "spec_sha256": null,
-                 "notes": "Regulatory sell-side fees omitted in v1 and covered by cost sensitivity. 15m bars are aggregated from 1m only when all 15 source bars exist (require_complete)."}
+  "provenance": {
+    "created_at": "2026-11-03T01:30:00+08:00",
+    "created_by": "claude-phase3-prep",
+    "parent_spec_id": null,
+    "spec_sha256": null,
+    "notes": "Regulatory sell-side fees omitted in v1 and covered by cost sensitivity. 15m bars are aggregated from 1m only when all 15 source bars exist (require_complete). v0.2.0 (M2): stop reference changed ENTRY_FILL_PRICE -> SIGNAL_BAR_CLOSE so the pure signal layer (strategy_agent.signals.atr) can evaluate it without execution feedback; fills remain the formal engine's job (Q4)."
+  }
 }

@@ -4,9 +4,9 @@
 |---|---|
 | 文件版本 | v1.0（2026-11-03） |
 | 執行規約 | **oracle-execution-convention-v1** |
-| 案例數 | 12（B01–B12）；B11 為「提案規則，待確認」 |
+| 案例數 | 12（B01–B12）；B11 依審查決策 Q5（2026-11-03）核准 |
 | 證據 | 每個案例的預期值先**手算**寫入 `benchmark/cases/*.json`；獨立參考引擎 `benchmark/oracle/reference_engine.py`（僅 stdlib + `Decimal`，不 import pandas 或 `market_research_core`）必須逐位重現；8 個刻意錯誤的 mutant 引擎必須全部被抓出 |
-| 用途 | Phase 2 完成後，以 `benchmark/harness/crosscheck.py` 對 `market-research-core` Backtest Engine 交叉驗收 |
+| 用途 | Phase 2 完成後，以 `benchmark/harness/crosscheck.py` 對 `market-research-core` Backtest Engine 交叉驗收。依審查決策 Q4，oracle **只作獨立驗收**，不是正式回測執行器；`strategy_agent.runner` 會拒絕把 oracle 當成 BacktestPort。 |
 
 執行：
 
@@ -76,7 +76,7 @@ python -m benchmark.harness.crosscheck compare out/results   # 比對 *.result.j
 
 - 逐合約 FIFO 配對；`net = (出場價 − 進場價) × 數量 × 乘數 × 方向 − 兩邊手續費 − 兩邊稅`。
 - 期末未平倉：不得自動平倉。分別回報 `unrealized_pnl_mark`（最後合格收盤價、不含出場成本）與 `terminal_liquidation_estimate_net`（假設以最後收盤價扣滑價、手續費、稅出場）。`realized_pnl` 不含未平倉部位。
-- 持倉期間 `[entry_exec, exit_exec + tf)` 與任何 exclusion 窗重疊的整筆交易 → `HOLDING_PERIOD_SPANS_EXCLUSION`，從 `realized_pnl` 排除，另列於 `invalidated_round_trips`（B11，提案規則）。
+- 持倉期間 `[entry_exec, exit_exec + tf)` 與任何 exclusion 窗重疊的整筆交易 → `HOLDING_PERIOD_SPANS_EXCLUSION`，從 `realized_pnl` 排除，另列於 `invalidated_round_trips`（B11，Q5 核准）。排除後須做樣本充分性檢查（`QUANT_EVALUATION_PROTOCOL.md` G4）。
 
 ---
 
@@ -94,7 +94,7 @@ python -m benchmark.harness.crosscheck compare out/results   # 比對 *.result.j
 | B08 | PIT 資訊尚未公布 | 計算 | −58.7625 | — |
 | B09 | 期貨合約切換 | 腳本 + 換月排程 | 26278.152 | — |
 | B10 | 期末未平倉 | 腳本 | 0（mark 9800） | — |
-| B11 | Exclusion 窗（提案） | 腳本 | 0（失效 10339.7） | 訊號抑制 ×1 |
+| B11 | Exclusion 窗（Q5 核准） | 腳本 | 0（失效 10339.7） | 訊號抑制 ×1 |
 | B12 | ORB 收盤確認 vs 盤中觸價 | 計算 | 1339.632 | — |
 
 每個案例都列出 `forbidden_fills`：錯誤引擎最常出現的成交時間點；只要在該時間成交即判 FAIL。
@@ -342,7 +342,7 @@ SMA 手算（只用收盤價）：
 
 引擎不得把未平倉部位當成已平倉交易計入勝率、profit factor 或交易數。
 
-### B11 — Exclusion 窗（提案規則，待確認）
+### B11 — Exclusion 窗（Q5 核准：跨窗交易 invalidated）
 
 Exclusion 窗：`[09:20, 09:30)`。
 
@@ -359,7 +359,7 @@ Exclusion 窗：`[09:20, 09:30)`。
 
 - 09:20 棒（exclusion）收盤的腳本訊號 → `SIGNAL_BAR_EXCLUDED`，被抑制。
 - 持倉 09:10 → 09:35 跨越 exclusion 窗 → 整筆 `HOLDING_PERIOD_SPANS_EXCLUSION`，不計入 realized（若計入淨值為 10339.7）。
-- **為何是提案**：Notion §13.3 規定 exclusion 窗「不得產生訊號、成交、持倉估值或跨窗報酬」，但沒有規定已持有部位遇到窗時該怎麼處理。可能做法：(a) 整筆失效（本案例）；(b) 窗前強制平倉；(c) 把跨窗那段報酬剔除。需資料擁有者決定（待確認事項 Q5）。harness 對 B11 不一致時回報 `PROPOSED_RULE_DIFF`，不算 FAIL。
+- **審查決策 Q5（2026-11-03）**：採用本案例預設，跨 exclusion window 的交易一律 invalidated，不計入有效績效；invalidated 交易只作透明揭露。排除後必須檢查樣本充分性（`strategy_agent.evaluation.sufficiency`，規則 Q5-1～Q5-3）。B11 不一致即判 FAIL。
 
 ### B12 — Opening Range Breakout：收盤確認
 
@@ -405,7 +405,7 @@ Exclusion 窗：`[09:20, 09:30)`。
 1. Phase 2 PR #1 Drive smoke PASS、PR 合併並取得 commit SHA（GO）後才開始。
 2. 在本 repo 新增 `adapters/mrc_adapter.py`：把 `out/csv/*.csv` 轉為 Phase 2 輸入、把 Phase 2 輸出轉為 `*.result.json`（`benchmark/harness/crosscheck.py` 頂部定義格式）。adapter 只做**格式轉換與 reason code 對照**，不得加入任何修正邏輯。
 3. 執行 `compare`；結果、Phase 2 SHA、本 repo SHA、adapter SHA 一起寫入 Registry（`code.benchmark_pass_sha`）。
-4. 判定：B01–B10、B12 全 PASS → 引擎 SHA 標為 `BENCHMARK_PASS`；任何 FAIL → 該 SHA 不可用於策略研究，差異整理給 Codex，不由 Phase 3 修改 Phase 2。
+4. 判定：B01–B12 全 PASS → 引擎 SHA 標為 `BENCHMARK_PASS`；任何 FAIL → 該 SHA 不可用於策略研究，差異整理給 Codex，不由 Phase 3 修改 Phase 2。
 5. 引擎每次換 SHA 都要重跑。
 
 ---

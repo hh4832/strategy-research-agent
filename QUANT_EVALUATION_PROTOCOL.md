@@ -30,7 +30,7 @@
 |  walk-forward: [train][test] → [train][test] …   |   LOCKED：每個 FROZEN 規格只評估一次                  |
 ```
 
-1. **邊界由人決定並登錄**：依資料集 coverage manifest 選定 holdout 起點，寫入 Registry（`HOLDOUT-<dataset>-v1`），之後任何 Agent 都不能改。邊界與 split 必須在第一次回測**之前**登錄。
+1. **邊界由研究負責人事前核准並鎖定（審查決策 Q7）**：依資料集 coverage manifest 選定 holdout 起點，以 `strategy_agent.governance.holdout_admin approve` 寫入 `governance/holdout_locks.jsonl`（需 allow-listed approver 與核准連結），經 CODEOWNERS 審核的 PR 合併後生效。Agent 不得設定、修改或反覆測試 holdout。沒有核准 lock 的資料集，所有回測都被拒絕（H01）。
 2. **Development 內只做 walk-forward**；不單獨保留一個反覆使用的「validation set」。若需要調參，參數選擇只在每個 fold 的 train 區間內進行（§3.3）。
 3. **Final Holdout**：只允許 `status=FROZEN` 的規格，且同一 `holdout_lock_id` 只能讀一次（Executor 強制）。Holdout 結果只決定「保留／淘汰」，**不得**用來修改規格；修改後即為新版本，但它不能再使用同一個 holdout（holdout 已被看過，對這個 family 失去獨立性）。
 4. **新資料**：快照升級後新增的期間，可作為新的「前推 holdout」（forward holdout），規則同上。
@@ -160,7 +160,7 @@ p 值來源：串接 OOS 日報酬的 1 − PSR(0)。
 | G1 | 規格 REGISTERED、Validator 0 個 ERROR、hash 正確 |
 | G2 | 引擎 SHA 在 Registry 有 `BENCHMARK_PASS`（B01–B10、B12） |
 | G3 | 資料 provenance 與規格釘選一致；SCOPED_GO exclusions 已套用 |
-| G4 | OOS 已平倉交易 ≥ 30、fold ≥ 6；未達 MinTRL 則最高只能標 `EXPLORATORY` |
+| G4 | OOS **有效**已平倉交易 ≥ 30、fold ≥ 6；跨 exclusion 窗交易已 invalidated（Q5）且 `sample_sufficiency.status = SUFFICIENT`（Q5-1 有效交易 ≥ 30、Q5-2 invalidated 比例 ≤ 10%、Q5-3 invalidated \|PnL\| 占比 ≤ 25%）；未達 MinTRL 則最高只能標 `EXPLORATORY` |
 | G5 | 1× 成本下 OOS 淨 Sharpe > 0，且 PSR(0) ≥ 0.95 |
 | G6 | DSR ≥ 0.95（N = family 原始試驗數） |
 | G7 | 本輪 Holm 調整後 p ≤ 0.05 |
