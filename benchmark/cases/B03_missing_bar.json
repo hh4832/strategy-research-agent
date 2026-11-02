@@ -1,0 +1,154 @@
+{
+ "case_id": "B03_missing_bar",
+ "convention": "oracle-execution-convention-v1",
+ "timezone": "Asia/Taipei",
+ "timeframe_minutes": 5,
+ "title": "缺失 K 棒（09:15 不存在，不得補棒）",
+ "instrument": {
+  "symbol": "SYNF",
+  "kind": "future",
+  "multiplier": 200,
+  "tick_size": "1",
+  "currency": "TWD"
+ },
+ "costs": {
+  "fee_per_unit_side": "50",
+  "tax_rate_side": "0.00002",
+  "slippage_ticks": 1
+ },
+ "quantity": 1,
+ "sessions": [
+  {
+   "date": "2026-01-05",
+   "start": "09:00",
+   "end": "09:40"
+  }
+ ],
+ "bars_columns": [
+  "ts",
+  "o",
+  "h",
+  "l",
+  "c",
+  "v"
+ ],
+ "bars": [
+  [
+   "2026-01-05 09:00",
+   20000,
+   20010,
+   19995,
+   20005,
+   100
+  ],
+  [
+   "2026-01-05 09:05",
+   20005,
+   20015,
+   20000,
+   20012,
+   100
+  ],
+  [
+   "2026-01-05 09:10",
+   20012,
+   20020,
+   20008,
+   20018,
+   100
+  ],
+  [
+   "2026-01-05 09:20",
+   20030,
+   20035,
+   20020,
+   20025,
+   100
+  ],
+  [
+   "2026-01-05 09:25",
+   20025,
+   20030,
+   20015,
+   20020,
+   100
+  ],
+  [
+   "2026-01-05 09:30",
+   20020,
+   20025,
+   20010,
+   20015,
+   100
+  ],
+  [
+   "2026-01-05 09:35",
+   20015,
+   20020,
+   20005,
+   20010,
+   100
+  ]
+ ],
+ "signal_model": {
+  "type": "scripted",
+  "targets": [
+   {
+    "bar_close_of": "2026-01-05 09:10",
+    "target": 1
+   },
+   {
+    "bar_close_of": "2026-01-05 09:25",
+    "target": 0
+   }
+  ]
+ },
+ "expected": {
+  "signals": [
+   {
+    "signal_ts": "2026-01-05 09:15",
+    "target": 1
+   },
+   {
+    "signal_ts": "2026-01-05 09:30",
+    "target": 0
+   }
+  ],
+  "fills": [
+   {
+    "order_ts": "2026-01-05 09:15",
+    "exec_ts": "2026-01-05 09:20",
+    "side": "BUY",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20030",
+    "fill_price": "20031",
+    "fee": "50",
+    "tax": "80.124"
+   },
+   {
+    "order_ts": "2026-01-05 09:30",
+    "exec_ts": "2026-01-05 09:30",
+    "side": "SELL",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20020",
+    "fill_price": "20019",
+    "fee": "50",
+    "tax": "80.076"
+   }
+  ],
+  "rejections": [],
+  "round_trip_net_pnl": [
+   "-2660.2"
+  ],
+  "realized_pnl": "-2660.2",
+  "open_position": null,
+  "forbidden_fills": [
+   {
+    "exec_ts": "2026-01-05 09:15",
+    "why": "synthesised / forward-filled bar"
+   }
+  ]
+ }
+}

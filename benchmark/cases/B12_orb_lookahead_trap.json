@@ -1,0 +1,160 @@
+{
+ "case_id": "B12_orb_lookahead_trap",
+ "convention": "oracle-execution-convention-v1",
+ "timezone": "Asia/Taipei",
+ "timeframe_minutes": 5,
+ "title": "Opening Range Breakout：以收盤確認突破，不得用盤中高點同棒進場",
+ "instrument": {
+  "symbol": "SYNF",
+  "kind": "future",
+  "multiplier": 200,
+  "tick_size": "1",
+  "currency": "TWD"
+ },
+ "costs": {
+  "fee_per_unit_side": "50",
+  "tax_rate_side": "0.00002",
+  "slippage_ticks": 1
+ },
+ "quantity": 1,
+ "sessions": [
+  {
+   "date": "2026-01-05",
+   "start": "09:00",
+   "end": "09:40"
+  }
+ ],
+ "bars_columns": [
+  "ts",
+  "o",
+  "h",
+  "l",
+  "c",
+  "v"
+ ],
+ "bars": [
+  [
+   "2026-01-05 09:00",
+   20000,
+   20020,
+   19990,
+   20010,
+   100
+  ],
+  [
+   "2026-01-05 09:05",
+   20010,
+   20025,
+   20000,
+   20015,
+   100
+  ],
+  [
+   "2026-01-05 09:10",
+   20015,
+   20030,
+   20005,
+   20020,
+   100
+  ],
+  [
+   "2026-01-05 09:15",
+   20020,
+   20035,
+   20015,
+   20028,
+   100
+  ],
+  [
+   "2026-01-05 09:20",
+   20028,
+   20045,
+   20025,
+   20040,
+   100
+  ],
+  [
+   "2026-01-05 09:25",
+   20041,
+   20050,
+   20035,
+   20048,
+   100
+  ],
+  [
+   "2026-01-05 09:30",
+   20048,
+   20055,
+   20040,
+   20050,
+   100
+  ],
+  [
+   "2026-01-05 09:35",
+   20051,
+   20055,
+   20045,
+   20052,
+   100
+  ]
+ ],
+ "signal_model": {
+  "type": "orb",
+  "range_bars": 3,
+  "direction": "long",
+  "confirm": "close_above_range_high",
+  "flatten_decision_time": "09:35"
+ },
+ "expected": {
+  "signals": [
+   {
+    "signal_ts": "2026-01-05 09:25",
+    "target": 1
+   },
+   {
+    "signal_ts": "2026-01-05 09:35",
+    "target": 0
+   }
+  ],
+  "fills": [
+   {
+    "order_ts": "2026-01-05 09:25",
+    "exec_ts": "2026-01-05 09:25",
+    "side": "BUY",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20041",
+    "fill_price": "20042",
+    "fee": "50",
+    "tax": "80.168"
+   },
+   {
+    "order_ts": "2026-01-05 09:35",
+    "exec_ts": "2026-01-05 09:35",
+    "side": "SELL",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20051",
+    "fill_price": "20050",
+    "fee": "50",
+    "tax": "80.2"
+   }
+  ],
+  "rejections": [],
+  "round_trip_net_pnl": [
+   "1339.632"
+  ],
+  "realized_pnl": "1339.632",
+  "open_position": null,
+  "forbidden_fills": [
+   {
+    "exec_ts": "2026-01-05 09:15",
+    "why": "intrabar high 20035 touched OR high 20030 but close 20028 did not confirm"
+   },
+   {
+    "exec_ts": "2026-01-05 09:20",
+    "why": "same-bar fill at stop price on confirming bar"
+   }
+  ]
+ }
+}

@@ -1,0 +1,148 @@
+{
+ "case_id": "B10_open_position_at_end",
+ "convention": "oracle-execution-convention-v1",
+ "timezone": "Asia/Taipei",
+ "timeframe_minutes": 5,
+ "title": "期末未平倉部位（不得假設自動平倉）",
+ "instrument": {
+  "symbol": "SYNF",
+  "kind": "future",
+  "multiplier": 200,
+  "tick_size": "1",
+  "currency": "TWD"
+ },
+ "costs": {
+  "fee_per_unit_side": "50",
+  "tax_rate_side": "0.00002",
+  "slippage_ticks": 1
+ },
+ "quantity": 1,
+ "sessions": [
+  {
+   "date": "2026-01-05",
+   "start": "09:00",
+   "end": "09:40"
+  }
+ ],
+ "bars_columns": [
+  "ts",
+  "o",
+  "h",
+  "l",
+  "c",
+  "v"
+ ],
+ "bars": [
+  [
+   "2026-01-05 09:00",
+   20000,
+   20010,
+   19995,
+   20005,
+   100
+  ],
+  [
+   "2026-01-05 09:05",
+   20005,
+   20012,
+   20000,
+   20008,
+   100
+  ],
+  [
+   "2026-01-05 09:10",
+   20008,
+   20015,
+   20005,
+   20012,
+   100
+  ],
+  [
+   "2026-01-05 09:15",
+   20010,
+   20020,
+   20008,
+   20018,
+   100
+  ],
+  [
+   "2026-01-05 09:20",
+   20018,
+   20030,
+   20015,
+   20028,
+   100
+  ],
+  [
+   "2026-01-05 09:25",
+   20028,
+   20045,
+   20025,
+   20040,
+   100
+  ],
+  [
+   "2026-01-05 09:30",
+   20040,
+   20055,
+   20035,
+   20050,
+   100
+  ],
+  [
+   "2026-01-05 09:35",
+   20050,
+   20065,
+   20045,
+   20060,
+   100
+  ]
+ ],
+ "signal_model": {
+  "type": "scripted",
+  "targets": [
+   {
+    "bar_close_of": "2026-01-05 09:10",
+    "target": 1
+   }
+  ]
+ },
+ "expected": {
+  "signals": [
+   {
+    "signal_ts": "2026-01-05 09:15",
+    "target": 1
+   }
+  ],
+  "fills": [
+   {
+    "order_ts": "2026-01-05 09:15",
+    "exec_ts": "2026-01-05 09:15",
+    "side": "BUY",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20010",
+    "fill_price": "20011",
+    "fee": "50",
+    "tax": "80.044"
+   }
+  ],
+  "rejections": [],
+  "round_trip_net_pnl": [],
+  "realized_pnl": "0",
+  "open_position": {
+   "contract": "SYNF",
+   "direction": "LONG",
+   "qty": 1,
+   "entry_ts": "2026-01-05 09:15",
+   "entry_price": "20011",
+   "entry_costs": "130.044",
+   "mark_ts": "2026-01-05 09:35",
+   "mark_price": "20060",
+   "unrealized_pnl_mark": "9800",
+   "equity_change_mark_after_entry_costs": "9669.956",
+   "terminal_liquidation_estimate_net": "9339.72"
+  },
+  "forbidden_fills": []
+ }
+}

@@ -1,0 +1,182 @@
+{
+ "case_id": "B11_exclusion_window",
+ "convention": "oracle-execution-convention-v1",
+ "timezone": "Asia/Taipei",
+ "timeframe_minutes": 5,
+ "title": "SCOPED_GO exclusion window（持倉跨越排除窗 → 整筆失效）［提案，待確認］",
+ "status": "PROPOSED_REQUIRES_OWNER_CONFIRMATION",
+ "instrument": {
+  "symbol": "SYNF",
+  "kind": "future",
+  "multiplier": 200,
+  "tick_size": "1",
+  "currency": "TWD"
+ },
+ "costs": {
+  "fee_per_unit_side": "50",
+  "tax_rate_side": "0.00002",
+  "slippage_ticks": 1
+ },
+ "quantity": 1,
+ "sessions": [
+  {
+   "date": "2026-01-05",
+   "start": "09:00",
+   "end": "09:40"
+  }
+ ],
+ "exclusions": [
+  {
+   "start": "2026-01-05 09:20",
+   "end": "2026-01-05 09:30",
+   "interval": "[start,end)"
+  }
+ ],
+ "bars_columns": [
+  "ts",
+  "o",
+  "h",
+  "l",
+  "c",
+  "v"
+ ],
+ "bars": [
+  [
+   "2026-01-05 09:00",
+   20000,
+   20010,
+   19995,
+   20005,
+   100
+  ],
+  [
+   "2026-01-05 09:05",
+   20005,
+   20012,
+   20000,
+   20010,
+   100
+  ],
+  [
+   "2026-01-05 09:10",
+   20010,
+   20020,
+   20005,
+   20015,
+   100
+  ],
+  [
+   "2026-01-05 09:15",
+   20015,
+   20025,
+   20010,
+   20020,
+   100
+  ],
+  [
+   "2026-01-05 09:20",
+   20020,
+   20090,
+   20015,
+   20080,
+   100
+  ],
+  [
+   "2026-01-05 09:25",
+   20080,
+   20085,
+   20060,
+   20070,
+   100
+  ],
+  [
+   "2026-01-05 09:30",
+   20070,
+   20075,
+   20060,
+   20065,
+   100
+  ],
+  [
+   "2026-01-05 09:35",
+   20065,
+   20070,
+   20055,
+   20060,
+   100
+  ]
+ ],
+ "signal_model": {
+  "type": "scripted",
+  "targets": [
+   {
+    "bar_close_of": "2026-01-05 09:05",
+    "target": 1
+   },
+   {
+    "bar_close_of": "2026-01-05 09:20",
+    "target": 0
+   },
+   {
+    "bar_close_of": "2026-01-05 09:30",
+    "target": 0
+   }
+  ]
+ },
+ "expected": {
+  "signals": [
+   {
+    "signal_ts": "2026-01-05 09:10",
+    "target": 1
+   },
+   {
+    "signal_ts": "2026-01-05 09:35",
+    "target": 0
+   }
+  ],
+  "suppressed_signals": [
+   {
+    "bar_ts": "2026-01-05 09:20",
+    "target": 0,
+    "reason": "SIGNAL_BAR_EXCLUDED"
+   }
+  ],
+  "fills": [
+   {
+    "order_ts": "2026-01-05 09:10",
+    "exec_ts": "2026-01-05 09:10",
+    "side": "BUY",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20010",
+    "fill_price": "20011",
+    "fee": "50",
+    "tax": "80.044"
+   },
+   {
+    "order_ts": "2026-01-05 09:35",
+    "exec_ts": "2026-01-05 09:35",
+    "side": "SELL",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20065",
+    "fill_price": "20064",
+    "fee": "50",
+    "tax": "80.256"
+   }
+  ],
+  "rejections": [],
+  "round_trip_net_pnl": [],
+  "invalidated_net_pnl": [
+   "10339.7"
+  ],
+  "realized_pnl": "0",
+  "open_position": null,
+  "forbidden_fills": [
+   {
+    "exec_ts": "2026-01-05 09:25",
+    "why": "fill inside exclusion window"
+   }
+  ]
+ }
+}

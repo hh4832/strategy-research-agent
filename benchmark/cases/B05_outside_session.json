@@ -1,0 +1,202 @@
+{
+ "case_id": "B05_outside_session",
+ "convention": "oracle-execution-convention-v1",
+ "timezone": "Asia/Taipei",
+ "timeframe_minutes": 5,
+ "title": "非交易時段 K 棒（盤後／盤前雜訊棒不得成交、不得產生訊號）",
+ "instrument": {
+  "symbol": "SYNS",
+  "kind": "equity",
+  "multiplier": 1,
+  "tick_size": "0.1",
+  "currency": "TWD"
+ },
+ "costs": {
+  "fee_rate_side": "0.001425",
+  "sell_tax_rate": "0.003",
+  "slippage_ticks": 1
+ },
+ "quantity": 1000,
+ "sessions": [
+  {
+   "date": "2026-01-05",
+   "start": "09:00",
+   "end": "09:20"
+  },
+  {
+   "date": "2026-01-06",
+   "start": "09:00",
+   "end": "09:20"
+  }
+ ],
+ "bars_columns": [
+  "ts",
+  "o",
+  "h",
+  "l",
+  "c",
+  "v"
+ ],
+ "bars": [
+  [
+   "2026-01-05 09:00",
+   "60.0",
+   "60.2",
+   "59.9",
+   "60.1",
+   1000
+  ],
+  [
+   "2026-01-05 09:05",
+   "60.1",
+   "60.3",
+   "60.0",
+   "60.2",
+   1000
+  ],
+  [
+   "2026-01-05 09:10",
+   "60.2",
+   "60.4",
+   "60.1",
+   "60.3",
+   1000
+  ],
+  [
+   "2026-01-05 09:15",
+   "60.3",
+   "60.5",
+   "60.2",
+   "60.4",
+   1000
+  ],
+  [
+   "2026-01-05 09:20",
+   "61.0",
+   "61.0",
+   "60.8",
+   "60.9",
+   300
+  ],
+  [
+   "2026-01-06 08:55",
+   "60.0",
+   "60.1",
+   "59.9",
+   "60.0",
+   200
+  ],
+  [
+   "2026-01-06 09:00",
+   "60.5",
+   "60.7",
+   "60.4",
+   "60.6",
+   1000
+  ],
+  [
+   "2026-01-06 09:05",
+   "60.6",
+   "60.9",
+   "60.5",
+   "60.8",
+   1000
+  ],
+  [
+   "2026-01-06 09:10",
+   "60.9",
+   "61.0",
+   "60.7",
+   "60.8",
+   1000
+  ],
+  [
+   "2026-01-06 09:15",
+   "60.8",
+   "60.9",
+   "60.6",
+   "60.7",
+   1000
+  ]
+ ],
+ "signal_model": {
+  "type": "scripted",
+  "targets": [
+   {
+    "bar_close_of": "2026-01-05 09:15",
+    "target": 1
+   },
+   {
+    "bar_close_of": "2026-01-06 09:05",
+    "target": 0
+   }
+  ]
+ },
+ "expected": {
+  "signals": [
+   {
+    "signal_ts": "2026-01-05 09:20",
+    "target": 1
+   },
+   {
+    "signal_ts": "2026-01-06 09:10",
+    "target": 0
+   }
+  ],
+  "fills": [
+   {
+    "order_ts": "2026-01-05 09:20",
+    "exec_ts": "2026-01-06 09:00",
+    "side": "BUY",
+    "qty": 1000,
+    "contract": "SYNS",
+    "ref_open": "60.5",
+    "fill_price": "60.6",
+    "fee": "86.355",
+    "tax": "0"
+   },
+   {
+    "order_ts": "2026-01-06 09:10",
+    "exec_ts": "2026-01-06 09:10",
+    "side": "SELL",
+    "qty": 1000,
+    "contract": "SYNS",
+    "ref_open": "60.9",
+    "fill_price": "60.8",
+    "fee": "86.64",
+    "tax": "182.4"
+   }
+  ],
+  "rejections": [
+   {
+    "bar_ts": "2026-01-05 09:20",
+    "order_ts": "2026-01-05 09:20",
+    "side": "BUY",
+    "contract": "SYNS",
+    "reason": "OUTSIDE_SESSION"
+   },
+   {
+    "bar_ts": "2026-01-06 08:55",
+    "order_ts": "2026-01-05 09:20",
+    "side": "BUY",
+    "contract": "SYNS",
+    "reason": "OUTSIDE_SESSION"
+   }
+  ],
+  "round_trip_net_pnl": [
+   "-155.395"
+  ],
+  "realized_pnl": "-155.395",
+  "open_position": null,
+  "forbidden_fills": [
+   {
+    "exec_ts": "2026-01-05 09:20",
+    "why": "post-close stray bar"
+   },
+   {
+    "exec_ts": "2026-01-06 08:55",
+    "why": "pre-open bar"
+   }
+  ]
+ }
+}

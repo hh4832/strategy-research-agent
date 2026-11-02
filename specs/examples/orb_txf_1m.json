@@ -1,0 +1,260 @@
+{
+  "spec_version": "1.0.0",
+  "strategy_id": "orb_txf_1m",
+  "name": "Opening Range Breakout — TXF day session, 1-minute",
+  "version": "0.1.0",
+  "status": "DRAFT",
+  "hypothesis": {
+    "statement": "A close beyond the first N minutes' range of the TXF day session signals directional order flow that continues for the rest of the morning.",
+    "mechanism": "Overnight information (US session, Asia open) is absorbed in the opening minutes; a confirmed break of the opening range indicates the imbalance has not been fully absorbed and dealers/hedgers continue to trade in the same direction.",
+    "falsifiable_prediction": "Net expectancy per trade > 0 at 1x and 2x cost multipliers, and the effect does not vanish when the range length is perturbed within the pre-registered range (no single-point optimum).",
+    "null_hypothesis": "Breakout-day returns after entry equal returns after a time-matched random entry on the same days.",
+    "rationale_category": "SESSION_EFFECT",
+    "expected_holding_period": "minutes to hours; always flat by 13:30",
+    "known_failure_modes": [
+      "false breakouts on low-volatility days",
+      "bounded 185-day sample limits power"
+    ],
+    "references": [
+      "Notion: §3 研究假說優先清單 — Opening Range Breakout 15/30 分鐘"
+    ]
+  },
+  "universe": {
+    "market": "TXF",
+    "symbols": [
+      "TXF"
+    ],
+    "timeframe": "1m",
+    "timezone": "Asia/Taipei",
+    "contract_policy": {
+      "type": "PRODUCER_CONTINUOUS_WITH_ACTUAL_MONTH",
+      "continuous_inferred": false,
+      "no_position_across_contract_change": true,
+      "indicator_series": "PER_CONTRACT"
+    },
+    "sessions": {
+      "allowed": [
+        "REGULAR"
+      ],
+      "calendar_ref": "TAIFEX day session 08:45-13:45 Asia/Taipei",
+      "exclude_closing_auction": true,
+      "no_overnight": true
+    }
+  },
+  "data_requirements": {
+    "datasets": [
+      {
+        "dataset_id": "txf_formal_validation_bounded",
+        "snapshot_id": "20261014_213932_404db609cf13",
+        "producer_commit_sha": "404db609cf136aae050e09f1e7712a7894f6ab6d",
+        "verdict": "PASS_WITH_CAVEATS",
+        "usage_scope": "BACKTEST",
+        "mandatory_exclusions": [
+          "bounded formal sample only: 185 sampled trade dates / 206,938 rows / 58 primary files",
+          "no roll inference; keep actual_contract_month",
+          "weekly raw caches NOT promoted"
+        ],
+        "access_contract": "Data Access Contract v0.2 TXFAdapter"
+      }
+    ],
+    "warmup_bars": 30,
+    "fields": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "actual_contract_month"
+    ]
+  },
+  "parameters": {
+    "values": {
+      "range_minutes": {
+        "type": "integer",
+        "default": 15,
+        "min": 5,
+        "max": 30,
+        "step": 5,
+        "description": "opening range length; bars counted from 08:45"
+      }
+    },
+    "constraints": [],
+    "search": {
+      "mode": "FIXED",
+      "max_trials": 1
+    }
+  },
+  "signal": {
+    "evaluation_time": "BAR_CLOSE",
+    "indicators": [
+      {
+        "id": "or_high",
+        "type": "OPENING_RANGE_HIGH",
+        "input": "high",
+        "params": {
+          "minutes": {
+            "param": "range_minutes"
+          }
+        },
+        "series_scope": "PER_SESSION"
+      },
+      {
+        "id": "or_low",
+        "type": "OPENING_RANGE_LOW",
+        "input": "low",
+        "params": {
+          "minutes": {
+            "param": "range_minutes"
+          }
+        },
+        "series_scope": "PER_SESSION"
+      }
+    ],
+    "entry_rules": [
+      {
+        "id": "break_up",
+        "action": "ENTER_LONG",
+        "description": "confirmed by CLOSE, never by intrabar high touch (see benchmark B12); entries only before 11:00 (135 min after open)",
+        "when": {
+          "op": "and",
+          "args": [
+            {
+              "op": "after_range_complete",
+              "indicator": "or_high"
+            },
+            {
+              "op": "time_lt",
+              "time_local": "11:00"
+            },
+            {
+              "op": "is_flat"
+            },
+            {
+              "op": "gt",
+              "left": {
+                "ref": "close"
+              },
+              "right": {
+                "ref": "or_high"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "break_down",
+        "action": "ENTER_SHORT",
+        "when": {
+          "op": "and",
+          "args": [
+            {
+              "op": "after_range_complete",
+              "indicator": "or_low"
+            },
+            {
+              "op": "time_lt",
+              "time_local": "11:00"
+            },
+            {
+              "op": "is_flat"
+            },
+            {
+              "op": "lt",
+              "left": {
+                "ref": "close"
+              },
+              "right": {
+                "ref": "or_low"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "exit_rules": [],
+    "max_entries_per_session": 1
+  },
+  "position_sizing": {
+    "method": "FIXED_UNITS",
+    "units": 1,
+    "contract_multiplier": 200,
+    "max_units": 1,
+    "initial_capital": 1000000
+  },
+  "risk_exits": {
+    "stop_loss": {
+      "type": "RANGE_OPPOSITE_SIDE",
+      "reference": "SIGNAL_BAR_CLOSE",
+      "evaluation": "BAR_CLOSE"
+    },
+    "take_profit": {
+      "type": "NONE"
+    },
+    "time_exit": {
+      "flatten_decision_time_local": "13:30",
+      "flatten_before_session_end": true
+    }
+  },
+  "execution": {
+    "convention": "oracle-execution-convention-v1",
+    "signal_time": "BAR_AVAILABLE_AT",
+    "order_time": "SIGNAL_TIME",
+    "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+    "order_type": "MARKET",
+    "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END",
+    "max_fill_delay_bars": 3,
+    "partial_fills": false,
+    "same_bar_reentry": false
+  },
+  "costs": {
+    "currency": "TWD",
+    "fee": {
+      "per_unit_side": 50,
+      "rate_side": 0,
+      "rounding": "NONE"
+    },
+    "tax": {
+      "rate_side": 2e-05,
+      "sell_rate": 0,
+      "rounding": "ROUND_HALF_UP_INTEGER"
+    },
+    "slippage": {
+      "model": "TICKS",
+      "value": 1,
+      "tick_size_ref": "TXF tick = 1 index point"
+    },
+    "sensitivity_multipliers": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "risk_constraints": {
+    "allowed_directions": [
+      "LONG",
+      "SHORT"
+    ],
+    "max_position_units": 1,
+    "max_trades_per_session": 2,
+    "max_daily_loss": 60000
+  },
+  "experiment": {
+    "seed": 20261103,
+    "evaluation_protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
+    "split_ref": "SPLIT-TXF-BOUNDED-v1 (session-blocked; to be registered after Phase-2 GO)",
+    "holdout_lock_id": "HOLDOUT-TXF-BOUNDED-v1",
+    "trial_family_id": "FAM-ORB-TXF",
+    "compute_budget": {
+      "max_backtests": 1,
+      "max_wall_minutes": 20
+    }
+  },
+  "provenance": {
+    "created_at": "2026-11-03T01:30:00+08:00",
+    "created_by": "claude-phase3-prep",
+    "parent_spec_id": null,
+    "spec_sha256": null,
+    "notes": "Fee per contract is a broker-dependent assumption; confirm with actual commission schedule before REGISTERED."
+  }
+}
