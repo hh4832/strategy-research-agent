@@ -1,0 +1,864 @@
+{
+ "engine": {
+  "name": "market-research-core",
+  "git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82",
+  "version": "0.2.0",
+  "kind": "REAL_CORE",
+  "source": "file:///home/claude/mrc-f4276cb"
+ },
+ "adapter_version": "m1-0.1.0",
+ "generated_at": "2026-11-03T07:44:27+08:00",
+ "verdict": "INTEGRATION_PENDING",
+ "counts": {
+  "PASS": 0,
+  "FAIL": 1,
+  "NOT_EXECUTABLE": 11
+ },
+ "capability_matrix": [
+  {
+   "cap_id": "K01",
+   "contract": "C3",
+   "description": "generic execution entry point accepting externally computed targets/orders (not a fixed built-in strategy)",
+   "required_by": [
+    "B01",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "MISSING",
+   "evidence": "BacktestEngine public methods ['run_sma']; generic entry points none",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K02",
+   "contract": "C3",
+   "description": "short positions (target -1)",
+   "required_by": [
+    "B06"
+   ],
+   "status": "MISSING",
+   "evidence": "run_sma is long-only (desired = fast > slow -> 0/1)",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K03",
+   "contract": "C8",
+   "description": "tick-based slippage with an instrument tick size",
+   "required_by": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "PARTIAL",
+   "evidence": "assumptions ['slippage_bps']: bps only",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K04",
+   "contract": "C8",
+   "description": "fixed fee per unit per side and per-side tax (futures)",
+   "required_by": [
+    "B01",
+    "B03",
+    "B04",
+    "B06",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "MISSING",
+   "evidence": "fee model: ['fee_rate', 'sell_tax_rate']",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K05",
+   "contract": "C1",
+   "description": "side-specific execution eligibility (buy/sell)",
+   "required_by": [
+    "B07"
+   ],
+   "status": "MISSING",
+   "evidence": "required columns ['available_at', 'backtest_eligible', 'close', 'data_exists', 'execution_eligible', 'high', 'low', 'open', 'research_eligible', 'timestamp', 'volume']",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K06",
+   "contract": "C1",
+   "description": "session awareness with OUTSIDE_SESSION rejection",
+   "required_by": [
+    "B05"
+   ],
+   "status": "MISSING",
+   "evidence": "no session handling in backtest.py",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K07",
+   "contract": "C1",
+   "description": "ZERO_VOLUME_BAR rejection",
+   "required_by": [
+    "B04"
+   ],
+   "status": "MISSING",
+   "evidence": "zero volume not distinguished",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K08",
+   "contract": "C5",
+   "description": "exclusion windows: no signal/fill/valuation inside, invalidated round trips",
+   "required_by": [
+    "B11"
+   ],
+   "status": "MISSING",
+   "evidence": "no exclusion-window logic",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K09",
+   "contract": "C6",
+   "description": "futures roll schedule from the spec, no implied roll",
+   "required_by": [
+    "B09"
+   ],
+   "status": "MISSING",
+   "evidence": "no roll schedule (pandas .rolling() is not a contract roll)",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K10",
+   "contract": "C7",
+   "description": "open position reported at end of data (no implicit close)",
+   "required_by": [
+    "B10"
+   ],
+   "status": "PARTIAL",
+   "evidence": "probe ended long: position 1.0, BacktestResult fields ['trades', 'equity_curve', 'total_return', 'max_drawdown', 'trade_count', 'rejections', 'provenance']",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K11",
+   "contract": "C4",
+   "description": "real engine git SHA in result provenance",
+   "required_by": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "MISSING",
+   "evidence": "probe provenance keys ['data', 'engine_version', 'lookahead_rule', 'performance_status', 'strategy', 'strategy_parameters']; engine_version 0.2.0",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K12",
+   "contract": "C3",
+   "description": "exact (Decimal) arithmetic or a documented rounding rule",
+   "required_by": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "MISSING",
+   "evidence": "float arithmetic, no rounding rule",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K13",
+   "contract": "C1",
+   "description": "PIT membership flag gating entries",
+   "required_by": [
+    "B08"
+   ],
+   "status": "MISSING",
+   "evidence": "no PIT flag",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K14",
+   "contract": "C3",
+   "description": "order time-in-force / expiry (ORDER_EXPIRED)",
+   "required_by": [],
+   "status": "MISSING",
+   "evidence": "no TIF / expiry",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  },
+  {
+   "cap_id": "K15",
+   "contract": "C3",
+   "description": "specific, documented rejection reason codes",
+   "required_by": [
+    "B04",
+    "B05",
+    "B07"
+   ],
+   "status": "PARTIAL",
+   "evidence": "reasons: EXECUTION_INELIGIBLE (side/cause unspecified), NO_LATER_ELIGIBLE_BAR, INSUFFICIENT_CASH",
+   "core_git_sha": "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+  }
+ ],
+ "cases": [
+  {
+   "case_id": "B01_normal_entry_exit",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:15",
+      "side": "BUY",
+      "qty": 1,
+      "fill_price": "20011",
+      "fee": "50",
+      "tax": "80.044"
+     },
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "fill_price": "20049",
+      "fee": "50",
+      "tax": "80.196"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "7339.76",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K04, K11, K12"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K04/K11/K12",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K04",
+    "K11",
+    "K12"
+   ]
+  },
+  {
+   "case_id": "B02_next_bar_execution_sma",
+   "status": "FAIL",
+   "executed_on_core": true,
+   "core_api": "BacktestEngine.run_sma",
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "BUY",
+      "qty": 1000,
+      "fill_price": "60.4",
+      "fee": "86.07",
+      "tax": "0"
+     },
+     {
+      "exec_ts": "2026-01-05 09:45",
+      "side": "SELL",
+      "qty": 1000,
+      "fill_price": "59.6",
+      "fee": "84.93",
+      "tax": "178.8"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "-1149.80",
+    "open_position": null
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "60.4005",
+      "fee": "86.0707125",
+      "tax": "0.0",
+      "signal_ts": "2026-01-05 09:25"
+     },
+     {
+      "exec_ts": "2026-01-05 09:45",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "59.600500000000004",
+      "fee": "84.93071250000001",
+      "tax": "178.80150000000003",
+      "signal_ts": "2026-01-05 09:40"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "-1149.802924999989",
+    "open_position": null
+   },
+   "difference": [
+    "fill[0].fill_price: expected 60.4 got 60.4005",
+    "fill[0].fee: expected 86.07 got 86.0707125",
+    "fill[1].fill_price: expected 59.6 got 59.600500000000004",
+    "fill[1].fee: expected 84.93 got 84.93071250000001",
+    "fill[1].tax: expected 178.8 got 178.80150000000003",
+    "realized_pnl expected -1149.80 got -1149.802924999989"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K03/K12 (bps slippage cannot express ticks; float arithmetic)",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K03",
+    "K11",
+    "K12"
+   ],
+   "notes": {
+    "api": "BacktestEngine.run_sma",
+    "slippage_bps_used": 16.666666666666668,
+    "approximation": "1 tick (0.1) expressed as 16.666667 bps of the first open",
+    "unmapped_rejections": [],
+    "provenance_keys": [
+     "data",
+     "engine_version",
+     "lookahead_rule",
+     "performance_status",
+     "strategy",
+     "strategy_parameters"
+    ]
+   }
+  },
+  {
+   "case_id": "B03_missing_bar",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 1,
+      "fill_price": "20031",
+      "fee": "50",
+      "tax": "80.124"
+     },
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "fill_price": "20019",
+      "fee": "50",
+      "tax": "80.076"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "-2660.2",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K04, K11, K12"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K04/K11/K12",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K04",
+    "K11",
+    "K12"
+   ]
+  },
+  {
+   "case_id": "B04_zero_volume",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 1,
+      "fill_price": "20021",
+      "fee": "50",
+      "tax": "80.084"
+     },
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "fill_price": "20039",
+      "fee": "50",
+      "tax": "80.156"
+     }
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-05 09:15",
+      "order_ts": "2026-01-05 09:15",
+      "side": "BUY",
+      "contract": "SYNF",
+      "reason": "ZERO_VOLUME_BAR"
+     }
+    ],
+    "realized_pnl": "3339.76",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K04, K07, K11, K12, K15"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K04/K07/K11/K12/K15",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K04",
+    "K07",
+    "K11",
+    "K12",
+    "K15"
+   ]
+  },
+  {
+   "case_id": "B05_outside_session",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-06 09:00",
+      "side": "BUY",
+      "qty": 1000,
+      "fill_price": "60.6",
+      "fee": "86.355",
+      "tax": "0"
+     },
+     {
+      "exec_ts": "2026-01-06 09:10",
+      "side": "SELL",
+      "qty": 1000,
+      "fill_price": "60.8",
+      "fee": "86.64",
+      "tax": "182.4"
+     }
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-05 09:20",
+      "order_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "contract": "SYNS",
+      "reason": "OUTSIDE_SESSION"
+     },
+     {
+      "bar_ts": "2026-01-06 08:55",
+      "order_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "contract": "SYNS",
+      "reason": "OUTSIDE_SESSION"
+     }
+    ],
+    "realized_pnl": "-155.395",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K06, K11, K12, K15"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K06/K11/K12/K15",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K06",
+    "K11",
+    "K12",
+    "K15"
+   ]
+  },
+  {
+   "case_id": "B06_costs_slippage_short",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:10",
+      "side": "SELL",
+      "qty": 2,
+      "fill_price": "20099",
+      "fee": "100",
+      "tax": "160.792"
+     },
+     {
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 2,
+      "fill_price": "20001",
+      "fee": "100",
+      "tax": "160.008"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "38679.2",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K02, K03, K04, K11, K12"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K02/K03/K04/K11/K12",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K02",
+    "K03",
+    "K04",
+    "K11",
+    "K12"
+   ]
+  },
+  {
+   "case_id": "B07_limit_locked",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-06 09:10",
+      "side": "BUY",
+      "qty": 1000,
+      "fill_price": "65.6",
+      "fee": "93.48",
+      "tax": "0"
+     },
+     {
+      "exec_ts": "2026-01-07 09:10",
+      "side": "SELL",
+      "qty": 1000,
+      "fill_price": "58.7",
+      "fee": "83.6475",
+      "tax": "176.1"
+     }
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-06 09:00",
+      "order_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "contract": "SYNS",
+      "reason": "LIMIT_UP_LOCKED_BUY"
+     },
+     {
+      "bar_ts": "2026-01-06 09:05",
+      "order_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "contract": "SYNS",
+      "reason": "LIMIT_UP_LOCKED_BUY"
+     },
+     {
+      "bar_ts": "2026-01-07 09:00",
+      "order_ts": "2026-01-06 09:20",
+      "side": "SELL",
+      "contract": "SYNS",
+      "reason": "LIMIT_DOWN_LOCKED_SELL"
+     },
+     {
+      "bar_ts": "2026-01-07 09:05",
+      "order_ts": "2026-01-06 09:20",
+      "side": "SELL",
+      "contract": "SYNS",
+      "reason": "LIMIT_DOWN_LOCKED_SELL"
+     }
+    ],
+    "realized_pnl": "-7253.2275",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K05, K11, K12, K15"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K05/K11/K12/K15",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K05",
+    "K11",
+    "K12",
+    "K15"
+   ]
+  },
+  {
+   "case_id": "B08_pit_not_yet_available",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-06 09:05",
+      "side": "BUY",
+      "qty": 1000,
+      "fill_price": "61.1",
+      "fee": "87.0675",
+      "tax": "0"
+     },
+     {
+      "exec_ts": "2026-01-06 09:25",
+      "side": "SELL",
+      "qty": 1000,
+      "fill_price": "61.4",
+      "fee": "87.495",
+      "tax": "184.2"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "-58.7625",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K11, K12, K13"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K11/K12/K13",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K11",
+    "K12",
+    "K13"
+   ]
+  },
+  {
+   "case_id": "B09_futures_roll",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-06 09:05",
+      "side": "BUY",
+      "qty": 1,
+      "fill_price": "20013",
+      "fee": "50",
+      "tax": "80.052"
+     },
+     {
+      "exec_ts": "2026-01-07 09:00",
+      "side": "SELL",
+      "qty": 1,
+      "fill_price": "20099",
+      "fee": "50",
+      "tax": "80.396"
+     },
+     {
+      "exec_ts": "2026-01-07 09:00",
+      "side": "BUY",
+      "qty": 1,
+      "fill_price": "20151",
+      "fee": "50",
+      "tax": "80.604"
+     },
+     {
+      "exec_ts": "2026-01-07 09:10",
+      "side": "SELL",
+      "qty": 1,
+      "fill_price": "20199",
+      "fee": "50",
+      "tax": "80.796"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "26278.152",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K04, K09, K11, K12"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K04/K09/K11/K12",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K04",
+    "K09",
+    "K11",
+    "K12"
+   ]
+  },
+  {
+   "case_id": "B10_open_position_at_end",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:15",
+      "side": "BUY",
+      "qty": 1,
+      "fill_price": "20011",
+      "fee": "50",
+      "tax": "80.044"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "0",
+    "open_position": {
+     "contract": "SYNF",
+     "direction": "LONG",
+     "qty": 1,
+     "entry_ts": "2026-01-05 09:15",
+     "entry_price": "20011",
+     "entry_costs": "130.044",
+     "mark_ts": "2026-01-05 09:35",
+     "mark_price": "20060",
+     "unrealized_pnl_mark": "9800",
+     "equity_change_mark_after_entry_costs": "9669.956",
+     "terminal_liquidation_estimate_net": "9339.72"
+    }
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K04, K10, K11, K12"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K04/K10/K11/K12",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K04",
+    "K10",
+    "K11",
+    "K12"
+   ]
+  },
+  {
+   "case_id": "B11_exclusion_window",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:10",
+      "side": "BUY",
+      "qty": 1,
+      "fill_price": "20011",
+      "fee": "50",
+      "tax": "80.044"
+     },
+     {
+      "exec_ts": "2026-01-05 09:35",
+      "side": "SELL",
+      "qty": 1,
+      "fill_price": "20064",
+      "fee": "50",
+      "tax": "80.256"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "0",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K04, K08, K11, K12"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K04/K08/K11/K12",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K04",
+    "K08",
+    "K11",
+    "K12"
+   ]
+  },
+  {
+   "case_id": "B12_orb_lookahead_trap",
+   "status": "NOT_EXECUTABLE",
+   "executed_on_core": false,
+   "core_api": null,
+   "expected": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:25",
+      "side": "BUY",
+      "qty": 1,
+      "fill_price": "20042",
+      "fee": "50",
+      "tax": "80.168"
+     },
+     {
+      "exec_ts": "2026-01-05 09:35",
+      "side": "SELL",
+      "qty": 1,
+      "fill_price": "20050",
+      "fee": "50",
+      "tax": "80.2"
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "1339.632",
+    "open_position": null
+   },
+   "actual": "NOT_EXECUTED",
+   "difference": [
+    "core f4276cb cannot express the case: missing K01, K03, K04, K11, K12"
+   ],
+   "root_cause_category": "CORE_CAPABILITY_GAP:K01/K03/K04/K11/K12",
+   "responsible_repo": "market-research-core",
+   "missing_capabilities": [
+    "K01",
+    "K03",
+    "K04",
+    "K11",
+    "K12"
+   ]
+  }
+ ],
+ "statement": "expected values read from benchmark/cases (unchanged); actual values produced by the real Core engine; the oracle was not executed as the engine under test"
+}

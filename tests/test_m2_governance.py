@@ -330,9 +330,15 @@ SRC = Path(__file__).parents[1] / "src" / "strategy_agent"
 
 
 def test_strategy_agent_never_imports_oracle_or_engine():
+    # M1: ARCHITECTURE §6 designates adapters/mrc_adapter.py as the ONLY module that may know Core.
+    # The exemption is this exact path and the Core import only; the oracle ban applies everywhere.
+    adapter = SRC / "adapters" / "mrc_adapter.py"
     for p in SRC.rglob("*.py"):
         txt = p.read_text()
-        for bad in ("import benchmark", "from benchmark", "import market_research_core", "from market_research_core"):
+        banned = ("import benchmark", "from benchmark")
+        if p != adapter:
+            banned += ("import market_research_core", "from market_research_core")
+        for bad in banned:
             assert bad not in txt, f"{p} contains '{bad}'"
 
 

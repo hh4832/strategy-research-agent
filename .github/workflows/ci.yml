@@ -23,6 +23,28 @@ jobs:
       - name: Validate example specs
         run: python -m strategy_agent.spec.validate specs/examples/*.json
 
+  core-compat:
+    # M1: real market-research-core at the pinned commit (read-only dependency; never modified here).
+    runs-on: ubuntu-latest
+    env:
+      MRC_SHA: f4276cb081ae4407d356007dc76168a8cbdf2f82
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e '.[test]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
+      - run: pytest -q tests/test_m1_core_compat.py tests/test_m1_adapter.py
+      - name: B01-B12 cross-check on the real Core (INTEGRATION_PENDING is the expected outcome at this commit)
+        run: |
+          python -m benchmark.harness.mrc_crosscheck --out "$RUNNER_TEMP/mrc" || test $? -eq 2
+          python - <<'PY'
+          import json, os, pathlib
+          rec = json.loads(next(pathlib.Path(os.environ["RUNNER_TEMP"], "mrc").glob("mrc_*/crosscheck.json")).read_text())
+          print(rec["verdict"], rec["counts"])
+          assert rec["engine"]["kind"] == "REAL_CORE" and rec["engine"]["git_sha"] == os.environ["MRC_SHA"]
+          PY
+
   append-only:
     # Governed logs (registry/, governance/) may only grow relative to the PR base.
     if: github.event_name == 'pull_request'
