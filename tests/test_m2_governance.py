@@ -231,7 +231,10 @@ def test_b03_new_family_cap(tmp_path):
 
 
 def test_b04_wall_time(tmp_path):
-    runner, _ = env(tmp_path, budget={"max_wall_seconds_per_day": 0.05}, port=FakePort(sleep=0.1))
+    # admission charges this run's timeout up front: 0 + 0.5 <= 0.6 admits; after ~0.2s of use,
+    # 0.2 + 0.5 > 0.6 refuses
+    runner, _ = env(tmp_path, budget={"max_wall_seconds_per_day": 0.6, "timeout_seconds_per_experiment": 0.5},
+                    port=FakePort(sleep=0.2))
     runner.port.release.clear()
     s = registered()
     assert runner.submit(dev_request(s, params={"fast": 5, "slow": 50}))["status"] == "COMPLETED"

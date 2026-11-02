@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hh4832/strategy-research-agent/schemas/COST_PROFILE_SCHEMA.json",
+  "title": "Cost Profile v1.0",
+  "description": "Versioned transaction-cost profile (decision Q6). Every component states its BASIS: OFFICIAL_RULE (law / exchange rule), BROKER_ACTUAL (the account's real negotiated rate, evidenced by schedule or statement) or RESEARCH_ASSUMPTION (unverified or modelled, e.g. slippage). Profiles are immutable once APPROVED; any change is a new version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "version", "status", "market", "currency", "effective_from", "components", "provenance"],
+  "properties": {
+    "profile_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,63}$"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "status": {"enum": ["DRAFT", "APPROVED", "SUPERSEDED"]},
+    "market": {"enum": ["IBKR", "TXF", "TW"]},
+    "instrument_scope": {"type": "string"},
+    "currency": {"enum": ["TWD", "USD"]},
+    "effective_from": {"type": "string", "format": "date"},
+    "effective_to": {"type": ["string", "null"], "format": "date"},
+    "components": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/component"}},
+    "provenance": {
+      "type": "object", "additionalProperties": false, "required": ["created_by", "created_at"],
+      "properties": {
+        "created_by": {"type": "string"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "approved_by": {"type": ["string", "null"]},
+        "approved_at": {"type": ["string", "null"], "format": "date-time"},
+        "approval_ref": {"type": ["string", "null"]},
+        "supersedes": {"type": ["string", "null"]},
+        "profile_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "notes": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "component": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "side", "basis", "source"],
+      "properties": {
+        "id": {"type": "string"},
+        "kind": {"enum": ["COMMISSION", "MIN_COMMISSION", "TAX", "EXCHANGE_FEE", "REGULATORY_FEE", "ROUNDING", "SLIPPAGE"]},
+        "side": {"enum": ["BUY", "SELL", "BOTH"]},
+        "rate": {"type": "number", "minimum": 0, "maximum": 0.05, "description": "fraction of notional"},
+        "per_unit": {"type": "number", "minimum": 0, "description": "currency per share / contract"},
+        "amount": {"type": "number", "minimum": 0, "description": "currency per order (minimums)"},
+        "rule": {"enum": ["NONE", "FLOOR_INTEGER", "ROUND_HALF_UP_INTEGER"]},
+        "applies_to": {"enum": ["COMMISSION", "TAX", "ALL"]},
+        "ticks": {"type": "number", "minimum": 0},
+        "bps": {"type": "number", "minimum": 0},
+        "basis": {"enum": ["OFFICIAL_RULE", "BROKER_ACTUAL", "RESEARCH_ASSUMPTION"]},
+        "source": {
+          "type": "object", "additionalProperties": false, "required": ["kind", "citation"],
+          "properties": {
+            "kind": {"enum": ["LAW", "EXCHANGE_RULE", "BROKER_SCHEDULE", "BROKER_STATEMENT", "MODEL", "NONE"]},
+            "citation": {"type": "string", "minLength": 3},
+            "ref": {"type": ["string", "null"]},
+            "verified_at": {"type": ["string", "null"], "format": "date"},
+            "verified_by": {"type": ["string", "null"]}
+          }
+        },
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

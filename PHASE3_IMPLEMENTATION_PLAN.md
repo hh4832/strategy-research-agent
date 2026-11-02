@@ -33,9 +33,18 @@
 | Q1 | TXF／台股時間戳由 Codex 依來源證據確認，未確認前不得假設 | 訊號層以 `available_at` 為必填輸入；R4 交由 Codex 處理 |
 | Q4 | `market-research-core` 為唯一正式回測執行器；Decimal Oracle 只作獨立驗收 | M3 改為「Phase 3 提供規格／目標部位，正式引擎執行」；oracle 不得成為 BacktestPort |
 | Q5 | 跨 exclusion window 交易 invalidated，不計入有效績效，並檢查排除後樣本充分性 | B11 核准；Gate G4 加入樣本充分性 |
-| Q7 | Final holdout 由研究負責人事前核准並鎖定 | `governance/holdout_locks.jsonl` + CODEOWNERS；無 lock 不可回測 |
+| Q7 | Final holdout 由研究負責人事前核准並鎖定 | `governance/holdout_locks.jsonl` + approvers 白名單 + CI append-only；無 lock 不可回測（CODEOWNERS 尚未被 GitHub 強制，見 M2 §9） |
 
-Q2、Q3、Q6 仍待確認。M2 實作與判定見 [`M2_GOVERNANCE.md`](M2_GOVERNANCE.md)。
+合併前 code review（同日）追加決策：
+
+| # | 決策 | 影響 |
+|---|---|---|
+| Q2 | TSM RTH／ETH 由 Codex 確認，未確認前維持 UNKNOWN | `governance/source_confirmations.json`；validator S17 |
+| Q3 | 買賣方向可成交資格由 `market-research-core` 提供 | 契約 C1；R3 為給 Codex 的需求 |
+| Q6 | 交易成本採版本化 CostProfile（官方規則／券商實際費率／研究假設） | `schemas/COST_PROFILE_SCHEMA.json`；validator S18 |
+| — | 正式 holdout 日期暫不核准，待資料覆蓋報告 | `governance/holdout_locks.jsonl` 維持空白 |
+
+M2 實作與判定見 [`M2_GOVERNANCE.md`](M2_GOVERNANCE.md)（§9 為合併前修正）。
 
 ## 2. 里程碑與相依關係
 
@@ -75,7 +84,7 @@ flowchart LR
 **資料層**
 - [ ] `MarketDataClient` 對 IBKR、TXF、TW 三市場以正式 Drive 快照載入成功（Phase 2 Colab smoke PASS 紀錄）
 - [ ] 回傳 provenance 含 snapshot ID、producer SHA、verdict、exclusions、來源檔、列數
-- [ ] Bar frame 滿足 C1（含 side-specific 成交資格）——或 Q3 決定由 adapter 從 `buy_eligibility`／`sell_eligibility` 推導
+- [ ] Bar frame 滿足 C1：side-specific 成交資格由 `market-research-core` 提供（Q3），adapter 只傳遞
 - [ ] 每個市場的 `available_at` 語意有單元測試（C2）
 - [ ] IBKR／TXF 的 eligibility 不再一律為 `True`；session 不再為 `UNKNOWN`（或明確文件化）
 
@@ -118,11 +127,11 @@ flowchart LR
 | # | 問題 | 影響的元件 |
 |---|---|---|
 | Q1 | ✔ 已決策：由 Codex 依來源證據確認；確認前 Phase 3 不假設 | C2、R4、所有 TXF／TW 案例 |
-| Q2 | IBKR TSM normalized parquet 是否只含 RTH？若含 ETH，session 欄位如何標記？ | R2、ATR 範例規格 |
-| Q3 | Side-specific 成交資格由 Phase 2 提供，還是由 Phase 3 adapter 從 `buy_eligibility`／`sell_eligibility` 推導？ | C1、R3 |
+| Q2 | ✔ 已決策：由 Codex 確認；未確認前 UNKNOWN（S17 阻擋） | R2、ATR 範例規格 |
+| Q3 | ✔ 已決策：由 `market-research-core` 提供；adapter 不推導 | C1、R3 |
 | Q4 | ✔ 已決策：`market-research-core` 為唯一正式執行器 | M3 範圍 |
 | Q5 | ✔ 已決策：(a) 整筆 invalidated + 樣本充分性檢查 | B11、C5 |
-| Q6 | 實際券商手續費率、最低手續費、期貨每口費用（TXF、NQ、ES）以哪份文件為準？ | 範例規格 costs |
+| Q6 | ✔ 已決策：版本化 CostProfile；目前三份皆 DRAFT，待券商證據與官方來源核對 | 範例規格 costs |
 | Q7 | ✔ 已決策：研究負責人事前核准並鎖定 | §2 評估規約 |
 
 ---

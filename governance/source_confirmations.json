@@ -1,0 +1,50 @@
+{
+  "note": "Source-of-truth confirmations owned by Codex / data owner (decisions Q1, Q2). A non-DRAFT spec that depends on an UNKNOWN item is rejected (validator S17). Change status only with source evidence. Changes go through a PR reviewed by the research lead; GitHub does not enforce CODEOWNERS on main yet (no branch protection/ruleset).",
+  "items": {
+    "txf_timestamp_label": {
+      "decision": "Q1",
+      "owner": "Codex",
+      "status": "UNKNOWN",
+      "allowed": [
+        "BAR_START",
+        "BAR_END"
+      ],
+      "value": null,
+      "evidence_ref": null,
+      "applies_to": {
+        "market": "TXF"
+      }
+    },
+    "tw_equity_timestamp_label": {
+      "decision": "Q1",
+      "owner": "Codex",
+      "status": "UNKNOWN",
+      "allowed": [
+        "BAR_START",
+        "BAR_END"
+      ],
+      "value": null,
+      "evidence_ref": null,
+      "applies_to": {
+        "market": "TW"
+      }
+    },
+    "ibkr_tsm_session_coverage": {
+      "decision": "Q2",
+      "owner": "Codex",
+      "status": "UNKNOWN",
+      "allowed": [
+        "RTH_ONLY",
+        "RTH_AND_ETH"
+      ],
+      "value": null,
+      "evidence_ref": null,
+      "applies_to": {
+        "market": "IBKR",
+        "symbols": [
+          "TSM"
+        ]
+      }
+    }
+  }
+}

@@ -3,18 +3,53 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from strategy_agent.family.canonical import FamilyIndex
 from strategy_agent.governance.budget import BudgetConfig, BudgetGuard, Controls
-from strategy_agent.governance.holdout import HoldoutBook, HoldoutGuard
+from strategy_agent.governance.holdout import HoldoutBook, HoldoutGuard, HoldoutReservations
+from strategy_agent.registry.admission import AdmissionLock
 from strategy_agent.governance.holdout_admin import approve
 from strategy_agent.ports import REQUIRED_PROVENANCE, BacktestReport
 from strategy_agent.registry.experiments import ExperimentRegistry
 from strategy_agent.runner import EngineInfo, ExperimentRunner, RunRequest
-from strategy_agent.spec.validate import canonical_hash
+from strategy_agent.costs.profile import profile_hash
+from strategy_agent.spec.validate import GovernanceContext, canonical_hash, default_context
+
+ROOT = Path(__file__).parents[1]
+
+
+def approved_profile(name="tw_equity_cash_v0", broker_verified=True):
+    """TEST-ONLY approval of a draft profile. Never written to governance/."""
+    p = json.loads((ROOT / "governance" / "cost_profiles" / f"{name}.json").read_text())
+    p["status"] = "APPROVED"
+    for c in p["components"]:
+        if broker_verified and c["kind"] in {"COMMISSION", "MIN_COMMISSION"}:
+            c["basis"] = "BROKER_ACTUAL"
+            c["source"] = {"kind": "BROKER_STATEMENT", "citation": "test statement", "ref": None,
+                           "verified_at": None, "verified_by": None}
+        if c["basis"] != "RESEARCH_ASSUMPTION":
+            c["source"].update(ref="https://example.test/source", verified_at="2026-11-03", verified_by="hh4832")
+    p["provenance"].update(approved_by="hh4832", approved_at="2026-11-03T06:00:00+08:00",
+                           approval_ref="https://example.test/approval")
+    p["provenance"]["profile_sha256"] = profile_hash(p)
+    return p
+
+
+def governance_for_tests(confirm=True, profile=None):
+    """Governance for tests: TW timestamp label confirmed, TW cost profile approved."""
+    base = default_context()
+    conf = json.loads(json.dumps(base.confirmations))
+    if confirm:
+        conf["tw_equity_timestamp_label"].update(status="CONFIRMED", value="BAR_START",
+                                                 evidence_ref="https://example.test/evidence")
+    prof = profile or approved_profile()
+    profiles = dict(base.cost_profiles)
+    profiles[(prof["profile_id"], prof["version"])] = prof
+    return GovernanceContext(conf, profiles, base.approvers)
 
 EX = Path(__file__).parents[1] / "specs" / "examples"
 LOCK_URL = "https://app.notion.com/p/example-approval"
@@ -26,6 +61,8 @@ def registered(name="sma_crossover_tw_2330_5m.json", status="REGISTERED", mutate
     if mutate:
         mutate(s)
     s["status"] = status
+    if s["costs"].get("profile_ref", {}).get("profile_id") == "tw_equity_cash":
+        s["costs"]["profile_ref"]["sha256"] = approved_profile()["provenance"]["profile_sha256"]
     s["provenance"]["spec_sha256"] = None
     s["provenance"]["spec_sha256"] = canonical_hash(s)
     return s
@@ -64,11 +101,14 @@ class Clock:
 def env(tmp: Path, *, budget=None, lock=True, port=None, benchmark="BENCHMARK_PASS", clock=None):
     gov = tmp / "gov"
     gov.mkdir(parents=True, exist_ok=True)
-    (gov / "approvers.json").write_text(json.dumps({"research_leads": ["hh4832"]}))
+    if not (gov / "approvers.json").exists():        # never rewrite: concurrent workers read it
+        tmp_file = gov / f".approvers.{os.getpid()}.tmp"
+        tmp_file.write_text(json.dumps({"research_leads": ["hh4832"]}))
+        os.replace(tmp_file, gov / "approvers.json")
     locks, controls = gov / "holdout_locks.jsonl", gov / "controls.jsonl"
     locks.touch()
     controls.touch()
-    if lock:
+    if lock and not locks.read_text().strip():
         approve(locks, gov / "approvers.json", lock_id="HOLDOUT-TW-5M-v1", dataset_id="tw_equity_fubon_5m",
                 snapshot_id="final_gate_20261031_154458_20eba73", start="2026-01-01T00:00:00+08:00", end=None,
                 approved_by="hh4832", approval_ref=LOCK_URL)
@@ -79,9 +119,11 @@ def env(tmp: Path, *, budget=None, lock=True, port=None, benchmark="BENCHMARK_PA
     clock = clock or Clock()
     budget_guard = BudgetGuard(reg, cfg, Controls(controls, gov / "approvers.json"), clock=clock)
     runner = ExperimentRunner(reg, FamilyIndex(tmp / "families.jsonl"),
-                              HoldoutGuard(HoldoutBook(locks, gov / "approvers.json"), reg), budget_guard,
+                              HoldoutGuard(HoldoutBook(locks, gov / "approvers.json"),
+                                           HoldoutReservations(tmp / "holdout_reservations.jsonl")), budget_guard,
                               port or FakePort(), EngineInfo("market-research-core", "16281b2a242c", "0.2.0", benchmark),
-                              agent_sha="abcdef1", clock=clock)
+                              agent_sha="abcdef1", admission=AdmissionLock(tmp), clock=clock,
+                              governance=governance_for_tests())
     return runner, reg
 
 

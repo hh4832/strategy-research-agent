@@ -30,7 +30,7 @@
 |  walk-forward: [train][test] → [train][test] …   |   LOCKED：每個 FROZEN 規格只評估一次                  |
 ```
 
-1. **邊界由研究負責人事前核准並鎖定（審查決策 Q7）**：依資料集 coverage manifest 選定 holdout 起點，以 `strategy_agent.governance.holdout_admin approve` 寫入 `governance/holdout_locks.jsonl`（需 allow-listed approver 與核准連結），經 CODEOWNERS 審核的 PR 合併後生效。Agent 不得設定、修改或反覆測試 holdout。沒有核准 lock 的資料集，所有回測都被拒絕（H01）。
+1. **邊界由研究負責人事前核准並鎖定（審查決策 Q7）**：依資料集 coverage manifest 選定 holdout 起點，以 `strategy_agent.governance.holdout_admin approve` 寫入 `governance/holdout_locks.jsonl`（需 allow-listed approver 與核准連結），以 PR 提交，由研究負責人審核合併後生效（CODEOWNERS 已列出審核者，但 `main` 目前**沒有** branch protection／ruleset，GitHub 不會強制此審核；見 `M2_GOVERNANCE.md` §9）。Agent 不得設定、修改或反覆測試 holdout。沒有核准 lock 的資料集，所有回測都被拒絕（H01）。
 2. **Development 內只做 walk-forward**；不單獨保留一個反覆使用的「validation set」。若需要調參，參數選擇只在每個 fold 的 train 區間內進行（§3.3）。
 3. **Final Holdout**：只允許 `status=FROZEN` 的規格，且同一 `holdout_lock_id` 只能讀一次（Executor 強制）。Holdout 結果只決定「保留／淘汰」，**不得**用來修改規格；修改後即為新版本，但它不能再使用同一個 holdout（holdout 已被看過，對這個 family 失去獨立性）。
 4. **新資料**：快照升級後新增的期間，可作為新的「前推 holdout」（forward holdout），規則同上。

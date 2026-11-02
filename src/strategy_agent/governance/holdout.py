@@ -8,11 +8,13 @@ Controls
 --------
 1. ``governance/holdout_locks.jsonl`` is a hash-chained log. This module has no
    write API. Locks are added only with ``holdout_admin`` by a person listed in
-   ``governance/approvers.json``, committed through a PR that CODEOWNERS must
-   approve; CI rejects edits to existing lines (``append_only``).
+   ``governance/approvers.json``, committed through a PR reviewed by the research lead; CI rejects edits to
+   existing lines (``append_only``). CODEOWNERS lists the intended reviewer, but GitHub does NOT enforce it: main has no branch protection or ruleset (verified 2026-11-03).
 2. Every entry must name an allow-listed approver and an approval reference,
    otherwise loading fails closed.
 3. ``HoldoutGuard`` rules H01–H08 are checked before any experiment is queued.
+4. Single use (H06) is enforced by ``HoldoutReservations.reserve``: an atomic
+   compare-and-append made before QUEUED and never released.
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from strategy_agent.registry.chain import ChainedLog
+from strategy_agent.registry.chain import ChainedLog, ConditionFailed
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_LOCKS = ROOT / "governance" / "holdout_locks.jsonl"
@@ -105,9 +107,38 @@ class HoldoutBook:
         return [l for l in self.locks.values() if l.dataset_id == dataset_id]
 
 
+class HoldoutReservations:
+    """Atomic, permanent single-use reservations: one per (lock_id, family_id).
+
+    ``reserve`` is a compare-and-append under the log's exclusive lock, so of
+    any number of concurrent attempts exactly one succeeds. A reservation is
+    written BEFORE the experiment is queued and is never released: FAILED,
+    TIMEOUT, CANCELLED, a contract rejection or a worker crash all consume it.
+    """
+
+    def __init__(self, path: str | Path):
+        self.log = ChainedLog(path)
+
+    def reserved(self, lock_id: str, family_id: str) -> dict | None:
+        for r in self.log.verify():
+            if r["lock_id"] == lock_id and r["family_id"] == family_id:
+                return r
+        return None
+
+    def reserve(self, *, lock_id: str, family_id: str, experiment_id: str, spec_sha256: str,
+                actor: str, at: str) -> dict:
+        def refuse(records):
+            for r in records:
+                if r["lock_id"] == lock_id and r["family_id"] == family_id:
+                    return f"family {family_id} already reserved holdout {lock_id} ({r['experiment_id']})"
+            return None
+        return self.log.append_if({"lock_id": lock_id, "family_id": family_id, "experiment_id": experiment_id,
+                                   "spec_sha256": spec_sha256, "actor": actor, "reserved_at": at}, refuse)
+
+
 class HoldoutGuard:
-    def __init__(self, book: HoldoutBook, registry):
-        self.book, self.registry = book, registry
+    def __init__(self, book: HoldoutBook, reservations: HoldoutReservations):
+        self.book, self.reservations = book, reservations
 
     def check(self, *, spec: dict, family_id: str, role: str, dataset_ids: list[str],
               window_start: str, window_end: str, cost_multiplier: float, holdout_access: bool) -> GuardDecision:
@@ -133,10 +164,10 @@ class HoldoutGuard:
                 return GuardDecision(False, "H04", "final holdout requires a FROZEN spec")
             if ws != lock.holdout_start or (lock.holdout_end is not None and we != lock.holdout_end):
                 return GuardDecision(False, "H05", "final holdout window must equal the locked window exactly")
-            prior = [r for r in self.registry.holdout_accesses(lock.lock_id) if r["trial"]["family_id"] == family_id]
-            if prior:
+            prior = self.reservations.reserved(lock.lock_id, family_id)
+            if prior:   # early, non-authoritative check; the atomic reservation decides (runner)
                 return GuardDecision(False, "H06", f"family {family_id} already used holdout {lock.lock_id} "
-                                                   f"({prior[0]['experiment_id']})")
+                                                   f"({prior['experiment_id']})")
             if cost_multiplier != 1:
                 return GuardDecision(False, "H07", "final holdout is evaluated once, at 1x cost")
         return GuardDecision(True)

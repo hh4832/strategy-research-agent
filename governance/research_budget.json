@@ -6,5 +6,5 @@
   "timeout_seconds_per_experiment": 900,
   "max_consecutive_failures": 3,
   "day_timezone": "Asia/Taipei",
-  "note": "Changing any limit requires research-lead approval (CODEOWNERS). Counters are derived from registry/experiments.jsonl."
+  "note": "Changing any limit requires research-lead approval. Counters are derived from registry/experiments.jsonl. Changes go through a PR reviewed by the research lead; GitHub does not enforce CODEOWNERS on main yet (no branch protection/ruleset)."
 }

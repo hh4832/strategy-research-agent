@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 out/
 .venv/
+registry/.admission.lock
+registry/runner_host.json

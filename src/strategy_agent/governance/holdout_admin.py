@@ -1,7 +1,8 @@
 """Research-lead tool to approve or revoke a holdout lock. NOT for agents.
 
 The runner never imports this module (enforced by tests). The resulting line
-only takes effect once merged through a CODEOWNERS-reviewed PR.
+only takes effect once merged through a PR reviewed by the research lead.
+CODEOWNERS lists the intended reviewer, but GitHub does NOT enforce it: main has no branch protection or ruleset (verified 2026-11-03).
 
     python -m strategy_agent.governance.holdout_admin approve \
         --lock-id HOLDOUT-TSM-15M-v1 --dataset ibkr_tsm_1m_normalized \
@@ -71,7 +72,8 @@ def main(argv=None) -> int:  # pragma: no cover
         rec = revoke(DEFAULT_LOCKS, DEFAULT_APPROVERS, lock_id=args.lock_id, approved_by=args.approved_by,
                      approval_ref=args.approval_ref, notes=args.notes)
     print(json.dumps(rec, indent=2, ensure_ascii=False))
-    print("\nCommit governance/holdout_locks.jsonl in a PR; it takes effect only after CODEOWNERS approval.")
+    print("\nCommit governance/holdout_locks.jsonl in a PR for research-lead review. Note: CODEOWNERS review is NOT "
+          "enforced by GitHub until a branch protection rule or ruleset is enabled on main.")
     return 0
 
 

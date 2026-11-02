@@ -31,7 +31,7 @@ benchmark/cases/        B01–B12 合成資料 + 手算預期值
 benchmark/oracle/       獨立參考引擎（stdlib + Decimal）
 benchmark/harness/      匯出 CSV、比對外部引擎輸出
 src/strategy_agent/     spec、evaluation、ports、registry、governance、family、signals、runner
-governance/             holdout locks、approvers、research budget、controls（CODEOWNERS）
+governance/             holdout locks、approvers、research budget、controls、cost profiles、source confirmations
 registry/               experiments.jsonl、families.jsonl（雜湊鏈、append-only）
 schemas/                Experiment Registry 紀錄 schema
 tests/                  oracle／mutants／harness／spec／evaluation／ports

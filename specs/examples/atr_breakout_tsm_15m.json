@@ -227,7 +227,12 @@
       1,
       2,
       4
-    ]
+    ],
+    "profile_ref": {
+      "profile_id": "ibkr_us_equity",
+      "version": "0.1.0",
+      "sha256": null
+    }
   },
   "risk_constraints": {
     "allowed_directions": [

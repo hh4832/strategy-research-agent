@@ -9,7 +9,8 @@ update or delete API.
 Tamper-evidence, not tamper-proofing: someone able to rewrite the whole file
 could recompute the chain. That case is caught in CI by
 ``strategy_agent.governance.append_only`` (the new file must start with the
-exact bytes of the base-branch file) plus CODEOWNERS review.
+exact bytes of the base-branch file). That CI check only blocks a merge if it is
+made a required status check; CODEOWNERS lists the intended reviewer, but GitHub does NOT enforce it: main has no branch protection or ruleset (verified 2026-11-03).
 """
 from __future__ import annotations
 
@@ -19,13 +20,17 @@ import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 GENESIS = "0" * 64
 
 
 class ChainError(RuntimeError):
     pass
+
+
+class ConditionFailed(RuntimeError):
+    """append_if refused: the guarded condition did not hold under the lock."""
 
 
 def canonical(obj: Any) -> bytes:
@@ -75,6 +80,18 @@ class ChainedLog:
         return recs
 
     def append(self, payload: dict) -> dict:
+        rec = self.append_if(payload, lambda _records: None)
+        assert rec is not None
+        return rec
+
+    def append_if(self, payload: dict, refuse: Callable[[list[dict]], str | None]) -> dict | None:
+        """Atomic compare-and-append.
+
+        ``refuse(records)`` runs while the exclusive file lock is held and sees
+        the verified log; if it returns a reason, nothing is written and
+        ``ConditionFailed`` is raised. Two processes can therefore never both
+        pass the same check (e.g. two holdout reservations for one family).
+        """
         if any(k in payload for k in ("seq", "prev_sha256", "record_sha256")):
             raise ChainError("chain fields are assigned by the log")
         with self._locked() as fh:
@@ -87,6 +104,9 @@ class ChainedLog:
                 if r.get("seq") != i or r.get("prev_sha256") != prev or r.get("record_sha256") != record_hash(r):
                     raise ChainError(f"{self.path}: refusing to append to a corrupted log (seq {i})")
                 prev = r["record_sha256"]
+            reason = refuse(recs)
+            if reason:
+                raise ConditionFailed(reason)
             rec = dict(payload, seq=len(recs), prev_sha256=prev)
             rec["record_sha256"] = record_hash(rec)
             fh.seek(0, os.SEEK_END)

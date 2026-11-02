@@ -1,15 +1,19 @@
 """Research budget and stop rules.
 
-All counters are DERIVED FROM THE REGISTRY, never kept in memory, so a crash,
-restart or a second worker cannot reset them. Limits live in
-``governance/research_budget.json`` (CODEOWNERS-protected).
+All counters are DERIVED FROM THE REGISTRY, never kept in memory, so a crash
+or restart cannot reset them. ``check`` must be called while holding the
+runner's ``AdmissionLock`` and the RUNNING event must be written before the
+lock is released; in-flight runs (QUEUED/RUNNING) count toward every cap and
+are charged their full timeout for B04. Together this makes admission atomic
+for any number of workers on one host. Limits live in
+``governance/research_budget.json``.
 
 Codes
 -----
 B01  family trial cap reached (registry trial count, protocol §6.1)
 B02  daily backtest count reached (experiments that reached RUNNING today)
 B03  daily new-family cap reached
-B04  daily wall-time budget exhausted
+B04  daily wall-time budget exhausted (completed wall time + in-flight runs charged at timeout + this run's timeout)
 B05  HALTED: N consecutive FAILED/TIMEOUT outcomes; only a research-lead
      RESUME control (governance/controls.jsonl) clears it
 B06  spec-level max_trials reached for this exact structure
@@ -112,6 +116,9 @@ class BudgetGuard:
                 return GuardDecision(False, "B03", f"daily new-family cap {self.cfg.max_new_families_per_day} reached")
         wall = sum(float(r.get("resource_usage", {}).get("wall_seconds", 0)) for r in self.registry.records()
                    if datetime.fromisoformat(r["event_at"]) >= day0)
-        if wall >= self.cfg.max_wall_seconds_per_day:
+        # in-flight runs are charged their full timeout up front, so concurrent admissions cannot overshoot
+        in_flight = [r for r in self.registry.final_records() if r["status"] in {"QUEUED", "RUNNING"}]
+        wall += len(in_flight) * self.cfg.timeout_seconds_per_experiment
+        if wall + self.cfg.timeout_seconds_per_experiment > self.cfg.max_wall_seconds_per_day:
             return GuardDecision(False, "B04", f"daily wall-time budget {self.cfg.max_wall_seconds_per_day}s used")
         return GuardDecision(True)

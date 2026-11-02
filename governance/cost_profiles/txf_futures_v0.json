@@ -1,0 +1,79 @@
+{
+  "profile_id": "txf_futures",
+  "version": "0.1.0",
+  "status": "DRAFT",
+  "market": "TXF",
+  "instrument_scope": "TAIFEX TX (TXF) futures, 1 contract",
+  "currency": "TWD",
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "components": [
+    {
+      "id": "commission",
+      "kind": "COMMISSION",
+      "side": "BOTH",
+      "per_unit": 50,
+      "basis": "RESEARCH_ASSUMPTION",
+      "source": {
+        "kind": "NONE",
+        "citation": "Broker-dependent per-contract commission placeholder; actual rate not yet provided",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      }
+    },
+    {
+      "id": "futures_transaction_tax",
+      "kind": "TAX",
+      "side": "BOTH",
+      "rate": 2e-05,
+      "basis": "OFFICIAL_RULE",
+      "source": {
+        "kind": "LAW",
+        "citation": "期貨交易稅條例 — 股價類期貨現行稅率 0.00002（來源連結尚未核對）",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      }
+    },
+    {
+      "id": "tax_rounding",
+      "kind": "ROUNDING",
+      "side": "BOTH",
+      "rule": "ROUND_HALF_UP_INTEGER",
+      "applies_to": "TAX",
+      "basis": "RESEARCH_ASSUMPTION",
+      "source": {
+        "kind": "NONE",
+        "citation": "Rounding convention to be confirmed",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      }
+    },
+    {
+      "id": "slippage",
+      "kind": "SLIPPAGE",
+      "side": "BOTH",
+      "ticks": 1,
+      "basis": "RESEARCH_ASSUMPTION",
+      "source": {
+        "kind": "MODEL",
+        "citation": "1-tick adverse model",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      }
+    }
+  ],
+  "provenance": {
+    "created_by": "claude-m2-review",
+    "created_at": "2026-11-03T06:00:00+08:00",
+    "approved_by": null,
+    "approved_at": null,
+    "approval_ref": null,
+    "supersedes": null,
+    "profile_sha256": null,
+    "notes": "DRAFT: no component verified. Matches specs/examples/orb_txf_1m.json."
+  }
+}
