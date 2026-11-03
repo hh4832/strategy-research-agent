@@ -11,6 +11,8 @@ dependencies = ["jsonschema>=4.20", "numpy>=1.26", "scipy>=1.11"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
+# research runner (pandas for Core frames); Core itself is installed from a pinned git SHA, see README
+research = ["pandas>=2.0"]
 
 [tool.setuptools.packages.find]
 where = ["src", "."]

@@ -62,6 +62,32 @@ class RunRequest:
     datasets: tuple = field(default=())
 
 
+def parameter_issues(spec: dict, params: dict) -> list[Issue]:
+    """R02: parameters must be exactly the declared names, inside [min, max], on the step grid, satisfy the spec
+    constraints, and equal the defaults when the search mode is FIXED with max_trials 1."""
+    from decimal import Decimal  # noqa: PLC0415
+    decl = spec["parameters"]["values"]
+    out = []
+    if set(params) != set(decl):
+        return [Issue("ERROR", "R02", "/parameters", f"parameters {sorted(params)} != declared {sorted(decl)}")]
+    for k, d in decl.items():
+        v = Decimal(str(params[k]))
+        if d.get("type") == "integer" and v != v.to_integral_value():
+            out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} is not an integer")]
+        if not Decimal(str(d["min"])) <= v <= Decimal(str(d["max"])):
+            out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} outside [{d['min']}, {d['max']}]")]
+        elif d.get("step") and (v - Decimal(str(d["min"]))) % Decimal(str(d["step"])) != 0:
+            out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} not on the step grid")]
+    ops = {"<": lambda a, b: a < b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b, ">=": lambda a, b: a >= b}
+    for c in spec["parameters"].get("constraints", []):
+        if c["op"] in ops and not ops[c["op"]](params[c["left"]], params[c["right"]]):
+            out += [Issue("ERROR", "R02", "/parameters/constraints", f"violates {c['left']} {c['op']} {c['right']}")]
+    srch = spec["parameters"]["search"]
+    if srch["mode"] == "FIXED" and srch.get("max_trials") == 1 and any(params[k] != d["default"] for k, d in decl.items()):
+        out += [Issue("ERROR", "R02", "/parameters", "FIXED spec with max_trials 1 runs its defaults only")]
+    return out
+
+
 class OracleNotAllowed(TypeError):
     """Decision Q4: the Decimal oracle is an acceptance tool, never the executor."""
 
@@ -70,7 +96,8 @@ class ExperimentRunner:
     def __init__(self, registry: ExperimentRegistry, families: FamilyIndex, holdout: HoldoutGuard,
                  budget: BudgetGuard, port: BacktestPort, engine: EngineInfo, agent_sha: str,
                  admission: AdmissionLock, actor: str = "strategy-agent",
-                 clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc), governance=None):
+                 clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc), governance=None,
+                 enforce_parameter_ranges: bool = False):
         if type(port).__module__.split(".")[0] == "benchmark":
             raise OracleNotAllowed("benchmark oracle cannot be used as the BacktestPort; "
                                    "market-research-core is the only formal executor")
@@ -78,6 +105,9 @@ class ExperimentRunner:
         self.port, self.engine, self.agent_sha, self.actor, self.clock = port, engine, agent_sha, actor, clock
         self.admission = admission
         self.governance = governance          # GovernanceContext; None = repository governance files
+        # M3-B: opt-in check that run parameters lie inside the spec's declared ranges / grid / constraints.
+        # Off by default to keep M2 behaviour (M2 budgets trials by max_trials, not by range).
+        self.enforce_parameter_ranges = enforce_parameter_ranges
 
     # ------------------------------------------------------------ helpers
 
@@ -169,6 +199,8 @@ class ExperimentRunner:
         issues = [i for i in validate(spec, self.governance) if i.level == "ERROR"]
         if not issues and spec["status"] not in {"REGISTERED", "FROZEN"}:
             issues = [Issue("ERROR", "R01", "/status", "only REGISTERED/FROZEN specs may execute")]
+        if not issues and self.enforce_parameter_ranges:
+            issues = parameter_issues(spec, req.parameters)
         if issues:
             trial = {"family_id": "UNASSIGNED", "index": 0, "parameters": req.parameters, "params_sha256": p_sha}
             return self._emit(self._base(exp_id, created, req, trial, spec_sha), "REJECTED_SPEC",

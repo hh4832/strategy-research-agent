@@ -1,0 +1,32 @@
+{
+  "note": "Market-gate records consumed by strategy_agent.research.readiness. Owned by Codex (M3-A). A real-market research run is allowed only for an entry with status GO, an evidence_ref, a pinned snapshot and the research-lead approval fields filled. Changes go through a PR reviewed by the research lead. The research runner never edits this file.",
+  "markets": {
+    "IBKR_TSM": {
+      "owner": "Codex",
+      "decision": "M3-A",
+      "status": "NOT_READY",
+      "status_reason": "No Codex M3-A final Market Readiness Report was available on 2026-11-04 (searched the Notion workspace and market-research-core main bf01fa9). Q2 session coverage is still UNKNOWN in governance/source_confirmations.json.",
+      "evidence_ref": null,
+      "approved_by": null,
+      "approved_at": null,
+      "dataset_id": "ibkr_tsm_1m_normalized",
+      "snapshot_id": null,
+      "producer_commit_sha": null,
+      "allowed_window": {"start": null, "end": null},
+      "bar_label": "UNKNOWN",
+      "session_coverage": "UNKNOWN",
+      "timezone": "America/New_York",
+      "constant_tick_size": null,
+      "required_before_go": [
+        "M3-A report: timestamp label (bar start or end) and available_at rule for IBKR TSM 1m",
+        "M3-A report: session coverage (RTH only vs RTH+ETH) -> source_confirmations.ibkr_tsm_session_coverage CONFIRMED (Q2)",
+        "M3-A report: 1m -> 15m aggregation rule and session calendar (DST, half days, holidays) with evidence",
+        "M3-A report: pinned snapshot / producer SHA and the window formally allowed for research",
+        "research-lead approved holdout lock HOLDOUT-TSM-15M-v1 (governance/holdout_locks.jsonl)",
+        "APPROVED ibkr_us_equity CostProfile with broker evidence",
+        "Core can express the IBKR equity costs (gap G18: per-share commission, bps slippage) or the profile is restated in Core-expressible terms with research-lead approval",
+        "Core-side IBKR data adapter producing execution columns (buy/sell eligibility, session_open/close) for TSM"
+      ]
+    }
+  }
+}

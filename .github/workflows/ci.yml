@@ -53,6 +53,34 @@ jobs:
           assert st["status"] == "BENCHMARK_PASS"
           PY
 
+  research-synthetic:
+    # M3-B1: synthetic research run on the real Core, isolated governance, reproducibility + archive evidence.
+    runs-on: ubuntu-latest
+    env:
+      MRC_SHA: 2c6ba9ab7c336e7a4908744abef617e0dce713fd
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
+      - run: pytest -q tests/test_m3b_unit.py tests/test_m3b_integration.py
+      - name: Real-market gate stays closed (exit 3) until M3-A is GO
+        run: |
+          set +e
+          python -m strategy_agent.research readiness --market IBKR_TSM; test $? -eq 3 || exit 1
+          python -m strategy_agent.research real --market IBKR_TSM; test $? -eq 3 || exit 1
+      - name: Synthetic SMA 5/20 run x2 (must COMPLETE, archive and reproduce)
+        run: |
+          python -m strategy_agent.research synthetic --run-root "$RUNNER_TEMP/m3b_env" \
+            --archive-root "$RUNNER_TEMP/m3b_archive" --repeat 2 --batch-id ci
+          git diff --exit-code -- registry governance   # formal registry / holdout untouched
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m3b-synthetic-archive
+          path: ${{ runner.temp }}/m3b_archive
+          retention-days: 30
+
   append-only:
     # Governed logs (registry/, governance/) may only grow relative to the PR base.
     if: github.event_name == 'pull_request'

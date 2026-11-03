@@ -410,10 +410,44 @@ def targets_to_orders(targets: Sequence[Mapping], *, symbol: str, market: str, q
 _BASIS = {"OFFICIAL_RULE": "OFFICIAL", "BROKER_ACTUAL": "BROKER_ACTUAL", "RESEARCH_ASSUMPTION": "ASSUMED"}
 
 
+def unmappable_cost_components(profile: Mapping, instrument_type: str) -> list[str]:
+    """Components the field mapping below would otherwise DROP silently (gap G18). Core equities take only a
+    notional rate + minimum and a SELL tax; futures only a per-contract fee + BOTH-side tax; slippage only in ticks.
+    Anything else must fail closed rather than vanish from the cost model."""
+    fut = instrument_type == "FUTURES"
+    out = []
+    for c in profile["components"]:
+        k, side = c["kind"], c.get("side", "BOTH")
+        if k == "COMMISSION":
+            if side != "BOTH":
+                out.append(f"{c['id']}: one-sided commission")
+            if not fut and c.get("per_unit"):
+                out.append(f"{c['id']}: per-unit equity commission {c['per_unit']} (Core: notional rate only)")
+            if fut and c.get("rate"):
+                out.append(f"{c['id']}: notional-rate futures commission {c['rate']} (Core: per contract only)")
+        elif k in {"EXCHANGE_FEE", "REGULATORY_FEE"}:
+            out.append(f"{c['id']}: {k} has no Core field")
+        elif k == "TAX":
+            if not fut and side != "SELL":
+                out.append(f"{c['id']}: equity TAX side {side} (Core: SELL only)")
+            if fut and side != "BOTH":
+                out.append(f"{c['id']}: futures TAX side {side} (Core: BOTH only)")
+            if c.get("per_unit"):
+                out.append(f"{c['id']}: per-unit tax")
+        elif k == "SLIPPAGE" and "ticks" not in c:
+            out.append(f"{c['id']}: slippage {c.get('bps')} bps (Core: ticks only)")
+        elif k == "MIN_COMMISSION" and fut and c.get("amount"):
+            out.append(f"{c['id']}: futures minimum commission")
+    return out
+
+
 def core_cost_profile(profile: Mapping, *, instrument_type: str, tick_size: float, contract_multiplier: float = 1.0,
                       core=None):
     """Agent CostProfile (governance JSON) -> Core CostProfile. Field mapping only; rules Core cannot express
     (e.g. FLOOR_INTEGER rounding) raise CoreContractGap instead of being approximated."""
+    unmappable = unmappable_cost_components(profile, instrument_type)
+    if unmappable:
+        raise CoreContractGap(["K18"], "cost components not expressible in Core CostProfile: " + "; ".join(unmappable))
     core = core or _core()
     comp = {c["kind"]: c for c in profile["components"]}
     rnd = comp.get("ROUNDING", {}).get("rule", "NONE")
