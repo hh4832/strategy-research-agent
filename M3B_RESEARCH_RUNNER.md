@@ -1,6 +1,8 @@
 # Phase 3 M3-B — Automated Research Runner MVP
 
-**Verdict: `SCOPED_GO`**
+**Verdict (M3-B.1 closure): engineering `GO` for the synthetic research runner; real Drive archive `PENDING`; real-market research `NO-GO` (Codex M3-A).** See §10.
+
+Original M3-B verdict: **`SCOPED_GO`**
 
 - **What passes:** all nine M3-B1 synthetic acceptance items, on the real `market-research-core@2c6ba9a` (`BENCHMARK_PASS`).
 - **Limit 1 — no real-market run.** The M3-B2 real-market gate is closed: no Codex M3-A Market Readiness Report was available. The TSM run was **not started**.
@@ -13,7 +15,7 @@
 | Agent base | `main` @ `fdbe84f` (PR #1–#3 merged). Branch `feature/m3b-research-runner`. |
 | Core (read-only) | `2c6ba9ab7c336e7a4908744abef617e0dce713fd`. `engine_benchmark_status` = `BENCHMARK_PASS`, derived from `benchmark/results/mrc_2c6ba9ab7c33`. Core `main` = `bf01fa9` (merge of the same commit). |
 | Not changed | Oracle, B01–B12, Core, formal `registry/`, holdout locks, budget, approvers, cost profiles. |
-| Added governance file | `governance/market_readiness.json`. This is the market-gate record (owner: Codex). `IBKR_TSM` = `NOT_READY`. |
+| Added governance file | `governance/market_readiness.json`. This is the market-gate record (owner: Codex). `IBKR_TSM` = `NO_GO`, synced from Codex M3-A in M3-B.1 (§10). |
 
 ## 2. Pipeline (`src/strategy_agent/research/`)
 
@@ -24,7 +26,7 @@ Strategy Spec -> Governance Admission -> Data Access -> Signal Generation -> Cor
 
 | Stage | Implementation (reused unless marked new) | Output | Fail-closed on |
 |---|---|---|---|
-| Spec | `spec.validate`; opt-in **R02** parameter check (new, `runner.parameter_issues`) | errors list | schema/S01–S18; params ≠ declared, out of range or off grid; FIXED/max_trials 1 ≠ defaults |
+| Spec | `spec.validate`; **R02** parameter check (`runner.parameter_issues`), mandatory in the research runner since M3-B.1 | errors list | schema/S01–S18; params ≠ declared, non-numeric, out of range, off grid, constraint broken; FIXED ≠ declared defaults |
 | Governance admission | M2 `ExperimentRunner` (family, holdout H01–H08, budget B01–B06, engine `BENCHMARK_PASS`) | registry events | any rejection (recorded) |
 | Data access | `research.data` (new): `SyntheticSource`, `GatedMarketSource` | frame sha256, rows, snapshot | snapshot ≠ spec pin; missing Core columns; gate not GO |
 | Signal generation | M2 `signals.sma.sma_crossover` | decisions + sha256 | decision not at a bar `available_at` |
@@ -138,7 +140,9 @@ Synthetic results are engineering evidence only. They say nothing about TSM or S
 
 `python -m strategy_agent.research readiness` and `... real` both exit `3`. No TSM data was loaded. The gate does **not** relax cost or session limits.
 
-Missing conditions for IBKR TSM:
+> M3-B.1: Codex M3-A has since reported **NO-GO** (see §10.1). The list below is the original M3-B checklist; the current, synced list is `required_before_go` in `governance/market_readiness.json`.
+
+Missing conditions for IBKR TSM (original M3-B list):
 
 1. Codex M3-A report: timestamp label and `available_at` rule for IBKR TSM 1m.
 2. Codex M3-A report: session coverage (RTH vs RTH+ETH). Then `source_confirmations.ibkr_tsm_session_coverage` can be set to CONFIRMED (Q2).
@@ -156,7 +160,7 @@ Missing conditions for IBKR TSM:
 | Id | Where | Finding | Status |
 |---|---|---|---|
 | G18 | adapter ↔ Core costs | Per-share equity commission, bps slippage, exchange/regulatory fees and one-sided taxes were dropped by `core_cost_profile`. | Fixed in the adapter: now fail-closed `K18`. The Core capability is still missing. |
-| R02 | M2 runner | The runner never checked run parameters against the spec ranges, so a FIXED spec could run any parameters. | Opt-in `enforce_parameter_ranges` (used by M3-B). The M2 default is unchanged, because M2 tests budget trials by `max_trials`. Making it the default needs a research-lead decision. |
+| R02 | M2 runner | The runner never checked run parameters against the spec ranges, so a FIXED spec could run any parameters. | Research-lead decision (M3-B.1): **mandatory** for every research entry point (CLI, batch, Colab). The M2 low-level `ExperimentRunner` keeps it opt-in for backward compatibility. |
 
 ## 8. Archive and Drive
 
@@ -187,3 +191,50 @@ Missing conditions for IBKR TSM:
 - **Any 保留 recommendation:** needs real eligible data, approved costs, a `FORMAL_ELIGIBLE` Core status, a sufficient sample and the 2× cost result.
 
 **Next minimal blocker:** the Codex M3-A Market Readiness Report for IBKR TSM. After it, the next blocker is G18 or a restated cost profile.
+
+## 10. M3-B.1 closure (2026-11-04)
+
+Commits: `720b174` (code, tests, notebook) and `3926d22` (notebook pinned to `720b174`). Core pin, Oracle, B01–B12, the original synthetic metrics (sha256 `e31045807af9…`, unchanged) and the formal registry / holdout locks are unchanged.
+
+### 10.1 Market gate synced with Codex M3-A
+
+Source: [`market-research-core@a9e0747` `docs/M3A_IBKR_TSM_READINESS.md`](https://github.com/hh4832/market-research-core/blob/a9e0747a61e5ff5d6a636ff3c657d98600f0ab01/docs/M3A_IBKR_TSM_READINESS.md) and its machine-readable `docs/diagnostics/m3a_ibkr_tsm_readiness.json`.
+
+| Item | M3-A | `governance/market_readiness.json` |
+|---|---|---|
+| Formal execution / backtest | NO-GO | `status: NO_GO`, `m3a.formal_execution: NO_GO` |
+| Bounded read-only diagnostics | SCOPED_GO, research only | `m3a.bounded_data_diagnostics: SCOPED_GO_RESEARCH_ONLY` |
+| Snapshot / producer | `20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL` / `06359faf…` | same (also equal to the research spec's pins) |
+| 1m timestamp label | UNKNOWN | `bar_label: UNKNOWN` |
+| `available_at` | UNKNOWN | `available_at_rule: UNKNOWN` |
+| Session | RTH + available ETH requested; per-bar mask UNKNOWN | `session_coverage: RTH_AND_AVAILABLE_ETH`, `per_bar_session_mask: UNKNOWN` |
+| Execution eligibility | buy false, sell false, `TIMESTAMP_LABEL_OR_SESSION_UNKNOWN` | same |
+| CostProfile | `ibkr_us_equity@0.1.0` DRAFT, file sha `50149cd2…` | same; sha verified against the repository file by a test |
+| Core cost support | not lossless (per-share commission, spread, participation) | `core_representable: false`, gap G18 |
+
+The gate now also refuses when `available_at_rule` or `per_bar_session_mask` is unknown, when either execution side is ineligible, when the CostProfile is not APPROVED or not Core-representable, and when M3-A `formal_execution` is not GO. Nothing was changed to GO; `source_confirmations.json` (Q2) stays UNKNOWN because M3-A confirms requested coverage but not a per-bar mask.
+
+### 10.2 R02 mandatory on research entry points
+
+* `parameter_issues` (R02): exact declared names; finite numbers only (no strings / booleans / NaN); within [min, max]; on the step grid; spec constraints hold; unknown search modes rejected; **FIXED runs the declared defaults only, whatever `max_trials` says**.
+* `ResearchRunner` always builds the M2 runner with `enforce_parameter_ranges=R02_ENFORCED` (True) and refuses to submit if the flag is off. The CLI has no flag that sets parameters or disables governance; the notebook only calls the CLI.
+* M2 compatibility: `ExperimentRunner(enforce_parameter_ranges=False)` stays the low-level default; all M2 tests unchanged.
+* Negative tests: batch with smuggled parameters → three `REJECTED_SPEC` R02 records, nothing RUNNING; a FIXED copy with redeclared defaults (10/30) after the 5/20 baseline → same family, `BUDGET_EXCEEDED` B06; R02 patched off → `ResearchContractError`, nothing submitted; junk values and unknown modes → R02.
+
+### 10.3 Colab notebook acceptance
+
+Static checks (`tests/test_m3b_notebook.py`, run in CI): exact 40-hex `AGENT_COMMIT`; Core pin equal to CI; HEAD and clean-tree verified after checkout; credentials only from Colab Secrets, masked in output and never persisted in `.git/config`; Drive mount required; two `--drive` runs with `--summary-out`; required files, manifest sha256, new directory per run, run 1 not overwritten, reproducible metrics, formal registry / holdout fingerprint and clean tree all asserted; real TSM gate must exit 3; no strategy, engine or registry logic in cells.
+
+**Local simulation** (this session, not Colab): every code cell executed in order, cloning `720b174` from GitHub and installing Core `2c6ba9a` from GitHub, with `google.colab` stubbed and a **local folder standing in for `/content/drive/MyDrive`**. All 13 cells passed: 60 tests passed (1 skipped: the Drive-unavailable test, because the simulated mount existed); run 1 `20261104_052409_720b174` and run 2 `20261104_052414_720b174`; same identity and metrics sha256 `e31045807af9…`; all 15 checks true; acceptance record written. Simulation files were removed afterwards.
+
+**Real Google Drive archive: `PENDING`.** This session cannot mount Google Drive. The simulation proves the notebook logic, not that the files reached Drive. The item turns PASS only after the research lead runs Run All in Colab and `MyDrive/Quant_Research/strategy-research-agent/_acceptance/m3b1_colab_*_720b174.json` shows `"result": "PASS"`.
+
+### 10.4 Remaining blockers
+
+| Blocker | Owner |
+|---|---|
+| Real Drive run of the notebook | research lead (Colab Run All) |
+| M3-A evidence: 1m label, `available_at`, per-bar session mask, Core IBKR execution columns | Codex / data owner |
+| APPROVED IBKR CostProfile with account evidence | research lead |
+| G18: per-share commission, spread, volume participation in Core | Codex |
+| Holdout lock `HOLDOUT-TSM-15M-v1` | research lead |
