@@ -35,7 +35,7 @@ from strategy_agent.costs.profile import cost_mismatches, profile_hash
 from strategy_agent.ports import (CONVENTION, REQUIRED_PROVENANCE, BacktestReport, BacktestRequest,
                                   ContractViolation, DatasetRef)
 
-ADAPTER_VERSION = "m1.2-0.3.1"
+ADAPTER_VERSION = "m1.3-0.4.0"
 CORE_DIST = "market-research-core"
 ALLOWED_DATASET_VERDICTS = {"GO", "SCOPED_GO"}
 TS_FMT = "%Y-%m-%d %H:%M"
@@ -149,48 +149,88 @@ CAPABILITIES = (
     Capability("K15", "C3", "rejection log per skipped bar with specific codes (convention v1 §1.4)",
                ("B04", "B05", "B07")),
     Capability("K16", "C3", "fills applied in fill-time order (no exit before entry)", ()),
+    Capability("K17", "C3", "target orders sized from filled position + live pending intent (convention v1)", ()),
+    Capability("K14b", "C3", "DAY expiry half-open: bar_start == expiry is not a candidate", ()),
 )
 
 
+def _probe_run(core, two_sessions: bool, locked: tuple[int, ...], orders: list[tuple[int, str, float, str]]):
+    """Run the real engine on a tiny synthetic tape (8 x 5m bars from 09:00, zero costs). Capability probe only:
+    the expected behaviour is convention v1 (the full Oracle comparison is in benchmark/harness/mrc_crosscheck.py)."""
+    import pandas as pd  # noqa: PLC0415
+    t0 = pd.Timestamp("2026-01-05 09:00", tz="Asia/Taipei")
+    mid = t0 + pd.Timedelta(minutes=20)
+
+    def sess(i):
+        if not two_sessions:
+            return t0, t0 + pd.Timedelta(minutes=40)
+        return (t0, mid) if i < 4 else (mid, t0 + pd.Timedelta(minutes=40))
+    rows = [{"bar_start": t0 + pd.Timedelta(minutes=5 * i), "bar_end": t0 + pd.Timedelta(minutes=5 * i + 5),
+             "available_at": t0 + pd.Timedelta(minutes=5 * i + 5), "timezone": "Asia/Taipei", "session": "s",
+             "symbol": "P", "market": "TW_EQUITY", "contract": "P", "open": 60.0, "high": 60.5, "low": 59.5,
+             "close": 60.0, "volume": 1000.0, "data_exists": True, "backtest_eligible": True,
+             "buy_execution_eligible": i not in locked, "sell_execution_eligible": True,
+             "execution_rejection_reason": "" if i not in locked else "LIMIT_UP_LOCKED_BUY",
+             "session_open": sess(i)[0], "session_close": sess(i)[1]} for i in range(8)]
+    mk = lambda m, side, tgt, oid: core.ExecutionOrder(  # noqa: E731
+        symbol="P", market="TW_EQUITY", contract="P", signal_time=t0 + pd.Timedelta(minutes=m),
+        signal_available_at=t0 + pd.Timedelta(minutes=m), order_time=t0 + pd.Timedelta(minutes=m),
+        side=side, strategy_id="probe", experiment_id="probe", target_position=tgt, time_in_force="DAY",
+        order_id=oid)
+    cp = core.CostProfile(profile_id="p", version="1", instrument_type="EQUITY", approval_status="DRAFT",
+                          source_evidence="probe", basis="ASSUMED", equity_commission_rate=0.0,
+                          minimum_commission=0.0, sell_tax_rate=0.0, futures_fee_per_contract_per_side=0.0,
+                          futures_transaction_tax_rate=0.0, contract_multiplier=1.0, tick_size=0.1,
+                          slippage_ticks=0.0, fee_rounding="HALF_UP", tax_rounding="HALF_UP",
+                          component_basis={k: "ASSUMED" for k in (
+                              "equity_commission_rate", "minimum_commission", "sell_tax_rate",
+                              "futures_fee_per_contract_per_side", "futures_transaction_tax_rate",
+                              "contract_multiplier", "tick_size", "slippage_ticks", "fee_rounding", "tax_rounding")})
+    cfg = core.ExecutionConfig(initial_cash=1e7, bar_label="START", session_semantics="CONFIRMED",
+                               timestamp_timezone="Asia/Taipei", same_timestamp_open_assumption=True)
+    return core.ExecutionEngine().run(pd.DataFrame(rows), [mk(*o) for o in orders], cost_profile=cp, config=cfg)
+
+
+def _fill_list(res):
+    return [(f["side"], str(f["exec_ts"])[11:16]) for f in res.fills.to_dict("records")] if len(res.fills) else []
+
+
 def _probe_chronology(core) -> tuple[str, str]:
-    """Measure K16 by running the real engine once: a BUY delayed by buy-ineligible bars and a later SELL
-    target. Status only (the full G16 acceptance is in benchmark/harness/mrc_crosscheck.py)."""
+    """K16: BUY delayed by buy-locked bars, later target 0 -> fills applied in fill-time order."""
     try:
-        import pandas as pd  # noqa: PLC0415
-        t0 = pd.Timestamp("2026-01-05 09:00", tz="Asia/Taipei")
-        rows = [{"bar_start": t0 + pd.Timedelta(minutes=5 * i), "bar_end": t0 + pd.Timedelta(minutes=5 * i + 5),
-                 "available_at": t0 + pd.Timedelta(minutes=5 * i + 5), "timezone": "Asia/Taipei", "session": "s",
-                 "symbol": "P", "market": "TW_EQUITY", "contract": "P", "open": 60.0, "high": 60.5, "low": 59.5,
-                 "close": 60.0, "volume": 1000.0, "data_exists": True, "backtest_eligible": True,
-                 "buy_execution_eligible": i not in (2, 3, 4), "sell_execution_eligible": True,
-                 "execution_rejection_reason": "", "session_open": t0, "session_close": t0 + pd.Timedelta(hours=1)}
-                for i in range(8)]
-        mk = lambda t, side, tgt, oid: core.ExecutionOrder(  # noqa: E731
-            symbol="P", market="TW_EQUITY", contract="P", signal_time=t, signal_available_at=t, order_time=t,
-            side=side, strategy_id="probe", experiment_id="probe", target_position=tgt, time_in_force="DAY",
-            order_id=oid)
-        cp = core.CostProfile(profile_id="p", version="1", instrument_type="EQUITY", approval_status="DRAFT",
-                              source_evidence="probe", basis="ASSUMED", equity_commission_rate=0.0,
-                              minimum_commission=0.0, sell_tax_rate=0.0, futures_fee_per_contract_per_side=0.0,
-                              futures_transaction_tax_rate=0.0, contract_multiplier=1.0, tick_size=0.1,
-                              slippage_ticks=0.0, fee_rounding="HALF_UP", tax_rounding="HALF_UP",
-                              component_basis={k: "ASSUMED" for k in (
-                                  "equity_commission_rate", "minimum_commission", "sell_tax_rate",
-                                  "futures_fee_per_contract_per_side", "futures_transaction_tax_rate",
-                                  "contract_multiplier", "tick_size", "slippage_ticks", "fee_rounding", "tax_rounding")})
-        cfg = core.ExecutionConfig(initial_cash=1e7, bar_label="START", session_semantics="CONFIRMED",
-                                   timestamp_timezone="Asia/Taipei", same_timestamp_open_assumption=True)
-        res = core.ExecutionEngine().run(pd.DataFrame(rows), [
-            mk(t0 + pd.Timedelta(minutes=10), "BUY", 1000.0, "a"), mk(t0 + pd.Timedelta(minutes=20), "SELL", 0.0, "b")],
-            cost_profile=cp, config=cfg)
+        res = _probe_run(core, False, (2, 3, 4), [(10, "BUY", 1000.0, "a"), (20, "SELL", 0.0, "b")])
         times = list(res.fills["exec_ts"]) if len(res.fills) else []
-        back = [r for r in res.round_trips.to_dict("records")] if len(res.round_trips) else []
+        back = res.round_trips.to_dict("records") if len(res.round_trips) else []
         bad = any(r["exit_ts"] < r["entry_ts"] for r in back) or times != sorted(times)
         if not times:
             return "MISSING", "probe produced no fills; chronology not demonstrated"
         return ("MISSING" if bad else "SUPPORTED",
-                f"probe fills {[(f['side'], str(f['exec_ts'])[11:16]) for f in res.fills.to_dict('records')]}; "
+                f"probe fills {_fill_list(res)}; "
                 f"round trips {[(r['side'], str(r['entry_ts'])[11:16], str(r['exit_ts'])[11:16]) for r in back]}")
+    except Exception as e:  # noqa: BLE001
+        return ("MISSING", f"probe failed: {type(e).__name__}: {e}")
+
+
+def _probe_target_supersession(core) -> tuple[str, str]:
+    """K17: same tape; convention v1 sizes target 0 against filled(0) + pending(+1000) -> SELL 09:20, BUY 09:25,
+    flat at the end."""
+    try:
+        res = _probe_run(core, False, (2, 3, 4), [(10, "BUY", 1000.0, "a"), (20, "SELL", 0.0, "b")])
+        ok = _fill_list(res) == [("SELL", "09:20"), ("BUY", "09:25")] and len(res.open_positions) == 0
+        return ("SUPPORTED" if ok else "MISSING",
+                f"probe fills {_fill_list(res)}; open positions {len(res.open_positions)}")
+    except Exception as e:  # noqa: BLE001
+        return ("MISSING", f"probe failed: {type(e).__name__}: {e}")
+
+
+def _probe_day_expiry_boundary(core) -> tuple[str, str]:
+    """K14b: sessions [09:00,09:20) and [09:20,09:40); BUY at 09:10, locked 09:10-09:15 -> expires at 09:20 and must
+    not fill on the 09:20 bar."""
+    try:
+        res = _probe_run(core, True, (2, 3), [(10, "BUY", 1000.0, "a")])
+        reasons = list(res.rejections["reason"]) if len(res.rejections) else []
+        ok = not _fill_list(res) and "ORDER_EXPIRED" in reasons
+        return ("SUPPORTED" if ok else "MISSING", f"probe fills {_fill_list(res)}; rejections {reasons}")
     except Exception as e:  # noqa: BLE001
         return ("MISSING", f"probe failed: {type(e).__name__}: {e}")
 
@@ -254,6 +294,8 @@ def compatibility_matrix(core=None) -> list[dict]:
                 "rejection per skipped bar with order_id, bar_ts, reason" if '"bar_ts": bar["bar_start"]' in ex_src
                 else "one rejection per unfilled ORDER (final reason); skipped bars of a later-filled order not logged"),
         "K16": _probe_chronology(core),
+        "K17": _probe_target_supersession(core),
+        "K14b": _probe_day_expiry_boundary(core),
     }
     return [dict(asdict(c), status=ev[c.cap_id][0], evidence=ev[c.cap_id][1], core_git_sha=ident["git_sha"])
             for c in CAPABILITIES]
@@ -464,16 +506,30 @@ def validate_core_provenance(prov: Mapping, request: BacktestRequest, pinned_cor
                                 f"request pinned {d0.snapshot_id}@{d0.producer_commit_sha}")
 
 
-def core_result_to_report(result, request: BacktestRequest, pinned_core_sha: str) -> BacktestReport:
-    """``ExecutionResult`` -> BacktestReport. Values are copied from Core, never recomputed."""
+def core_result_to_report(result, request: BacktestRequest, pinned_core_sha: str, cost_profile=None,
+                          agent_profile: Mapping | None = None) -> BacktestReport:
+    """``ExecutionResult`` -> BacktestReport. Values are copied from Core, never recomputed.
+    When the CostProfile objects are given, the CostProfile chain is verified: Core's provenance hash must equal the
+    hash of the Core CostProfile the adapter passed, and that profile must have been mapped from the Agent profile
+    whose sha256 the spec pins."""
     prov = dict(result.provenance)
     validate_core_provenance(prov, request, pinned_core_sha)
+    agent_sha = None
+    if cost_profile is not None and prov.get("cost_profile_sha256") != cost_profile.sha256:
+        raise ContractViolation(f"core cost_profile_sha256 {prov.get('cost_profile_sha256')} != submitted profile "
+                                f"{cost_profile.sha256}")
+    if agent_profile is not None:
+        agent_sha = agent_profile.get("provenance", {}).get("profile_sha256")
+        pinned = request.spec.get("costs", {}).get("profile_ref", {}).get("sha256")
+        if not agent_sha or agent_sha != pinned:
+            raise ContractViolation(f"agent CostProfile sha {agent_sha} != spec pin {pinned}")
     rej = [dict(r, reason=map_reason(str(r.get("reason")))) for r in _records(result.rejections)]
     opens = _records(result.open_positions)
     provenance = {k: prov.get(k) for k in REQUIRED_PROVENANCE}
     provenance.update(engine_name=prov.get("engine_name"), adapter_version=ADAPTER_VERSION,
                       core_status=result.status, cost_profile_id=prov.get("cost_profile_id"),
-                      cost_profile_sha256=prov.get("cost_profile_sha256"), core_assumptions=prov.get("assumptions"))
+                      cost_profile_sha256=prov.get("cost_profile_sha256"), agent_cost_profile_sha256=agent_sha,
+                      core_assumptions=prov.get("assumptions"))
     missing = [k for k in REQUIRED_PROVENANCE if provenance.get(k) in (None, "")]
     if missing:
         raise ContractViolation(f"core result lacks provenance {missing}")
@@ -554,12 +610,21 @@ class MrcBacktestPort:
                                contract_multiplier=float(sizing.get("contract_multiplier", 1.0)), core=core)
         cfg = core_config(request, sem, sha, core=core)
         result = core.ExecutionEngine().run(bars, orders, cost_profile=cp, config=cfg)
-        guard_known_divergences(result, orders, bars)
-        return core_result_to_report(result, request, sha)
+        guard_known_divergences(result, orders, bars, unsupported_divergences(matrix=self.matrix))
+        return core_result_to_report(result, request, sha, cost_profile=cp, agent_profile=profile)
 
 
 # ------------------------------------------------------------------------------------------ divergence guard
-def known_divergences(result, orders, bars) -> list[dict]:
+GUARD_CAPS = {"G17": "K17", "G14b": "K14b"}
+
+
+def unsupported_divergences(core=None, matrix=None) -> set[str]:
+    """Gap ids whose capability the installed Core does not demonstrate (measured, never assumed)."""
+    m = {r["cap_id"]: r["status"] for r in (matrix or compatibility_matrix(core))}
+    return {g for g, cap in GUARD_CAPS.items() if m.get(cap) != "SUPPORTED"}
+
+
+def known_divergences(result, orders, bars, only: set[str] | None = None) -> list[dict]:
     """Detect the two Core-vs-Oracle-v1 differences found in M1.2 (G17, G14b) on a finished run. Read-only: it does
     not change fills or PnL; it only tells the caller that the run touched a situation where Core and the
     approved convention disagree, so the report must not be used.
@@ -587,19 +652,25 @@ def known_divergences(result, orders, bars) -> list[dict]:
     for o in sorted(orders, key=lambda o: (o.order_time, o.order_id)):
         end = filled_at.get(o.order_id) or (expiry(o) if o.time_in_force == "DAY" else None)
         for j, jend in live:
-            if j.contract == o.contract and (jend is None or jend > T(o.order_time)) and o.target_position is not None:
+            if (only is None or "G17" in only) and j.contract == o.contract and \
+                    (jend is None or jend > T(o.order_time)) and o.target_position is not None:
                 out.append({"gap": "G17", "order_id": o.order_id, "while_live": j.order_id,
                             "order_time": str(o.order_time)})
         live.append((o, end))
         ex = expiry(o) if o.time_in_force == "DAY" else None
-        if o.order_id in filled_at and ex is not None and filled_at[o.order_id] >= ex:
+        if (only is None or "G14b" in only) and o.order_id in filled_at and ex is not None \
+                and filled_at[o.order_id] >= ex:
             out.append({"gap": "G14b", "order_id": o.order_id, "fill_ts": str(filled_at[o.order_id]),
                         "expiry": str(ex)})
     return out
 
 
-def guard_known_divergences(result, orders, bars) -> None:
-    hits = known_divergences(result, orders, bars)
+def guard_known_divergences(result, orders, bars, only: set[str] | None = None) -> None:
+    """Refuse the report when the run touched a G17/G14b situation AND the installed Core does not demonstrate the
+    corresponding capability (K17/K14b). With both SUPPORTED this is a no-op."""
+    if only is not None and not only:
+        return
+    hits = known_divergences(result, orders, bars, only)
     if hits:
         raise CoreContractGap(sorted({"K17" if h["gap"] == "G17" else "K14b" for h in hits}),
                               f"run hit a Core/convention difference: {hits[:3]}")
@@ -609,9 +680,13 @@ def guard_known_divergences(result, orders, bars) -> None:
 BENCHMARK_RECORD_DIR = Path(__file__).resolve().parents[3] / "benchmark" / "results"
 
 
+REQUIRED_ORACLE_PROBES = ("G17", "G14b")
+
+
 def engine_benchmark_status(core_sha: str | None, record_dir: Path = BENCHMARK_RECORD_DIR) -> dict:
     """BENCHMARK_PASS only when a cross-check record produced by the REAL Core at exactly this commit shows every
-    case B01-B12 PASS (exact Decimal comparison) AND the independent G16 chronology acceptance PASS. Anything else
+    case B01-B12 PASS (exact Decimal comparison) AND the independent G16 chronology acceptance PASS AND the
+    oracle-generated probes G17 (pending target rebalance) and G14b (half-open DAY expiry) PASS. Anything else
     (missing, other SHA, fake engine, any non-PASS, no G16 evidence) is NOT_VERIFIED. Never hand-set."""
     if not core_sha:
         return {"status": "NOT_VERIFIED", "why": "core commit unknown"}
@@ -622,15 +697,20 @@ def engine_benchmark_status(core_sha: str | None, record_dir: Path = BENCHMARK_R
     cases = {r["case_id"][:3]: r["status"] for r in rec.get("cases", [])}
     g16 = rec.get("probes", {}).get("G16_acceptance", {})
     g16_ok = g16.get("status") == "PASS" and bool(g16.get("checks")) and all(g16["checks"].values())
+    probes = rec.get("probes", {}).get("oracle_probes", {})
+    probe_ok = all(probes.get(g, {}).get("status") == "PASS" for g in REQUIRED_ORACLE_PROBES)
     ok_cases = (rec.get("engine", {}).get("git_sha") == core_sha and rec.get("engine", {}).get("kind") == "REAL_CORE"
                 and sorted(cases) == list(ALL) and all(s == "PASS" for s in cases.values()))
-    ok = ok_cases and g16_ok
+    ok = ok_cases and g16_ok and probe_ok
     if ok:
-        why = "all 12 cases PASS and G16 chronology acceptance PASS on the real Core"
+        why = "all 12 cases, G16 acceptance and oracle probes G17/G14b PASS on the real Core"
     else:
-        why = f"record verdict {rec.get('verdict')}: " + ", ".join(
-            f"{k}={v}" for k, v in sorted(cases.items()) if v != "PASS") + ("" if g16_ok else
-                                                                             f"; G16={g16.get('status', 'MISSING')}")
+        bad = [f"{k}={v}" for k, v in sorted(cases.items()) if v != "PASS"]
+        if not g16_ok:
+            bad.append(f"G16={g16.get('status', 'MISSING')}")
+        bad += [f"{g}={probes.get(g, {}).get('status', 'MISSING')}" for g in REQUIRED_ORACLE_PROBES
+                if probes.get(g, {}).get("status") != "PASS"]
+        why = f"record verdict {rec.get('verdict')}: " + ", ".join(bad)
     return {"status": "BENCHMARK_PASS" if ok else "NOT_VERIFIED", "why": why}
 
 

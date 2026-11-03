@@ -146,6 +146,16 @@ def synthetic_request(case: dict) -> BacktestRequest:
                            window_end=f"{s[-1]['date']}T23:59:59+08:00", warmup_start=f"{s[0]['date']}T00:00:00+08:00")
 
 
+_GUARD = {}
+
+
+def _guard_scope(core) -> set:
+    """Gaps the adapter guard enforces on this Core: those whose capability (K17/K14b) is not demonstrated."""
+    if id(core) not in _GUARD:
+        _GUARD[id(core)] = A.unsupported_divergences(core)
+    return _GUARD[id(core)]
+
+
 def run_case(case: dict, core, core_sha: str, same_ts: bool = True):
     tz = case["timezone"]
     bars = core_bars(case)
@@ -174,7 +184,8 @@ def run_case(case: dict, core, core_sha: str, same_ts: bool = True):
     return res, report, {"signal_source": signal_source, "orders": [
         {"order_id": o.order_id, "contract": o.contract, "side": o.side, "target_position": o.target_position,
          "order_time": A.ts_label(o.order_time)} for o in orders], "same_timestamp_open_assumption": same_ts,
-        "adapter_guard": A.known_divergences(res, orders, bars)}
+        "adapter_guard": A.known_divergences(res, orders, bars, _guard_scope(core)),
+        "divergence_situations": A.known_divergences(res, orders, bars)}
 
 
 # ------------------------------------------------------------------------------------------ comparison
@@ -447,7 +458,9 @@ def contract_gaps(rec: dict) -> dict:
                                         "earlier orders with the same target_key); keep the order's qty fixed after",
          "blocking": p17["status"] == "FAIL", "adapter_guard": "known_divergences() refuses any run in which an order "
          "activates while an earlier one is live (B01-B12: 0 hits; probe: hit)",
-         "adapter_guard_hits": p17["adapter_guard_hits"]},
+         "adapter_guard_hits": p17["adapter_guard_hits"],
+         "resolution": None if p17["status"] == "FAIL" else f"fixed in Core {sha[:7]}: oracle probe PASS, K17 probe "
+                       "SUPPORTED; root_cause above describes the defect as found in 298956f"},
         {"gap_id": "G14b", "status": "OPEN" if p14["status"] == "FAIL" else "CLOSED",
          "capability": "K14 DAY expiry boundary", "core_sha": sha,
          "cases": [p14["case_id"] + " (oracle-generated expectation; outside B01-B12)"],
@@ -464,7 +477,9 @@ def contract_gaps(rec: dict) -> dict:
          "proposed_minimum_correction": "make the boundary exclusive (`<`) in both places; ORDER_EXPIRED at expiry "
                                         "stays as is", "blocking": p14["status"] == "FAIL",
          "adapter_guard": "known_divergences() refuses any run with a fill at bar_start >= its DAY expiry",
-         "adapter_guard_hits": p14["adapter_guard_hits"]},
+         "adapter_guard_hits": p14["adapter_guard_hits"],
+         "resolution": None if p14["status"] == "FAIL" else f"fixed in Core {sha[:7]}: oracle probe PASS, K14b probe "
+                       "SUPPORTED; root_cause above describes the defect as found in 298956f"},
         {"gap_id": "G12b", "status": "CLOSED", "capability": "K12", "core_sha": sha,
          "cases": ["governance/cost_profiles/tw_equity_cash_v0"],
          "expected": "FLOOR_INTEGER fee/tax rounding (TW broker statements)",
@@ -475,7 +490,7 @@ def contract_gaps(rec: dict) -> dict:
         {"gap_id": "G03b", "status": "OPEN", "capability": "K03", "core_sha": sha,
          "cases": ["specs/examples/sma_crossover_tw_2330_5m"],
          "expected": "TWSE/TPEx price-banded tick ladder (0.01/0.05/0.1/0.5/1/5) for slippage and tick rounding",
-         "actual": "CostProfile.tick_size is still one float; adverse_fill_price uses it for every price",
+         "actual": "CostProfile.tick_size is one float; adverse_fill_price uses it for every price",
          "numeric_difference": None, "first_divergent_event": None,
          "root_cause": "single tick; TW equities change tick by price band", "responsible_repository": "market-research-core",
          "code_location": "src/market_research_core/costs.py:29 (tick_size) and :98-100 (adverse_fill_price)",
@@ -488,7 +503,7 @@ def contract_gaps(rec: dict) -> dict:
          "first_divergent_event": None,
          "root_cause": "engine identity is asserted by the caller; the adapter supplies the pip/git-resolved commit "
                        "and validate_core_provenance rejects a mismatch", "responsible_repository": "market-research-core",
-         "code_location": "src/market_research_core/execution.py:477",
+         "code_location": "src/market_research_core/execution.py: provenance['engine_git_sha'] = config.core_commit_sha",
          "proposed_minimum_correction": "derive engine_git_sha from package metadata and reject a config value that "
                                         "disagrees", "blocking": False},
         {"gap_id": "G09", "status": "BY_DESIGN", "capability": "K09", "core_sha": sha, "cases": ["B09"],
@@ -600,10 +615,30 @@ def g16_acceptance(core, sha: str) -> dict:
     checks["no_exit_before_entry"] = all(no_back)
     checks["equity_starts_at_initial_cash_and_reconciles_when_flat"] = all(equity_ok)
     checks["prefix_invariance_no_future_dependent_fills"] = all(prefix_ok) and bool(prefix_ok)
-    # unfilled order must not move Core's target: delayed BUY + later target-0 -> target-0 is a NOOP
+    # unfilled orders must not change state early: every target-order activation sees a filled position equal to
+    # the signed sum of fills strictly before it (pending intent is reported separately, never as position), and
+    # the delayed BUY of X16 changes nothing before its own fill time. Evidence: Core's own order_events.
     res16, _, meta16 = run_case(_with_oracle(G16_CASE), core, sha)
-    noop = len(res16.fills) == 1 and res16.fills.iloc[0]["side"] == "BUY"
-    checks["unfilled_order_does_not_change_target_state"] = noop
+    early = []
+    for cid, c in runs:
+        r, _, m = run_case(c, core, sha)
+        contract_of = {o["order_id"]: o["contract"] for o in m["orders"]}
+        oe = getattr(r, "order_events", None)                 # Core >= 2c6ba9a; absent -> equity check only
+        ev = oe.to_dict("records") if oe is not None and len(oe) else []
+        fl = r.fills.to_dict("records") if len(r.fills) else []
+        for e in ev:
+            if e.get("event") != "TARGET_ORDER_ACTIVATED":
+                continue
+            filled = sum(float(f["qty"]) * (1 if f["side"] == "BUY" else -1) for f in fl
+                         if f["exec_ts"] < e["event_ts"] and f["contract"] == contract_of[e["order_id"]])
+            if abs(filled - float(e["filled_position"])) > 1e-9:
+                early.append(f"{cid} {e['order_id']} @ {e['event_ts']}: filled_position {e['filled_position']} != {filled}")
+    buy = [f for f in (res16.fills.to_dict("records") if len(res16.fills) else []) if f["side"] == "BUY"]
+    pre_buy = [x for x in res16.equity_curve.to_dict("records") if buy and x["timestamp"] < buy[0]["exec_ts"]]
+    checks["unfilled_order_does_not_change_state_before_fill"] = (
+        not early and bool(buy)
+        and all(abs(x["unrealized_pnl"]) < 1e-9 and abs(x["realized_net_pnl"]) < 1e-9 for x in pre_buy))
+    notes += early[:10]
     # same-timestamp determinism: B09 has two orders at 2026-01-07 09:00; permute inputs, rerun twice
     b09 = next(c for c in cases() if c["case_id"].startswith("B09"))
     base, _, _ = run_case(b09, core, sha)
@@ -643,6 +678,8 @@ def oracle_probes(core, sha: str) -> dict:
                     "expected": {k: c["expected"][k] for k in ("fills", "rejections", "realized_pnl", "open_position")},
                     "actual": {k: act[k] for k in ("fills", "rejections", "realized_pnl", "open_position")},
                     "orders": notes["orders"], "differences": diffs, "adapter_guard_hits": notes["adapter_guard"],
+                    "divergence_situations": notes["divergence_situations"],
+                    "guard_enforced_for": sorted(_guard_scope(core)),
                     "first_divergent_event": diffs[0] if diffs else None}
     return out
 

@@ -1,4 +1,4 @@
-"""M1.2 Core compatibility tests against the REAL installed market-research-core ExecutionEngine.
+"""M1 final (M1.3) Core compatibility tests against the REAL installed market-research-core ExecutionEngine.
 
 Skipped when Core is not installed (default CI job). The `core-compat` CI job installs Core at the pinned commit.
 Every Core result below comes from Core's own code; nothing here is a fake engine or the oracle."""
@@ -27,7 +27,7 @@ from strategy_agent.spec.validate import canonical_hash  # noqa: E402
 
 from m2_helpers import approved_profile, dev_request, env, registered  # noqa: E402
 
-PINNED = "298956f78522a9f2d13efbd38645178b1b477691"
+PINNED = "2c6ba9ab7c336e7a4908744abef617e0dce713fd"
 ROOT = Path(__file__).parents[1]
 TPE = timezone(timedelta(hours=8))
 SHA = A.core_identity()["git_sha"]
@@ -122,32 +122,39 @@ def test_g16_chronology_acceptance_passes():
     assert g["status"] == "PASS" and all(g["checks"].values()) and len(g["checks"]) == 6, g
 
 
-def test_g17_target_supersession_differs_from_oracle_and_guard_fires():
-    """Oracle: delayed BUY + later target 0 -> SELL 09:20, BUY 09:25, flat. Core: BUY 09:25 only, ends LONG."""
+def test_g17_pending_target_rebalance_matches_oracle():
+    """Oracle v1: delayed BUY (pending +1000) + later target 0 -> SELL 09:20, BUY 09:25, flat, realized -550.7."""
     p = X.oracle_probes(core, SHA)["G17"]
     assert p["expected_source"].startswith("oracle-generated")
-    assert [f["side"] for f in p["expected"]["fills"]] == ["SELL", "BUY"] and p["expected"]["open_position"] is None
-    assert [f["side"] for f in p["actual"]["fills"]] == ["BUY"] and p["actual"]["open_position"]["side"] == "LONG"
-    assert p["status"] == "FAIL" and [h["gap"] for h in p["adapter_guard_hits"]] == ["G17"]
+    assert [(f["side"], f["exec_ts"][11:]) for f in p["expected"]["fills"]] == [("SELL", "09:20"), ("BUY", "09:25")]
+    assert p["status"] == "PASS" and p["differences"] == [], p["differences"]
+    assert Decimal(p["actual"]["realized_pnl"]) == Decimal(p["expected"]["realized_pnl"]) == Decimal("-550.7")
+    assert p["actual"]["open_position"] is None and p["adapter_guard_hits"] == []
 
 
-def test_g14b_day_order_fills_on_next_session_open_and_guard_fires():
+def test_g14b_half_open_day_expiry_matches_oracle():
     p = X.oracle_probes(core, SHA)["G14b"]
-    assert p["expected"]["fills"] == [] and ("", "ORDER_EXPIRED") in [
-        (r["bar_ts"] or "", r["reason"]) for r in p["expected"]["rejections"]]
-    assert p["actual"]["fills"][0]["exec_ts"] == "2026-01-05 09:20"                    # == session-1 close
-    assert p["status"] == "FAIL" and [h["gap"] for h in p["adapter_guard_hits"]] == ["G14b"]
+    assert p["expected"]["fills"] == [] == p["actual"]["fills"]
+    assert ("", "ORDER_EXPIRED") in [(r["bar_ts"] or "", r["reason"]) for r in p["actual"]["rejections"]]
+    assert p["status"] == "PASS" and p["differences"] == [] and p["adapter_guard_hits"] == []
 
 
-def test_port_refuses_a_run_that_hits_a_known_divergence():
+def test_k17_k14b_measured_supported_so_guard_is_inactive():
+    m = {r["cap_id"]: r["status"] for r in A.compatibility_matrix(core)}
+    assert m["K16"] == m["K17"] == m["K14b"] == "SUPPORTED"
+    assert A.unsupported_divergences(core) == set()
+
+
+def test_guard_still_refuses_when_capability_is_not_demonstrated():
+    """The guard is gated by measurement, not removed: with K17 unmeasured/unsupported it still refuses."""
     c = X._with_oracle(X.G16_CASE)
     res, _, _ = X.run_case(c, core, SHA)
-    bars = X.core_bars(c)
     targets = A.decisions_to_targets(X.decisions(c)[0])
     orders = A.targets_to_orders(targets, symbol="SYNS", market="TW_EQUITY", quantity=1000.0, strategy_id="X16",
                                  experiment_id="benchmark", time_in_force="DAY", core=core)
+    A.guard_known_divergences(res, orders, X.core_bars(c), set())               # supported -> no-op
     with pytest.raises(A.CoreContractGap, match="K17"):
-        A.guard_known_divergences(res, orders, bars)
+        A.guard_known_divergences(res, orders, X.core_bars(c), {"G17"})
 
 
 @pytest.mark.skipif(SHA != PINNED, reason="committed record is for the pinned commit")
@@ -159,8 +166,10 @@ def test_crosscheck_reproduces_committed_record(tmp_path):
     assert json.loads(json.dumps([strip(r) for r in rec["cases"]], default=str)) == \
         [strip(r) for r in committed["cases"]]
     gaps = json.loads((ROOT / "benchmark" / "results" / f"mrc_{PINNED[:12]}" / "contract_gaps.json").read_text())
-    assert {g["gap_id"] for g in gaps["gaps"] if g["blocking"]} == {"G03b", "G14b", "G17"}
-    assert {g["gap_id"] for g in gaps["gaps"] if g.get("status") == "CLOSED"} == {"G12", "G12b", "G14", "G15", "G16"}
+    assert {g["gap_id"] for g in gaps["gaps"] if g["blocking"]} == {"G03b"}           # formal TW equity only
+    assert {g["gap_id"] for g in gaps["gaps"] if g.get("status") == "CLOSED"} == {
+        "G12", "G12b", "G14", "G14b", "G15", "G16", "G17"}
+    assert {k: v["status"] for k, v in rec["probes"]["oracle_probes"].items()} == {"G17": "PASS", "G14b": "PASS"}
     assert rec["probes"]["G16_acceptance"]["checks"] == committed["probes"]["G16_acceptance"]["checks"]
     assert A.engine_benchmark_status(PINNED)["status"] == "BENCHMARK_PASS"
 
@@ -281,4 +290,13 @@ def test_synthetic_runner_core_registry_completed(tmp_path):
     assert ex["engine_git_sha"] == PINNED and ex["cost_profile_sha256"] and ex["core_status"] in (
         "RESEARCH_ONLY", "FORMAL_ELIGIBLE")
     assert ex["report_status"] in ("RESEARCH_BACKTEST", "RESEARCH_INTEGRATION_DEMO")
+    # CostProfile chain: agent profile pinned by the spec -> mapped Core profile -> Core provenance hash
+    assert ex["agent_cost_profile_sha256"] == prof["provenance"]["profile_sha256"] == \
+        spec["costs"]["profile_ref"]["sha256"]
+    cp = A.core_cost_profile(prof, instrument_type="EQUITY", tick_size=0.5, contract_multiplier=1.0, core=core)
+    assert ex["cost_profile_sha256"] == cp.sha256
+    # dataset snapshot / producer / spec pins carried through Core into the record
+    d0 = spec["data_requirements"]["datasets"][0]
+    assert ex["dataset_snapshot_id"] == d0["snapshot_id"] == last["data"][0]["snapshot_id"]
+    assert ex["dataset_producer_sha"] == d0["producer_commit_sha"] and ex["spec_sha256"] == last["spec"]["spec_sha256"]
     assert last["metrics"]["fills"] >= 1 and last["holdout_access"] is False

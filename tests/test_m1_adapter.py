@@ -230,14 +230,16 @@ def test_matrix_without_core_is_all_missing(monkeypatch):
     assert len(m) == len(A.CAPABILITIES) and all(r["status"] == "MISSING" for r in m)
 
 
-def _record(tmp, sha, kind="REAL_CORE", statuses=None, g16="PASS"):
+def _record(tmp, sha, kind="REAL_CORE", statuses=None, g16="PASS", probes=("PASS", "PASS")):
     d = tmp / f"mrc_{sha[:12]}"
     d.mkdir(parents=True)
     st = statuses or {f"B{i:02d}": "PASS" for i in range(1, 13)}
-    probes = {} if g16 is None else {"G16_acceptance": {"status": g16, "checks": {"x": g16 == "PASS"}}}
+    pr = {} if g16 is None else {"G16_acceptance": {"status": g16, "checks": {"x": g16 == "PASS"}}}
+    if probes is not None:
+        pr["oracle_probes"] = {"G17": {"status": probes[0]}, "G14b": {"status": probes[1]}}
     (d / "crosscheck.json").write_text(json.dumps({"engine": {"git_sha": sha, "kind": kind}, "verdict": "x",
                                                    "cases": [{"case_id": f"{k}_x", "status": v} for k, v in st.items()],
-                                                   "probes": probes}))
+                                                   "probes": pr}))
 
 
 def test_benchmark_status_requires_real_core_all_pass_same_sha(tmp_path):
@@ -255,6 +257,10 @@ def test_benchmark_status_requires_real_core_all_pass_same_sha(tmp_path):
     assert A.engine_benchmark_status(SHA, tmp_path / "f")["status"] == "NOT_VERIFIED"
     _record(tmp_path / "g", SHA, g16=None)                                                   # no G16 evidence
     assert A.engine_benchmark_status(SHA, tmp_path / "g")["status"] == "NOT_VERIFIED"
+    _record(tmp_path / "h", SHA, probes=("FAIL", "PASS"))                                     # G17 FAIL
+    assert A.engine_benchmark_status(SHA, tmp_path / "h")["status"] == "NOT_VERIFIED"
+    _record(tmp_path / "i", SHA, probes=None)                                                 # no probe evidence
+    assert A.engine_benchmark_status(SHA, tmp_path / "i")["status"] == "NOT_VERIFIED"
     other = "a" * 40
     _record(tmp_path / "e", other)
     (tmp_path / "e" / f"mrc_{SHA[:12]}").mkdir()
@@ -268,10 +274,14 @@ def test_committed_record_for_previous_core_is_not_a_pass():
     assert st["status"] == "NOT_VERIFIED" and "B01=FAIL" in st["why"] and "B02" not in st["why"]
 
 
-def test_committed_record_for_m1_2_core_is_a_pass_derived_from_evidence():
-    pinned = "298956f78522a9f2d13efbd38645178b1b477691"
-    st = A.engine_benchmark_status(pinned)
-    assert st["status"] == "BENCHMARK_PASS" and "G16" in st["why"]
+def test_committed_record_for_m1_2_core_is_not_a_pass():
+    st = A.engine_benchmark_status("298956f78522a9f2d13efbd38645178b1b477691")      # G17/G14b FAIL in its record
+    assert st["status"] == "NOT_VERIFIED" and "G17=FAIL" in st["why"] and "G14b=FAIL" in st["why"]
+
+
+def test_committed_record_for_final_core_is_a_pass_derived_from_evidence():
+    st = A.engine_benchmark_status("2c6ba9ab7c336e7a4908744abef617e0dce713fd")
+    assert st["status"] == "BENCHMARK_PASS" and "G17/G14b" in st["why"]
 
 
 # ------------------------------------------------------------------------------------------ runner / registry

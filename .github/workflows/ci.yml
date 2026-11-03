@@ -27,7 +27,7 @@ jobs:
     # M1: real market-research-core at the pinned commit (read-only dependency; never modified here).
     runs-on: ubuntu-latest
     env:
-      MRC_SHA: 298956f78522a9f2d13efbd38645178b1b477691
+      MRC_SHA: 2c6ba9ab7c336e7a4908744abef617e0dce713fd
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,7 +35,7 @@ jobs:
           python-version: "3.11"
       - run: pip install -e '.[test]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
       - run: pytest -q tests/test_m1_core_compat.py tests/test_m1_adapter.py
-      - name: B01-B12 cross-check + G16 acceptance on the real Core (must be 12/12 PASS, G16 PASS, exact Decimal)
+      - name: B01-B12 + G16 + G17 + G14b on the real Core (all PASS, exact Decimal) and BENCHMARK_PASS derived
         run: |
           python -m benchmark.harness.mrc_crosscheck --out "$RUNNER_TEMP/mrc"
           python - <<'PY'
@@ -46,6 +46,11 @@ jobs:
           assert rec["engine"]["kind"] == "REAL_CORE" and rec["engine"]["git_sha"] == os.environ["MRC_SHA"]
           assert rec["verdict"] == "PASS" and rec["counts"]["PASS"] == 12
           assert rec["probes"]["G16_acceptance"]["status"] == "PASS"
+          assert all(rec["probes"]["oracle_probes"][g]["status"] == "PASS" for g in ("G17", "G14b"))
+          from strategy_agent.adapters import mrc_adapter as A
+          st = A.engine_benchmark_status(os.environ["MRC_SHA"], pathlib.Path(os.environ["RUNNER_TEMP"], "mrc"))
+          print(st)
+          assert st["status"] == "BENCHMARK_PASS"
           PY
 
   append-only:

@@ -242,7 +242,9 @@ class ExperimentRunner:
                    "execution": {"report_status": report.status,
                                  **{k: prov.get(k) for k in ("engine_name", "engine_git_sha", "core_status",
                                                              "adapter_version", "cost_profile_id",
-                                                             "cost_profile_sha256", "execution_convention")
+                                                             "cost_profile_sha256", "agent_cost_profile_sha256",
+                                                             "execution_convention", "dataset_snapshot_id",
+                                                             "dataset_producer_sha", "spec_sha256")
                                     if prov.get(k) is not None}}}
         return self._emit(base, "COMPLETED", resource_usage=usage, metrics=metrics, sample_sufficiency=suff)
 
