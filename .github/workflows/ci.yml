@@ -27,7 +27,7 @@ jobs:
     # M1: real market-research-core at the pinned commit (read-only dependency; never modified here).
     runs-on: ubuntu-latest
     env:
-      MRC_SHA: a50f3902c3a014922601d8cca4e7bdf761d377b8
+      MRC_SHA: 298956f78522a9f2d13efbd38645178b1b477691
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,14 +35,17 @@ jobs:
           python-version: "3.11"
       - run: pip install -e '.[test]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
       - run: pytest -q tests/test_m1_core_compat.py tests/test_m1_adapter.py
-      - name: B01-B12 cross-check on the real Core (verdict FAIL with documented gaps is the expected outcome at this commit)
+      - name: B01-B12 cross-check + G16 acceptance on the real Core (must be 12/12 PASS, G16 PASS, exact Decimal)
         run: |
-          python -m benchmark.harness.mrc_crosscheck --out "$RUNNER_TEMP/mrc" || test $? -eq 2
+          python -m benchmark.harness.mrc_crosscheck --out "$RUNNER_TEMP/mrc"
           python - <<'PY'
           import json, os, pathlib
           rec = json.loads(next(pathlib.Path(os.environ["RUNNER_TEMP"], "mrc").glob("mrc_*/crosscheck.json")).read_text())
-          print(rec["verdict"], rec["counts"])
+          print(rec["verdict"], rec["counts"], rec["probes"]["G16_acceptance"]["status"],
+                {k: v["status"] for k, v in rec["probes"]["oracle_probes"].items()})
           assert rec["engine"]["kind"] == "REAL_CORE" and rec["engine"]["git_sha"] == os.environ["MRC_SHA"]
+          assert rec["verdict"] == "PASS" and rec["counts"]["PASS"] == 12
+          assert rec["probes"]["G16_acceptance"]["status"] == "PASS"
           PY
 
   append-only:

@@ -230,12 +230,14 @@ def test_matrix_without_core_is_all_missing(monkeypatch):
     assert len(m) == len(A.CAPABILITIES) and all(r["status"] == "MISSING" for r in m)
 
 
-def _record(tmp, sha, kind="REAL_CORE", statuses=None):
+def _record(tmp, sha, kind="REAL_CORE", statuses=None, g16="PASS"):
     d = tmp / f"mrc_{sha[:12]}"
     d.mkdir(parents=True)
     st = statuses or {f"B{i:02d}": "PASS" for i in range(1, 13)}
+    probes = {} if g16 is None else {"G16_acceptance": {"status": g16, "checks": {"x": g16 == "PASS"}}}
     (d / "crosscheck.json").write_text(json.dumps({"engine": {"git_sha": sha, "kind": kind}, "verdict": "x",
-                                                   "cases": [{"case_id": f"{k}_x", "status": v} for k, v in st.items()]}))
+                                                   "cases": [{"case_id": f"{k}_x", "status": v} for k, v in st.items()],
+                                                   "probes": probes}))
 
 
 def test_benchmark_status_requires_real_core_all_pass_same_sha(tmp_path):
@@ -249,6 +251,10 @@ def test_benchmark_status_requires_real_core_all_pass_same_sha(tmp_path):
     assert A.engine_benchmark_status(SHA, tmp_path / "c")["status"] == "NOT_VERIFIED"
     _record(tmp_path / "d", SHA, statuses={f"B{i:02d}": ("FAIL" if i == 2 else "PASS") for i in range(1, 13)})
     assert A.engine_benchmark_status(SHA, tmp_path / "d")["status"] == "NOT_VERIFIED"
+    _record(tmp_path / "f", SHA, g16="FAIL")                                                 # 12 PASS, G16 FAIL
+    assert A.engine_benchmark_status(SHA, tmp_path / "f")["status"] == "NOT_VERIFIED"
+    _record(tmp_path / "g", SHA, g16=None)                                                   # no G16 evidence
+    assert A.engine_benchmark_status(SHA, tmp_path / "g")["status"] == "NOT_VERIFIED"
     other = "a" * 40
     _record(tmp_path / "e", other)
     (tmp_path / "e" / f"mrc_{SHA[:12]}").mkdir()
@@ -257,9 +263,15 @@ def test_benchmark_status_requires_real_core_all_pass_same_sha(tmp_path):
     assert A.engine_benchmark_status(SHA, tmp_path / "e")["status"] == "NOT_VERIFIED"
 
 
-def test_committed_record_for_pinned_core_is_not_a_pass():
-    st = A.engine_benchmark_status(SHA)
+def test_committed_record_for_previous_core_is_not_a_pass():
+    st = A.engine_benchmark_status(SHA)                       # a50f390 (M1.1): 11 FAIL, no G16 evidence
     assert st["status"] == "NOT_VERIFIED" and "B01=FAIL" in st["why"] and "B02" not in st["why"]
+
+
+def test_committed_record_for_m1_2_core_is_a_pass_derived_from_evidence():
+    pinned = "298956f78522a9f2d13efbd38645178b1b477691"
+    st = A.engine_benchmark_status(pinned)
+    assert st["status"] == "BENCHMARK_PASS" and "G16" in st["why"]
 
 
 # ------------------------------------------------------------------------------------------ runner / registry

@@ -1,4 +1,4 @@
-"""M1.1 Core compatibility tests against the REAL installed market-research-core ExecutionEngine.
+"""M1.2 Core compatibility tests against the REAL installed market-research-core ExecutionEngine.
 
 Skipped when Core is not installed (default CI job). The `core-compat` CI job installs Core at the pinned commit.
 Every Core result below comes from Core's own code; nothing here is a fake engine or the oracle."""
@@ -27,7 +27,7 @@ from strategy_agent.spec.validate import canonical_hash  # noqa: E402
 
 from m2_helpers import approved_profile, dev_request, env, registered  # noqa: E402
 
-PINNED = "a50f3902c3a014922601d8cca4e7bdf761d377b8"
+PINNED = "298956f78522a9f2d13efbd38645178b1b477691"
 ROOT = Path(__file__).parents[1]
 TPE = timezone(timedelta(hours=8))
 SHA = A.core_identity()["git_sha"]
@@ -58,13 +58,29 @@ def test_b02_passes_on_the_real_execution_engine():
     assert X.compare(c, act, SHA, X.synthetic_request(c).spec_sha256, notes["orders"]) == []
 
 
-@pytest.mark.parametrize("stem", ["B01", "B03", "B06", "B08", "B09", "B10", "B11", "B12"])
-def test_only_c2_rounding_differs(stem):
-    """Fills, times, sides, contracts, roll, invalidation and open position match; only 0.01 rounding differs."""
+@pytest.mark.parametrize("stem", [f"B{i:02d}" for i in range(1, 13)])
+def test_every_case_matches_the_oracle_exactly(stem):
+    """Exact comparison: TOL is 0 and fees/taxes are compared as Decimal strings (no tolerance masks precision)."""
+    assert X.TOL == Decimal("0")
     c = case(stem)
     res, report, notes = X.run_case(c, core, SHA)
-    diffs = X.compare(c, X.actual_view(res, report, c), SHA, X.synthetic_request(c).spec_sha256, notes["orders"])
-    assert diffs and all(X._is_rounding(d) for d in diffs)
+    assert X.compare(c, X.actual_view(res, report, c), SHA, X.synthetic_request(c).spec_sha256, notes["orders"]) == []
+    assert notes["adapter_guard"] == []                       # no G17/G14b situation inside B01-B12
+
+
+def test_negative_controls_still_detect_differences():
+    """The comparator is live: HALF_UP rounding or Core's default open assumption must produce differences."""
+    c = case("B01")
+    orig = X.cost_profile
+    X.cost_profile = lambda case, core: __import__("dataclasses").replace(orig(case, core), fee_rounding="HALF_UP",
+                                                                         tax_rounding="HALF_UP")
+    try:
+        res, report, notes = X.run_case(c, core, SHA)
+    finally:
+        X.cost_profile = orig
+    assert X.compare(c, X.actual_view(res, report, c), SHA, X.synthetic_request(c).spec_sha256, notes["orders"])
+    res, report, notes = X.run_case(c, core, SHA, same_ts=False)
+    assert X.compare(c, X.actual_view(res, report, c), SHA, X.synthetic_request(c).spec_sha256, notes["orders"])
 
 
 def test_b09_roll_is_explicit_and_per_contract():
@@ -82,11 +98,14 @@ def test_b11_cross_window_trade_is_invalidated_and_run_is_research_only():
     assert res.status == "RESEARCH_ONLY" and report.status == "RESEARCH_INTEGRATION_DEMO"
 
 
-def test_b05_expiry_and_b07_rejection_log_are_real_gaps():
-    res5, _, _ = X.run_case(case("B05"), core, SHA)
-    assert len(res5.fills) == 0 and list(res5.rejections["reason"]) == ["ORDER_EXPIRED"]          # K14
-    res7, _, _ = X.run_case(case("B07"), core, SHA)
-    assert len(res7.fills) == 2 and len(res7.rejections) == 0                                   # K15
+def test_b05_expiry_and_b07_rejection_log_now_match():
+    c5, c7 = case("B05"), case("B07")
+    res5, _, _ = X.run_case(c5, core, SHA)
+    assert len(res5.fills) == len(c5["expected"]["fills"]) > 0                                  # G14 closed: overnight fill
+    res7, _, _ = X.run_case(c7, core, SHA)
+    assert len(res7.fills) == len(c7["expected"]["fills"])
+    assert len(res7.rejections) == len(c7["expected"]["rejections"]) > 0                        # G15 closed
+    assert all(r["bar_ts"] is not None for r in res7.rejections.to_dict("records"))
 
 
 def test_c1_core_default_fills_one_bar_late():
@@ -98,27 +117,52 @@ def test_c1_core_default_fills_one_bar_late():
     assert set(res.fills["execution_assumption"]) == {"SAME_TIMESTAMP_BAR_OPEN"}
 
 
-def test_c3_chronology_probe_detects_exit_before_entry():
-    p = X.chronology_probe(core, SHA)
-    assert p["status"] == "FAIL" and p["exit_before_entry"]
+def test_g16_chronology_acceptance_passes():
+    g = X.g16_acceptance(core, SHA)
+    assert g["status"] == "PASS" and all(g["checks"].values()) and len(g["checks"]) == 6, g
 
 
-def test_c3_unfilled_target_does_not_move_core_target_state():
-    """B05: the BUY never fills; the later target-0 order is a NOOP, not a SELL that would open a short."""
-    res, _, notes = X.run_case(case("B05"), core, SHA)
-    assert [o["side"] for o in notes["orders"]] == ["BUY", "SELL"] and len(res.fills) == 0
+def test_g17_target_supersession_differs_from_oracle_and_guard_fires():
+    """Oracle: delayed BUY + later target 0 -> SELL 09:20, BUY 09:25, flat. Core: BUY 09:25 only, ends LONG."""
+    p = X.oracle_probes(core, SHA)["G17"]
+    assert p["expected_source"].startswith("oracle-generated")
+    assert [f["side"] for f in p["expected"]["fills"]] == ["SELL", "BUY"] and p["expected"]["open_position"] is None
+    assert [f["side"] for f in p["actual"]["fills"]] == ["BUY"] and p["actual"]["open_position"]["side"] == "LONG"
+    assert p["status"] == "FAIL" and [h["gap"] for h in p["adapter_guard_hits"]] == ["G17"]
+
+
+def test_g14b_day_order_fills_on_next_session_open_and_guard_fires():
+    p = X.oracle_probes(core, SHA)["G14b"]
+    assert p["expected"]["fills"] == [] and ("", "ORDER_EXPIRED") in [
+        (r["bar_ts"] or "", r["reason"]) for r in p["expected"]["rejections"]]
+    assert p["actual"]["fills"][0]["exec_ts"] == "2026-01-05 09:20"                    # == session-1 close
+    assert p["status"] == "FAIL" and [h["gap"] for h in p["adapter_guard_hits"]] == ["G14b"]
+
+
+def test_port_refuses_a_run_that_hits_a_known_divergence():
+    c = X._with_oracle(X.G16_CASE)
+    res, _, _ = X.run_case(c, core, SHA)
+    bars = X.core_bars(c)
+    targets = A.decisions_to_targets(X.decisions(c)[0])
+    orders = A.targets_to_orders(targets, symbol="SYNS", market="TW_EQUITY", quantity=1000.0, strategy_id="X16",
+                                 experiment_id="benchmark", time_in_force="DAY", core=core)
+    with pytest.raises(A.CoreContractGap, match="K17"):
+        A.guard_known_divergences(res, orders, bars)
 
 
 @pytest.mark.skipif(SHA != PINNED, reason="committed record is for the pinned commit")
 def test_crosscheck_reproduces_committed_record(tmp_path):
     rec = X.crosscheck(tmp_path)
     committed = json.loads((ROOT / "benchmark" / "results" / f"mrc_{PINNED[:12]}" / "crosscheck.json").read_text())
-    assert rec["verdict"] == committed["verdict"] == "FAIL" and rec["counts"] == committed["counts"]
+    assert rec["verdict"] == committed["verdict"] == "PASS" and rec["counts"] == committed["counts"]
     strip = lambda r: {k: v for k, v in r.items() if k not in ("actual",)}  # noqa: E731
     assert json.loads(json.dumps([strip(r) for r in rec["cases"]], default=str)) == \
         [strip(r) for r in committed["cases"]]
     gaps = json.loads((ROOT / "benchmark" / "results" / f"mrc_{PINNED[:12]}" / "contract_gaps.json").read_text())
-    assert {g["gap_id"] for g in gaps["gaps"] if g["blocking"]} == {"G03b", "G12", "G12b", "G14", "G15", "G16"}
+    assert {g["gap_id"] for g in gaps["gaps"] if g["blocking"]} == {"G03b", "G14b", "G17"}
+    assert {g["gap_id"] for g in gaps["gaps"] if g.get("status") == "CLOSED"} == {"G12", "G12b", "G14", "G15", "G16"}
+    assert rec["probes"]["G16_acceptance"]["checks"] == committed["probes"]["G16_acceptance"]["checks"]
+    assert A.engine_benchmark_status(PINNED)["status"] == "BENCHMARK_PASS"
 
 
 # ------------------------------------------------------------------------------------------ runner integration
@@ -140,20 +184,6 @@ def _bars_and_decisions():
     return pd.DataFrame(rows), sma_crossover(sbars, 2, 3)
 
 
-def _half_up(spec, prof):
-    """TEST-ONLY: Core cannot express FLOOR_INTEGER (gap G12b), so the end-to-end probe uses HALF_UP in both
-    the spec and an approved test profile. Never written to governance/."""
-    for c in prof["components"]:
-        if c["kind"] == "ROUNDING":
-            c["rule"] = "HALF_UP"
-    prof["provenance"]["profile_sha256"] = profile_hash(prof)
-    spec["costs"]["fee"]["rounding"] = spec["costs"]["tax"]["rounding"] = "HALF_UP"
-    spec["costs"]["profile_ref"]["sha256"] = prof["provenance"]["profile_sha256"]
-    spec["provenance"]["spec_sha256"] = None
-    spec["provenance"]["spec_sha256"] = canonical_hash(spec)
-    return spec, prof
-
-
 def _port(prof, frame, decs, tick=0.5):
     # TEST-ONLY constant tick (0.5 is the TWSE tick in the 100-500 band used by these synthetic prices)
     sem = {"tw_equity_fubon_5m": A.MarketSemantics(market="TW_EQUITY", bar_label="START",
@@ -165,7 +195,7 @@ def _port(prof, frame, decs, tick=0.5):
 
 def test_spec_to_core_to_report_end_to_end():
     frame, decs = _bars_and_decisions()
-    spec, prof = _half_up(registered(), approved_profile())
+    spec, prof = registered(), approved_profile()                 # FLOOR_INTEGER now expressible (G12b closed)
     req = BacktestRequest(spec=spec, spec_sha256=canonical_hash(spec), datasets=(DatasetRef(
         "tw_equity_fubon_5m", "final_gate_20261031_154458_20eba73", "20eba73" + "0" * 33, "SCOPED_GO", "BACKTEST"),),
         window_start="2025-01-02T00:00:00+08:00", window_end="2025-01-03T00:00:00+08:00",
@@ -177,24 +207,22 @@ def test_spec_to_core_to_report_end_to_end():
     assert rep.status == "RESEARCH_INTEGRATION_DEMO"          # DRAFT/assumed components -> never formal
 
 
-def test_real_tw_profile_fails_closed_on_floor_integer():
+def test_real_tw_profile_floor_integer_maps_but_tick_ladder_still_fails_closed():
     frame, decs = _bars_and_decisions()
     spec, prof = registered(), approved_profile()
+    cp = A.core_cost_profile(prof, instrument_type="EQUITY", tick_size=0.5, contract_multiplier=1.0, core=core)
+    assert cp.fee_rounding == cp.tax_rounding == "FLOOR_INTEGER"
     req = BacktestRequest(spec=spec, spec_sha256=canonical_hash(spec), datasets=(DatasetRef(
         "tw_equity_fubon_5m", "final_gate_20261031_154458_20eba73", "20eba73", "SCOPED_GO", "BACKTEST"),),
         window_start="2025-01-02T00:00:00+08:00", window_end="2025-01-03T00:00:00+08:00",
         warmup_start="2025-01-01T00:00:00+08:00")
-    with pytest.raises(A.CoreContractGap, match="FLOOR_INTEGER"):
-        _port(prof, frame, decs).run(req)
-    spec2, prof2 = _half_up(registered(), approved_profile())
-    req2 = BacktestRequest(**{**req.__dict__, "spec": spec2, "spec_sha256": canonical_hash(spec2)})
-    with pytest.raises(A.CoreContractGap, match="tick ladder"):                       # gap G03b
-        _port(prof2, frame, decs, tick=None).run(req2)
+    with pytest.raises(A.CoreContractGap, match="tick ladder"):                       # gap G03b still open
+        _port(prof, frame, decs, tick=None).run(req)
 
 
 def test_unknown_market_semantics_fail_closed():
     frame, decs = _bars_and_decisions()
-    spec, prof = _half_up(registered(), approved_profile())
+    spec, prof = registered(), approved_profile()
     req = BacktestRequest(spec=spec, spec_sha256=canonical_hash(spec), datasets=(DatasetRef(
         "tw_equity_fubon_5m", "s", "p", "SCOPED_GO", "BACKTEST"),), window_start="2025-01-02T00:00:00+08:00",
         window_end="2025-01-03T00:00:00+08:00", warmup_start="2025-01-01T00:00:00+08:00")
@@ -204,15 +232,53 @@ def test_unknown_market_semantics_fail_closed():
         port.run(req)
 
 
-def test_production_runner_never_reaches_core_without_benchmark_pass(tmp_path):
+def test_runner_never_reaches_core_without_benchmark_pass(tmp_path):
+    """Engine status comes from the evidence record only: an unknown/unbenchmarked commit stays NOT_VERIFIED."""
     frame, decs = _bars_and_decisions()
     spec, prof = registered(), approved_profile()
     port = _port(prof, frame, decs)
     calls = []
     port.run = (lambda f: (lambda r: calls.append(r) or f(r)))(port.run)
     runner, reg = env(tmp_path, port=port, benchmark="NOT_VERIFIED")
-    runner.engine = A.engine_info()                        # derived from the real record: NOT_VERIFIED
+    assert A.engine_benchmark_status("0" * 40)["status"] == "NOT_VERIFIED"
+    assert A.engine_benchmark_status("a50f3902c3a014922601d8cca4e7bdf761d377b8")["status"] == "NOT_VERIFIED"
     rec = runner.submit(dev_request(spec))
-    assert runner.engine.benchmark_status == "NOT_VERIFIED"
     assert rec["status"] == "REJECTED_CONTRACT" and rec["rejection_reasons"][0]["code"] == "C00" and not calls
-    assert reg.records()[-1]["code"]["engine_git_sha"] == SHA
+
+
+def test_engine_status_requires_g16_evidence(tmp_path):
+    src = ROOT / "benchmark" / "results" / f"mrc_{SHA[:12]}" / "crosscheck.json"
+    rec = json.loads(src.read_text())
+    d = tmp_path / f"mrc_{SHA[:12]}"
+    d.mkdir()
+    rec["probes"].pop("G16_acceptance")
+    (d / "crosscheck.json").write_text(json.dumps(rec))
+    assert A.engine_benchmark_status(SHA, record_dir=tmp_path)["status"] == "NOT_VERIFIED"
+
+
+@pytest.mark.skipif(SHA != PINNED, reason="BENCHMARK_PASS record exists for the pinned commit only")
+def test_synthetic_runner_core_registry_completed(tmp_path):
+    """SYNTHETIC: Runner -> Adapter -> real Core -> BacktestReport -> Registry, in an isolated tmp governance with
+    the tests' own holdout lock (tests/m2_helpers.env). Bars are synthetic, the constant tick is TEST-ONLY and the
+    approved CostProfile is a test-only approval; governance/ and the real registry are never touched."""
+    frame, decs = _bars_and_decisions()
+    spec, prof = registered(), approved_profile()
+    calls = []
+    port = _port(prof, frame, decs)
+    port.run = (lambda f: (lambda r: calls.append(r) or f(r)))(port.run)
+    runner, reg = env(tmp_path, port=port)
+    runner.engine = A.engine_info()                      # derived from the committed evidence record
+    assert runner.engine.benchmark_status == "BENCHMARK_PASS" and runner.engine.git_sha == PINNED
+    rec = runner.submit(dev_request(spec, {"fast": 2, "slow": 3}))
+    assert rec["status"] == "COMPLETED", rec.get("rejection_reasons")
+    assert len(calls) == 1 and (tmp_path / "experiments.jsonl").read_text().strip()      # isolated test registry
+    last = reg.records()[-1]
+    assert last["status"] == "COMPLETED"
+    assert last["code"]["engine_git_sha"] == PINNED and last["code"]["engine_benchmark_status"] == "BENCHMARK_PASS"
+    assert last["code"]["strategy_agent_sha"] == "abcdef1"
+    assert last["data"] and all(d["snapshot_id"] and d["producer_commit_sha"] for d in last["data"])
+    ex = last["metrics"]["execution"]
+    assert ex["engine_git_sha"] == PINNED and ex["cost_profile_sha256"] and ex["core_status"] in (
+        "RESEARCH_ONLY", "FORMAL_ELIGIBLE")
+    assert ex["report_status"] in ("RESEARCH_BACKTEST", "RESEARCH_INTEGRATION_DEMO")
+    assert last["metrics"]["fills"] >= 1 and last["holdout_access"] is False

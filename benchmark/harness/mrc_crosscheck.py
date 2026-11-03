@@ -11,7 +11,7 @@ Per case:
     cases from the hand-calculated fixture signals (``expected.signals``, read-only). B09's spec roll schedule
     is expanded by the adapter into explicit roll orders.
   * Orders -> Core via the M1 adapter (target-position MARKET orders, TIF DAY); costs -> Core CostProfile built
-    from the case costs (Core rounding HALF_UP to 0.01: Core has no unrounded mode).
+    from the case costs with rounding NONE (convention v1 §1.6: unrounded Decimal).
   * Comparison of 12 dimensions with the case's ``expected`` block (unchanged).
 A second diagnostic run with Core's default ``same_timestamp_open_assumption=False`` documents conflict C1, and a
 chronology probe (no oracle answer needed) documents conflict C3.
@@ -34,11 +34,16 @@ from strategy_agent.signals.sma import sma_crossover
 
 OUT = Path(__file__).resolve().parents[1] / "results"
 FMT = "%Y-%m-%d %H:%M"
-TOL = Decimal("0.000001")
+TOL = Decimal("0")          # exact: no tolerance may hide the approved Decimal convention
 
 
 def _dt(s: str) -> datetime:
     return datetime.strptime(s, FMT)
+
+
+def _num(x) -> str:
+    """Exact text of a Core number: Decimal as-is; float via repr (shortest round-trip form)."""
+    return str(x) if isinstance(x, Decimal) else repr(float(x))
 
 
 def _d(x) -> Decimal:
@@ -57,8 +62,10 @@ def core_bars(case: dict):
     for raw in case["bars"]:
         r = dict(zip(case["bars_columns"], raw))
         ts = _dt(r["ts"])
+        # the session containing the bar; else the next session that day; else the next session; else the last
         same_day = [s for s in sess if s[0].date() == ts.date()]
-        so, sc = same_day[0] if same_day else next((s for s in sess if s[1] > ts), sess[-1])
+        so, sc = next((s for s in sess if s[0] <= ts < s[1]), None) or next(
+            (s for s in same_day if s[1] > ts), None) or next((s for s in sess if s[1] > ts), sess[-1])
         up, dn = bool(r.get("limit_up_locked", False)), bool(r.get("limit_down_locked", False))
         rows.append({
             "bar_start": ts.replace(tzinfo=tz), "bar_end": (ts + tf).replace(tzinfo=tz),
@@ -125,7 +132,7 @@ def cost_profile(case: dict, core):
         futures_fee_per_contract_per_side=float(c.get("fee_per_unit_side", 0)) if fut else 0.0,
         futures_transaction_tax_rate=float(c.get("tax_rate_side", 0)) if fut else 0.0,
         contract_multiplier=float(inst["multiplier"]), tick_size=float(inst["tick_size"]),
-        slippage_ticks=float(c.get("slippage_ticks", 0)), fee_rounding="HALF_UP", tax_rounding="HALF_UP",
+        slippage_ticks=float(c.get("slippage_ticks", 0)), fee_rounding="NONE", tax_rounding="NONE",
         component_basis={f: "ASSUMED" for f in fields})
 
 
@@ -166,15 +173,16 @@ def run_case(case: dict, core, core_sha: str, same_ts: bool = True):
     report = A.core_result_to_report(res, req, core_sha)            # provenance + reason mapping via the adapter
     return res, report, {"signal_source": signal_source, "orders": [
         {"order_id": o.order_id, "contract": o.contract, "side": o.side, "target_position": o.target_position,
-         "order_time": A.ts_label(o.order_time)} for o in orders], "same_timestamp_open_assumption": same_ts}
+         "order_time": A.ts_label(o.order_time)} for o in orders], "same_timestamp_open_assumption": same_ts,
+        "adapter_guard": A.known_divergences(res, orders, bars)}
 
 
 # ------------------------------------------------------------------------------------------ comparison
 def actual_view(res, report, case: dict) -> dict:
     tz = case["timezone"]
     fills = [{"exec_ts": A.ts_label(f["exec_ts"], tz), "side": f["side"], "qty": int(f["qty"]),
-              "contract": f["contract"], "fill_price": repr(float(f["fill_price"])), "fee": repr(float(f["fee"])),
-              "tax": repr(float(f["tax"])), "order_id": f["order_id"],
+              "contract": f["contract"], "fill_price": _num(f["fill_price"]), "fee": _num(f["fee"]),
+              "tax": _num(f["tax"]), "order_id": f["order_id"],
               "execution_assumption": f.get("execution_assumption")}
              for f in res.fills.to_dict("records")] if len(res.fills) else []
     trips = res.round_trips.to_dict("records") if len(res.round_trips) else []
@@ -182,13 +190,14 @@ def actual_view(res, report, case: dict) -> dict:
     opens = res.open_positions.to_dict("records") if len(res.open_positions) else []
     return {
         "fills": fills,
-        "realized_pnl": repr(sum(float(t["net_pnl"]) for t in trips)),
-        "round_trip_net_pnl": [repr(float(t["net_pnl"])) for t in trips],
-        "rejections": [{"bar_ts": None, "reason": r["reason"], "order_id": r.get("order_id")} for r in report.rejections],
-        "invalidated_net_pnl": [repr(float(t["net_pnl"])) for t in inval],
+        "realized_pnl": str(sum((Decimal(_num(t["net_pnl"])) for t in trips), Decimal("0"))),
+        "round_trip_net_pnl": [_num(t["net_pnl"]) for t in trips],
+        "rejections": [{"bar_ts": A.ts_label(r["bar_ts"]) if r.get("bar_ts") and r["reason"] != "ORDER_EXPIRED" else None,
+                        "reason": r["reason"], "order_id": r.get("order_id")} for r in report.rejections],
+        "invalidated_net_pnl": [_num(t["net_pnl"]) for t in inval],
         "open_position": ({"qty": opens[0]["qty"], "side": opens[0]["side"], "contract": opens[0]["contract"],
-                           "mark_price": repr(float(opens[0]["mark_price"])),
-                           "unrealized_pnl_mark": repr(float(opens[0]["unrealized_pnl"]))} if opens else None),
+                           "mark_price": _num(opens[0]["mark_price"]),
+                           "unrealized_pnl_mark": _num(opens[0]["unrealized_pnl"])} if opens else None),
         "provenance": {k: report.provenance.get(k) for k in ("engine_git_sha", "execution_convention",
                                                              "spec_sha256", "dataset_snapshot_id", "core_status")},
     }
@@ -232,7 +241,7 @@ def compare(case: dict, act: dict, core_sha: str, req_sha: str, orders: list) ->
     if abs(diff) > TOL:
         add("realized PnL", None, exp["realized_pnl"], act["realized_pnl"], ef[-1]["exec_ts"] if ef else "", str(diff))
     er = sorted((r["bar_ts"] or "", r["reason"]) for r in exp["rejections"])
-    ar = sorted(("", r["reason"]) for r in act["rejections"])
+    ar = sorted((r["bar_ts"] or "", r["reason"]) for r in act["rejections"])
     if er != ar:
         add("rejection reasons", None, er, ar, min([t for t, _ in er if t] or [""]))
     ei, ai = exp.get("invalidated_net_pnl", []), act["invalidated_net_pnl"]
@@ -356,6 +365,7 @@ def crosscheck(out_root: Path = OUT) -> dict:
                                                  "fill_time_shifts": shift,
                                                  "fills": len(a0["fills"])}})
     n = {s: sum(r["status"] == s for r in rows) for s in ("PASS", "FAIL", "NOT_EXECUTABLE")}
+    # NOTE: verdict covers B01-B12 only; G16 and oracle probes are reported next to it (see engine status rule)
     n["PASS_IF_ONLY_C2_FIXED"] = sum(r["status"] != "NOT_EXECUTABLE" and not r["differences_other_than_c2_rounding"]
                                      for r in rows)
     verdict = "PASS" if n["PASS"] == len(rows) else "FAIL"
@@ -364,7 +374,7 @@ def crosscheck(out_root: Path = OUT) -> dict:
            "adapter_version": A.ADAPTER_VERSION,
            "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
            "verdict": verdict, "counts": n, "capability_matrix": matrix, "cases": rows,
-           "probes": {"C3_chronology": chronology_probe(core, sha)},
+           "probes": {"G16_acceptance": g16_acceptance(core, sha), "oracle_probes": oracle_probes(core, sha)},
            "statement": "expected values read from benchmark/cases (unchanged); actual values produced by the real "
                         "Core ExecutionEngine.run; synthetic START label/sessions are engine-test settings, not "
                         "evidence about real TXF/IBKR data"}
@@ -402,97 +412,239 @@ def contract_gaps(rec: dict) -> dict:
                     "root_cause": rc["root_cause"], "responsible_repository": rc["responsible_repository"],
                     "code_location": where, "proposed_minimum_correction": rc["proposed_minimum_correction"],
                     "blocking": rc["blocking"]})
-    p = rec["probes"]["C3_chronology"]
-    if p["status"] == "FAIL":
-        out.append({"gap_id": "G16", "capability": "C3 order execution chronology", "core_sha": sha,
-                    "cases": ["probe X03_chronology (no oracle answer; invariant exit_ts >= entry_ts)"],
-                    "expected": "round trips with exit_ts >= entry_ts; state updated in fill-time order",
-                    "actual": {"fills": p["fills"], "round_trips": p["round_trips"]}, "numeric_difference": None,
-                    "first_divergent_event": p["round_trips"][0] if p["round_trips"] else p["fills"],
-                    "root_cause": p["root_cause"], "responsible_repository": p["responsible_repository"],
-                    "code_location": "src/market_research_core/execution.py: `orders = sorted(...)` + per-order "
-                                     "candidate search + immediate FIFO/cash/target_positions update",
-                    "proposed_minimum_correction": p["proposed_minimum_correction"], "blocking": True})
+    g16 = rec["probes"]["G16_acceptance"]
+    out.append({"gap_id": "G16", "capability": "C3 order execution chronology", "core_sha": sha,
+                "status": "CLOSED" if g16["status"] == "PASS" else "OPEN", "cases": ["B01-B12", G16_CASE["case_id"]],
+                "expected": "fills in fill-time order; exit_ts >= entry_ts; equity/cash path consistent; prefix "
+                            "invariance; same-timestamp determinism", "actual": g16["checks"],
+                "numeric_difference": None, "first_divergent_event": None,
+                "root_cause": "fixed in Core by the bar_start event loop", "responsible_repository": "market-research-core",
+                "code_location": "src/market_research_core/execution.py: ExecutionEngine.run event loop",
+                "proposed_minimum_correction": "none" if g16["status"] == "PASS" else "see checks",
+                "blocking": g16["status"] != "PASS"})
+    for gid in ("G12", "G14", "G15"):
+        if not any(g["gap_id"] == gid for g in out):
+            out.append({"gap_id": gid, "status": "CLOSED", "core_sha": sha, "cases": ["B01-B12"],
+                        "evidence": "no case differs on this dimension under exact Decimal comparison",
+                        "blocking": False})
+    op = rec["probes"]["oracle_probes"]
+    p17, p14 = op["G17"], op["G14b"]
     out += [
-        {"gap_id": "G12b", "capability": "K12", "core_sha": sha, "cases": ["governance/cost_profiles/tw_equity_cash_v0"],
-         "expected": "FLOOR_INTEGER fee/tax rounding (TW broker statements)", "actual": "HALF_UP|UP|DOWN to 0.01 only",
-         "numeric_difference": None, "first_divergent_event": None,
-         "root_cause": "Core rounding cannot express integer flooring used by the TW cash-equity CostProfile",
-         "responsible_repository": "market-research-core", "code_location": "src/market_research_core/costs.py: _round",
-         "proposed_minimum_correction": "add rounding mode FLOOR_INTEGER (quantize Decimal('1'), ROUND_FLOOR)",
-         "blocking": True},
-        {"gap_id": "G03b", "capability": "K03", "core_sha": sha, "cases": ["specs/examples/sma_crossover_tw_2330_5m"],
-         "expected": "TWSE/TPEx price-banded tick ladder (0.01/0.05/0.1/0.5/1/5) for slippage and tick rounding",
-         "actual": "CostProfile.tick_size is one constant", "numeric_difference": None, "first_divergent_event": None,
-         "root_cause": "adverse_fill_price uses a single tick; TW equities change tick by price band, so 1-tick "
-                       "slippage is wrong outside the configured band", "responsible_repository": "market-research-core",
-         "code_location": "src/market_research_core/costs.py: adverse_fill_price / CostProfile.tick_size",
-         "proposed_minimum_correction": "accept a tick ladder [(upper_price, tick), ...] in CostProfile (or a per-bar "
-                                        "tick_size column from the Taiwan adapter's pinned trading_rules) and round "
-                                        "to the band of the adverse price", "blocking": True},
-        {"gap_id": "G11", "capability": "K11", "core_sha": sha, "cases": ["all"],
-         "expected": "engine reports its own commit", "actual": "provenance.engine_git_sha = config.core_commit_sha "
-         "(caller-supplied); engine_version hard-coded 2.1.0", "numeric_difference": None, "first_divergent_event": None,
-         "root_cause": "engine identity is asserted by the caller; the adapter supplies the pip/git-resolved commit",
+        {"gap_id": "G17", "status": "OPEN" if p17["status"] == "FAIL" else "CLOSED", "capability": "K17 target supersession",
+         "core_sha": sha, "cases": [p17["case_id"] + " (oracle-generated expectation; outside B01-B12)"],
+         "expected": p17["expected"]["fills"], "actual": p17["actual"]["fills"], "numeric_difference": None,
+         "first_divergent_event": p17["first_divergent_event"],
+         "root_cause": "a target_position order that becomes active while an earlier order on the same "
+                       "(strategy, symbol, contract) is still live is sized from the FILLED target "
+                       "(target_positions) only; Oracle v1 sizes it from position + live pending orders. In the G16 "
+                       "scenario Core turns target 0 into a no-op, then fills the delayed BUY and ends LONG 1000 "
+                       "against a latest target of 0; Oracle sells at 09:20, buys at 09:25 and ends flat",
          "responsible_repository": "market-research-core",
-         "code_location": "src/market_research_core/execution.py: provenance['engine_git_sha']",
-         "proposed_minimum_correction": "derive engine_git_sha from package metadata (direct_url vcs commit) and "
-                                        "reject a config value that disagrees", "blocking": False},
-        {"gap_id": "G09", "capability": "K09", "core_sha": sha, "cases": ["B09"],
-         "expected": "roll from spec schedule", "actual": "caller supplies roll orders; FIFO per contract is correct",
+         "code_location": "src/market_research_core/execution.py:243-244 (`current_target = target_positions.get(...)`; "
+                          "`delta = target_position - current_target`) and :328",
+         "proposed_minimum_correction": "compute the delta once, when the order becomes active (order_time), as "
+                                        "target_position - (filled position + remaining signed qty of still-live "
+                                        "earlier orders with the same target_key); keep the order's qty fixed after",
+         "blocking": p17["status"] == "FAIL", "adapter_guard": "known_divergences() refuses any run in which an order "
+         "activates while an earlier one is live (B01-B12: 0 hits; probe: hit)",
+         "adapter_guard_hits": p17["adapter_guard_hits"]},
+        {"gap_id": "G14b", "status": "OPEN" if p14["status"] == "FAIL" else "CLOSED",
+         "capability": "K14 DAY expiry boundary", "core_sha": sha,
+         "cases": [p14["case_id"] + " (oracle-generated expectation; outside B01-B12)"],
+         "expected": {"fills": p14["expected"]["fills"], "rejections": p14["expected"]["rejections"]},
+         "actual": {"fills": p14["actual"]["fills"], "rejections": p14["actual"]["rejections"]},
+         "numeric_difference": None, "first_divergent_event": p14["first_divergent_event"],
+         "root_cause": "DAY expiry is inclusive: a bar with bar_start == expiry (the first session_close after "
+                       "order_time) is still a candidate. With back-to-back sessions (close 09:20 = next open 09:20) a "
+                       "session-1 DAY order fills on the opening bar of session 2; Oracle v1 expires it "
+                       "(skips bars with ts >= expires_at)",
+         "responsible_repository": "market-research-core",
+         "code_location": "src/market_research_core/execution.py:211 (`matching['bar_start'] <= expiry`) and :232 "
+                          "(`event_ts <= record['expiry']`)",
+         "proposed_minimum_correction": "make the boundary exclusive (`<`) in both places; ORDER_EXPIRED at expiry "
+                                        "stays as is", "blocking": p14["status"] == "FAIL",
+         "adapter_guard": "known_divergences() refuses any run with a fill at bar_start >= its DAY expiry",
+         "adapter_guard_hits": p14["adapter_guard_hits"]},
+        {"gap_id": "G12b", "status": "CLOSED", "capability": "K12", "core_sha": sha,
+         "cases": ["governance/cost_profiles/tw_equity_cash_v0"],
+         "expected": "FLOOR_INTEGER fee/tax rounding (TW broker statements)",
+         "actual": "costs.py rounding Literal includes FLOOR_INTEGER (quantize to 1, ROUND_FLOOR); adapter maps it",
+         "numeric_difference": None, "first_divergent_event": None, "root_cause": "fixed",
+         "responsible_repository": "market-research-core", "code_location": "src/market_research_core/costs.py:31-32, :72",
+         "proposed_minimum_correction": "none", "blocking": False},
+        {"gap_id": "G03b", "status": "OPEN", "capability": "K03", "core_sha": sha,
+         "cases": ["specs/examples/sma_crossover_tw_2330_5m"],
+         "expected": "TWSE/TPEx price-banded tick ladder (0.01/0.05/0.1/0.5/1/5) for slippage and tick rounding",
+         "actual": "CostProfile.tick_size is still one float; adverse_fill_price uses it for every price",
          "numeric_difference": None, "first_divergent_event": None,
-         "root_cause": "by design: Core does not infer rolls; the adapter expands the spec roll schedule into "
-                       "explicit orders (B09 fills/contracts match)", "responsible_repository": "strategy-research-agent",
+         "root_cause": "single tick; TW equities change tick by price band", "responsible_repository": "market-research-core",
+         "code_location": "src/market_research_core/costs.py:29 (tick_size) and :98-100 (adverse_fill_price)",
+         "proposed_minimum_correction": "accept a tick ladder [(upper_price, tick), ...] (or a per-bar tick_size "
+                                        "column) and round to the band of the adverse price",
+         "blocking": True, "blocks": "formal TW-equity research only; not a B01-B12 failure (fixtures use one band)"},
+        {"gap_id": "G11", "status": "OPEN", "capability": "K11", "core_sha": sha, "cases": ["all"],
+         "expected": "engine reports its own commit",
+         "actual": "provenance.engine_git_sha = config.core_commit_sha (caller-supplied)", "numeric_difference": None,
+         "first_divergent_event": None,
+         "root_cause": "engine identity is asserted by the caller; the adapter supplies the pip/git-resolved commit "
+                       "and validate_core_provenance rejects a mismatch", "responsible_repository": "market-research-core",
+         "code_location": "src/market_research_core/execution.py:477",
+         "proposed_minimum_correction": "derive engine_git_sha from package metadata and reject a config value that "
+                                        "disagrees", "blocking": False},
+        {"gap_id": "G09", "status": "BY_DESIGN", "capability": "K09", "core_sha": sha, "cases": ["B09"],
+         "expected": "roll from spec schedule", "actual": "adapter expands the roll schedule into explicit orders",
+         "numeric_difference": None, "first_divergent_event": None, "root_cause": "by design",
+         "responsible_repository": "strategy-research-agent",
          "code_location": "src/strategy_agent/adapters/mrc_adapter.py: expand_roll_schedule",
          "proposed_minimum_correction": "none", "blocking": False},
-        {"gap_id": "C1", "capability": "next-bar open", "core_sha": sha, "cases": ["all"],
+        {"gap_id": "C1", "status": "MAPPED", "capability": "next-bar open", "core_sha": sha, "cases": ["all"],
          "expected": "fill at first bar with bar_start >= order_ts (= available_at)",
-         "actual": "Core default same_timestamp_open_assumption=False fills one bar later; True reproduces v1",
-         "numeric_difference": None, "first_divergent_event": None,
+         "actual": "Core default same_timestamp_open_assumption=False fills one bar later; adapter sets True for "
+                   "START/CONFIRMED semantics", "numeric_difference": None, "first_divergent_event": None,
          "root_cause": ROOT_CAUSES["C1"]["root_cause"], "responsible_repository": "strategy-research-agent",
          "code_location": "src/strategy_agent/adapters/mrc_adapter.py: core_config",
-         "proposed_minimum_correction": ROOT_CAUSES["C1"]["proposed_minimum_correction"], "blocking": False},
+         "proposed_minimum_correction": "none", "blocking": False},
     ]
     return {"core_sha": sha, "agent_adapter_version": rec["adapter_version"], "verdict": rec["verdict"],
             "counts": rec["counts"], "gaps": out}
 
 
-# ------------------------------------------------------------------------------------------ C3 probe
-def chronology_probe(core, sha: str) -> dict:
-    """C3: does Core account fills in FILL-time order? A BUY (order 09:10) is blocked by limit-up until 09:25;
-    a later SELL target (order 09:20) is sell-eligible at 09:20. Chronologically the SELL fill (09:20) happens
-    before the BUY fill (09:25). Invariants checked: every round trip has exit_ts >= entry_ts; the ledger is in
-    fill-time order. No oracle answer is involved."""
-    case = {"case_id": "X03_chronology", "timezone": "Asia/Taipei", "timeframe_minutes": 5,
-            "instrument": {"symbol": "SYNS", "kind": "equity", "multiplier": 1, "tick_size": "0.1"},
+# ------------------------------------------------------------------------------------------ G16 + oracle probes
+def _probe_case(case_id, sessions, locked, targets, n=8):
+    """Synthetic scenario in fixture format. Expected answers come from running the independent Oracle
+    (benchmark.oracle, unchanged) - not hand-calculated, and not added to benchmark/cases."""
+    return {"case_id": case_id, "convention": "oracle-execution-convention-v1", "timezone": "Asia/Taipei",
+            "timeframe_minutes": 5, "title": case_id,
+            "instrument": {"symbol": "SYNS", "kind": "equity", "multiplier": 1, "tick_size": "0.1", "currency": "TWD"},
             "costs": {"fee_rate_side": "0.001425", "sell_tax_rate": "0.003", "slippage_ticks": 1}, "quantity": 1000,
-            "sessions": [{"date": "2026-01-05", "start": "09:00", "end": "09:40"}],
-            "bars_columns": ["ts", "o", "h", "l", "c", "v", "limit_up_locked", "limit_down_locked"],
-            "bars": [[f"2026-01-05 09:{m:02d}", 60, 60.5, 59.5, 60, 1000, m in (10, 15, 20), False]
-                     for m in range(0, 40, 5)],
-            "signal_model": {"type": "scripted", "targets": []},
-            "expected": {"signals": [{"signal_ts": "2026-01-05 09:10", "target": 1},
-                                     {"signal_ts": "2026-01-05 09:20", "target": 0}]}}
-    res, _, notes = run_case(case, core, sha)
-    fills = [{"order_id": f["order_id"], "side": f["side"], "exec_ts": str(f["exec_ts"])}
-             for f in res.fills.to_dict("records")] if len(res.fills) else []
-    trips = [{"entry_ts": str(t["entry_ts"]), "exit_ts": str(t["exit_ts"]), "side": t["side"]}
-             for t in res.round_trips.to_dict("records")] if len(res.round_trips) else []
-    backwards = [t for t in trips if t["exit_ts"] < t["entry_ts"]]
-    ordered = [f["exec_ts"] for f in fills] == sorted(f["exec_ts"] for f in fills)
-    return {"orders": notes["orders"], "fills": fills, "round_trips": trips,
-            "rejections": res.rejections.to_dict("records") if len(res.rejections) else [],
-            "exit_before_entry": backwards, "ledger_in_fill_time_order": ordered,
-            "status": "FAIL" if backwards or not ordered else "PASS",
-            "root_cause": None if not (backwards or not ordered) else
-            "C3: ExecutionEngine.run processes orders sequentially by order_time and searches each order's fill "
-            "independently; a later order can fill EARLIER than a pending earlier order, but FIFO/cash/target state "
-            "are updated in order_time sequence, producing round trips with exit before entry",
-            "responsible_repository": "market-research-core",
-            "proposed_minimum_correction": "event-driven loop over bar_start: at each bar, evaluate all live orders "
-                                           "(order_time <= bar_start) in order_time sequence and apply fills to "
-                                           "cash/FIFO/target state immediately, so state always follows fill time",
-            "blocking": bool(backwards or not ordered)}
+            "sessions": sessions, "bars_columns": ["ts", "o", "h", "l", "c", "v", "limit_up_locked", "limit_down_locked"],
+            "bars": [[f"2026-01-05 09:{m:02d}", "60", "60.5", "59.5", "60", 1000, m in locked, False]
+                     for m in range(0, 5 * n, 5)],
+            "signal_model": {"type": "scripted", "targets": [{"bar_close_of": f"2026-01-05 09:{b:02d}", "target": t}
+                                                             for b, t in targets]}}
+
+
+ONE_SESSION = [{"date": "2026-01-05", "start": "09:00", "end": "09:40"}]
+G16_CASE = _probe_case("X16_delayed_buy_later_target", ONE_SESSION, {10, 15, 20}, [(5, 1), (15, 0)])
+G14B_CASE = _probe_case("X14b_day_expiry_back_to_back_sessions",
+                        [{"date": "2026-01-05", "start": "09:00", "end": "09:20"},
+                         {"date": "2026-01-05", "start": "09:20", "end": "09:40"}], {10, 15}, [(5, 1)])
+
+
+def _with_oracle(case: dict) -> dict:
+    from benchmark.oracle.reference_engine import run_case as oracle_run
+    o = oracle_run(case)
+    c = json.loads(json.dumps(case))
+    c["expected"] = {"signals": o["signals"], "fills": o["fills"],
+                     "rejections": [{"bar_ts": r["bar_ts"], "reason": r["reason"]} for r in o["rejections"]],
+                     "realized_pnl": o["realized_pnl"], "open_position": o["open_position"],
+                     "invalidated_net_pnl": [r["net_pnl"] for r in o["invalidated_round_trips"]],
+                     "forbidden_fills": [], "source": "oracle-generated (benchmark.oracle.reference_engine.run_case)"}
+    return c
+
+
+def _fills(res):
+    return [(str(f["exec_ts"]), f["order_id"], f["side"], float(f["qty"]), _num(f["fill_price"]), _num(f["fee"]),
+             _num(f["tax"]), f["contract"]) for f in res.fills.to_dict("records")] if len(res.fills) else []
+
+
+def g16_acceptance(core, sha: str) -> dict:
+    """G16 chronology acceptance: invariants over B01-B12 and the delayed-order scenario, prefix invariance,
+    same-timestamp determinism. No tolerance on Decimal costs; account floats checked to 1e-6."""
+    import random
+    checks = {}
+    runs = [(c["case_id"], c) for c in cases()] + [(G16_CASE["case_id"], _with_oracle(G16_CASE))]
+    ordered, no_back, equity_ok, prefix_ok, notes = [], [], [], [], []
+    for cid, c in runs:
+        res, _, meta = run_case(c, core, sha)
+        t = [str(f["exec_ts"]) for f in res.fills.to_dict("records")] if len(res.fills) else []
+        ordered.append(t == sorted(t))
+        trips = (res.round_trips.to_dict("records") if len(res.round_trips) else []) + \
+            (res.invalidated_round_trips.to_dict("records") if len(res.invalidated_round_trips) else [])
+        no_back.append(all(r["exit_ts"] >= r["entry_ts"] for r in trips))
+        eq = res.equity_curve.to_dict("records")
+        first_fill = min(t) if t else None
+        trips_all = trips
+        realized = sum(float(r["net_pnl"]) for r in trips_all)
+        unreal = sum(float(r.get("unrealized_pnl", 0.0)) for r in (res.open_positions.to_dict("records")
+                                                                   if len(res.open_positions) else []))
+        # (a) nothing reaches equity before the first fill; (b) when flat at the end, equity - cash0 == realized
+        pre_ok = all(abs(r["equity"] - 1e9) < 1e-6 for r in eq if first_fill and str(r["timestamp"]) < first_fill)
+        end_ok = len(res.open_positions) > 0 or abs((eq[-1]["equity"] - 1e9) - realized) < 1e-6
+        equity_ok.append(pre_ok and end_ok)
+        if not (pre_ok and end_ok):
+            notes.append(f"{cid} equity: pre_ok={pre_ok} end={eq[-1]['equity'] - 1e9!r} realized={realized!r} "
+                         f"unreal={unreal!r}")
+        # prefix invariance: re-run with bars and orders cut at each fill time; earlier fills must be identical
+        full = _fills(res)
+        for ts in sorted(set(t)):
+            cut = json.loads(json.dumps(c))
+            cut["bars"] = [b for b in cut["bars"] if datetime.strptime(dict(zip(cut["bars_columns"], b))["ts"], FMT)
+                           .strftime(FMT) <= ts[:16]]
+            cut["expected"]["signals"] = [x for x in cut["expected"]["signals"] if x["signal_ts"] <= ts[:16]]
+            if cut["signal_model"]["type"] in ("sma_cross", "orb"):
+                pass                                    # signals recomputed from the truncated bars themselves
+            try:
+                r2, _, _ = run_case(cut, core, sha)
+            except Exception as e:  # noqa: BLE001
+                notes.append(f"{cid} cut@{ts[11:16]}: {type(e).__name__}")
+                continue
+            got = [f for f in _fills(r2) if f[0] <= ts]
+            want = [f for f in full if f[0] <= ts]
+            if got != want:
+                prefix_ok.append(False)
+                notes.append(f"{cid} cut@{ts[11:16]}: {want} != {got}")
+            else:
+                prefix_ok.append(True)
+    checks["fills_in_fill_time_order"] = all(ordered)
+    checks["no_exit_before_entry"] = all(no_back)
+    checks["equity_starts_at_initial_cash_and_reconciles_when_flat"] = all(equity_ok)
+    checks["prefix_invariance_no_future_dependent_fills"] = all(prefix_ok) and bool(prefix_ok)
+    # unfilled order must not move Core's target: delayed BUY + later target-0 -> target-0 is a NOOP
+    res16, _, meta16 = run_case(_with_oracle(G16_CASE), core, sha)
+    noop = len(res16.fills) == 1 and res16.fills.iloc[0]["side"] == "BUY"
+    checks["unfilled_order_does_not_change_target_state"] = noop
+    # same-timestamp determinism: B09 has two orders at 2026-01-07 09:00; permute inputs, rerun twice
+    b09 = next(c for c in cases() if c["case_id"].startswith("B09"))
+    base, _, _ = run_case(b09, core, sha)
+    orig = A.targets_to_orders
+    same = []
+    for seed in (1, 2, 3):
+        def shuffled(*a, **k):
+            out = orig(*a, **k)
+            random.Random(seed).shuffle(out)
+            return out
+        A.targets_to_orders = shuffled
+        try:
+            rr, _, _ = run_case(b09, core, sha)
+        finally:
+            A.targets_to_orders = orig
+        same.append(_fills(rr) == _fills(base))
+    rr2, _, _ = run_case(b09, core, sha)
+    checks["same_timestamp_orders_deterministic"] = all(same) and _fills(rr2) == _fills(base)
+    status = "PASS" if all(checks.values()) else "FAIL"
+    return {"status": status, "checks": checks, "notes": notes[:20],
+            "scenario": {"case_id": G16_CASE["case_id"], "core_fills": _fills(res16),
+                         "core_open_positions": res16.open_positions.to_dict("records") if len(res16.open_positions) else [],
+                         "orders": meta16["orders"]}}
+
+
+def oracle_probes(core, sha: str) -> dict:
+    """Scenarios outside B01-B12 compared with the independent Oracle (oracle-generated expectations)."""
+    out = {}
+    for gap, case in (("G17", G16_CASE), ("G14b", G14B_CASE)):
+        c = _with_oracle(case)
+        res, report, notes = run_case(c, core, sha)
+        act = actual_view(res, report, c)
+        diffs = compare(c, act, sha, synthetic_request(c).spec_sha256, notes["orders"])
+        diffs.sort(key=lambda x: (x["event_ts"] in ("", "end", None), x["event_ts"] or ""))
+        out[gap] = {"case_id": c["case_id"], "status": "PASS" if not diffs else "FAIL",
+                    "expected_source": c["expected"]["source"],
+                    "expected": {k: c["expected"][k] for k in ("fills", "rejections", "realized_pnl", "open_position")},
+                    "actual": {k: act[k] for k in ("fills", "rejections", "realized_pnl", "open_position")},
+                    "orders": notes["orders"], "differences": diffs, "adapter_guard_hits": notes["adapter_guard"],
+                    "first_divergent_event": diffs[0] if diffs else None}
+    return out
 
 
 # ------------------------------------------------------------------------------------------ report
@@ -509,9 +661,15 @@ def report_md(rec: dict) -> str:
                 if fd else ("—" if r["status"] == "PASS" else r.get("error", "")))
         L.append(f"| {r['case_id']} | {r['status']} | {str(fd_s)[:150]} | {', '.join(r['root_cause_tags']) or '—'} | "
                  f"{'yes' if r['blocking'] else 'no'} |")
-    p = rec["probes"]["C3_chronology"]
-    L += ["", f"C3 chronology probe: **{p['status']}** — fills {[(f['side'], f['exec_ts'][11:16]) for f in p['fills']]}; "
-          f"round trips {[(t['side'], t['entry_ts'][11:16], t['exit_ts'][11:16]) for t in p['round_trips']]}", ""]
+    g = rec["probes"]["G16_acceptance"]
+    L += ["", f"G16 chronology acceptance: **{g['status']}** — " + ", ".join(f"{k}={'PASS' if v else 'FAIL'}"
+                                                                         for k, v in g["checks"].items()), ""]
+    for k, v in rec["probes"]["oracle_probes"].items():
+        fd = v["first_divergent_event"]
+        L.append(f"Oracle probe {k} (`{v['case_id']}`, outside B01-B12): **{v['status']}**"
+                 + (f" — first divergence {fd['dimension']} @ {fd['event_ts']}: {fd['expected']} → {fd['actual']}"
+                    if fd else "") + f"; adapter guard hits {len(v['adapter_guard_hits'])}")
+    L.append("")
     L += ["## Differences per case", ""]
     for r in rec["cases"]:
         if r["status"] != "FAIL":

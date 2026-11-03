@@ -227,11 +227,22 @@ class ExperimentRunner:
             return self._emit(base, "REJECTED_CONTRACT", resource_usage=usage,
                               rejection_reasons=[{"code": "C04", "message": str(e)[:500]}])
 
+        prov = dict(report.provenance or {})
+        if prov.get("engine_git_sha") and self.engine.git_sha and prov["engine_git_sha"] != self.engine.git_sha:
+            return self._emit(base, "REJECTED_CONTRACT", resource_usage=usage, rejection_reasons=[
+                {"code": "C05", "message": f"report engine {prov['engine_git_sha']} != benchmarked engine "
+                                           f"{self.engine.git_sha}"}])
+
         # 8 completed
         valid = [float(r["net_pnl"]) for r in report.round_trips]
         invalid = [float(r["net_pnl"]) for r in report.invalidated_round_trips]
         suff = assess(valid, invalid)
         metrics = {"fills": len(report.fills), "round_trips": len(valid), "effective_net_pnl": suff["effective_net_pnl"],
-                   "open_position": report.open_position is not None, "rejections": len(report.rejections)}
+                   "open_position": report.open_position is not None, "rejections": len(report.rejections),
+                   "execution": {"report_status": report.status,
+                                 **{k: prov.get(k) for k in ("engine_name", "engine_git_sha", "core_status",
+                                                             "adapter_version", "cost_profile_id",
+                                                             "cost_profile_sha256", "execution_convention")
+                                    if prov.get(k) is not None}}}
         return self._emit(base, "COMPLETED", resource_usage=usage, metrics=metrics, sample_sufficiency=suff)
 

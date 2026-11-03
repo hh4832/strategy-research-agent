@@ -24,6 +24,7 @@ import inspect
 import json
 import re
 import subprocess
+from decimal import Decimal
 from dataclasses import asdict, dataclass, fields
 from datetime import datetime
 from importlib import metadata
@@ -34,7 +35,7 @@ from strategy_agent.costs.profile import cost_mismatches, profile_hash
 from strategy_agent.ports import (CONVENTION, REQUIRED_PROVENANCE, BacktestReport, BacktestRequest,
                                   ContractViolation, DatasetRef)
 
-ADAPTER_VERSION = "m1.1-0.2.0"
+ADAPTER_VERSION = "m1.2-0.3.1"
 CORE_DIST = "market-research-core"
 ALLOWED_DATASET_VERDICTS = {"GO", "SCOPED_GO"}
 TS_FMT = "%Y-%m-%d %H:%M"
@@ -147,7 +148,51 @@ CAPABILITIES = (
     Capability("K14", "C3", "order time-in-force / expiry matching convention v1 §1.5", ("B05", "B07")),
     Capability("K15", "C3", "rejection log per skipped bar with specific codes (convention v1 §1.4)",
                ("B04", "B05", "B07")),
+    Capability("K16", "C3", "fills applied in fill-time order (no exit before entry)", ()),
 )
+
+
+def _probe_chronology(core) -> tuple[str, str]:
+    """Measure K16 by running the real engine once: a BUY delayed by buy-ineligible bars and a later SELL
+    target. Status only (the full G16 acceptance is in benchmark/harness/mrc_crosscheck.py)."""
+    try:
+        import pandas as pd  # noqa: PLC0415
+        t0 = pd.Timestamp("2026-01-05 09:00", tz="Asia/Taipei")
+        rows = [{"bar_start": t0 + pd.Timedelta(minutes=5 * i), "bar_end": t0 + pd.Timedelta(minutes=5 * i + 5),
+                 "available_at": t0 + pd.Timedelta(minutes=5 * i + 5), "timezone": "Asia/Taipei", "session": "s",
+                 "symbol": "P", "market": "TW_EQUITY", "contract": "P", "open": 60.0, "high": 60.5, "low": 59.5,
+                 "close": 60.0, "volume": 1000.0, "data_exists": True, "backtest_eligible": True,
+                 "buy_execution_eligible": i not in (2, 3, 4), "sell_execution_eligible": True,
+                 "execution_rejection_reason": "", "session_open": t0, "session_close": t0 + pd.Timedelta(hours=1)}
+                for i in range(8)]
+        mk = lambda t, side, tgt, oid: core.ExecutionOrder(  # noqa: E731
+            symbol="P", market="TW_EQUITY", contract="P", signal_time=t, signal_available_at=t, order_time=t,
+            side=side, strategy_id="probe", experiment_id="probe", target_position=tgt, time_in_force="DAY",
+            order_id=oid)
+        cp = core.CostProfile(profile_id="p", version="1", instrument_type="EQUITY", approval_status="DRAFT",
+                              source_evidence="probe", basis="ASSUMED", equity_commission_rate=0.0,
+                              minimum_commission=0.0, sell_tax_rate=0.0, futures_fee_per_contract_per_side=0.0,
+                              futures_transaction_tax_rate=0.0, contract_multiplier=1.0, tick_size=0.1,
+                              slippage_ticks=0.0, fee_rounding="HALF_UP", tax_rounding="HALF_UP",
+                              component_basis={k: "ASSUMED" for k in (
+                                  "equity_commission_rate", "minimum_commission", "sell_tax_rate",
+                                  "futures_fee_per_contract_per_side", "futures_transaction_tax_rate",
+                                  "contract_multiplier", "tick_size", "slippage_ticks", "fee_rounding", "tax_rounding")})
+        cfg = core.ExecutionConfig(initial_cash=1e7, bar_label="START", session_semantics="CONFIRMED",
+                                   timestamp_timezone="Asia/Taipei", same_timestamp_open_assumption=True)
+        res = core.ExecutionEngine().run(pd.DataFrame(rows), [
+            mk(t0 + pd.Timedelta(minutes=10), "BUY", 1000.0, "a"), mk(t0 + pd.Timedelta(minutes=20), "SELL", 0.0, "b")],
+            cost_profile=cp, config=cfg)
+        times = list(res.fills["exec_ts"]) if len(res.fills) else []
+        back = [r for r in res.round_trips.to_dict("records")] if len(res.round_trips) else []
+        bad = any(r["exit_ts"] < r["entry_ts"] for r in back) or times != sorted(times)
+        if not times:
+            return "MISSING", "probe produced no fills; chronology not demonstrated"
+        return ("MISSING" if bad else "SUPPORTED",
+                f"probe fills {[(f['side'], str(f['exec_ts'])[11:16]) for f in res.fills.to_dict('records')]}; "
+                f"round trips {[(r['side'], str(r['entry_ts'])[11:16], str(r['exit_ts'])[11:16]) for r in back]}")
+    except Exception as e:  # noqa: BLE001
+        return ("MISSING", f"probe failed: {type(e).__name__}: {e}")
 
 
 def compatibility_matrix(core=None) -> list[dict]:
@@ -198,15 +243,17 @@ def compatibility_matrix(core=None) -> list[dict]:
         "K11": (st(False, "core_commit_sha" in cfg),
                 "provenance.engine_git_sha = ExecutionConfig.core_commit_sha (caller-supplied; engine does not "
                 "self-identify; engine_version hard-coded '2.1.0')"),
-        "K12": (st("NONE" in rounding, "HALF_UP" in rounding),
-                f"rounding modes {rounding}: quantize to 0.01 only; no unrounded mode, no FLOOR_INTEGER; "
-                f"float accounting (Decimal only inside rounding)"),
+        "K12": (st("NONE" in rounding and "FLOOR_INTEGER" in rounding and "Decimal" in co_src, "HALF_UP" in rounding),
+                f"rounding modes {rounding}; calculate_costs returns Decimal"),
         "K13": (st("PIT_VIOLATION" in ex_src and "signal_available_at" in order),
                 "order_time < signal_available_at -> PIT_VIOLATION; bar_start >= available_at"),
-        "K14": (st(False, "DAY" in tif), f"time_in_force {tif}: DAY = session of the first candidate bar; "
-                "convention v1 = first session ending after order_ts"),
-        "K15": (st(False, "rejects.append" in ex_src),
-                "one rejection per unfilled ORDER (final reason); skipped bars of a later-filled order are not logged"),
+        "K14": (st("DAY" in tif and "expiry" in ex_src and "session_close" in ex_src, "DAY" in tif),
+                f"time_in_force {tif}; DAY expiry at the first session_close > order_time"
+                if "expiry" in ex_src else f"time_in_force {tif}: DAY = session of the first candidate bar"),
+        "K15": (st('"bar_ts": bar["bar_start"]' in ex_src, "rejects.append" in ex_src),
+                "rejection per skipped bar with order_id, bar_ts, reason" if '"bar_ts": bar["bar_start"]' in ex_src
+                else "one rejection per unfilled ORDER (final reason); skipped bars of a later-filled order not logged"),
+        "K16": _probe_chronology(core),
     }
     return [dict(asdict(c), status=ev[c.cap_id][0], evidence=ev[c.cap_id][1], core_git_sha=ident["git_sha"])
             for c in CAPABILITIES]
@@ -395,7 +442,9 @@ def _records(df) -> list[dict]:
     rows = df if isinstance(df, list) else df.to_dict("records")
     out = []
     for r in rows:
-        out.append({k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in r.items()})
+        # Decimal costs/PnL stay exact as strings; timestamps as ISO-8601
+        out.append({k: (str(v) if isinstance(v, Decimal) else v.isoformat() if hasattr(v, "isoformat") else v)
+                    for k, v in r.items()})
     return out
 
 
@@ -505,7 +554,55 @@ class MrcBacktestPort:
                                contract_multiplier=float(sizing.get("contract_multiplier", 1.0)), core=core)
         cfg = core_config(request, sem, sha, core=core)
         result = core.ExecutionEngine().run(bars, orders, cost_profile=cp, config=cfg)
+        guard_known_divergences(result, orders, bars)
         return core_result_to_report(result, request, sha)
+
+
+# ------------------------------------------------------------------------------------------ divergence guard
+def known_divergences(result, orders, bars) -> list[dict]:
+    """Detect the two Core-vs-Oracle-v1 differences found in M1.2 (G17, G14b) on a finished run. Read-only: it does
+    not change fills or PnL; it only tells the caller that the run touched a situation where Core and the
+    approved convention disagree, so the report must not be used.
+      G17 - a target_position order became active while an earlier order on the same contract was still live
+            (unfilled and unexpired); Core sizes it from the filled position, the convention from position+pending.
+      G14b - a DAY order filled on a bar whose bar_start equals its expiry (the first session_close after
+            order_time), i.e. on the opening bar of the next session; the convention expires it."""
+    import pandas as pd
+
+    def T(x):
+        return pd.Timestamp(x)
+
+    rows = bars if isinstance(bars, list) else bars.to_dict("records")
+    closes = sorted({T(r["session_close"]) for r in rows})
+    fills = result.fills.to_dict("records") if len(result.fills) else []
+    filled_at = {}
+    for f in fills:
+        filled_at.setdefault(f["order_id"], T(f["exec_ts"]))
+    out = []
+
+    def expiry(o):
+        return next((c for c in closes if c > T(o.order_time)), None)
+
+    live = []
+    for o in sorted(orders, key=lambda o: (o.order_time, o.order_id)):
+        end = filled_at.get(o.order_id) or (expiry(o) if o.time_in_force == "DAY" else None)
+        for j, jend in live:
+            if j.contract == o.contract and (jend is None or jend > T(o.order_time)) and o.target_position is not None:
+                out.append({"gap": "G17", "order_id": o.order_id, "while_live": j.order_id,
+                            "order_time": str(o.order_time)})
+        live.append((o, end))
+        ex = expiry(o) if o.time_in_force == "DAY" else None
+        if o.order_id in filled_at and ex is not None and filled_at[o.order_id] >= ex:
+            out.append({"gap": "G14b", "order_id": o.order_id, "fill_ts": str(filled_at[o.order_id]),
+                        "expiry": str(ex)})
+    return out
+
+
+def guard_known_divergences(result, orders, bars) -> None:
+    hits = known_divergences(result, orders, bars)
+    if hits:
+        raise CoreContractGap(sorted({"K17" if h["gap"] == "G17" else "K14b" for h in hits}),
+                              f"run hit a Core/convention difference: {hits[:3]}")
 
 
 # ------------------------------------------------------------------------------------------ engine status
@@ -514,7 +611,8 @@ BENCHMARK_RECORD_DIR = Path(__file__).resolve().parents[3] / "benchmark" / "resu
 
 def engine_benchmark_status(core_sha: str | None, record_dir: Path = BENCHMARK_RECORD_DIR) -> dict:
     """BENCHMARK_PASS only when a cross-check record produced by the REAL Core at exactly this commit shows every
-    case B01-B12 PASS. Anything else (missing, other SHA, fake engine, any non-PASS) is NOT_VERIFIED."""
+    case B01-B12 PASS (exact Decimal comparison) AND the independent G16 chronology acceptance PASS. Anything else
+    (missing, other SHA, fake engine, any non-PASS, no G16 evidence) is NOT_VERIFIED. Never hand-set."""
     if not core_sha:
         return {"status": "NOT_VERIFIED", "why": "core commit unknown"}
     p = Path(record_dir) / f"mrc_{core_sha[:12]}" / "crosscheck.json"
@@ -522,11 +620,18 @@ def engine_benchmark_status(core_sha: str | None, record_dir: Path = BENCHMARK_R
         return {"status": "NOT_VERIFIED", "why": f"no cross-check record {p.parent.name} for {core_sha[:12]}"}
     rec = json.loads(p.read_text(encoding="utf-8"))
     cases = {r["case_id"][:3]: r["status"] for r in rec.get("cases", [])}
-    ok = (rec.get("engine", {}).get("git_sha") == core_sha and rec.get("engine", {}).get("kind") == "REAL_CORE"
-          and sorted(cases) == list(ALL) and all(s == "PASS" for s in cases.values()))
-    return {"status": "BENCHMARK_PASS" if ok else "NOT_VERIFIED",
-            "why": "all 12 cases PASS on the real Core" if ok else f"record verdict {rec.get('verdict')}: "
-            + ", ".join(f"{k}={v}" for k, v in sorted(cases.items()) if v != "PASS")}
+    g16 = rec.get("probes", {}).get("G16_acceptance", {})
+    g16_ok = g16.get("status") == "PASS" and bool(g16.get("checks")) and all(g16["checks"].values())
+    ok_cases = (rec.get("engine", {}).get("git_sha") == core_sha and rec.get("engine", {}).get("kind") == "REAL_CORE"
+                and sorted(cases) == list(ALL) and all(s == "PASS" for s in cases.values()))
+    ok = ok_cases and g16_ok
+    if ok:
+        why = "all 12 cases PASS and G16 chronology acceptance PASS on the real Core"
+    else:
+        why = f"record verdict {rec.get('verdict')}: " + ", ".join(
+            f"{k}={v}" for k, v in sorted(cases.items()) if v != "PASS") + ("" if g16_ok else
+                                                                             f"; G16={g16.get('status', 'MISSING')}")
+    return {"status": "BENCHMARK_PASS" if ok else "NOT_VERIFIED", "why": why}
 
 
 def engine_info():
