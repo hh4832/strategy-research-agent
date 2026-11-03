@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strategy-research-agent"
+version = "0.1.0"
+description = "Phase-3 Strategy Research Agent: spec schema, independent benchmark oracle, evaluation protocol"
+requires-python = ">=3.11"
+dependencies = ["jsonschema>=4.20", "numpy>=1.26", "scipy>=1.11"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src", "."]
+include = ["strategy_agent*", "benchmark*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]

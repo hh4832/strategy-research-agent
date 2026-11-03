@@ -1,0 +1,94 @@
+{
+  "spec_version": "1.0.0",
+  "strategy_id": "sma_crossover_tw_2330_5m",
+  "name": "SMA crossover — 2330 5-minute, long only",
+  "version": "0.1.0",
+  "status": "DRAFT",
+  "hypothesis": {
+    "statement": "Intraday-to-multi-day trends in 2330 persist long enough that a fast SMA crossing above a slow SMA precedes positive excess returns net of costs.",
+    "mechanism": "Gradual incorporation of information by large institutional flows that split orders over many sessions produces short-horizon serial correlation in 5-minute returns.",
+    "falsifiable_prediction": "Mean net return per round trip > 0 and walk-forward OOS Sharpe > 0 at the 1x cost multiplier across >= 70% of OOS folds.",
+    "null_hypothesis": "Net returns of crossover trades are indistinguishable from zero (or from random-entry trades with the same holding-time distribution).",
+    "rationale_category": "TREND_FOLLOWING",
+    "expected_holding_period": "hours to several sessions",
+    "known_failure_modes": ["choppy range-bound regimes", "cost drag from frequent whipsaws", "overnight gaps"],
+    "references": ["Notion: AI 自主量化研究系統構想 §16 (Phase-2 SMA integration probe is NOT performance evidence)"]
+  },
+  "universe": {
+    "market": "TW",
+    "symbols": ["2330"],
+    "timeframe": "5m",
+    "timezone": "Asia/Taipei",
+    "contract_policy": {"type": "NOT_APPLICABLE", "continuous_inferred": false, "indicator_series": "NOT_APPLICABLE"},
+    "sessions": {"allowed": ["REGULAR"], "calendar_ref": "TWSE regular session 09:00-13:30 via pinned trading_rules", "exclude_closing_auction": true, "no_overnight": false}
+  },
+  "data_requirements": {
+    "datasets": [{
+      "dataset_id": "tw_equity_fubon_5m",
+      "snapshot_id": "final_gate_20261031_154458_20eba73 | fubon_5m seq 68 (000068_20261025_211531_4ceb32f)",
+      "producer_commit_sha": "20eba73",
+      "verdict": "SCOPED_GO",
+      "usage_scope": "BACKTEST",
+      "mandatory_exclusions": ["section-26 common-stock scope only", "PIT universe prior-session", "quality mask 9ec79fe02412c25dae56572a334c167c168e374a438dd71e9f4dc0e138ac6863", "UNKNOWN limit/tradability fail-closed", "8101 quarantine", "no 13:30 closing-auction fill"],
+      "access_contract": "Unified Data Access Contract v0.2 (pending Phase-2 GO)"
+    }],
+    "warmup_bars": 120,
+    "fields": ["open", "high", "low", "close", "volume"]
+  },
+  "parameters": {
+    "values": {
+      "fast": {"type": "integer", "default": 10, "min": 5, "max": 20, "step": 5, "description": "fast SMA length (bars)"},
+      "slow": {"type": "integer", "default": 50, "min": 30, "max": 120, "step": 10, "description": "slow SMA length (bars)"}
+    },
+    "constraints": [{"left": "fast", "op": "<", "right": "slow"}],
+    "search": {"mode": "FIXED", "max_trials": 1}
+  },
+  "signal": {
+    "evaluation_time": "BAR_CLOSE",
+    "indicators": [
+      {"id": "sma_fast", "type": "SMA", "input": "close", "params": {"period": {"param": "fast"}}, "series_scope": "CONTINUOUS_ELIGIBLE_BARS"},
+      {"id": "sma_slow", "type": "SMA", "input": "close", "params": {"period": {"param": "slow"}}, "series_scope": "CONTINUOUS_ELIGIBLE_BARS"}
+    ],
+    "entry_rules": [{"id": "golden_cross", "action": "ENTER_LONG",
+      "when": {"op": "and", "args": [
+        {"op": "cross_above", "left": {"ref": "sma_fast"}, "right": {"ref": "sma_slow"}},
+        {"op": "is_flat"}]}}],
+    "exit_rules": [{"id": "death_cross", "action": "EXIT_LONG",
+      "when": {"op": "cross_below", "left": {"ref": "sma_fast"}, "right": {"ref": "sma_slow"}}}]
+  },
+  "position_sizing": {"method": "FIXED_UNITS", "units": 1000, "lot_size": 1000, "max_units": 1000, "initial_capital": 2000000},
+  "risk_exits": {
+    "stop_loss": {"type": "NONE"},
+    "take_profit": {"type": "NONE"},
+    "time_exit": {}
+  },
+  "execution": {
+    "convention": "oracle-execution-convention-v1",
+    "signal_time": "BAR_AVAILABLE_AT",
+    "order_time": "SIGNAL_TIME",
+    "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+    "order_type": "MARKET",
+    "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END",
+    "max_fill_delay_bars": 54,
+    "partial_fills": false,
+    "same_bar_reentry": false
+  },
+  "costs": {
+    "currency": "TWD",
+    "fee": {"per_unit_side": 0, "rate_side": 0.001425, "min_per_order": 20, "rounding": "FLOOR_INTEGER"},
+    "tax": {"rate_side": 0, "sell_rate": 0.003, "rounding": "FLOOR_INTEGER"},
+    "slippage": {"model": "TICKS", "value": 1, "tick_size_ref": "TWSE equity tick table via pinned trading_rules_20261031_222459_c5c5a4b"},
+    "sensitivity_multipliers": [0, 1, 2, 3]
+  },
+  "risk_constraints": {"allowed_directions": ["LONG"], "max_position_units": 1000, "max_trades_per_session": 4, "max_drawdown_halt": 0.25},
+  "experiment": {
+    "seed": 20261103,
+    "evaluation_protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
+    "split_ref": "SPLIT-TW-5M-v1 (to be registered after Phase-2 GO)",
+    "holdout_lock_id": "HOLDOUT-TW-5M-v1",
+    "trial_family_id": "FAM-TREND-TW-5M",
+    "compute_budget": {"max_backtests": 1, "max_wall_minutes": 30}
+  },
+  "provenance": {"created_at": "2026-11-03T01:30:00+08:00", "created_by": "claude-phase3-prep", "parent_spec_id": null, "spec_sha256": null,
+                 "notes": "Example spec. DRAFT until the Phase-2 integration contract is confirmed; no performance has been computed."}
+}

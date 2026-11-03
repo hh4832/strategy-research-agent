@@ -1,0 +1,148 @@
+{
+ "case_id": "B06_costs_slippage_short",
+ "convention": "oracle-execution-convention-v1",
+ "timezone": "Asia/Taipei",
+ "timeframe_minutes": 5,
+ "title": "手續費、交易稅與滑價（空單 2 口，方向性滑價）",
+ "instrument": {
+  "symbol": "SYNF",
+  "kind": "future",
+  "multiplier": 200,
+  "tick_size": "1",
+  "currency": "TWD"
+ },
+ "costs": {
+  "fee_per_unit_side": "50",
+  "tax_rate_side": "0.00002",
+  "slippage_ticks": 1
+ },
+ "quantity": 2,
+ "sessions": [
+  {
+   "date": "2026-01-05",
+   "start": "09:00",
+   "end": "09:30"
+  }
+ ],
+ "bars_columns": [
+  "ts",
+  "o",
+  "h",
+  "l",
+  "c",
+  "v"
+ ],
+ "bars": [
+  [
+   "2026-01-05 09:00",
+   20120,
+   20130,
+   20100,
+   20105,
+   100
+  ],
+  [
+   "2026-01-05 09:05",
+   20105,
+   20110,
+   20090,
+   20095,
+   100
+  ],
+  [
+   "2026-01-05 09:10",
+   20100,
+   20105,
+   20050,
+   20060,
+   100
+  ],
+  [
+   "2026-01-05 09:15",
+   20060,
+   20065,
+   20010,
+   20020,
+   100
+  ],
+  [
+   "2026-01-05 09:20",
+   20000,
+   20010,
+   19990,
+   20005,
+   100
+  ],
+  [
+   "2026-01-05 09:25",
+   20005,
+   20010,
+   20000,
+   20008,
+   100
+  ]
+ ],
+ "signal_model": {
+  "type": "scripted",
+  "targets": [
+   {
+    "bar_close_of": "2026-01-05 09:05",
+    "target": -1
+   },
+   {
+    "bar_close_of": "2026-01-05 09:15",
+    "target": 0
+   }
+  ]
+ },
+ "expected": {
+  "signals": [
+   {
+    "signal_ts": "2026-01-05 09:10",
+    "target": -1
+   },
+   {
+    "signal_ts": "2026-01-05 09:20",
+    "target": 0
+   }
+  ],
+  "fills": [
+   {
+    "order_ts": "2026-01-05 09:10",
+    "exec_ts": "2026-01-05 09:10",
+    "side": "SELL",
+    "qty": 2,
+    "contract": "SYNF",
+    "ref_open": "20100",
+    "fill_price": "20099",
+    "fee": "100",
+    "tax": "160.792"
+   },
+   {
+    "order_ts": "2026-01-05 09:20",
+    "exec_ts": "2026-01-05 09:20",
+    "side": "BUY",
+    "qty": 2,
+    "contract": "SYNF",
+    "ref_open": "20000",
+    "fill_price": "20001",
+    "fee": "100",
+    "tax": "160.008"
+   }
+  ],
+  "rejections": [],
+  "round_trip_net_pnl": [
+   "38679.2"
+  ],
+  "realized_pnl": "38679.2",
+  "open_position": null,
+  "cost_breakdown": {
+   "gross_at_ref_open": "40000",
+   "slippage_cost": "800",
+   "fees": "200",
+   "taxes": "320.8",
+   "net": "38679.2"
+  },
+  "forbidden_fills": []
+ }
+}

@@ -1,0 +1,162 @@
+{
+ "case_id": "B01_normal_entry_exit",
+ "convention": "oracle-execution-convention-v1",
+ "timezone": "Asia/Taipei",
+ "timeframe_minutes": 5,
+ "title": "正常進出場（多單 1 口）",
+ "instrument": {
+  "symbol": "SYNF",
+  "kind": "future",
+  "multiplier": 200,
+  "tick_size": "1",
+  "currency": "TWD"
+ },
+ "costs": {
+  "fee_per_unit_side": "50",
+  "tax_rate_side": "0.00002",
+  "slippage_ticks": 1
+ },
+ "quantity": 1,
+ "sessions": [
+  {
+   "date": "2026-01-05",
+   "start": "09:00",
+   "end": "09:40"
+  }
+ ],
+ "bars_columns": [
+  "ts",
+  "o",
+  "h",
+  "l",
+  "c",
+  "v"
+ ],
+ "bars": [
+  [
+   "2026-01-05 09:00",
+   20000,
+   20005,
+   19995,
+   20002,
+   100
+  ],
+  [
+   "2026-01-05 09:05",
+   20002,
+   20010,
+   20000,
+   20008,
+   120
+  ],
+  [
+   "2026-01-05 09:10",
+   20008,
+   20015,
+   20005,
+   20012,
+   110
+  ],
+  [
+   "2026-01-05 09:15",
+   20010,
+   20020,
+   20008,
+   20018,
+   130
+  ],
+  [
+   "2026-01-05 09:20",
+   20018,
+   20030,
+   20015,
+   20028,
+   140
+  ],
+  [
+   "2026-01-05 09:25",
+   20028,
+   20055,
+   20025,
+   20050,
+   150
+  ],
+  [
+   "2026-01-05 09:30",
+   20050,
+   20052,
+   20040,
+   20045,
+   100
+  ],
+  [
+   "2026-01-05 09:35",
+   20045,
+   20048,
+   20040,
+   20042,
+   90
+  ]
+ ],
+ "signal_model": {
+  "type": "scripted",
+  "targets": [
+   {
+    "bar_close_of": "2026-01-05 09:10",
+    "target": 1
+   },
+   {
+    "bar_close_of": "2026-01-05 09:25",
+    "target": 0
+   }
+  ]
+ },
+ "expected": {
+  "signals": [
+   {
+    "signal_ts": "2026-01-05 09:15",
+    "target": 1
+   },
+   {
+    "signal_ts": "2026-01-05 09:30",
+    "target": 0
+   }
+  ],
+  "fills": [
+   {
+    "order_ts": "2026-01-05 09:15",
+    "exec_ts": "2026-01-05 09:15",
+    "side": "BUY",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20010",
+    "fill_price": "20011",
+    "fee": "50",
+    "tax": "80.044"
+   },
+   {
+    "order_ts": "2026-01-05 09:30",
+    "exec_ts": "2026-01-05 09:30",
+    "side": "SELL",
+    "qty": 1,
+    "contract": "SYNF",
+    "ref_open": "20050",
+    "fill_price": "20049",
+    "fee": "50",
+    "tax": "80.196"
+   }
+  ],
+  "rejections": [],
+  "round_trip_net_pnl": [
+   "7339.76"
+  ],
+  "realized_pnl": "7339.76",
+  "open_position": null,
+  "forbidden_fills": [
+   {
+    "exec_ts": "2026-01-05 09:10",
+    "why": "same-bar fill at signal bar"
+   }
+  ]
+ }
+}

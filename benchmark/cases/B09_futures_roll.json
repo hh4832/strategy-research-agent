@@ -1,0 +1,244 @@
+{
+ "case_id": "B09_futures_roll",
+ "convention": "oracle-execution-convention-v1",
+ "timezone": "Asia/Taipei",
+ "timeframe_minutes": 5,
+ "title": "期貨合約切換（明確換月排程，逐合約計算損益）",
+ "instrument": {
+  "symbol": "SYNF",
+  "kind": "future",
+  "multiplier": 200,
+  "tick_size": "1",
+  "currency": "TWD"
+ },
+ "costs": {
+  "fee_per_unit_side": "50",
+  "tax_rate_side": "0.00002",
+  "slippage_ticks": 1
+ },
+ "quantity": 1,
+ "initial_contract": "SYNF2601",
+ "roll_schedule": [
+  {
+   "at": "2026-01-07 09:00",
+   "from_contract": "SYNF2601",
+   "to_contract": "SYNF2602"
+  }
+ ],
+ "sessions": [
+  {
+   "date": "2026-01-06",
+   "start": "09:00",
+   "end": "09:15"
+  },
+  {
+   "date": "2026-01-07",
+   "start": "09:00",
+   "end": "09:15"
+  }
+ ],
+ "bars_columns": [
+  "ts",
+  "contract",
+  "o",
+  "h",
+  "l",
+  "c",
+  "v"
+ ],
+ "bars": [
+  [
+   "2026-01-06 09:00",
+   "SYNF2601",
+   20000,
+   20015,
+   19995,
+   20010,
+   100
+  ],
+  [
+   "2026-01-06 09:05",
+   "SYNF2601",
+   20012,
+   20030,
+   20010,
+   20025,
+   100
+  ],
+  [
+   "2026-01-06 09:10",
+   "SYNF2601",
+   20025,
+   20040,
+   20020,
+   20035,
+   100
+  ],
+  [
+   "2026-01-06 09:00",
+   "SYNF2602",
+   20050,
+   20065,
+   20045,
+   20060,
+   50
+  ],
+  [
+   "2026-01-06 09:05",
+   "SYNF2602",
+   20062,
+   20080,
+   20060,
+   20075,
+   50
+  ],
+  [
+   "2026-01-06 09:10",
+   "SYNF2602",
+   20075,
+   20090,
+   20070,
+   20085,
+   50
+  ],
+  [
+   "2026-01-07 09:00",
+   "SYNF2601",
+   20100,
+   20110,
+   20090,
+   20105,
+   80
+  ],
+  [
+   "2026-01-07 09:05",
+   "SYNF2601",
+   20105,
+   20115,
+   20100,
+   20110,
+   60
+  ],
+  [
+   "2026-01-07 09:10",
+   "SYNF2601",
+   20110,
+   20120,
+   20105,
+   20115,
+   40
+  ],
+  [
+   "2026-01-07 09:00",
+   "SYNF2602",
+   20150,
+   20160,
+   20140,
+   20155,
+   120
+  ],
+  [
+   "2026-01-07 09:05",
+   "SYNF2602",
+   20155,
+   20170,
+   20150,
+   20165,
+   130
+  ],
+  [
+   "2026-01-07 09:10",
+   "SYNF2602",
+   20200,
+   20210,
+   20190,
+   20205,
+   140
+  ]
+ ],
+ "signal_model": {
+  "type": "scripted",
+  "targets": [
+   {
+    "bar_close_of": "2026-01-06 09:00",
+    "contract": "SYNF2601",
+    "target": 1
+   },
+   {
+    "bar_close_of": "2026-01-07 09:05",
+    "contract": "SYNF2602",
+    "target": 0
+   }
+  ]
+ },
+ "expected": {
+  "signals": [
+   {
+    "signal_ts": "2026-01-06 09:05",
+    "target": 1
+   },
+   {
+    "signal_ts": "2026-01-07 09:10",
+    "target": 0
+   }
+  ],
+  "fills": [
+   {
+    "order_ts": "2026-01-06 09:05",
+    "exec_ts": "2026-01-06 09:05",
+    "side": "BUY",
+    "qty": 1,
+    "contract": "SYNF2601",
+    "ref_open": "20012",
+    "fill_price": "20013",
+    "fee": "50",
+    "tax": "80.052"
+   },
+   {
+    "order_ts": "2026-01-07 09:00",
+    "exec_ts": "2026-01-07 09:00",
+    "side": "SELL",
+    "qty": 1,
+    "contract": "SYNF2601",
+    "ref_open": "20100",
+    "fill_price": "20099",
+    "fee": "50",
+    "tax": "80.396"
+   },
+   {
+    "order_ts": "2026-01-07 09:00",
+    "exec_ts": "2026-01-07 09:00",
+    "side": "BUY",
+    "qty": 1,
+    "contract": "SYNF2602",
+    "ref_open": "20150",
+    "fill_price": "20151",
+    "fee": "50",
+    "tax": "80.604"
+   },
+   {
+    "order_ts": "2026-01-07 09:10",
+    "exec_ts": "2026-01-07 09:10",
+    "side": "SELL",
+    "qty": 1,
+    "contract": "SYNF2602",
+    "ref_open": "20200",
+    "fill_price": "20199",
+    "fee": "50",
+    "tax": "80.796"
+   }
+  ],
+  "rejections": [],
+  "round_trip_net_pnl": [
+   "16939.552",
+   "9338.6"
+  ],
+  "realized_pnl": "26278.152",
+  "open_position": null,
+  "naive_stitched_wrong_answer": {
+   "gross": "37200",
+   "why": "treats SYNF2601 entry 20013 and SYNF2602 exit 20199 as one price series; overstates by 52 pts x 200 = 10400"
+  },
+  "forbidden_fills": []
+ }
+}
