@@ -63,12 +63,15 @@ def test_rule_rejects(rule, base, fn):
 
 
 def test_registered_with_correct_hash_passes():
+    from m2_helpers import approved_profile, governance_for_tests
+    ctx = governance_for_tests()                       # governed inputs confirmed/approved for the test
     s = copy.deepcopy(SMA)
     s["status"] = "REGISTERED"
+    s["costs"]["profile_ref"]["sha256"] = approved_profile()["provenance"]["profile_sha256"]
     s["provenance"]["spec_sha256"] = canonical_hash(s)
-    assert is_valid(s)
+    assert is_valid(s, ctx), validate(s, ctx)
     s["parameters"]["values"]["fast"]["default"] = 15          # tamper after hashing
-    assert "S16" in rules(s)
+    assert "S16" in {i.rule for i in validate(s, ctx) if i.level == "ERROR"}
 
 
 def test_registered_rejects_unresolved():

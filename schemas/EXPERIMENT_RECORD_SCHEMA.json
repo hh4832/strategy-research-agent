@@ -1,53 +1,354 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/hh4832/strategy-research-agent/schemas/EXPERIMENT_RECORD_SCHEMA.json",
-  "title": "Experiment Registry record v1.0 (append-only)",
-  "description": "One record per backtest execution, INCLUDING failures and rejections. Records are never edited; corrections are new records with supersedes=<experiment_id>.",
+  "title": "Experiment Registry record v1.1 (append-only, hash-chained)",
+  "description": "One line per lifecycle EVENT of an experiment (QUEUED, RUNNING, terminal), INCLUDING failures, rejections, timeouts and cancellations. Lines are never edited; each carries seq/prev_sha256/record_sha256 (see strategy_agent.registry.chain). v1.1 is additive over v1.0.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["experiment_id", "created_at", "status", "spec", "trial", "data", "code", "split", "seed",
-               "cost_multiplier", "holdout_access"],
+  "required": [
+    "experiment_id",
+    "created_at",
+    "status",
+    "spec",
+    "trial",
+    "data",
+    "code",
+    "split",
+    "seed",
+    "cost_multiplier",
+    "holdout_access"
+  ],
   "properties": {
-    "experiment_id": {"type": "string", "pattern": "^EXP-[0-9]{8}-[0-9a-f]{12}$"},
-    "created_at": {"type": "string", "format": "date-time"},
-    "supersedes": {"type": ["string", "null"]},
-    "status": {"enum": ["QUEUED", "RUNNING", "COMPLETED", "FAILED", "REJECTED_SPEC", "REJECTED_DATA",
-                         "REJECTED_CONTRACT", "BUDGET_EXCEEDED", "CANCELLED"]},
-    "spec": {"type": "object", "additionalProperties": false, "required": ["strategy_id", "version", "spec_sha256", "status"],
-      "properties": {"strategy_id": {"type": "string"}, "version": {"type": "string"},
-                     "spec_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-                     "status": {"enum": ["DRAFT", "REGISTERED", "FROZEN"]}}},
-    "trial": {"type": "object", "additionalProperties": false, "required": ["family_id", "index", "parameters"],
-      "properties": {"family_id": {"type": "string"}, "index": {"type": "integer", "minimum": 0},
-                     "parameters": {"type": "object"},
-                     "family_size_at_registration": {"type": "integer", "minimum": 1}}},
-    "data": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false,
-      "required": ["dataset_id", "snapshot_id", "producer_commit_sha", "verdict"],
-      "properties": {"dataset_id": {"type": "string"}, "snapshot_id": {"type": "string"},
-                     "producer_commit_sha": {"type": "string"}, "manifest_sha256": {"type": "string"},
-                     "verdict": {"type": "string"}, "exclusions_applied": {"type": "array", "items": {"type": "string"}},
-                     "rows_loaded": {"type": "integer"}, "rows_excluded": {"type": "integer"}}}},
-    "code": {"type": "object", "additionalProperties": false,
-      "required": ["strategy_agent_sha", "engine_name", "engine_git_sha", "execution_convention"],
-      "properties": {"strategy_agent_sha": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
-                     "engine_name": {"type": "string"}, "engine_git_sha": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
-                     "engine_version": {"type": "string"},
-                     "execution_convention": {"const": "oracle-execution-convention-v1"},
-                     "benchmark_pass_sha": {"type": "string", "description": "engine SHA at which BENCHMARK_TEST_CASES last passed"},
-                     "environment_lock_sha256": {"type": "string"}}},
-    "split": {"type": "object", "additionalProperties": false, "required": ["split_ref", "fold_id", "role", "window_start", "window_end"],
-      "properties": {"split_ref": {"type": "string"}, "fold_id": {"type": "string"},
-                     "role": {"enum": ["TRAIN", "VALIDATION", "WF_TEST", "FINAL_HOLDOUT"]},
-                     "window_start": {"type": "string"}, "window_end": {"type": "string"},
-                     "purged_samples": {"type": "integer"}, "embargo": {"type": "string"}}},
-    "seed": {"type": "integer"},
-    "cost_multiplier": {"type": "number", "minimum": 0},
-    "holdout_access": {"type": "boolean", "description": "true only for the single FINAL_HOLDOUT evaluation of a FROZEN spec"},
-    "metrics": {"type": "object"},
-    "rejection_reasons": {"type": "array", "items": {"type": "object", "required": ["code", "message"],
-      "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "path": {"type": "string"}}}},
-    "artifacts": {"type": "array", "items": {"type": "object", "required": ["uri", "sha256"],
-      "properties": {"uri": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "kind": {"type": "string"}}}},
-    "resource_usage": {"type": "object", "properties": {"wall_seconds": {"type": "number"}, "backtests_in_family": {"type": "integer"}}}
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^EXP-[0-9]{8}-[0-9a-f]{12}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supersedes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "enum": [
+        "QUEUED",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "TIMEOUT",
+        "CANCELLED",
+        "REJECTED_SPEC",
+        "REJECTED_DATA",
+        "REJECTED_CONTRACT",
+        "REJECTED_GOVERNANCE",
+        "BUDGET_EXCEEDED"
+      ]
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy_id",
+        "version",
+        "spec_sha256",
+        "status"
+      ],
+      "properties": {
+        "strategy_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "spec_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "enum": [
+            "DRAFT",
+            "REGISTERED",
+            "FROZEN"
+          ]
+        }
+      }
+    },
+    "trial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "family_id",
+        "index",
+        "parameters"
+      ],
+      "properties": {
+        "family_id": {
+          "type": "string"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "family_size_at_registration": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "declared_family_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "structure_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "params_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "family_assignment": {
+          "enum": [
+            "EXACT",
+            "SIMILAR",
+            "NEW"
+          ]
+        }
+      }
+    },
+    "data": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dataset_id",
+          "snapshot_id",
+          "producer_commit_sha",
+          "verdict"
+        ],
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          },
+          "snapshot_id": {
+            "type": "string"
+          },
+          "producer_commit_sha": {
+            "type": "string"
+          },
+          "manifest_sha256": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string"
+          },
+          "exclusions_applied": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows_loaded": {
+            "type": "integer"
+          },
+          "rows_excluded": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy_agent_sha",
+        "engine_name",
+        "engine_git_sha",
+        "execution_convention"
+      ],
+      "properties": {
+        "strategy_agent_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "engine_name": {
+          "type": "string"
+        },
+        "engine_git_sha": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{7,40}|NOT_RUN)$"
+        },
+        "engine_version": {
+          "type": "string"
+        },
+        "execution_convention": {
+          "const": "oracle-execution-convention-v1"
+        },
+        "benchmark_pass_sha": {
+          "type": "string",
+          "description": "engine SHA at which BENCHMARK_TEST_CASES last passed"
+        },
+        "environment_lock_sha256": {
+          "type": "string"
+        },
+        "engine_benchmark_status": {
+          "enum": [
+            "BENCHMARK_PASS",
+            "NOT_VERIFIED"
+          ]
+        }
+      }
+    },
+    "split": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "split_ref",
+        "fold_id",
+        "role",
+        "window_start",
+        "window_end"
+      ],
+      "properties": {
+        "split_ref": {
+          "type": "string"
+        },
+        "fold_id": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "TRAIN",
+            "VALIDATION",
+            "WF_TEST",
+            "FINAL_HOLDOUT"
+          ]
+        },
+        "window_start": {
+          "type": "string"
+        },
+        "window_end": {
+          "type": "string"
+        },
+        "purged_samples": {
+          "type": "integer"
+        },
+        "embargo": {
+          "type": "string"
+        },
+        "holdout_lock_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "cost_multiplier": {
+      "type": "number",
+      "minimum": 0
+    },
+    "holdout_access": {
+      "type": "boolean",
+      "description": "true only for the single FINAL_HOLDOUT evaluation of a FROZEN spec"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "rejection_reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "uri",
+          "sha256"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "kind": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "resource_usage": {
+      "type": "object",
+      "properties": {
+        "wall_seconds": {
+          "type": "number"
+        },
+        "backtests_in_family": {
+          "type": "integer"
+        }
+      }
+    },
+    "schema_version": {
+      "enum": [
+        "1.1.0"
+      ]
+    },
+    "event_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "actor": {
+      "type": "string",
+      "description": "agent or human identity that appended the event"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "prev_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "record_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sample_sufficiency": {
+      "type": "object"
+    }
   }
 }

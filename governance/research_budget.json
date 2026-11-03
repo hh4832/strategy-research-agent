@@ -1,0 +1,10 @@
+{
+  "max_trials_per_family": 20,
+  "max_backtests_per_day": 50,
+  "max_new_families_per_day": 3,
+  "max_wall_seconds_per_day": 14400,
+  "timeout_seconds_per_experiment": 900,
+  "max_consecutive_failures": 3,
+  "day_timezone": "Asia/Taipei",
+  "note": "Changing any limit requires research-lead approval. Counters are derived from registry/experiments.jsonl. Changes go through a PR reviewed by the research lead; GitHub does not enforce CODEOWNERS on main yet (no branch protection/ruleset)."
+}

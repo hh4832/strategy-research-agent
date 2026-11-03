@@ -3,8 +3,8 @@
  "convention": "oracle-execution-convention-v1",
  "timezone": "Asia/Taipei",
  "timeframe_minutes": 5,
- "title": "SCOPED_GO exclusion window（持倉跨越排除窗 → 整筆失效）［提案，待確認］",
- "status": "PROPOSED_REQUIRES_OWNER_CONFIRMATION",
+ "title": "SCOPED_GO exclusion window（持倉跨越排除窗 → 整筆 invalidated，不計入有效績效）［Q5 核准］",
+ "status": "APPROVED_Q5_2026-11-03",
  "instrument": {
   "symbol": "SYNF",
   "kind": "future",

@@ -1,0 +1,6 @@
+{
+  "research_leads": [
+    "hh4832"
+  ],
+  "note": "Only these GitHub identities may approve holdout locks or resume halted research. Changes go through a PR reviewed by the research lead; GitHub does not enforce CODEOWNERS on main yet (no branch protection/ruleset)."
+}

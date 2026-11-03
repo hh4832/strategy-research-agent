@@ -1,6 +1,6 @@
 """Strategy specification validator: JSON Schema + semantic (cross-field) rules.
 
-Semantic rules are numbered (S01..S16) and documented in
+Semantic rules are numbered (S01..S18) and documented in
 STRATEGY_AGENT_ARCHITECTURE.md §4.3 so the Experiment Registry can store which
 rule rejected a spec.
 """
@@ -18,10 +18,27 @@ from typing import Any, Iterator
 
 from jsonschema import Draft202012Validator
 
+from strategy_agent.costs import profile as cost_profile
+
 SCHEMA_PATH = Path(__file__).resolve().parents[3] / "STRATEGY_SPEC_SCHEMA.json"
 BAR_FIELDS = {"open", "high", "low", "close", "volume"}
 FUTURES_SYMBOLS = {"IBKR": {"NQ", "ES"}, "TXF": {"TXF"}}
 WILDER_LIKE = {"EMA", "ATR_WILDER"}
+
+
+@dataclass(frozen=True)
+class GovernanceContext:
+    """Governed inputs the semantic rules depend on (injectable for tests)."""
+    confirmations: dict
+    cost_profiles: dict          # (profile_id, version) -> profile
+    approvers: frozenset
+
+
+def default_context() -> GovernanceContext:
+    root = SCHEMA_PATH.parent
+    conf = json.loads((root / "governance" / "source_confirmations.json").read_text(encoding="utf-8"))["items"]
+    appr = json.loads((root / "governance" / "approvers.json").read_text(encoding="utf-8"))["research_leads"]
+    return GovernanceContext(conf, cost_profile.load_profiles(root / "governance" / "cost_profiles"), frozenset(appr))
 
 
 @dataclass(frozen=True)
@@ -79,7 +96,7 @@ def _grid(p: dict) -> list[Decimal]:
 # -------------------------------------------------------------------- rules
 
 
-def semantic_issues(spec: dict) -> list[Issue]:
+def semantic_issues(spec: dict, ctx: GovernanceContext | None = None) -> list[Issue]:
     out: list[Issue] = []
     E = lambda r, p, m: out.append(Issue("ERROR", r, p, m))  # noqa: E731
     W = lambda r, p, m: out.append(Issue("WARNING", r, p, m))  # noqa: E731
@@ -247,18 +264,53 @@ def semantic_issues(spec: dict) -> list[Issue]:
         if declared is None or declared != canonical_hash(spec):
             E("S16", "/provenance/spec_sha256", "missing or wrong spec hash for a non-DRAFT spec")
 
+    # S17 / S18 apply to executable specs only and depend on governed files
+    if spec["status"] != "DRAFT":
+        ctx = ctx or default_context()
+
+        # S17 no dependency on an UNKNOWN source-of-truth confirmation (Q1, Q2)
+        for key, item in ctx.confirmations.items():
+            scope = item.get("applies_to", {})
+            hit = scope.get("market") == market and (
+                "symbols" not in scope or bool(symbols & set(scope["symbols"])))
+            if hit and item.get("status") != "CONFIRMED":
+                E("S17", "/universe", f"depends on unconfirmed '{key}' ({item.get('decision')}, owner "
+                                      f"{item.get('owner')}): status {item.get('status')}")
+
+        # S18 versioned CostProfile (Q6)
+        ref = spec["costs"].get("profile_ref")
+        if not ref:
+            E("S18", "/costs/profile_ref", "REGISTERED/FROZEN specs must reference a versioned CostProfile")
+        else:
+            prof = ctx.cost_profiles.get((ref["profile_id"], ref["version"]))
+            if prof is None:
+                E("S18", "/costs/profile_ref", f"unknown cost profile {ref['profile_id']}@{ref['version']}")
+            else:
+                for pi in cost_profile.validate_profile(prof, set(ctx.approvers)):
+                    E("S18", "/costs/profile_ref", f"profile invalid: {pi.rule} {pi.path} {pi.message}")
+                if prof["status"] != "APPROVED":
+                    E("S18", "/costs/profile_ref", f"cost profile is {prof['status']}, not APPROVED")
+                if prof["market"] != market:
+                    E("S18", "/costs/profile_ref", "cost profile market differs from spec market")
+                if ref.get("sha256") != prof["provenance"].get("profile_sha256"):
+                    E("S18", "/costs/profile_ref/sha256", "profile hash mismatch")
+                for d in cost_profile.cost_mismatches(spec["costs"], prof):
+                    E("S18", "/costs", f"inline cost differs from profile: {d}")
+                if spec["status"] == "FROZEN":
+                    for pi in cost_profile.frozen_gate_issues(prof):
+                        E("S18", "/costs/profile_ref", f"FROZEN gate: {pi.message} (P07)")
     return out
 
 
-def validate(spec: dict) -> list[Issue]:
+def validate(spec: dict, ctx: GovernanceContext | None = None) -> list[Issue]:
     schema_errors = sorted(Draft202012Validator(load_schema()).iter_errors(spec), key=lambda e: list(e.path))
     if schema_errors:
         return [Issue("ERROR", "SCHEMA", "/" + "/".join(map(str, e.path)), e.message) for e in schema_errors]
-    return semantic_issues(spec)
+    return semantic_issues(spec, ctx)
 
 
-def is_valid(spec: dict) -> bool:
-    return not any(i.level == "ERROR" for i in validate(spec))
+def is_valid(spec: dict, ctx: GovernanceContext | None = None) -> bool:
+    return not any(i.level == "ERROR" for i in validate(spec, ctx))
 
 
 def main(argv: list[str]) -> int:

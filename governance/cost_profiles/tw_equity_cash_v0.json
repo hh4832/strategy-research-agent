@@ -1,0 +1,95 @@
+{
+  "profile_id": "tw_equity_cash",
+  "version": "0.1.0",
+  "status": "DRAFT",
+  "market": "TW",
+  "instrument_scope": "TWSE/TPEx common stock, cash account, non-day-trade",
+  "currency": "TWD",
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "components": [
+    {
+      "id": "commission",
+      "kind": "COMMISSION",
+      "side": "BOTH",
+      "rate": 0.001425,
+      "basis": "RESEARCH_ASSUMPTION",
+      "source": {
+        "kind": "NONE",
+        "citation": "Statutory ceiling rate used as a placeholder; the account's actual discounted broker rate is not yet provided",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      },
+      "notes": "Replace with BROKER_ACTUAL (statement or schedule) before any FROZEN spec (P07)."
+    },
+    {
+      "id": "min_commission",
+      "kind": "MIN_COMMISSION",
+      "side": "BOTH",
+      "amount": 20,
+      "basis": "RESEARCH_ASSUMPTION",
+      "source": {
+        "kind": "NONE",
+        "citation": "Common broker minimum; to be confirmed from the broker schedule",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      }
+    },
+    {
+      "id": "rounding",
+      "kind": "ROUNDING",
+      "side": "BOTH",
+      "rule": "FLOOR_INTEGER",
+      "applies_to": "ALL",
+      "basis": "RESEARCH_ASSUMPTION",
+      "source": {
+        "kind": "NONE",
+        "citation": "Rounding convention to be confirmed from broker statements",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      }
+    },
+    {
+      "id": "securities_transaction_tax",
+      "kind": "TAX",
+      "side": "SELL",
+      "rate": 0.003,
+      "basis": "OFFICIAL_RULE",
+      "source": {
+        "kind": "LAW",
+        "citation": "證券交易稅條例 — 股票賣出稅率 0.3%（來源連結尚未核對）",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      },
+      "notes": "Day-trade reduced rate is out of scope for this profile."
+    },
+    {
+      "id": "slippage",
+      "kind": "SLIPPAGE",
+      "side": "BOTH",
+      "ticks": 1,
+      "basis": "RESEARCH_ASSUMPTION",
+      "source": {
+        "kind": "MODEL",
+        "citation": "1-tick adverse model",
+        "ref": null,
+        "verified_at": null,
+        "verified_by": null
+      }
+    }
+  ],
+  "provenance": {
+    "created_by": "claude-m2-review",
+    "created_at": "2026-11-03T06:00:00+08:00",
+    "approved_by": null,
+    "approved_at": null,
+    "approval_ref": null,
+    "supersedes": null,
+    "profile_sha256": null,
+    "notes": "DRAFT: no component verified. Matches specs/examples/sma_crossover_tw_2330_5m.json."
+  }
+}

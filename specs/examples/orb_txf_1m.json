@@ -228,7 +228,12 @@
       1,
       2,
       3
-    ]
+    ],
+    "profile_ref": {
+      "profile_id": "txf_futures",
+      "version": "0.1.0",
+      "sha256": null
+    }
   },
   "risk_constraints": {
     "allowed_directions": [

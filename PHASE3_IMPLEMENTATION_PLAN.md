@@ -26,6 +26,26 @@
 
 ---
 
+## 1.1 審查決策（2026-11-03）
+
+| # | 決策 | 影響 |
+|---|---|---|
+| Q1 | TXF／台股時間戳由 Codex 依來源證據確認，未確認前不得假設 | 訊號層以 `available_at` 為必填輸入；R4 交由 Codex 處理 |
+| Q4 | `market-research-core` 為唯一正式回測執行器；Decimal Oracle 只作獨立驗收 | M3 改為「Phase 3 提供規格／目標部位，正式引擎執行」；oracle 不得成為 BacktestPort |
+| Q5 | 跨 exclusion window 交易 invalidated，不計入有效績效，並檢查排除後樣本充分性 | B11 核准；Gate G4 加入樣本充分性 |
+| Q7 | Final holdout 由研究負責人事前核准並鎖定 | `governance/holdout_locks.jsonl` + approvers 白名單 + CI append-only；無 lock 不可回測（CODEOWNERS 尚未被 GitHub 強制，見 M2 §9） |
+
+合併前 code review（同日）追加決策：
+
+| # | 決策 | 影響 |
+|---|---|---|
+| Q2 | TSM RTH／ETH 由 Codex 確認，未確認前維持 UNKNOWN | `governance/source_confirmations.json`；validator S17 |
+| Q3 | 買賣方向可成交資格由 `market-research-core` 提供 | 契約 C1；R3 為給 Codex 的需求 |
+| Q6 | 交易成本採版本化 CostProfile（官方規則／券商實際費率／研究假設） | `schemas/COST_PROFILE_SCHEMA.json`；validator S18 |
+| — | 正式 holdout 日期暫不核准，待資料覆蓋報告 | `governance/holdout_locks.jsonl` 維持空白 |
+
+M2 實作與判定見 [`M2_GOVERNANCE.md`](M2_GOVERNANCE.md)（§9 為合併前修正）。
+
 ## 2. 里程碑與相依關係
 
 ```mermaid
@@ -43,8 +63,8 @@ flowchart LR
 | 里程碑 | 內容 | 相依 | 驗收標準 |
 |---|---|---|---|
 | **M1** Adapter + 交叉驗收 | `adapters/mrc_adapter.py` 實作 `MarketDataPort`／`BacktestPort`；跑 B01–B12 | Phase 2 GO；§5 待確認事項 Q1–Q4 有答案 | B01–B10、B12 PASS（B11 依 Q5）；`check_report` 通過；結果與三個 SHA 寫入 Registry |
-| **M2** Registry + Executor | JSONL Registry（append-only、schema 驗證）、holdout lock、預算控制、重試政策 | M0 | 拒絕修改既有紀錄；第二次讀 holdout 被擋；預算用完寫 `BUDGET_EXCEEDED` |
-| **M3** 規格驅動執行 | 把 Spec 的指標／規則轉成訊號序列（Phase 3 端，純函式、不看未來），交給引擎執行；或由 Codex 在引擎端支援 spec（擇一，見 Q6） | M1、M2 | 3 個範例規格在真實快照上可重現執行；訊號層以 B02、B08、B12 類型的合成測試覆蓋 |
+| **M2** Registry + Executor ✔ | 雜湊鏈 Registry、holdout lock、family canonicalization、預算與停止規則、SMA／ORB／ATR 純函式 | M0 | **GO（範圍限定，2026-11-03）**，見 `M2_GOVERNANCE.md` |
+| **M3** 規格驅動執行 | 依 Q4，由 `market-research-core` 執行；Phase 3 提供規格與純函式產生的目標部位（`signals/`，M2 已完成），需 Codex 在引擎端提供接受目標序列與成本規格的介面（建議，不由本 repo 修改） | M1、M2 | 3 個範例規格在真實快照上可重現執行；訊號層以 B02、B08、B12 類型的合成測試覆蓋 |
 | **M4** Evaluator + Selector + Report | walk-forward 執行器、Gate G1–G11、報告模板、Notion 摘要 | M3 | 範例規格產出完整報告，含拒絕原因；重跑報告完全一致 |
 | **M5** Generator 自主循環 | LLM 產生 DRAFT 規格 → Validator → 佇列；family 合併；每輪上限 | M4 | 一次完整無人循環：≥ 3 個規格（含被拒），Registry 帳本完整，不碰 holdout |
 | **M6** 排程 | GitHub Actions 夜間批次（Drive 唯讀 + 本機驗證副本）、失敗通知 | M5 | 連續 7 天無人值守，所有失敗皆有紀錄與通知 |
@@ -64,7 +84,7 @@ flowchart LR
 **資料層**
 - [ ] `MarketDataClient` 對 IBKR、TXF、TW 三市場以正式 Drive 快照載入成功（Phase 2 Colab smoke PASS 紀錄）
 - [ ] 回傳 provenance 含 snapshot ID、producer SHA、verdict、exclusions、來源檔、列數
-- [ ] Bar frame 滿足 C1（含 side-specific 成交資格）——或 Q3 決定由 adapter 從 `buy_eligibility`／`sell_eligibility` 推導
+- [ ] Bar frame 滿足 C1：side-specific 成交資格由 `market-research-core` 提供（Q3），adapter 只傳遞
 - [ ] 每個市場的 `available_at` 語意有單元測試（C2）
 - [ ] IBKR／TXF 的 eligibility 不再一律為 `True`；session 不再為 `UNKNOWN`（或明確文件化）
 
@@ -106,13 +126,13 @@ flowchart LR
 
 | # | 問題 | 影響的元件 |
 |---|---|---|
-| Q1 | Fubon TXF 1m 與台股 5m 的時間戳記是 K 棒開始還是結束？ | C2、R4、所有 TXF／TW 案例 |
-| Q2 | IBKR TSM normalized parquet 是否只含 RTH？若含 ETH，session 欄位如何標記？ | R2、ATR 範例規格 |
-| Q3 | Side-specific 成交資格由 Phase 2 提供，還是由 Phase 3 adapter 從 `buy_eligibility`／`sell_eligibility` 推導？ | C1、R3 |
-| Q4 | Phase 2 引擎是否要擴充為接受「訊號序列 + 成本規格」的一般執行器，或 Phase 3 自建執行層、Phase 2 只提供資料？ | M3 範圍 |
-| Q5 | 持有部位遇到 exclusion 窗：(a) 整筆失效、(b) 窗前強制平倉、(c) 剔除跨窗報酬？ | B11、C5 |
-| Q6 | 實際券商手續費率、最低手續費、期貨每口費用（TXF、NQ、ES）以哪份文件為準？ | 範例規格 costs |
-| Q7 | Final Holdout 起始日期（每個資料集）由誰決定、何時登錄？ | §2 評估規約 |
+| Q1 | ✔ 已決策：由 Codex 依來源證據確認；確認前 Phase 3 不假設 | C2、R4、所有 TXF／TW 案例 |
+| Q2 | ✔ 已決策：由 Codex 確認；未確認前 UNKNOWN（S17 阻擋） | R2、ATR 範例規格 |
+| Q3 | ✔ 已決策：由 `market-research-core` 提供；adapter 不推導 | C1、R3 |
+| Q4 | ✔ 已決策：`market-research-core` 為唯一正式執行器 | M3 範圍 |
+| Q5 | ✔ 已決策：(a) 整筆 invalidated + 樣本充分性檢查 | B11、C5 |
+| Q6 | ✔ 已決策：版本化 CostProfile；目前三份皆 DRAFT，待券商證據與官方來源核對 | 範例規格 costs |
+| Q7 | ✔ 已決策：研究負責人事前核准並鎖定 | §2 評估規約 |
 
 ---
 

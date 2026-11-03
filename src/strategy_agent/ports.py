@@ -13,6 +13,8 @@ from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 CONVENTION = "oracle-execution-convention-v1"
 
 # Columns every bar frame handed to the strategy layer must carry (contract C1).
+# Decision Q3: buy/sell_execution_eligible are PROVIDED BY market-research-core; the M1 adapter
+# passes them through and must never derive them from other columns.
 REQUIRED_BAR_COLUMNS = (
     "timestamp", "available_at", "open", "high", "low", "close", "volume",
     "contract", "session", "data_exists", "research_eligible", "backtest_eligible",
@@ -59,6 +61,8 @@ class BacktestReport:
     open_position: Mapping[str, Any] | None
     provenance: Mapping[str, Any]
     status: str = "RESEARCH_BACKTEST"               # never "LIVE" / "TRADABLE"
+    # Q5: trades whose holding period spans an exclusion window; never counted as performance
+    invalidated_round_trips: Sequence[Mapping[str, Any]] = ()
 
 
 @runtime_checkable
