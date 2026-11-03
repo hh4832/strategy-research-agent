@@ -35,7 +35,8 @@ from .data import MarketData
 from .environment import GovernanceEnv
 
 ROOT = Path(__file__).resolve().parents[3]
-RUNNER_VERSION = "m3b-0.1.0"
+RUNNER_VERSION = "m3b-0.1.1"
+R02_ENFORCED = True        # research-lead decision (M3-B.1): mandatory for every research entry point
 FIXED_BASELINE = {"fast": 5, "slow": 20}
 
 
@@ -243,7 +244,9 @@ class ResearchRunner:
         runner = ExperimentRunner(self.env.registry, self.env.families, self.env.holdout, self.env.budget, ip,
                                   self.engine, agent_sha=self.agent["agent_sha"], admission=self.env.admission,
                                   actor="strategy-agent-m3b", clock=self.clock, governance=self.env.governance,
-                                  enforce_parameter_ranges=True)
+                                  enforce_parameter_ranges=R02_ENFORCED)
+        if getattr(runner, "enforce_parameter_ranges", False) is not True:
+            raise ResearchContractError("R02 parameter governance is mandatory for research runs; refusing to submit")
         rr = RunRequest(spec=spec, parameters=dict(job.parameters), role=job.role,
                         split_ref=job.split_ref or spec["experiment"]["split_ref"], fold_id=job.fold_id,
                         window_start=job.window_start, window_end=job.window_end, warmup_start=job.warmup_start,

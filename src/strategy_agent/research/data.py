@@ -117,6 +117,22 @@ class Readiness:
             out.append(f"bar_label {e.get('bar_label')}")
         if e.get("session_coverage") in (None, "UNKNOWN"):
             out.append("session_coverage UNKNOWN")
+        # fields M3-A added: absent fields count as unknown (fail closed)
+        for k in ("available_at_rule", "per_bar_session_mask"):
+            if e.get(k) in (None, "UNKNOWN"):
+                out.append(f"{k} {e.get(k) or 'UNKNOWN'}")
+        el = e.get("execution_eligibility") or {}
+        if not (el.get("buy") and el.get("sell")):
+            out.append(f"execution eligibility buy={el.get('buy')} sell={el.get('sell')} "
+                       f"({el.get('rejection_reason') or 'not recorded'})")
+        cp = e.get("cost_profile") or {}
+        if cp.get("status") != "APPROVED":
+            out.append(f"cost profile {cp.get('profile_id')}@{cp.get('version')} {cp.get('status') or 'not recorded'}")
+        if not cp.get("core_representable"):
+            out.append(f"cost profile not representable in Core: {cp.get('core_gap') or 'not recorded'}")
+        m3a = e.get("m3a") or {}
+        if m3a.get("formal_execution") != "GO":
+            out.append(f"M3-A formal_execution {m3a.get('formal_execution') or 'not recorded'}")
         w = e.get("allowed_window") or {}
         if not w.get("start") or not w.get("end"):
             out.append("allowed_window not set")

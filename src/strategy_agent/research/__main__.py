@@ -2,7 +2,9 @@
 
     python -m strategy_agent.research readiness [--market IBKR_TSM]
     python -m strategy_agent.research synthetic --run-root DIR [--archive-root DIR | --drive] [--repeat N]
-                                                [--cost-sensitivity] [--batch-id ID] [--resume]
+                                                [--cost-sensitivity] [--batch-id ID] [--resume] [--summary-out F]
+    (no flag can change strategy parameters or turn governance off: parameters are the spec's FIXED defaults and
+     R02 is mandatory in the research runner)
     python -m strategy_agent.research real --market IBKR_TSM          # fails closed until the M3-A gate is GO
 
 Exit codes: 0 all runs COMPLETED + ARCHIVED (+ reproducible when --repeat > 1); 2 a run did not complete, an
@@ -63,7 +65,10 @@ def _synthetic(a) -> int:
         idents = {o.identity for o in out if o.status == "COMPLETED"}
         summary["reproducible"] = len(shas) == 1 and len(idents) == 1
         ok = ok and summary["reproducible"]
+    summary["ok"] = ok
     print(json.dumps(summary, indent=1, ensure_ascii=False, default=str))
+    if a.summary_out:
+        Path(a.summary_out).write_text(json.dumps(summary, indent=1, ensure_ascii=False, default=str), encoding="utf-8")
     return 0 if ok else 2
 
 
@@ -81,6 +86,7 @@ def main(argv=None) -> int:
     s.add_argument("--cost-sensitivity", action="store_true")
     s.add_argument("--batch-id")
     s.add_argument("--resume", action="store_true")
+    s.add_argument("--summary-out", help="also write the batch summary JSON to this file")
     x = sub.add_parser("real")
     x.add_argument("--market", default="IBKR_TSM")
     a = ap.parse_args(argv)

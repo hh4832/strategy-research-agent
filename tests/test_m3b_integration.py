@@ -233,3 +233,41 @@ def test_recommendation_rules_are_separate_from_engineering(two_runs):
     # Core status is still RESEARCH_ONLY for this run -> still undecidable
     assert recommend(fake)["decision"] == UNDECIDABLE
     assert {KEEP, RETEST, DROP, UNDECIDABLE} == {"保留", "修改後再測", "淘汰", "無法判定"}
+
+
+# ------------------------------------------------------------------ M3-B.1: R02 mandatory on research entry points
+def test_r02_batch_cannot_smuggle_parameters(tmp_path):
+    runner, job = synthetic_setup(tmp_path / "env", archive_root=tmp_path / "archive", agent=AGENT)
+    bad = [replace(job, parameters={"fast": 6, "slow": 20}, label="fast6"),
+           replace(job, parameters={"fast": 5, "slow": 20, "extra": 1}, label="extra"),
+           replace(job, parameters={"fast": "5", "slow": 20}, label="string")]
+    out = run_batch(runner, bad, batch_id="r02", ledger_dir=tmp_path / "ledger", progress=lambda m: None)
+    assert [o.status for o in out] == ["REJECTED_SPEC"] * 3
+    recs = runner.env.registry.final_records()
+    assert [r["rejection_reasons"][0]["code"] for r in recs] == ["R02"] * 3       # recorded, not silently dropped
+    assert not any(r["status"] in ("RUNNING", "COMPLETED") for r in runner.env.registry.records())
+
+
+def test_r02_fixed_spec_cannot_be_quietly_redeclared(tmp_path):
+    """Editing the FIXED defaults (and ranges) of the same strategy is still the same family: after the 5/20
+    baseline, a 10/30 'FIXED' copy is stopped by the spec trial budget (B06), so no extra trial is spent."""
+    runner, job = synthetic_setup(tmp_path / "env", agent=AGENT)
+    assert runner.run(job).status == "COMPLETED"
+    s = copy.deepcopy(job.spec)
+    s["parameters"]["values"]["fast"].update(default=10, min=10, max=10)
+    s["parameters"]["values"]["slow"].update(default=30, min=30, max=30)
+    from strategy_agent.spec.validate import canonical_hash
+    s["provenance"]["spec_sha256"] = None
+    s["provenance"]["spec_sha256"] = canonical_hash(s)
+    r = runner.run(replace(job, spec=s, parameters={"fast": 10, "slow": 30}, label="redeclared"))
+    assert r.status == "BUDGET_EXCEEDED" and r.record["rejection_reasons"][0]["code"] == "B06"
+    assert r.record["trial"]["family_id"] == runner.env.registry.final_records()[0]["trial"]["family_id"]
+
+
+def test_r02_cannot_be_switched_off_by_patching(tmp_path, monkeypatch):
+    from strategy_agent.research import pipeline
+    runner, job = synthetic_setup(tmp_path / "env", agent=AGENT)
+    monkeypatch.setattr(pipeline, "R02_ENFORCED", False)
+    with pytest.raises(ResearchContractError, match="R02"):
+        runner.run(replace(job, parameters={"fast": 6, "slow": 20}))
+    assert runner.env.registry.records() == []                                 # nothing submitted

@@ -62,29 +62,48 @@ class RunRequest:
     datasets: tuple = field(default=())
 
 
+SEARCH_MODES = {"FIXED", "PREREGISTERED_GRID"}
+
+
 def parameter_issues(spec: dict, params: dict) -> list[Issue]:
-    """R02: parameters must be exactly the declared names, inside [min, max], on the step grid, satisfy the spec
-    constraints, and equal the defaults when the search mode is FIXED with max_trials 1."""
-    from decimal import Decimal  # noqa: PLC0415
+    """R02 (research-lead decision, M3-B.1): run parameters must be exactly the declared names, numeric, inside
+    [min, max], on the step grid, satisfy the spec constraints, and - for search mode FIXED - equal the declared
+    defaults (whatever max_trials says). Mandatory for every formal research entry point; the M2 low-level
+    ``ExperimentRunner`` keeps it opt-in (``enforce_parameter_ranges``) for backward compatibility."""
+    from decimal import Decimal, InvalidOperation  # noqa: PLC0415
     decl = spec["parameters"]["values"]
-    out = []
+    srch = spec["parameters"].get("search", {})
+    if srch.get("mode") not in SEARCH_MODES:
+        return [Issue("ERROR", "R02", "/parameters/search/mode", f"unknown search mode {srch.get('mode')!r}")]
     if set(params) != set(decl):
         return [Issue("ERROR", "R02", "/parameters", f"parameters {sorted(params)} != declared {sorted(decl)}")]
+    out = []
     for k, d in decl.items():
-        v = Decimal(str(params[k]))
+        try:
+            if isinstance(params[k], bool) or not isinstance(params[k], (int, float, Decimal)):
+                raise InvalidOperation
+            v = Decimal(str(params[k]))
+            if not v.is_finite():
+                raise InvalidOperation
+        except (InvalidOperation, ValueError):
+            out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]!r} is not a finite number")]
+            continue
         if d.get("type") == "integer" and v != v.to_integral_value():
             out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} is not an integer")]
         if not Decimal(str(d["min"])) <= v <= Decimal(str(d["max"])):
             out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} outside [{d['min']}, {d['max']}]")]
         elif d.get("step") and (v - Decimal(str(d["min"]))) % Decimal(str(d["step"])) != 0:
             out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} not on the step grid")]
+    if out:
+        return out
     ops = {"<": lambda a, b: a < b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b, ">=": lambda a, b: a >= b}
     for c in spec["parameters"].get("constraints", []):
-        if c["op"] in ops and not ops[c["op"]](params[c["left"]], params[c["right"]]):
+        if c["op"] not in ops:
+            out += [Issue("ERROR", "R02", "/parameters/constraints", f"unknown constraint op {c['op']!r}")]
+        elif not ops[c["op"]](params[c["left"]], params[c["right"]]):
             out += [Issue("ERROR", "R02", "/parameters/constraints", f"violates {c['left']} {c['op']} {c['right']}")]
-    srch = spec["parameters"]["search"]
-    if srch["mode"] == "FIXED" and srch.get("max_trials") == 1 and any(params[k] != d["default"] for k, d in decl.items()):
-        out += [Issue("ERROR", "R02", "/parameters", "FIXED spec with max_trials 1 runs its defaults only")]
+    if srch["mode"] == "FIXED" and any(Decimal(str(params[k])) != Decimal(str(d["default"])) for k, d in decl.items()):
+        out += [Issue("ERROR", "R02", "/parameters", "FIXED spec runs its declared defaults only")]
     return out
 
 
