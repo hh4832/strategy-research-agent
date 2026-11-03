@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import ast
 import json
+from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -21,7 +22,7 @@ from m2_helpers import approved_profile, dev_request, env, holdout_request, regi
 
 TZ = timezone(timedelta(hours=8))
 ROOT = Path(__file__).parents[1]
-SHA = "f4276cb081ae4407d356007dc76168a8cbdf2f82"
+SHA = "a50f3902c3a014922601d8cca4e7bdf761d377b8"
 
 
 def ds(**kw):
@@ -43,17 +44,22 @@ def profiles():
     return {(p["profile_id"], p["version"]): p}
 
 
-def core_result(req, **over):
-    prov = {"engine_name": "market-research-core", "engine_git_sha": SHA, "engine_version": "2.1.0",
-            "execution_convention": CONVENTION, "performance_status": "RESEARCH_BACKTEST",
-            "datasets": [{"dataset_id": d.dataset_id, "snapshot_id": d.snapshot_id,
-                          "producer_commit_sha": d.producer_commit_sha} for d in req.datasets]}
+def core_result(req, status="RESEARCH_ONLY", **over):
+    """ExecutionResult-shaped value with the provenance keys Core a50f390 emits (unit test of the converter only;
+    real Core results are exercised in test_m1_core_compat.py)."""
+    d0 = req.datasets[0]
+    prov = {"engine_name": "market-research-core.ExecutionEngine", "engine_git_sha": SHA, "engine_version": "2.1.0",
+            "execution_convention": CONVENTION, "dataset_snapshot_id": d0.snapshot_id,
+            "dataset_producer_sha": d0.producer_commit_sha, "dataset_verdict": d0.verdict,
+            "exclusions_applied": [], "spec_sha256": req.spec_sha256, "parameters": dict(req.parameters),
+            "cost_multiplier": 1.0, "seed": 0, "window_start": req.window_start, "window_end": req.window_end,
+            "cost_profile_id": "tw_equity_cash", "cost_profile_sha256": "a" * 64, "assumptions": ["FIFO lot matching"]}
     prov.update(over.pop("prov", {}))
-    r = {"fills": [{"exec_ts": "2025-01-02T09:05:00+08:00", "side": "BUY", "qty": 1000, "fill_price": "600.5"}],
-         "round_trips": [{"net_pnl": "12.5"}], "rejections": [{"bar_ts": "2025-01-02 09:00", "reason": "ZERO_VOLUME_BAR"}],
-         "equity_curve": [], "open_position": None, "invalidated_round_trips": [], "provenance": prov}
+    r = dict(fills=[{"exec_ts": "2025-01-02T09:05:00+08:00", "side": "BUY", "qty": 1000, "fill_price": 600.5}],
+             round_trips=[{"net_pnl": 12.5}], rejections=[{"order_id": "0001", "reason": "ZERO_VOLUME_BAR"}],
+             equity_curve=[], open_positions=[], invalidated_round_trips=[], provenance=prov, status=status)
     r.update(over)
-    return r
+    return SimpleNamespace(**r)
 
 
 # ------------------------------------------------------------------------------------------ isolation
@@ -79,9 +85,11 @@ def test_adapter_is_the_only_core_importer_and_never_imports_the_oracle():
 # ------------------------------------------------------------------------------------------ reasons
 def test_reason_mapping_is_reviewed_and_fail_closed():
     assert A.map_reason("ZERO_VOLUME_BAR") == "ZERO_VOLUME_BAR"
-    assert A.map_reason("NO_LATER_ELIGIBLE_BAR") == "UNFILLED_AT_END_OF_DATA"
-    with pytest.raises(ContractViolation, match="not specific enough"):
-        A.map_reason("EXECUTION_INELIGIBLE")
+    assert A.map_reason("PIT_VIOLATION") == "PIT_VIOLATION"                 # Core-only code, passed through
+    assert A.map_reason("CLOSING_AUCTION_NOT_EXECUTABLE") == "CLOSING_AUCTION_NOT_EXECUTABLE"
+    for vague in ("EXECUTION_INELIGIBLE", "NO_LATER_ELIGIBLE_BAR"):
+        with pytest.raises(ContractViolation, match="not specific enough"):
+            A.map_reason(vague)
     with pytest.raises(ContractViolation, match="unmapped"):
         A.map_reason("SOMETHING_NEW")
 
@@ -129,17 +137,21 @@ def test_cost_profile_validation():
         A.validate_cost_profile(stale, prof)
 
 
-def test_build_core_request_carries_pins_costs_and_targets():
-    req = request()
-    t = [{"signal_ts": "2025-01-02T09:05:00+08:00", "target": 1, "contract": "2330", "reason": "x"}]
-    cr = A.build_core_request(req, t, approved_profile())
-    assert cr["schema"] == A.CORE_EXECUTION_REQUEST_V0 and cr["execution_convention"] == CONVENTION
-    assert cr["datasets"][0]["snapshot_id"] == "final_gate_20261031_154458_20eba73"
-    assert cr["costs"]["profile_sha256"] == approved_profile()["provenance"]["profile_sha256"]
-    assert cr["targets"] == t and cr["spec_sha256"] == req.spec_sha256
-    bad = registered(mutate=lambda s: s["execution"].update(convention="other"))
-    with pytest.raises(ContractViolation):
-        A.build_core_request(request(bad), t, approved_profile())
+def test_expand_roll_schedule_uses_intended_target_only():
+    t = [{"signal_ts": "2026-01-06T09:05:00+08:00", "target": 1, "contract": "F01", "reason": "S"},
+         {"signal_ts": "2026-01-07T09:10:00+08:00", "target": 0, "contract": "F02", "reason": "S"}]
+    roll = [{"at": "2026-01-07T09:00:00+08:00", "from_contract": "F01", "to_contract": "F02"}]
+    out = A.expand_roll_schedule(t, roll)
+    assert [(x["contract"], x["target"], x["reason"]) for x in out] == [
+        ("F01", 1, "S"), ("F01", 0, "ROLL_CLOSE"), ("F02", 1, "ROLL_OPEN"), ("F02", 0, "S")]
+    flat = A.expand_roll_schedule([dict(t[0], target=0)], roll)          # nothing held -> no roll orders
+    assert [x["reason"] for x in flat] == ["S"]
+
+
+def test_core_bar_columns_are_checked_not_derived():
+    A.check_core_bars(SimpleNamespace(columns=list(A.CORE_BAR_COLUMNS)))
+    with pytest.raises(ContractViolation, match="buy_execution_eligible"):
+        A.check_core_bars(SimpleNamespace(columns=[c for c in A.CORE_BAR_COLUMNS if c != "buy_execution_eligible"]))
 
 
 # ------------------------------------------------------------------------------------------ result -> report
@@ -149,26 +161,32 @@ def test_core_result_to_report_transfers_provenance_and_maps_reasons():
     check_report(rep, req)                                            # existing C4 contract
     assert all(rep.provenance[k] not in (None, "") for k in REQUIRED_PROVENANCE)
     assert rep.provenance["engine_git_sha"] == SHA and rep.provenance["dataset_snapshot_id"] == req.datasets[0].snapshot_id
-    assert rep.rejections[0]["reason"] == "ZERO_VOLUME_BAR" and rep.round_trips == [{"net_pnl": "12.5"}]
+    assert rep.rejections[0]["reason"] == "ZERO_VOLUME_BAR" and rep.round_trips == [{"net_pnl": 12.5}]
+    assert rep.open_position is None
 
 
 @pytest.mark.parametrize("over, msg", [
-    (dict(prov={"engine_git_sha": "0.2.0+source"}), "real engine git SHA"),
-    (dict(prov={"engine_git_sha": "deadbeefcafe"}), "pinned"),
-    (dict(prov={"datasets": [{"dataset_id": "x", "snapshot_id": "y", "producer_commit_sha": "z"}]}), "datasets"),
+    (dict(prov={"engine_git_sha": "0.2.0+source"}), "not a full commit"),
+    (dict(prov={"engine_git_sha": "deadbeef" * 5}), "pinned"),
+    (dict(prov={"dataset_snapshot_id": "other_snapshot"}), "request pinned"),
+    (dict(prov={"spec_sha256": "b" * 64}), "different spec"),
     (dict(prov={"execution_convention": "v0"}), "convention"),
-    (dict(rejections=[{"bar_ts": "t", "reason": "EXECUTION_INELIGIBLE"}]), "not specific enough")])
+    (dict(rejections=[{"order_id": "1", "reason": "EXECUTION_INELIGIBLE"}]), "not specific enough")])
 def test_core_result_fail_closed(over, msg):
     req = request()
     with pytest.raises(ContractViolation, match=msg):
         A.core_result_to_report(core_result(req, **over), req, SHA)
 
 
-def test_report_cannot_claim_tradable_status():
+def test_core_status_is_never_promoted():
     req = request()
-    rep = A.core_result_to_report(core_result(req, prov={"performance_status": "TRADABLE"}), req, SHA)
+    assert A.core_result_to_report(core_result(req), req, SHA).status == "RESEARCH_INTEGRATION_DEMO"
+    rep = A.core_result_to_report(core_result(req, status="FORMAL_ELIGIBLE"), req, SHA)
+    assert rep.status == "RESEARCH_BACKTEST" and rep.provenance["core_status"] == "FORMAL_ELIGIBLE"
+    check_report(rep, req)
+    bad = A.core_result_to_report(core_result(req), req, SHA)
     with pytest.raises(ContractViolation, match="live/tradable"):
-        check_report(rep, req)
+        check_report(type(bad)(**{**bad.__dict__, "status": "TRADABLE"}), req)
 
 
 # ------------------------------------------------------------------------------------------ port + engine status
@@ -178,22 +196,28 @@ FULL_MATRIX = [dict(cap_id=c.cap_id, status="SUPPORTED") for c in A.CAPABILITIES
 
 def test_port_raises_contract_gap_instead_of_simulating(monkeypatch):
     monkeypatch.setattr(A, "core_identity", lambda: {"installed": True, "git_sha": SHA, "version": "0.2.0", "source": "x"})
-    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], matrix=GAP_MATRIX)
+    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], bars_provider=lambda r: None, matrix=GAP_MATRIX)
     with pytest.raises(A.CoreContractGap, match="INTEGRATION_PENDING") as e:
         port.run(request())
     assert set(e.value.gaps) == set(A.MrcBacktestPort.REQUIRED_FOR_FORMAL_RUN)
 
 
+def test_port_without_providers_fails_closed(monkeypatch):
+    monkeypatch.setattr(A, "core_identity", lambda: {"installed": True, "git_sha": SHA, "version": "0.2.0", "source": "x"})
+    with pytest.raises(ContractViolation, match="providers? .*required|bars_provider"):
+        A.MrcBacktestPort(profiles(), matrix=FULL_MATRIX).run(request())
+
+
 def test_port_validates_before_reporting_gaps(monkeypatch):
     monkeypatch.setattr(A, "core_identity", lambda: {"installed": True, "git_sha": SHA, "version": "0.2.0", "source": "x"})
-    port = A.MrcBacktestPort({}, decisions_provider=lambda r: [], matrix=GAP_MATRIX)
+    port = A.MrcBacktestPort({}, decisions_provider=lambda r: [], bars_provider=lambda r: None, matrix=GAP_MATRIX)
     with pytest.raises(ContractViolation, match="not provided"):
         port.run(request())
 
 
 def test_port_fails_closed_without_core_commit(monkeypatch):
     monkeypatch.setattr(A, "core_identity", lambda: {"installed": False, "git_sha": None, "version": None, "source": None})
-    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], matrix=FULL_MATRIX)
+    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], bars_provider=lambda r: None, matrix=FULL_MATRIX)
     with pytest.raises(A.CoreContractGap, match="K11"):
         port.run(request())
 
@@ -235,7 +259,7 @@ def test_benchmark_status_requires_real_core_all_pass_same_sha(tmp_path):
 
 def test_committed_record_for_pinned_core_is_not_a_pass():
     st = A.engine_benchmark_status(SHA)
-    assert st["status"] == "NOT_VERIFIED" and "B02=FAIL" in st["why"]
+    assert st["status"] == "NOT_VERIFIED" and "B01=FAIL" in st["why"] and "B02" not in st["why"]
 
 
 # ------------------------------------------------------------------------------------------ runner / registry
@@ -249,7 +273,7 @@ def _runner(tmp, port, status):
 
 def test_runner_records_rejected_contract_while_core_unverified(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "core_identity", lambda: {"installed": True, "git_sha": SHA, "version": "0.2.0", "source": "x"})
-    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], matrix=GAP_MATRIX)
+    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], bars_provider=lambda r: None, matrix=GAP_MATRIX)
     status = A.engine_benchmark_status(SHA)["status"]                  # derived from the committed real-Core record
     runner, reg = _runner(tmp_path, port, status)
     rec = runner.submit(dev_request(registered()))
@@ -261,7 +285,7 @@ def test_runner_records_rejected_contract_while_core_unverified(tmp_path, monkey
 
 def test_runner_records_failed_with_gap_list_and_full_provenance(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "core_identity", lambda: {"installed": True, "git_sha": SHA, "version": "0.2.0", "source": "x"})
-    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], matrix=GAP_MATRIX)
+    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], bars_provider=lambda r: None, matrix=GAP_MATRIX)
     runner, reg = _runner(tmp_path, port, "BENCHMARK_PASS")           # even if a PASS were (wrongly) claimed
     rec = runner.submit(dev_request(registered()))
     assert rec["status"] == "FAILED" and "CoreContractGap" in rec["rejection_reasons"][0]["message"]
@@ -273,7 +297,7 @@ def test_runner_records_failed_with_gap_list_and_full_provenance(tmp_path, monke
 
 def test_governance_still_applies_with_real_adapter(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "core_identity", lambda: {"installed": True, "git_sha": SHA, "version": "0.2.0", "source": "x"})
-    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], matrix=FULL_MATRIX)
+    port = A.MrcBacktestPort(profiles(), decisions_provider=lambda r: [], bars_provider=lambda r: None, matrix=FULL_MATRIX)
     runner, reg = env(tmp_path, port=port, benchmark="BENCHMARK_PASS", lock=False)
     rec = runner.submit(holdout_request(registered()))
     assert rec["status"] == "REJECTED_GOVERNANCE"

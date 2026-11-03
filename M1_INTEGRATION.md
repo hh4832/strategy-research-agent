@@ -1,121 +1,166 @@
 # Phase 3 M1 — Core Integration Adapter & Independent Benchmark Acceptance
 
-**M1 verdict: `INTEGRATION_PENDING`** — not GO.
+**M1.1 verdict: `INTEGRATION_PENDING`** (not GO, not NO-GO).
 
-The adapter, validation, provenance transfer, reason mapping, runner/registry integration and the real-Core cross-check are delivered and tested. The pinned Core (`market-research-core@f4276cb`, branch `feature/phase2-unified-data-backtest`) exposes only `BacktestEngine.run_sma`, a long-only SMA integration probe. Codex's Phase 2.1 generic Execution Engine has not been published. On this Core, 11 of 12 benchmark cases cannot be expressed at all, and B02 runs but fails on cost precision. Formal M1 GO therefore cannot be claimed.
+The adapter now drives the real Core Phase 2.1 `ExecutionEngine.run`, pinned at `market-research-core@a50f3902c3a014922601d8cca4e7bdf761d377b8`.
 
-## 1. Baseline and stacking
+- All 12 benchmark cases execute on the real engine: **1 PASS, 11 FAIL, 0 NOT_EXECUTABLE**.
+- The failures come from four concrete, fixable Core contract gaps: G12, G15, G14 and G16.
+- None of the failures is a defect in the Agent's adapter.
+- No case shows look-ahead, a wrong fill time, a wrong side or contract, a stitched roll, or a forced close.
+- NO-GO is not warranted. M1 GO is blocked until Core closes the gaps and all 12 cases PASS on a pinned commit.
+
+Record files:
+- `benchmark/results/mrc_a50f3902c3a0/crosscheck.json` — machine-readable record.
+- `contract_gaps.json` — handoff file for Codex.
+- `report.md` — human-readable report.
+
+## 1. Baseline
 
 | Item | Value |
 |---|---|
-| Agent base | `feature/m2-registry-governance` @ `f39413c` |
-| Agent PRs | PR #1 → PR #2. Neither is merged, so this branch is stacked on PR #2 (`feature/m1-core-adapter`). |
-| Core | `hh4832/market-research-core` @ `f4276cb081ae4407d356007dc76168a8cbdf2f82`, read-only. Not modified, and no Codex branch was touched. |
-| Core `main` | `aadedf0` has no backtest module. The Phase 2 engine exists only on `feature/phase2-unified-data-backtest`. |
+| Agent | `feature/m1-core-adapter`. Stacked on PR #2 (`f39413c`), which is stacked on PR #1. **No PR is merged.** This round updates PR #3. |
+| Core (read-only) | `a50f3902…` on `feature/phase2.1-execution-contract` (Core PR #2). Not modified. |
+| Previous M1 run | Core `f4276cb` (`run_sma` only) gave 0 PASS, 1 FAIL, 11 NOT_EXECUTABLE. Record kept in `benchmark/results/mrc_f4276cb081ae/`. |
+| Oracle | `benchmark/oracle` and `benchmark/cases`. **0 lines changed.** |
 
-## 2. Adapter scope (`src/strategy_agent/adapters/mrc_adapter.py`)
+## 2. Adapter (`src/strategy_agent/adapters/mrc_adapter.py`)
 
-| Responsibility | Function | Behaviour |
+| Responsibility | Function | Notes |
 |---|---|---|
-| Spec → Core request | `build_core_request` | Builds the proposed `CORE_EXECUTION_REQUEST_V0`. Validates dataset pins, the CostProfile and the execution convention. |
-| Signals → targets | `decisions_to_targets` | Passes `Decision.decision_ts` (= `available_at`) through unchanged and collapses repeated targets. Rejects naive timestamps and targets outside −1/0/+1. |
-| Core result → `BacktestReport` | `core_result_to_report` | Copies values and never recomputes them. Validates engine SHA, datasets and convention. |
-| Provenance transfer | (in `core_result_to_report`) | Fills every `ports.REQUIRED_PROVENANCE` field. `check_report` (C4) still applies. |
-| Rejection mapping | `map_reason`, `REASON_MAP` | Mapping is reviewed explicitly. Ambiguous Core codes (`EXECUTION_INELIGIBLE`) and unknown codes fail closed. |
-| Version validation | `validate_dataset_refs`, `validate_cost_profile`, `validate_core_provenance` | Rejects `LATEST`, `UNKNOWN`, non-`BACKTEST` scopes and non-GO verdicts. CostProfile must be APPROVED with a matching sha256 and matching cost fields. The result's engine SHA must equal the pinned SHA. |
-| Engine identity | `core_identity`, `engine_info` | Takes the commit from pip `direct_url` or from a clean git checkout, never from the package version. Benchmark status comes from the cross-check record, never from hand-set values. |
-| Port | `MrcBacktestPort.run` | Validates first. Raises `CoreContractGap` while any required capability is missing, so it never simulates. |
+| Decisions → targets | `decisions_to_targets` | Decision time (= `available_at`) passes through unchanged. |
+| Spec roll schedule → explicit orders | `expand_roll_schedule` | Uses the *intended* target only; never fills, never stitches prices. |
+| Targets → Core orders | `targets_to_orders` | `ExecutionOrder` target-position MARKET orders, TIF `DAY`. Each order uses `signal_time = signal_available_at = order_time` = the decision time (convention v1 §1.2). |
+| Pins → Core config | `core_config` | Builds `ExecutionConfig` with Core commit, snapshot, producer SHA, verdict, scope, spec sha, parameters, cost multiplier, seed and window. `same_timestamp_open_assumption=True` is set **only** for START-labelled, CONFIRMED-session data (see C1). |
+| Agent CostProfile → Core | `core_cost_profile` | Field mapping only. Rules Core cannot express (FLOOR_INTEGER rounding, price-banded tick ladder) raise `CoreContractGap`. |
+| Bars | `check_core_bars` | Checks that Core's execution columns are present. Eligibility, sessions and availability come from Core's own data adapters (`taiwan.py`). |
+| `ExecutionResult` → `BacktestReport` | `core_result_to_report` | Values are copied, not recomputed. Provenance is checked: full 40-hex engine SHA equal to the pin, convention, spec sha, snapshot and producer. Core `FORMAL_ELIGIBLE` maps to `RESEARCH_BACKTEST`; anything else maps to `RESEARCH_INTEGRATION_DEMO`. |
+| Reasons | `map_reason` | Oracle codes map 1:1. Core-only codes are reviewed and passed through under their own names. Vague codes (`EXECUTION_INELIGIBLE`, `NO_LATER_ELIGIBLE_BAR`) and unknown codes fail closed. |
+| Port | `MrcBacktestPort.run` | Validates dataset pins, CostProfile, convention and market semantics, then calls `ExecutionEngine.run`. Production runners reach it only with `BENCHMARK_PASS`. |
 
-The adapter does not:
-- simulate fills or compute formal PnL;
-- edit eligibility or fill missing bars;
-- stitch futures contracts;
-- import or call the oracle.
+The adapter never simulates fills, computes PnL or fees, edits eligibility, moves signal times, fills missing bars, stitches futures prices or calls the Oracle. This is enforced by AST import tests and the narrowed M2 isolation test.
 
-`test_m1_adapter.py` asserts this through an AST import check. The M2 isolation test was narrowed to exempt exactly this one file, for the Core import only, as ARCHITECTURE §6 prescribes. The oracle ban still applies everywhere, including the adapter.
+## 3. Capability matrix on Core a50f390 (measured by introspection, not assumed)
 
-## 3. Core compatibility matrix (measured on the installed Core, not assumed)
-
-Source: `compatibility_matrix()`, which combines introspection with one real `run_sma` probe run. The full table with evidence is in `benchmark/results/mrc_f4276cb081ae/report.md`.
-
-| Cap | Contract | Status @ f4276cb | Needed by |
-|---|---|---|---|
-| K01 generic execution entry point (external targets/orders) | C3 | MISSING | B01, B03–B12 |
-| K02 short positions | C3 | MISSING | B06 |
-| K03 tick slippage | C8 | PARTIAL (bps only) | all |
-| K04 per-unit fixed fee, per-side tax | C8 | MISSING | futures cases |
-| K05 buy/sell execution eligibility | C1 | MISSING (single `execution_eligible`) | B07 |
-| K06 sessions / OUTSIDE_SESSION | C1 | MISSING | B05 |
-| K07 ZERO_VOLUME_BAR | C1 | MISSING | B04 |
-| K08 exclusion windows / invalidated round trips | C5 | MISSING | B11 |
-| K09 roll schedule | C6 | MISSING | B09 |
-| K10 open position at end | C7 | PARTIAL (position kept, not reported) | B10 |
-| K11 real engine git SHA in provenance | C4 | MISSING (`engine_version` 0.2.0) | all |
-| K12 Decimal arithmetic or a documented rounding rule | C3 | MISSING (float) | all |
-| K13 PIT membership flag | C1 | MISSING | B08 |
-| K14 TIF / expiry | C3 | MISSING | — |
-| K15 specific reason codes | C3 | PARTIAL (`EXECUTION_INELIGIBLE` has no cause) | B04, B05, B07 |
-
-## 4. Benchmark B01–B12 on the real Core
-
-Record: `benchmark/results/mrc_f4276cb081ae/crosscheck.json` and `report.md`, with `engine.kind = REAL_CORE`. Expected values are read unchanged from `benchmark/cases`.
-
-| Case | Status | Root cause | Responsible repo |
-|---|---|---|---|
-| B02 next-bar SMA | **FAIL** (executed on `run_sma`) | K03/K12: slippage in bps cannot express 1 tick; float arithmetic | market-research-core |
-| B01, B03–B12 | NOT_EXECUTABLE | K01 (no generic entry point), plus the case-specific capabilities in §3 | market-research-core |
-
-B02 detail (real Core vs oracle):
-
-| Field | Expected | Actual |
+| Cap | Status | Evidence |
 |---|---|---|
-| Signal → fill timing | BUY at 09:30, SELL at 09:45 | identical |
-| Forbidden fill | none at 09:25 (the cross bar) | none |
-| BUY price / fee | 60.4 / 86.07 | 60.4005 / 86.0707125 |
-| SELL price / fee / tax | 59.6 / 84.93 / 178.8 | 59.6005 / 84.9307 / 178.8015 |
-| Realized PnL | −1149.80 | −1149.8029 |
+| K01 generic execution entry point | SUPPORTED | `ExecutionEngine.run(bars, orders, *, cost_profile, config)` |
+| K02 short positions | SUPPORTED | FIFO long/short lots |
+| K03 tick slippage | SUPPORTED (constant tick) | `CostProfile.tick_size` + `slippage_ticks`; see G03b for the TW tick ladder |
+| K04 futures per-contract fee, tax | SUPPORTED | |
+| K05 buy/sell eligibility | SUPPORTED | `buy_`/`sell_execution_eligible` plus per-side reasons |
+| K06 sessions | SUPPORTED | `session_open` / `session_close` |
+| K07 zero volume | SUPPORTED | |
+| K08 exclusion windows, invalidated round trips | SUPPORTED | B11 invalidated net PnL matches (10339.7) |
+| K09 roll | PARTIAL (by design) | Contract-keyed FIFO; roll orders are supplied by the adapter; B09 matches |
+| K10 open position | SUPPORTED | B10 mark 9800 matches |
+| K11 engine SHA | PARTIAL | Caller-supplied `core_commit_sha` (G11) |
+| K12 arithmetic / rounding | PARTIAL | Rounds to 0.01 only (G12, G12b) |
+| K13 PIT | SUPPORTED | `PIT_VIOLATION`; `bar_start >= available_at` |
+| K14 TIF | PARTIAL | `DAY` = session of the first candidate bar (G14) |
+| K15 rejection log | PARTIAL | One rejection per *unfilled order*, none per skipped bar (G15) |
 
-The Core probe follows the execution convention's timing (next eligible bar, no same-bar fill). It cannot reproduce the cost model.
+## 4. B01–B12 on the real `ExecutionEngine.run` (Core a50f390)
 
-## 5. CI / pytest
+Inputs:
+- Synthetic fixture bars with an explicit START label and the case sessions. These test the engine only; they are **not** evidence about real TXF or IBKR label/session semantics, which Core keeps UNKNOWN and blocked.
+- Signals for B02 and B12 come from the Agent's own `sma_crossover` and `orb`. The other cases use the hand-calculated fixture signals.
+
+| Case | Result | First divergent event | Realized PnL expected / actual | Root cause |
+|---|---|---|---|---|
+| B01 | FAIL | tax @ 09:15: 80.044 → 80.04 (−0.004) | 7339.76 / 7339.76 | G12 |
+| B02 | **PASS** | — | −1149.80 / −1149.80 | — |
+| B03 | FAIL | tax @ 09:20: 80.124 → 80.12 | −2660.2 / −2660.2 | G12 |
+| B04 | FAIL | missing per-bar rejection `ZERO_VOLUME_BAR` @ 09:15 | 3339.76 / 3339.76 | G15, G12 |
+| B05 | FAIL | `ORDER_EXPIRED` instead of an overnight fill; per-bar `OUTSIDE_SESSION` ×2 missing | −155.395 / 0 | G14, G15 |
+| B06 | FAIL | tax @ 09:10: 160.792 → 160.79 | 38679.2 / 38679.2 | G12 |
+| B07 | FAIL | 4 per-bar limit-lock rejections missing (fills correct) | −7253.2275 / −7253.23 | G15, G12 |
+| B08 | FAIL | fee @ 01-06 09:05: 87.0675 → 87.07 | −58.7625 / −58.77 | G12 |
+| B09 | FAIL | tax @ 01-06 09:05: 80.052 → 80.05 (roll, contracts and fills correct) | 26278.152 / 26278.15 | G12 |
+| B10 | FAIL | tax 80.044 → 80.04 (open position and mark correct) | 0 / 0 | G12 |
+| B11 | FAIL | tax 80.044 → 80.04 (invalidation correct) | 0 / 0 | G12 |
+| B12 | FAIL | tax @ 09:25: 80.168 → 80.17 | 1339.632 / 1339.63 | G12 |
+
+Twelve dimensions were compared per case:
+1. Signal / availability time
+2. Order time
+3. Fill time
+4. Fill price
+5. Long/short
+6. Fee/tax
+7. Realized/unrealized PnL
+8. Rejections
+9. Invalidated round trips
+10. Open position
+11. Contract transitions
+12. Provenance
+
+Every difference is listed with its numeric delta in `crosscheck.json`. **Counterfactual:** if only G12 were fixed, 9 of 12 cases would PASS. Fixing G12, G15 and G14 leaves no remaining differences.
+
+### Priority conflicts
+
+- **C1 — next-bar open.** Convention v1 fills at the first bar with `ts ≥ order_ts`, where `order_ts = available_at = bar_end` of the signal bar. With Core's default `same_timestamp_open_assumption=False`, every fill is **one bar late** (B01: 09:20/09:35 instead of 09:15/09:30). With `True`, timing matches the Oracle in all 12 cases. This is not a PIT relaxation: Core still requires `bar_start ≥ available_at` and `bar_end > signal_time`, and the fill is stamped `SAME_TIMESTAMP_BAR_OPEN`. The adapter enables the flag only when bars are START-labelled and the session is CONFIRMED; UNKNOWN fails closed. No Core change is needed.
+- **C2 — float vs Decimal.** Core quantizes fee and tax to 0.01 (HALF_UP/UP/DOWN) and accounts in float. Oracle v1 §1.6 is unrounded Decimal. The difference is at most 0.005 per fee/tax line and up to 0.0075 on realized PnL. Fill prices and tick rounding match in all executed cases. → **G12**
+- **C3 — chronology.** This is shown by a probe that needs no Oracle answer:
+  1. A BUY is ordered at 09:10 but is limit-up locked until 09:25.
+  2. A target-0 SELL is ordered at 09:20.
+  3. Core fills the SELL at 09:20 and the BUY at 09:25, then books a LONG round trip with **exit 09:20 before entry 09:25**.
+
+  Core processes orders in order-time sequence and updates FIFO, cash and target state per order, not per fill time. → **G16**
+
+  Separately, an unfilled target order does *not* corrupt later targets: in B05 the later target-0 becomes a NOOP. That part is correct.
+- **C4 — market rules (synthetic only).**
+  - Side-specific eligibility: correct (B07 fill times).
+  - Exclusion: correct (B11).
+  - Session: correct.
+  - Roll: correct (B09).
+  - PIT: correct (B08).
+  - TIF: differs (G14).
+
+## 5. Contract gaps (G01–G15 updated in place; G03b, G12b, G16 added)
+
+| Gap | Status @ a50f390 | Blocking | Minimum correction (Core, unless noted) |
+|---|---|---|---|
+| G01 generic execution API | **CLOSED** | — | — |
+| G02 short | **CLOSED** | — | — |
+| G03 tick slippage | **CLOSED** (constant tick) | — | — |
+| **G03b** TW price-banded tick ladder | OPEN | yes, for real TW equity | `costs.py`: accept a tick ladder (or a per-bar tick from the pinned trading_rules) in `adverse_fill_price` |
+| G04 per-unit fee / tax | **CLOSED** | — | — |
+| G05 side eligibility / G13 PIT | **CLOSED** | — | — |
+| G06 / G07 session, zero volume | **CLOSED** (execution) | — | — |
+| G08 exclusion | **CLOSED** | — | — |
+| G09 roll | CLOSED by design | no | The adapter expands the spec roll schedule (`expand_roll_schedule`) |
+| G10 open position | **CLOSED** | — | — |
+| G11 engine SHA | PARTIAL | no | `execution.py`: derive `engine_git_sha` from package metadata and reject a disagreeing config value |
+| **G12** unrounded mode | OPEN | **yes** (10 cases) | `costs.py`: add rounding `NONE` (skip `_round`; Decimal fees/taxes) for convention-v1 profiles |
+| **G12b** FLOOR_INTEGER | OPEN | yes, for the TW CostProfile | `costs.py`: add `FLOOR_INTEGER` (`quantize(Decimal('1'), ROUND_FLOOR)`) |
+| **G14** TIF | OPEN | **yes** (B05) | `execution.py`: TIF expiring at the first `session_close > order_time`, with `ORDER_EXPIRED` at that time (convention v1 §1.5) |
+| **G15** per-bar rejection log | OPEN | **yes** (B04, B05, B07) | `execution.py` candidate loop: append `{order_id, bar_ts, reason}` for every skipped bar, even if the order fills later |
+| **G16** chronology | OPEN | **yes** (probe) | `execution.py`: event loop over `bar_start`; at each bar, evaluate live orders in order-time sequence and apply fills to FIFO, cash and targets immediately |
+
+Machine-readable version for Codex: `benchmark/results/mrc_a50f3902c3a0/contract_gaps.json`. Each entry has gap id, Core SHA, cases, expected, actual, numeric difference, first divergent event, root cause, responsible repository, code location, minimum correction and a blocking flag.
+
+## 6. Runner integration
+
+Tests use the real Core and synthetic bars:
+- **End to end:** Strategy Spec → Agent `sma_crossover` → adapter → `ExecutionEngine.run` → `BacktestReport` → `check_report` (C4). The report carries the real engine SHA and the spec sha, and its status is `RESEARCH_INTEGRATION_DEMO` because the cost components are DRAFT/assumed.
+- **Production runner:** with `engine_info()` derived from the committed record (`NOT_VERIFIED`), the runner records `REJECTED_CONTRACT` (C00) and **never calls Core**.
+- No `BENCHMARK_PASS` is forged anywhere. The end-to-end test calls the port directly and does not go through the production runner. It is a test-only path, isolated from the runner.
+- The real TW CostProfile (FLOOR_INTEGER, tick ladder) fails closed with `CoreContractGap` (G12b, G03b). UNKNOWN market semantics fail closed.
+- Holdout, budget and spec governance are unchanged. `registry/` and `governance/` are untouched.
+
+## 7. CI / pytest
 
 | Environment | Result |
 |---|---|
-| Local, with real Core @ f4276cb | 196 passed |
-| Local, without Core | 190 passed, 1 module skipped |
-| Spec validation | 3 / 3 example specs OK |
-| CI job `test` (3.11 / 3.12) | Core not installed; the compat module skips |
-| CI job `core-compat` (new) | Installs Core at the pinned commit; runs compat and adapter tests and the cross-check, and asserts `REAL_CORE` at the pinned SHA |
+| Local, real Core a50f390 | **215 passed** |
+| Local, without Core | 193 passed, 1 module skipped |
+| CI `core-compat` | Installs Core at `a50f3902…` and runs the compat and adapter tests plus the cross-check (asserts `REAL_CORE` at the pinned SHA) |
 
-New tests:
-- `test_m1_adapter.py` (25): contract, fail-closed, engine-status forgery cases, runner/registry integration.
-- `test_m1_core_compat.py` (6): real Core.
+## 8. Conditions for M1 GO / entry into M3
 
-## 6. Registry integration
-
-- With the real record, `engine_info()` returns `NOT_VERIFIED`. The runner then records `REJECTED_CONTRACT` (C00) with engine SHA `f4276cb…`.
-- If a PASS were wrongly claimed, `MrcBacktestPort` still raises `CoreContractGap`. The runner records `QUEUED → RUNNING → FAILED`, with the gap list and full provenance (spec sha256, dataset pins, agent SHA).
-- Holdout and spec governance are unchanged under the real adapter: a holdout request without a lock → `REJECTED_GOVERNANCE`; a DRAFT spec → `REJECTED_SPEC`.
-- No governance control was disabled. `registry/` and `governance/` were not modified.
-
-## 7. Contract gaps for market-research-core (G01–G15 = K01–K15)
-
-1. **G01** A generic `execute(request)` (or equivalent) that accepts `CORE_EXECUTION_REQUEST_V0`: targets with `signal_ts`, pinned datasets, the CostProfile reference, and the execution convention. It returns `CORE_EXECUTION_RESULT_V0`: fills, round trips, invalidated round trips, rejections, equity curve, open position, provenance.
-2. **G02** Short positions.
-3. **G03 / G04** Tick slippage with instrument tick size; per-unit fee, per-side tax, minimum fee and rounding from the CostProfile.
-4. **G05 / G13** `buy_execution_eligible`, `sell_execution_eligible` and PIT flags supplied by Core, not derived by the adapter.
-5. **G06 / G07 / G15** Session, zero-volume and limit-lock rejections with specific codes that map 1:1 to `REASON_CODES`.
-6. **G08** Exclusion windows: no signal, fill or valuation inside; invalidated round trips reported.
-7. **G09** Spec-driven roll schedule.
-8. **G10** `open_position` with mark price at end of data.
-9. **G11** A real commit SHA in result provenance.
-10. **G12** Decimal arithmetic, or a documented rounding rule that matches the oracle.
-11. **G14** Time-in-force / expiry.
-
-## 8. Conditions for M1 GO and entry into M3
-
-1. Core publishes the generic execution API (G01) and pins it to a commit. M1 then implements `MrcBacktestPort.run` against it; the call site is already in place.
-2. The cross-check on that commit is all 12 PASS against unchanged oracle answers (`engine_benchmark_status` → `BENCHMARK_PASS`).
-3. The `core-compat` CI job moves to the new SHA and passes.
-4. A runner end-to-end run on the new Core produces a COMPLETED experiment record with full provenance.
-5. M3 starts only after the above. Until then, the runner fails closed (`REJECTED_CONTRACT` / `FAILED`) and no formal research result can be produced.
+1. Core closes G12, G14, G15 and G16 on a new pinned commit.
+2. The cross-check on that commit is 12/12 PASS against unchanged Oracle answers, and `engine_benchmark_status` returns `BENCHMARK_PASS` from the real-Core record.
+3. `core-compat` moves to that SHA and passes.
+4. A production runner run on that commit records COMPLETED with full provenance.
+5. For real TW equity research, G03b and G12b must also be closed, and the CostProfile must be APPROVED with broker evidence.

@@ -1,21 +1,22 @@
 """M1 integration adapter: the ONLY module of the Strategy Agent that knows ``market_research_core``.
 
-Responsibilities (Phase 3 M1):
-  * Strategy Spec + BacktestRequest  -> Core execution request   (``build_core_request``)
-  * Signal decisions                 -> Core target orders        (``decisions_to_targets``)
-  * Core result                      -> ``ports.BacktestReport``  (``core_result_to_report``)
-  * provenance transfer, rejection-reason mapping, dataset / snapshot / CostProfile / engine-SHA validation
-  * a capability matrix measured against the REAL installed Core (``compatibility_matrix``)
+Target Core API (Phase 2.1, verified on ``a50f3902``)::
 
-It never simulates fills, computes formal PnL, edits eligibility, fills bars, stitches futures contracts or
-calls the benchmark oracle. When the installed Core cannot express a request, the adapter raises
-``CoreContractGap`` (fail-closed); it does not substitute an execution engine of its own.
+    ExecutionEngine().run(bars, orders, *, cost_profile=CostProfile, config=ExecutionConfig) -> ExecutionResult
 
-Core state at M1 (verified, not assumed): the only execution entry point is
-``BacktestEngine.run_sma(UnifiedBars, BacktestAssumptions)`` on branch ``feature/phase2-unified-data-backtest``
-(``f4276cb``) - a long-only SMA integration probe. The generic Phase 2.1 Execution Engine (Codex) is not
-published yet; ``CORE_EXECUTION_REQUEST_V0`` / ``CORE_EXECUTION_RESULT_V0`` below are the Agent-side contract
-proposal it would have to satisfy (see M1_INTEGRATION.md, contract gaps G01-G15).
+Responsibilities (translation and pass-through only):
+  * signal decisions        -> Core ``ExecutionOrder`` target-position orders   (``decisions_to_targets``,
+                                ``expand_roll_schedule``, ``targets_to_orders``)
+  * request + pins          -> ``ExecutionConfig``                              (``core_config``)
+  * Agent CostProfile       -> Core ``CostProfile``                             (``core_cost_profile``)
+  * Core-shaped bar frame   -> column check only                                (``check_core_bars``)
+  * ``ExecutionResult``     -> ``ports.BacktestReport``                         (``core_result_to_report``)
+  * provenance transfer, reviewed rejection-reason mapping, dataset / CostProfile / engine-SHA validation
+  * a capability matrix measured on the REAL installed Core                     (``compatibility_matrix``)
+
+It never simulates fills, computes PnL or fees, edits buy/sell eligibility, moves signal times, fills bars,
+stitches futures series or calls the benchmark oracle. When Core cannot express a request the adapter raises
+``CoreContractGap`` (fail-closed); it does not substitute behaviour of its own.
 """
 from __future__ import annotations
 
@@ -27,16 +28,25 @@ from dataclasses import asdict, dataclass, fields
 from datetime import datetime
 from importlib import metadata
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from strategy_agent.costs.profile import cost_mismatches, profile_hash
 from strategy_agent.ports import (CONVENTION, REQUIRED_PROVENANCE, BacktestReport, BacktestRequest,
                                   ContractViolation, DatasetRef)
 
-ADAPTER_VERSION = "m1-0.1.0"
+ADAPTER_VERSION = "m1.1-0.2.0"
 CORE_DIST = "market-research-core"
-ALLOWED_DATASET_VERDICTS = {"GO", "SCOPED_GO", "PASS"}
+ALLOWED_DATASET_VERDICTS = {"GO", "SCOPED_GO"}
 TS_FMT = "%Y-%m-%d %H:%M"
+SHA40 = re.compile(r"[0-9a-fA-F]{40}")
+
+# Core's execution bar contract (execution._REQUIRED_COLUMNS @ a50f390). The adapter checks presence only.
+CORE_BAR_COLUMNS = (
+    "bar_start", "bar_end", "available_at", "timezone", "session", "symbol", "market", "contract",
+    "open", "high", "low", "close", "volume", "data_exists", "backtest_eligible",
+    "buy_execution_eligible", "sell_execution_eligible", "execution_rejection_reason",
+    "session_open", "session_close",
+)
 
 
 class CoreContractGap(RuntimeError):
@@ -48,30 +58,27 @@ class CoreContractGap(RuntimeError):
 
 
 # ------------------------------------------------------------------------------------------ reasons
-# Core reason -> oracle reason (benchmark/harness/crosscheck.REASON_CODES). Reviewed mapping, never improvised:
-# an unmapped Core reason is a contract violation, not a silent pass-through.
-REASON_MAP: dict[str, str] = {
-    # Agent-proposed Core v0 codes (identity)
-    "OUTSIDE_SESSION": "OUTSIDE_SESSION",
-    "ZERO_VOLUME_BAR": "ZERO_VOLUME_BAR",
-    "LIMIT_UP_LOCKED_BUY": "LIMIT_UP_LOCKED_BUY",
-    "LIMIT_DOWN_LOCKED_SELL": "LIMIT_DOWN_LOCKED_SELL",
-    "BAR_IN_EXCLUSION_WINDOW": "BAR_IN_EXCLUSION_WINDOW",
-    "ORDER_EXPIRED": "ORDER_EXPIRED",
-    "UNFILLED_AT_END_OF_DATA": "UNFILLED_AT_END_OF_DATA",
-    # Core f4276cb (run_sma) codes
-    "NO_LATER_ELIGIBLE_BAR": "UNFILLED_AT_END_OF_DATA",
+# Core reason -> report reason. Oracle codes map 1:1; Core-only codes are reviewed and passed through under
+# their own name (they are not oracle codes and are never renamed into one). Unknown codes fail closed.
+ORACLE_REASONS = {"OUTSIDE_SESSION", "ZERO_VOLUME_BAR", "LIMIT_UP_LOCKED_BUY", "LIMIT_DOWN_LOCKED_SELL",
+                  "BAR_IN_EXCLUSION_WINDOW", "ORDER_EXPIRED", "UNFILLED_AT_END_OF_DATA"}
+CORE_ONLY_REASONS = {
+    "PIT_VIOLATION", "TARGET_SIDE_MISMATCH", "BAR_NOT_ELIGIBLE", "BUY_NOT_ELIGIBLE", "SELL_NOT_ELIGIBLE",
+    "LIMIT_NOT_TOUCHED", "INSUFFICIENT_MARGIN", "RISK_LIMIT",
+    # rejection reasons carried on bars by Core's data adapters (taiwan.py / client.py @ a50f390)
+    "BAR_NOT_BACKTEST_OR_LIMIT_ELIGIBLE", "BUY_RULE_INELIGIBLE", "SELL_RULE_INELIGIBLE",
+    "CLOSING_AUCTION_NOT_EXECUTABLE", "TIMESTAMP_LABEL_OR_SESSION_UNKNOWN",
 }
-# Core f4276cb emits EXECUTION_INELIGIBLE without saying why (side, session, volume, limit): it cannot be mapped
-# onto one oracle code without the adapter guessing -> listed here so that it fails closed explicitly.
-AMBIGUOUS_CORE_REASONS = {"EXECUTION_INELIGIBLE", "INSUFFICIENT_CASH"}
+REASON_MAP: dict[str, str] = {r: r for r in ORACLE_REASONS | CORE_ONLY_REASONS}
+# reasons whose cause is not stated (Phase-2 run_sma era); they cannot be mapped without guessing
+AMBIGUOUS_CORE_REASONS = {"EXECUTION_INELIGIBLE", "INSUFFICIENT_CASH", "NO_LATER_ELIGIBLE_BAR"}
 
 
 def map_reason(core_reason: str) -> str:
     if core_reason in REASON_MAP:
         return REASON_MAP[core_reason]
     if core_reason in AMBIGUOUS_CORE_REASONS:
-        raise ContractViolation(f"core reason {core_reason!r} is not specific enough to map (contract gap G07)")
+        raise ContractViolation(f"core reason {core_reason!r} is not specific enough to map (contract gap G15)")
     raise ContractViolation(f"unmapped core rejection reason {core_reason!r}")
 
 
@@ -89,7 +96,7 @@ def _git_sha(path: Path) -> str | None:
 
 def core_identity() -> dict:
     """Commit of the INSTALLED Core: pip direct_url vcs commit, else a clean local git checkout; never the
-    package version (``0.2.0`` / ``+source`` is not a commit). Missing -> ``git_sha`` None (fail-closed)."""
+    package version. Missing -> ``git_sha`` None (fail-closed)."""
     try:
         dist = metadata.distribution(CORE_DIST)
     except metadata.PackageNotFoundError:
@@ -106,7 +113,7 @@ def core_identity() -> dict:
 
 
 def _core():
-    import market_research_core  # noqa: PLC0415 - only import site of Core in the Agent
+    import market_research_core  # noqa: PLC0415 - the only import site of Core in the Agent
     return market_research_core
 
 
@@ -114,106 +121,95 @@ def _core():
 @dataclass(frozen=True)
 class Capability:
     cap_id: str
-    contract: str            # architecture contract code(s)
+    contract: str
     description: str
     required_by: tuple[str, ...]
 
 
+ALL = tuple(f"B{i:02d}" for i in range(1, 13))
 CAPABILITIES = (
-    Capability("K01", "C3", "generic execution entry point accepting externally computed targets/orders "
-               "(not a fixed built-in strategy)", ("B01", "B03", "B04", "B05", "B06", "B07", "B08", "B09", "B10",
-                                                    "B11", "B12")),
-    Capability("K02", "C3", "short positions (target -1)", ("B06",)),
-    Capability("K03", "C8", "tick-based slippage with an instrument tick size", tuple(f"B{i:02d}" for i in range(1, 13))),
+    Capability("K01", "C3", "generic execution entry point accepting externally computed orders/targets",
+               ALL),
+    Capability("K02", "C3", "short positions", ("B06",)),
+    Capability("K03", "C8", "tick-based slippage with an instrument tick size", ALL),
     Capability("K04", "C8", "fixed fee per unit per side and per-side tax (futures)",
                ("B01", "B03", "B04", "B06", "B09", "B10", "B11", "B12")),
     Capability("K05", "C1", "side-specific execution eligibility (buy/sell)", ("B07",)),
     Capability("K06", "C1", "session awareness with OUTSIDE_SESSION rejection", ("B05",)),
     Capability("K07", "C1", "ZERO_VOLUME_BAR rejection", ("B04",)),
-    Capability("K08", "C5", "exclusion windows: no signal/fill/valuation inside, invalidated round trips",
-               ("B11",)),
-    Capability("K09", "C6", "futures roll schedule from the spec, no implied roll", ("B09",)),
+    Capability("K08", "C5", "exclusion windows and invalidated round trips", ("B11",)),
+    Capability("K09", "C6", "futures roll from the spec schedule, contract-keyed FIFO, no implied roll", ("B09",)),
     Capability("K10", "C7", "open position reported at end of data (no implicit close)", ("B10",)),
-    Capability("K11", "C4", "real engine git SHA in result provenance", tuple(f"B{i:02d}" for i in range(1, 13))),
-    Capability("K12", "C3", "exact (Decimal) arithmetic or a documented rounding rule", tuple(f"B{i:02d}" for i in range(1, 13))),
-    Capability("K13", "C1", "PIT membership flag gating entries", ("B08",)),
-    Capability("K14", "C3", "order time-in-force / expiry (ORDER_EXPIRED)", ()),
-    Capability("K15", "C3", "specific, documented rejection reason codes", ("B04", "B05", "B07")),
+    Capability("K11", "C4", "real engine git SHA in result provenance", ALL),
+    Capability("K12", "C3", "exact arithmetic or a rounding rule able to reproduce convention v1 (no rounding)",
+               ALL),
+    Capability("K13", "C1", "PIT: execution never before information availability", ("B08",)),
+    Capability("K14", "C3", "order time-in-force / expiry matching convention v1 §1.5", ("B05", "B07")),
+    Capability("K15", "C3", "rejection log per skipped bar with specific codes (convention v1 §1.4)",
+               ("B04", "B05", "B07")),
 )
 
 
-def _probe_run_sma(core) -> dict:
-    """Execute the REAL Core probe once on a 3-bar frame ending long: observes provenance and end-of-data
-    behaviour instead of assuming them."""
-    import pandas as pd  # noqa: PLC0415
-    ts = pd.date_range("2026-01-05 09:00", periods=6, freq="5min", tz="Asia/Taipei")
-    close = [10.0, 10.0, 10.0, 11.0, 12.0, 13.0]
-    frame = pd.DataFrame({"timestamp": ts, "open": close, "high": close, "low": close, "close": close,
-                          "volume": [100] * 6, "available_at": ts + pd.Timedelta(minutes=5), "data_exists": True,
-                          "research_eligible": True, "backtest_eligible": True, "execution_eligible": True})
-    prov = core.models.UnifiedProvenance(market="TW", symbol="PROBE", snapshot_id="M1_CAPABILITY_PROBE",
-                                         producer_commit_sha="none", data_verdict="SYNTHETIC",
-                                         source_files=("synthetic",), permitted_usage_scope="BACKTEST")
-    res = core.BacktestEngine().run_sma(core.UnifiedBars(frame, prov),
-                                        core.BacktestAssumptions(fast_window=1, slow_window=2))
-    return {"result_fields": [f.name for f in fields(res)], "provenance": res.provenance,
-            "trades": len(res.trades), "last_position": float(res.equity_curve["position"].iloc[-1])}
-
-
 def compatibility_matrix(core=None) -> list[dict]:
-    """Measure every capability against the installed Core (introspection + one real probe run)."""
+    """Measure every capability against the installed Core by introspecting its public API and sources."""
     ident = core_identity()
-    rows = []
     try:
         core = core or _core()
     except ImportError as e:
         return [dict(asdict(c), status="MISSING", evidence=f"market_research_core not importable: {e}",
                      core_git_sha=None) for c in CAPABILITIES]
-    eng = getattr(core, "BacktestEngine", None)
-    methods = sorted(n for n, _ in inspect.getmembers(eng, inspect.isfunction) if not n.startswith("_")) if eng else []
-    generic = [n for n in dir(core) if n.lower() in {"executionengine", "execute", "executionrequest"}]
-    assumptions = {f.name for f in fields(core.BacktestAssumptions)} if hasattr(core, "BacktestAssumptions") else set()
-    required_cols = set(getattr(getattr(core, "backtest", None), "REQUIRED", set()))
-    probe: dict | Exception
-    try:
-        probe = _probe_run_sma(core)
-    except Exception as e:  # noqa: BLE001
-        probe = e
-    src = inspect.getsource(core.backtest) if hasattr(core, "backtest") else ""
+    eng = getattr(core, "ExecutionEngine", None)
+    if eng is None:
+        return [dict(asdict(c), status="MISSING", evidence="no ExecutionEngine in this Core",
+                     core_git_sha=ident["git_sha"]) for c in CAPABILITIES]
+    sig = list(inspect.signature(eng.run).parameters)
+    ex_src = inspect.getsource(core.execution)
+    co_src = inspect.getsource(core.costs)
+    cp = {f.name: f for f in fields(core.CostProfile)}
+    res = {f.name for f in fields(core.ExecutionResult)}
+    order = {f.name for f in fields(core.ExecutionOrder)}
+    cfg = {f.name for f in fields(core.ExecutionConfig)}
+    required_cols = set(getattr(core.execution, "_REQUIRED_COLUMNS", set()))
+    tif = str(next((f.type for f in fields(core.ExecutionOrder) if f.name == "time_in_force"), ""))
+    rounding = str(cp["fee_rounding"].type) if "fee_rounding" in cp else ""
 
-    def st(ok: bool, partial: bool = False) -> str:
+    def st(ok, partial=False):
         return "SUPPORTED" if ok else ("PARTIAL" if partial else "MISSING")
 
-    ev: dict[str, tuple[str, str]] = {
-        "K01": (st(bool(generic)), f"BacktestEngine public methods {methods}; generic entry points {generic or 'none'}"),
-        "K02": (st(any("short" in a for a in assumptions)), "run_sma is long-only (desired = fast > slow -> 0/1)"),
-        "K03": (st("slippage_ticks" in assumptions or "tick_size" in assumptions, "slippage_bps" in assumptions),
-                f"assumptions {sorted(a for a in assumptions if 'slip' in a or 'tick' in a)}: bps only"),
-        "K04": (st("fee_per_unit" in assumptions), f"fee model: {sorted(a for a in assumptions if 'fee' in a or 'tax' in a)}"),
+    ev = {
+        "K01": (st(sig[:3] == ["self", "bars", "orders"] and {"cost_profile", "config"} <= set(sig)),
+                f"ExecutionEngine.run{tuple(sig[1:])}"),
+        "K02": (st("SHORT" in ex_src and "target_position" in order), "FIFO long/short lots; target_position signed"),
+        "K03": (st({"tick_size", "slippage_ticks"} <= set(cp)), "CostProfile.tick_size + slippage_ticks; "
+                "adverse_fill_price rounds against the trader to a valid tick"),
+        "K04": (st({"futures_fee_per_contract_per_side", "futures_transaction_tax_rate"} <= set(cp)),
+                "futures fee per contract per side, transaction tax rate, multiplier"),
         "K05": (st({"buy_execution_eligible", "sell_execution_eligible"} <= required_cols),
-                f"required columns {sorted(required_cols)}"),
-        "K06": (st("OUTSIDE_SESSION" in src), "no session handling in backtest.py"),
-        "K07": (st("ZERO_VOLUME" in src), "zero volume not distinguished"),
-        "K08": (st("exclusion" in src.lower() or "invalidated" in src.lower()), "no exclusion-window logic"),
-        "K09": (st(bool(re.search(r"roll_schedule|contract_roll|\broll\b(?!ing)", src))),
-                "no roll schedule (pandas .rolling() is not a contract roll)"),
-        "K10": (st(not isinstance(probe, Exception) and "open_position" in probe["result_fields"],
-                   not isinstance(probe, Exception) and probe["last_position"] != 0),
-                ("probe ended long: " + (f"position {probe['last_position']}, BacktestResult fields "
-                                         f"{probe['result_fields']}" if not isinstance(probe, Exception) else repr(probe)))),
-        "K11": (st(not isinstance(probe, Exception) and "engine_git_sha" in probe["provenance"]),
-                "probe provenance keys " + (str(sorted(probe["provenance"])) if not isinstance(probe, Exception) else "n/a")
-                + f"; engine_version {probe['provenance'].get('engine_version') if not isinstance(probe, Exception) else 'n/a'}"),
-        "K12": (st("Decimal" in src, "round(" in src), "float arithmetic, no rounding rule"),
-        "K13": (st(bool(re.search(r"universe_member|\bpit_", src))), "no PIT flag"),
-        "K14": (st("time_in_force" in src.lower() or "expire" in src.lower()), "no TIF / expiry"),
-        "K15": (st(False, "EXECUTION_INELIGIBLE" in src), "reasons: EXECUTION_INELIGIBLE (side/cause unspecified), "
-                "NO_LATER_ELIGIBLE_BAR, INSUFFICIENT_CASH"),
+                "bars require buy_/sell_execution_eligible (+ per-side rejection reason columns)"),
+        "K06": (st("OUTSIDE_SESSION" in ex_src and {"session_open", "session_close"} <= required_cols),
+                "session_open/session_close per bar; OUTSIDE_SESSION when bar_start outside [open, close)"),
+        "K07": (st("ZERO_VOLUME_BAR" in ex_src), "volume <= 0 -> ZERO_VOLUME_BAR"),
+        "K08": (st("exclusion_windows" in cfg and "invalidated_round_trips" in res),
+                "ExecutionConfig.exclusion_windows; invalidated_round_trips ledger"),
+        "K09": (st(False, "contract" in order and "FIFO" in ex_src),
+                "FIFO keyed by (symbol, contract); no roll schedule input: roll orders must be supplied by the caller"),
+        "K10": (st("open_positions" in res and "No forced close" in (core.execution.__doc__ or "") + ex_src
+                   or "No forced liquidation" in ex_src), "ExecutionResult.open_positions with mark_price, unrealized_pnl"),
+        "K11": (st(False, "core_commit_sha" in cfg),
+                "provenance.engine_git_sha = ExecutionConfig.core_commit_sha (caller-supplied; engine does not "
+                "self-identify; engine_version hard-coded '2.1.0')"),
+        "K12": (st("NONE" in rounding, "HALF_UP" in rounding),
+                f"rounding modes {rounding}: quantize to 0.01 only; no unrounded mode, no FLOOR_INTEGER; "
+                f"float accounting (Decimal only inside rounding)"),
+        "K13": (st("PIT_VIOLATION" in ex_src and "signal_available_at" in order),
+                "order_time < signal_available_at -> PIT_VIOLATION; bar_start >= available_at"),
+        "K14": (st(False, "DAY" in tif), f"time_in_force {tif}: DAY = session of the first candidate bar; "
+                "convention v1 = first session ending after order_ts"),
+        "K15": (st(False, "rejects.append" in ex_src),
+                "one rejection per unfilled ORDER (final reason); skipped bars of a later-filled order are not logged"),
     }
-    for c in CAPABILITIES:
-        s, e = ev[c.cap_id]
-        rows.append(dict(asdict(c), status=s, evidence=e, core_git_sha=ident["git_sha"]))
-    return rows
+    return [dict(asdict(c), status=ev[c.cap_id][0], evidence=ev[c.cap_id][1], core_git_sha=ident["git_sha"])
+            for c in CAPABILITIES]
 
 
 def missing_for(case_or_caps: Sequence[str], matrix: Sequence[Mapping]) -> list[str]:
@@ -259,55 +255,17 @@ def validate_cost_profile(spec: Mapping, profile: Mapping | None) -> None:
         raise ContractViolation("spec costs differ from CostProfile: " + "; ".join(diffs))
 
 
-def validate_core_provenance(core_prov: Mapping, request: BacktestRequest, pinned_core_sha: str) -> None:
-    sha = str(core_prov.get("engine_git_sha") or "")
-    if not sha or sha.endswith("+source") or len(sha) < 7:
-        raise ContractViolation("core result carries no real engine git SHA (gap G11)")
-    if not (sha.startswith(pinned_core_sha) or pinned_core_sha.startswith(sha)):
-        raise ContractViolation(f"core result from {sha}, pinned {pinned_core_sha}")
-    want = {(d.dataset_id, d.snapshot_id, d.producer_commit_sha) for d in request.datasets}
-    got = {(d.get("dataset_id"), d.get("snapshot_id"), d.get("producer_commit_sha"))
-           for d in core_prov.get("datasets", [])}
-    if want != got:
-        raise ContractViolation(f"core ran on datasets {sorted(got)} but request pinned {sorted(want)}")
-    if core_prov.get("execution_convention") != CONVENTION:
-        raise ContractViolation(f"core convention {core_prov.get('execution_convention')} != {CONVENTION}")
+def check_core_bars(frame) -> None:
+    """Presence check only. Eligibility, sessions and availability come from Core's data adapters."""
+    missing = [c for c in CORE_BAR_COLUMNS if c not in set(frame.columns)]
+    if missing:
+        raise ContractViolation(f"bar frame lacks Core execution columns {missing}")
 
 
-# ------------------------------------------------------------------------------------------ translation
-CORE_EXECUTION_REQUEST_V0 = "agent-proposed-core-execution-request-v0"
-
-
-def build_core_request(request: BacktestRequest, targets: Sequence[Mapping], profile: Mapping | None) -> dict:
-    """Spec + request + targets -> the Core execution request (Agent-side contract proposal v0).
-    Validation is fail-closed; the adapter adds no execution semantics of its own."""
-    spec = request.spec
-    validate_dataset_refs(request.datasets)
-    validate_cost_profile(spec, profile)
-    exe = spec.get("execution", {})
-    if exe.get("convention") != CONVENTION:
-        raise ContractViolation(f"spec execution convention {exe.get('convention')} != {CONVENTION}")
-    return {
-        "schema": CORE_EXECUTION_REQUEST_V0,
-        "execution_convention": CONVENTION,
-        "spec_sha256": request.spec_sha256,
-        "instrument": spec.get("instrument"),
-        "datasets": [asdict(d) | {"mandatory_exclusions": list(d.mandatory_exclusions)} for d in request.datasets],
-        "window": {"start": request.window_start, "end": request.window_end, "warmup_start": request.warmup_start},
-        "execution": {k: exe.get(k) for k in ("fill_rule", "order_type", "time_in_force", "max_fill_delay_bars",
-                                              "partial_fills", "same_bar_reentry")},
-        "costs": {"profile_id": profile["profile_id"], "version": profile["version"],
-                  "profile_sha256": profile["provenance"]["profile_sha256"], "spec_costs": spec["costs"],
-                  "cost_multiplier": request.cost_multiplier},
-        "targets": list(targets),
-        "seed": request.seed,
-        "parameters": dict(request.parameters),
-    }
-
-
+# ------------------------------------------------------------------------------------------ signals -> orders
 def decisions_to_targets(decisions: Sequence[Any]) -> list[dict]:
-    """``signals.core.Decision`` list -> target orders. Decision time is passed through unchanged (it already is
-    the bar's available_at); repeated targets are collapsed; nothing is shifted, filled or re-timed here."""
+    """``signals.core.Decision`` list -> intended targets. Decision time (= bar available_at) passes through
+    unchanged; repeats are collapsed; nothing is shifted, filled or re-timed."""
     out, last = [], None
     for d in sorted(decisions, key=lambda x: x.decision_ts):
         if d.target not in (-1, 0, 1):
@@ -323,46 +281,178 @@ def decisions_to_targets(decisions: Sequence[Any]) -> list[dict]:
     return out
 
 
-def core_result_to_report(result: Mapping, request: BacktestRequest, pinned_core_sha: str) -> BacktestReport:
-    """Core result (``CORE_EXECUTION_RESULT_V0`` shape) -> BacktestReport. Values are copied, never recomputed."""
-    prov = result.get("provenance", {})
-    validate_core_provenance(prov, request, pinned_core_sha)
-    rej = [dict(r, reason=map_reason(str(r.get("reason")))) for r in result.get("rejections", [])]
+def expand_roll_schedule(targets: Sequence[Mapping], roll_schedule: Sequence[Mapping]) -> list[dict]:
+    """Spec roll schedule -> explicit target changes (close the old contract, open the new one at the roll time).
+    Uses only the INTENDED target before the roll (never fills); it does not stitch prices or infer rolls."""
+    out = [dict(t) for t in targets]
+    for r in sorted(roll_schedule, key=lambda x: x["at"]):
+        at = str(r["at"])
+        prior = [t for t in out if t["signal_ts"] <= at and t["contract"] == r["from_contract"]]
+        held = prior[-1]["target"] if prior else 0
+        if held:
+            out.append({"signal_ts": at, "target": 0, "contract": r["from_contract"], "reason": "ROLL_CLOSE"})
+            out.append({"signal_ts": at, "target": held, "contract": r["to_contract"], "reason": "ROLL_OPEN"})
+    return sorted(out, key=lambda t: (t["signal_ts"], 0 if t["reason"] == "ROLL_CLOSE" else 1))
+
+
+def targets_to_orders(targets: Sequence[Mapping], *, symbol: str, market: str, quantity: float, strategy_id: str,
+                      experiment_id: str, time_in_force: str = "DAY", core=None) -> list:
+    """Intended targets -> Core target-position MARKET orders. signal_time = signal_available_at = order_time =
+    the decision time (convention v1 §1.2). Side follows the intended target path per contract; Core decides
+    fills, rejections and the effective target state (C3: an unfilled order does not move Core's target)."""
+    core = core or _core()
+    prev: dict[str, int] = {}
+    orders = []
+    for i, t in enumerate(targets):
+        c, tgt = t["contract"], int(t["target"])
+        if tgt == prev.get(c, 0):
+            continue
+        side = "BUY" if tgt > prev.get(c, 0) else "SELL"
+        orders.append(core.ExecutionOrder(
+            symbol=symbol, market=market, contract=c, signal_time=t["signal_ts"],
+            signal_available_at=t["signal_ts"], order_time=t["signal_ts"], side=side, strategy_id=strategy_id,
+            experiment_id=experiment_id, target_position=float(tgt * quantity), order_type="MARKET",
+            time_in_force=time_in_force, order_id=f"{i:04d}-{t.get('reason', 'SIGNAL')}"))
+        prev[c] = tgt
+    return orders
+
+
+# ------------------------------------------------------------------------------------------ costs / config
+_BASIS = {"OFFICIAL_RULE": "OFFICIAL", "BROKER_ACTUAL": "BROKER_ACTUAL", "RESEARCH_ASSUMPTION": "ASSUMED"}
+
+
+def core_cost_profile(profile: Mapping, *, instrument_type: str, tick_size: float, contract_multiplier: float = 1.0,
+                      core=None):
+    """Agent CostProfile (governance JSON) -> Core CostProfile. Field mapping only; rules Core cannot express
+    (e.g. FLOOR_INTEGER rounding) raise CoreContractGap instead of being approximated."""
+    core = core or _core()
+    comp = {c["kind"]: c for c in profile["components"]}
+    rnd = comp.get("ROUNDING", {}).get("rule", "NONE")
+    allowed = str(next(f.type for f in fields(core.CostProfile) if f.name == "fee_rounding"))
+    if rnd not in allowed:
+        raise CoreContractGap(["K12"], f"rounding rule {rnd} not expressible (Core modes {allowed})")
+    basis = lambda kind: _BASIS.get(comp.get(kind, {}).get("basis", "RESEARCH_ASSUMPTION"), "ASSUMED")  # noqa: E731
+    is_fut = instrument_type == "FUTURES"
+    vals = dict(
+        equity_commission_rate=0.0 if is_fut else comp.get("COMMISSION", {}).get("rate", 0.0),
+        minimum_commission=comp.get("MIN_COMMISSION", {}).get("amount", 0.0),
+        sell_tax_rate=0.0 if is_fut else sum(c.get("rate", 0.0) for c in profile["components"]
+                                             if c["kind"] == "TAX" and c["side"] == "SELL"),
+        futures_fee_per_contract_per_side=comp.get("COMMISSION", {}).get("per_unit", 0.0) if is_fut else 0.0,
+        futures_transaction_tax_rate=sum(c.get("rate", 0.0) for c in profile["components"]
+                                         if c["kind"] == "TAX" and c["side"] == "BOTH") if is_fut else 0.0,
+        contract_multiplier=contract_multiplier, tick_size=tick_size,
+        slippage_ticks=comp.get("SLIPPAGE", {}).get("ticks", 0.0))
+    cb = {k: "ASSUMED" for k in vals} | {"fee_rounding": basis("ROUNDING"), "tax_rounding": basis("ROUNDING")}
+    cb.update(equity_commission_rate=basis("COMMISSION"), futures_fee_per_contract_per_side=basis("COMMISSION"),
+              minimum_commission=basis("MIN_COMMISSION"), sell_tax_rate=basis("TAX"),
+              futures_transaction_tax_rate=basis("TAX"), slippage_ticks=basis("SLIPPAGE"))
+    return core.CostProfile(
+        profile_id=profile["profile_id"], version=profile["version"], instrument_type=instrument_type,
+        approval_status="APPROVED" if profile.get("status") == "APPROVED" else "DRAFT",
+        source_evidence=profile.get("provenance", {}).get("approval_ref") or "agent CostProfile " + profile["profile_id"],
+        basis="ASSUMED" if "ASSUMED" in cb.values() else "OFFICIAL", fee_rounding=rnd, tax_rounding=rnd,
+        component_basis=cb, **vals)
+
+
+@dataclass(frozen=True)
+class MarketSemantics:
+    """Evidence-backed market timing for one dataset (from Core's data contract / producer evidence)."""
+    market: str                       # TW_EQUITY | IBKR_EQUITY | IBKR_FUTURES | TXF
+    bar_label: str                    # START | END | UNKNOWN
+    session_semantics: str            # CONFIRMED | UNKNOWN
+    timezone: str
+    initial_cash: float
+    initial_margin_per_contract: float | None = None
+    # constant instrument tick (e.g. TXF = 1 point). None = price-banded ladder (TWSE/TPEx equities), which a
+    # single Core CostProfile.tick_size cannot express -> CoreContractGap K03 (gap G03b), never approximated
+    constant_tick_size: float | None = None
+
+
+def core_config(request: BacktestRequest, sem: MarketSemantics, core_sha: str, exclusions=(), core=None):
+    """Request + pins -> ExecutionConfig. ``same_timestamp_open_assumption`` is set ONLY for START-labelled bars:
+    then available_at == bar_end == next bar_start, and convention v1 §1.4 fills at the first bar with
+    bar_start >= order_ts (= available_at). UNKNOWN label/session fails closed in Core itself."""
+    core = core or _core()
+    if sem.bar_label != "START" or sem.session_semantics != "CONFIRMED":
+        raise ContractViolation(f"{sem.market}: bar label {sem.bar_label} / session {sem.session_semantics} "
+                                "not confirmed - formal execution blocked")
     d0 = request.datasets[0]
-    provenance = {
-        "engine_name": prov.get("engine_name", CORE_DIST), "engine_git_sha": prov["engine_git_sha"],
-        "engine_version": prov.get("engine_version"), "execution_convention": prov["execution_convention"],
-        "dataset_snapshot_id": d0.snapshot_id, "dataset_producer_sha": d0.producer_commit_sha,
-        "dataset_verdict": d0.verdict, "exclusions_applied": list(d0.mandatory_exclusions),
-        "spec_sha256": request.spec_sha256, "parameters": dict(request.parameters),
-        "cost_multiplier": request.cost_multiplier, "seed": request.seed,
-        "window_start": request.window_start, "window_end": request.window_end,
-        "adapter_version": ADAPTER_VERSION,
-    }
+    return core.ExecutionConfig(
+        initial_cash=sem.initial_cash, bar_label=sem.bar_label, session_semantics=sem.session_semantics,
+        timestamp_timezone=sem.timezone, same_timestamp_open_assumption=True,
+        initial_margin_per_contract=sem.initial_margin_per_contract, exclusion_windows=tuple(exclusions),
+        core_commit_sha=core_sha, dataset_snapshot_id=d0.snapshot_id, dataset_producer_sha=d0.producer_commit_sha,
+        dataset_verdict=d0.verdict, permitted_usage_scope=d0.usage_scope, spec_sha256=request.spec_sha256,
+        parameters=dict(request.parameters), cost_multiplier=request.cost_multiplier, seed=request.seed,
+        window_start=request.window_start, window_end=request.window_end)
+
+
+# ------------------------------------------------------------------------------------------ result -> report
+def _records(df) -> list[dict]:
+    if df is None or len(df) == 0:
+        return []
+    rows = df if isinstance(df, list) else df.to_dict("records")
+    out = []
+    for r in rows:
+        out.append({k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in r.items()})
+    return out
+
+
+def validate_core_provenance(prov: Mapping, request: BacktestRequest, pinned_core_sha: str) -> None:
+    sha = str(prov.get("engine_git_sha") or "")
+    if not SHA40.fullmatch(sha):
+        raise ContractViolation(f"core result engine_git_sha {sha!r} is not a full commit (G11)")
+    if sha != pinned_core_sha:
+        raise ContractViolation(f"core result from {sha}, pinned {pinned_core_sha}")
+    if prov.get("execution_convention") != CONVENTION:
+        raise ContractViolation(f"core convention {prov.get('execution_convention')} != {CONVENTION}")
+    if prov.get("spec_sha256") != request.spec_sha256:
+        raise ContractViolation("core result is for a different spec")
+    d0 = request.datasets[0]
+    if (prov.get("dataset_snapshot_id"), prov.get("dataset_producer_sha")) != (d0.snapshot_id, d0.producer_commit_sha):
+        raise ContractViolation(f"core ran on {prov.get('dataset_snapshot_id')}@{prov.get('dataset_producer_sha')}, "
+                                f"request pinned {d0.snapshot_id}@{d0.producer_commit_sha}")
+
+
+def core_result_to_report(result, request: BacktestRequest, pinned_core_sha: str) -> BacktestReport:
+    """``ExecutionResult`` -> BacktestReport. Values are copied from Core, never recomputed."""
+    prov = dict(result.provenance)
+    validate_core_provenance(prov, request, pinned_core_sha)
+    rej = [dict(r, reason=map_reason(str(r.get("reason")))) for r in _records(result.rejections)]
+    opens = _records(result.open_positions)
+    provenance = {k: prov.get(k) for k in REQUIRED_PROVENANCE}
+    provenance.update(engine_name=prov.get("engine_name"), adapter_version=ADAPTER_VERSION,
+                      core_status=result.status, cost_profile_id=prov.get("cost_profile_id"),
+                      cost_profile_sha256=prov.get("cost_profile_sha256"), core_assumptions=prov.get("assumptions"))
     missing = [k for k in REQUIRED_PROVENANCE if provenance.get(k) in (None, "")]
     if missing:
         raise ContractViolation(f"core result lacks provenance {missing}")
-    status = prov.get("performance_status", "RESEARCH_BACKTEST")
-    return BacktestReport(fills=list(result.get("fills", [])), round_trips=list(result.get("round_trips", [])),
-                          rejections=rej, equity_curve=list(result.get("equity_curve", [])),
-                          open_position=result.get("open_position"), provenance=provenance, status=status,
-                          invalidated_round_trips=list(result.get("invalidated_round_trips", [])))
+    return BacktestReport(
+        fills=_records(result.fills), round_trips=_records(result.round_trips), rejections=rej,
+        equity_curve=_records(result.equity_curve), open_position={"positions": opens} if opens else None,
+        provenance=provenance,
+        status="RESEARCH_BACKTEST" if result.status == "FORMAL_ELIGIBLE" else "RESEARCH_INTEGRATION_DEMO",
+        invalidated_round_trips=_records(result.invalidated_round_trips))
 
 
 # ------------------------------------------------------------------------------------------ the port
 class MrcBacktestPort:
-    """``ports.BacktestPort`` backed by the installed market-research-core.
+    """``ports.BacktestPort`` executed by market-research-core ``ExecutionEngine.run``.
 
-    ``run`` hands the translated request to Core's generic execution entry point. Until Core publishes one
-    (capability K01 and the rest of the required set), ``run`` raises ``CoreContractGap``: the runner records
-    the experiment as FAILED with the gap list; no fill is ever produced here."""
+    The runner reaches ``run`` only for an engine SHA with a BENCHMARK_PASS record; this class additionally
+    refuses to run while a required capability is missing on the installed Core."""
 
-    REQUIRED_FOR_FORMAL_RUN = ("K01", "K03", "K04", "K05", "K10", "K11", "K15")
+    REQUIRED_FOR_FORMAL_RUN = ("K01", "K02", "K03", "K04", "K05", "K06", "K07", "K08", "K10", "K13")
 
-    def __init__(self, cost_profiles: Mapping[tuple[str, str], Mapping], decisions_provider=None,
-                 core=None, matrix: Sequence[Mapping] | None = None):
+    def __init__(self, cost_profiles: Mapping[tuple[str, str], Mapping],
+                 decisions_provider: Callable[[BacktestRequest], Sequence[Any]] | None = None,
+                 bars_provider: Callable[[BacktestRequest], Any] | None = None,
+                 semantics: Mapping[str, MarketSemantics] | None = None, core=None,
+                 matrix: Sequence[Mapping] | None = None):
         self.cost_profiles = cost_profiles
-        self.decisions_provider = decisions_provider
+        self.decisions_provider, self.bars_provider = decisions_provider, bars_provider
+        self.semantics = dict(semantics or {})
         self._core = core
         self.identity = core_identity()
         self.matrix = list(matrix) if matrix is not None else compatibility_matrix(core)
@@ -371,20 +461,51 @@ class MrcBacktestPort:
         return missing_for(self.REQUIRED_FOR_FORMAL_RUN, self.matrix)
 
     def run(self, request: BacktestRequest) -> BacktestReport:
-        ref = request.spec.get("costs", {}).get("profile_ref", {})
-        profile = self.cost_profiles.get((ref.get("profile_id"), ref.get("version")))
-        if self.identity.get("git_sha") is None:
+        sha = self.identity.get("git_sha")
+        if not sha:
             raise CoreContractGap(["K11"], "installed Core has no resolvable commit")
-        if self.decisions_provider is None:
-            raise ContractViolation("no signal decisions provider configured")
-        targets = decisions_to_targets(self.decisions_provider(request))
-        core_request = build_core_request(request, targets, profile)      # validation happens even when pending
+        if self.decisions_provider is None or self.bars_provider is None:
+            raise ContractViolation("decisions_provider and bars_provider are required")
+        spec = request.spec
+        validate_dataset_refs(request.datasets)
+        ref = spec.get("costs", {}).get("profile_ref", {})
+        profile = self.cost_profiles.get((ref.get("profile_id"), ref.get("version")))
+        validate_cost_profile(spec, profile)
+        if spec.get("execution", {}).get("convention") != CONVENTION:
+            raise ContractViolation(f"spec execution convention != {CONVENTION}")
         gaps = self.gaps()
         if gaps:
-            raise CoreContractGap(gaps, f"core {self.identity['git_sha'][:7]}")
+            raise CoreContractGap(gaps, f"core {sha[:7]}")
+        sem = self.semantics.get(request.datasets[0].dataset_id)
+        if sem is None:
+            raise ContractViolation(f"no confirmed market semantics for {request.datasets[0].dataset_id}")
+        if sem.bar_label != "START" or sem.session_semantics != "CONFIRMED":
+            raise ContractViolation(f"{sem.market}: bar label {sem.bar_label} / session {sem.session_semantics} "
+                                    "not confirmed - formal execution blocked")
         core = self._core or _core()
-        result = core.execute(core_request)          # pragma: no cover - unreachable until Core ships K01
-        return core_result_to_report(result, request, self.identity["git_sha"])
+        bars = self.bars_provider(request)
+        check_core_bars(bars)
+        uni, sizing = spec.get("universe", {}), spec.get("position_sizing", {})
+        symbols = list(uni.get("symbols", []))
+        if len(symbols) != 1:
+            raise ContractViolation(f"M1 adapter executes single-symbol specs only, got {symbols}")
+        if sizing.get("method") != "FIXED_UNITS":
+            raise ContractViolation(f"position_sizing {sizing.get('method')} not mapped (FIXED_UNITS only)")
+        if sem.constant_tick_size is None:
+            raise CoreContractGap(["K03"], "price-banded tick ladder ("
+                                  f"{spec.get('costs', {}).get('slippage', {}).get('tick_size_ref')}) not expressible "
+                                  "as one CostProfile.tick_size")
+        targets = decisions_to_targets(self.decisions_provider(request))
+        orders = targets_to_orders(targets, symbol=symbols[0], market=sem.market, quantity=float(sizing["units"]),
+                                   strategy_id=str(spec.get("strategy_id")), experiment_id=request.spec_sha256[:16],
+                                   core=core)
+        futures = sem.market in ("TXF", "IBKR_FUTURES")
+        cp = core_cost_profile(profile, instrument_type="FUTURES" if futures else "EQUITY",
+                               tick_size=sem.constant_tick_size,
+                               contract_multiplier=float(sizing.get("contract_multiplier", 1.0)), core=core)
+        cfg = core_config(request, sem, sha, core=core)
+        result = core.ExecutionEngine().run(bars, orders, cost_profile=cp, config=cfg)
+        return core_result_to_report(result, request, sha)
 
 
 # ------------------------------------------------------------------------------------------ engine status
@@ -398,11 +519,11 @@ def engine_benchmark_status(core_sha: str | None, record_dir: Path = BENCHMARK_R
         return {"status": "NOT_VERIFIED", "why": "core commit unknown"}
     p = Path(record_dir) / f"mrc_{core_sha[:12]}" / "crosscheck.json"
     if not p.exists():
-        return {"status": "NOT_VERIFIED", "why": f"no cross-check record {p.name} for {core_sha[:12]}"}
+        return {"status": "NOT_VERIFIED", "why": f"no cross-check record {p.parent.name} for {core_sha[:12]}"}
     rec = json.loads(p.read_text(encoding="utf-8"))
     cases = {r["case_id"][:3]: r["status"] for r in rec.get("cases", [])}
     ok = (rec.get("engine", {}).get("git_sha") == core_sha and rec.get("engine", {}).get("kind") == "REAL_CORE"
-          and sorted(cases) == [f"B{i:02d}" for i in range(1, 13)] and all(s == "PASS" for s in cases.values()))
+          and sorted(cases) == list(ALL) and all(s == "PASS" for s in cases.values()))
     return {"status": "BENCHMARK_PASS" if ok else "NOT_VERIFIED",
             "why": "all 12 cases PASS on the real Core" if ok else f"record verdict {rec.get('verdict')}: "
             + ", ".join(f"{k}={v}" for k, v in sorted(cases.items()) if v != "PASS")}
@@ -417,10 +538,10 @@ def engine_info():
                       benchmark_status=st["status"])
 
 
-def ts_label(ts: Any) -> str:
-    """Core timestamp -> benchmark label 'YYYY-MM-DD HH:MM' in the case timezone (formatting only)."""
+def ts_label(ts: Any, tz: str | None = None) -> str:
+    """Timestamp -> benchmark label 'YYYY-MM-DD HH:MM' in the case timezone (formatting only)."""
     if isinstance(ts, str):
         return ts[:16].replace("T", " ")
-    if isinstance(ts, datetime):
-        return ts.strftime(TS_FMT)
+    if tz is not None and getattr(ts, "tzinfo", None) is not None:
+        ts = ts.tz_convert(tz) if hasattr(ts, "tz_convert") else ts.astimezone()
     return ts.strftime(TS_FMT)

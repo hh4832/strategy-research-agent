@@ -27,7 +27,7 @@ jobs:
     # M1: real market-research-core at the pinned commit (read-only dependency; never modified here).
     runs-on: ubuntu-latest
     env:
-      MRC_SHA: f4276cb081ae4407d356007dc76168a8cbdf2f82
+      MRC_SHA: a50f3902c3a014922601d8cca4e7bdf761d377b8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,7 +35,7 @@ jobs:
           python-version: "3.11"
       - run: pip install -e '.[test]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
       - run: pytest -q tests/test_m1_core_compat.py tests/test_m1_adapter.py
-      - name: B01-B12 cross-check on the real Core (INTEGRATION_PENDING is the expected outcome at this commit)
+      - name: B01-B12 cross-check on the real Core (verdict FAIL with documented gaps is the expected outcome at this commit)
         run: |
           python -m benchmark.harness.mrc_crosscheck --out "$RUNNER_TEMP/mrc" || test $? -eq 2
           python - <<'PY'
