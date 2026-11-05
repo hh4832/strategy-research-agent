@@ -64,7 +64,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
-      - run: pytest -q tests/test_m3b_unit.py tests/test_m3b_integration.py
+      - run: pytest -q tests/test_m3b_unit.py tests/test_m3b_integration.py tests/test_m3b2_archive_resume.py
       - name: Real-market gate stays closed (exit 3) until M3-A is GO
         run: |
           set +e

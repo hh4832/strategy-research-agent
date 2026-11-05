@@ -1,4 +1,5 @@
 """M3-B.2 merge acceptance: preserve published config API; harden cached/failed archives."""
+import importlib.util
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -11,6 +12,10 @@ from strategy_agent.research.archive import Archiver, ArchiveError, verify_manif
 from strategy_agent.research.batch import done_identities, run_batch
 
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("market_research_core") is None,
+    reason="real-Core integration; executed in the pinned research-synthetic CI job",
+)
 def test_resume_rechecks_r02_and_manifest(tmp_path):
     runner, job = synthetic_setup(tmp_path/'env', archive_root=tmp_path/'archive')
     result = runner.run(job)
