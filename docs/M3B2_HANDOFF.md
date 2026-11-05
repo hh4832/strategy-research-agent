@@ -56,3 +56,5 @@ Stop new feature development after this bounded delivery; wait for M3-A.4 integr
 - `src/strategy_agent/research/pipeline.py`
 - `tests/test_m3b2_contract.py`
 - `tests/test_m3b_unit.py`
+
+Notebook execution pin: `3d45f2571b1d269ead58df39c6d450a0c7b675c0` (implementation commit). The final delivery commit only updates this notebook pin and closure documentation; the pinned commit already contains the M3-B.2 config and runner code.
