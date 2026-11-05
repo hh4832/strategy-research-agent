@@ -118,7 +118,10 @@ def _write_once(path: Path, obj: dict) -> None:
         os.replace(tmp, path)
 
 
-def synthetic_environment(root: Path, *, dataset_id: str, clock=None, budget: dict | None = None) -> GovernanceEnv:
+def synthetic_environment(root: Path, *, dataset_id: str, clock=None, budget: dict | None = None,
+                          extra_profiles: tuple = ()) -> GovernanceEnv:
+    """``extra_profiles``: further TEST-ONLY profiles (e.g. a CUSTOM cost scenario); each must already carry its
+    own approval/sha - nothing is upgraded here."""
     root = Path(root).resolve()
     if ROOT in (root, *root.parents) and (root / ".git").exists():
         raise ValueError("synthetic environment must not be the repository itself")
@@ -147,6 +150,8 @@ def synthetic_environment(root: Path, *, dataset_id: str, clock=None, budget: di
                                              evidence_ref="synthetic fixture definition (fixtures/synthetic)")
     prof = synthetic_cost_profile()
     profiles = {(prof["profile_id"], prof["version"]): prof}
+    for p in extra_profiles:
+        profiles[(p["profile_id"], p["version"])] = p
     ctx = GovernanceContext(conf, profiles, frozenset({TEST_LEAD}))
     return GovernanceEnv("SYNTHETIC", root, reg, FamilyIndex(root / "families.jsonl"),
                          HoldoutGuard(HoldoutBook(locks, gov / "approvers.json"),

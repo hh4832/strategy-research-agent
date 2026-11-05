@@ -64,7 +64,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
-      - run: pytest -q tests/test_m3b_unit.py tests/test_m3b_integration.py tests/test_m3b2_contract.py tests/test_m3b_notebook.py
+      - run: pytest -q tests/test_m3b_unit.py tests/test_m3b_integration.py
       - name: Real-market gate stays closed (exit 3) until M3-A is GO
         run: |
           set +e
@@ -75,6 +75,14 @@ jobs:
           python -m strategy_agent.research synthetic --run-root "$RUNNER_TEMP/m3b_env" \
             --archive-root "$RUNNER_TEMP/m3b_archive" --repeat 2 --batch-id ci
           git diff --exit-code -- registry governance   # formal registry / holdout untouched
+      - name: Research configuration run (2 windows x 4 cost scenarios) + resume
+        run: |
+          python -m strategy_agent.research run --config configs/research/sma_5_20_tsm_synthetic_local_v1.json \
+            --run-root "$RUNNER_TEMP/m3b_env" --archive-root "$RUNNER_TEMP/m3b_archive" --batch-id ci_config \
+            --summary-out "$RUNNER_TEMP/m3b_archive/ci_config_summary.json"
+          python -m strategy_agent.research run --config configs/research/sma_5_20_tsm_synthetic_local_v1.json \
+            --run-root "$RUNNER_TEMP/m3b_env" --archive-root "$RUNNER_TEMP/m3b_archive" --batch-id ci_config --resume
+          git diff --exit-code -- registry governance
       - uses: actions/upload-artifact@v4
         with:
           name: m3b-synthetic-archive

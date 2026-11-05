@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0.0",
+  "scenario_set_id": "ibkr_tsm_draft_v1",
+  "version": "1.0.0",
+  "description": "IBKR TSM cost sensitivity on the DRAFT ibkr_us_equity profile. NOT executable: profile DRAFT/ASSUMED and not representable by the pinned Core (G18). Kept to pin the handoff interface for Core M3-A.4.",
+  "scenarios": [
+    {
+      "scenario_id": "BASE",
+      "kind": "BASE",
+      "profile_ref": {
+        "profile_id": "ibkr_us_equity",
+        "version": "0.1.0",
+        "sha256": "ff20338deb5a48e5d23a5846fc37f4ce345691fb1577812ad33caa2ba6f7e636"
+      },
+      "cost_multiplier": 1.0,
+      "commission_model": "ALL_IN",
+      "description": "DRAFT placeholder schedule (per-share commission + minimum, 2 bps slippage)"
+    },
+    {
+      "scenario_id": "LOW_FRICTIONLESS",
+      "kind": "LOW",
+      "profile_ref": {
+        "profile_id": "ibkr_us_equity",
+        "version": "0.1.0",
+        "sha256": "ff20338deb5a48e5d23a5846fc37f4ce345691fb1577812ad33caa2ba6f7e636"
+      },
+      "cost_multiplier": 0.0,
+      "commission_model": "ALL_IN",
+      "description": "lower bound"
+    },
+    {
+      "scenario_id": "STRESS_2X",
+      "kind": "STRESS",
+      "profile_ref": {
+        "profile_id": "ibkr_us_equity",
+        "version": "0.1.0",
+        "sha256": "ff20338deb5a48e5d23a5846fc37f4ce345691fb1577812ad33caa2ba6f7e636"
+      },
+      "cost_multiplier": 2.0,
+      "commission_model": "ALL_IN",
+      "description": "Core cost_multiplier 2"
+    }
+  ]
+}

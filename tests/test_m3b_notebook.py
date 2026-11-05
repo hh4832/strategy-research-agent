@@ -37,6 +37,9 @@ def test_cells_parse_and_have_no_outputs(cells):
 
 def test_starts_from_an_exact_commit_and_pinned_core(cells):
     cfg = _cfg(cells)
+    cfgfile = ROOT / cfg["CONFIG"]
+    assert cfgfile.is_file() and json.loads(cfgfile.read_text())["output"]["target"] == "DRIVE"
+    assert "pip install -q -e '.[test,research]'" in "\n".join(cells)        # declared dependencies only
     assert re.fullmatch(r"[0-9a-f]{40}", cfg["AGENT_COMMIT"])
     pin = re.search(r"MRC_SHA: ([0-9a-f]{40})", CI).group(1)
     assert cfg["CORE_SHA"] == pin
@@ -59,12 +62,15 @@ def test_credentials_only_from_colab_secrets(cells):
 def test_drive_is_required_and_archive_is_verified(cells):
     code = "\n".join(cells)
     assert "drive.mount('/content/drive')" in code and "assert os.path.isdir('/content/drive/MyDrive')" in code
-    assert code.count("--drive") >= 2 and "--summary-out" in code
-    for name in ("run_info.txt", "trades.csv", "fills.csv", "metrics.json", "research_report.md", "manifest.json"):
-        assert f'"{name}"' in code
-    for check in ("manifest_sha256", "new_directory_per_run", "run1_not_overwritten", "reproducible_metrics",
-                  "formal_registry_holdout_untouched", "git_tree_clean"):
+    assert code.count("python -m strategy_agent.research run --config {CONFIG}") == 2 and "--summary-out" in code
+    for name in ("run_info.txt", "experiment_record.json", "stages.json", "metrics.json", "research_report.md",
+                 "trades.csv", "fills.csv", "rejections.csv", "equity_curve.csv", "snapshot_refs.json",
+                 "final_status.json", "manifest.json"):
+        assert f'"{name}"' in code, name
+    for check in ("manifest_every_file_sha256", "new_directory_per_run", "run1_not_overwritten", "reproducible_metrics",
+                  "formal_registry_holdout_untouched", "git_tree_clean", "cost_scenarios_one_family_trial"):
         assert check in code
+    assert "sys.version_info >= (3, 11)" in code
     assert "assert all(checks.values())" in code
     assert "Quant_Research/strategy-research-agent" in code
 
@@ -73,7 +79,8 @@ def test_gate_and_no_strategy_logic(cells):
     code = "\n".join(cells)
     assert "readiness --market IBKR_TSM" in code and "returncode == 3" in code
     for forbidden in ("sma_crossover", "ExecutionEngine", "ExperimentRunner", "evaluate(", "def run(",
-                      "enforce_parameter_ranges", "registry/experiments.jsonl\").write", "--cost-sensitivity"):
+                      "enforce_parameter_ranges", "registry/experiments.jsonl\").write", "--cost-sensitivity",
+                      "calculate_cost", "cost_multiplier", "--archive-root"):
         assert forbidden not in code, forbidden
     # every shell command is install / git / pytest / the research CLI / fingerprint helpers
     cmds = re.findall(r'sh\(f?"([^"]+)"', code)

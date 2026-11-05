@@ -96,63 +96,7 @@ def test_evaluate_small_report_marks_ratios_not_evaluable_and_counts_quality():
 
 
 # ------------------------------------------------------------------------------------------ readiness gate
-def test_ibkr_tsm_market_gate_mirrors_codex_m3a_no_go():
-    """Synced from market-research-core@a9e0747 docs/diagnostics/m3a_ibkr_tsm_readiness.json (Codex M3-A)."""
-    r = readiness("IBKR_TSM")
-    e = r.entry
-    assert r.status == "NO_GO" and e["m3a"]["formal_execution"] == "NO_GO"
-    assert e["m3a"]["report_commit"] == "a9e0747a61e5ff5d6a636ff3c657d98600f0ab01"
-    assert e["m3a"]["bounded_data_diagnostics"] == "SCOPED_GO_RESEARCH_ONLY"
-    assert e["snapshot_id"] == "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
-    assert e["producer_commit_sha"] == "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28"
-    assert e["bar_label"] == e["available_at_rule"] == e["per_bar_session_mask"] == "UNKNOWN"
-    assert e["execution_eligibility"] == {"buy": False, "sell": False,
-                                          "rejection_reason": "TIMESTAMP_LABEL_OR_SESSION_UNKNOWN"}
-    cp = e["cost_profile"]
-    assert cp["status"] == "DRAFT" and cp["core_representable"] is False and "G18" in cp["core_gap"]
-    import hashlib
-    assert hashlib.sha256((ROOT / "governance" / "cost_profiles" / "ibkr_us_equity_v0.json").read_bytes()
-                          ).hexdigest() == cp["file_sha256"]
-    assert not e["approved_by"] and not e["allowed_window"]["start"]
-    # the research spec pins the same snapshot and producer as M3-A
-    d0 = load_research_spec()["data_requirements"]["datasets"][0]
-    assert (d0["snapshot_id"], d0["producer_commit_sha"]) == (e["snapshot_id"], e["producer_commit_sha"])
-    miss = r.missing()
-    assert any("M3-A" in m for m in miss) and any("G18" in m for m in miss)
-    assert any("available_at_rule UNKNOWN" in m for m in miss) and any("per_bar_session_mask" in m for m in miss)
-    with pytest.raises(MarketGateClosed) as e:
-        GatedMarketSource("IBKR_TSM").load(symbol="TSM", warmup_start="2025-01-01", window_end="2025-02-01")
-    assert e.value.missing == miss
-
-
-def test_gate_needs_complete_go_record_and_allowed_window(tmp_path):
-    go = {"status": "GO", "evidence_ref": "https://x", "approved_by": "lead", "approved_at": "2026-11-05",
-          "snapshot_id": "s", "producer_commit_sha": "p", "bar_label": "START", "session_coverage": "RTH_ONLY",
-          "available_at_rule": "bar_end", "per_bar_session_mask": "CONFIRMED",
-          "execution_eligibility": {"buy": True, "sell": True}, "m3a": {"formal_execution": "GO"},
-          "cost_profile": {"profile_id": "x", "version": "1", "status": "APPROVED", "core_representable": True},
-          "allowed_window": {"start": "2024-01-01", "end": "2025-12-31"}}
-    from strategy_agent.research.contract import GATES
-    go["gates"] = {k: {"status": "GO", "evidence_ref": "https://test.invalid/evidence"} for k in GATES}
-    path = tmp_path / "r.json"
-    path.write_text(json.dumps({"markets": {"M": go}}))
-    with pytest.raises(MarketGateClosed, match="no Core data loader"):
-        GatedMarketSource("M", path=path).check("2024-02-01", "2024-03-01")
-    with pytest.raises(MarketGateClosed, match="outside allowed"):
-        GatedMarketSource("M", loader=lambda **k: None, path=path).check("2023-02-01", "2024-03-01")
-    assert GatedMarketSource("M", loader=lambda **k: None, path=path).check("2024-02-01", "2024-03-01").status == "GO"
-    for k in ("evidence_ref", "approved_by", "snapshot_id", "available_at_rule", "per_bar_session_mask"):
-        path.write_text(json.dumps({"markets": {"M": dict(go, **{k: None})}}))
-        with pytest.raises(MarketGateClosed, match=k):
-            GatedMarketSource("M", loader=lambda **kw: None, path=path).check()
-    # any single M3-A blocker keeps the gate closed even with status GO
-    for k, v, pat in (("m3a", {"formal_execution": "NO_GO"}, "M3-A"),
-                      ("execution_eligibility", {"buy": True, "sell": False}, "eligibility"),
-                      ("cost_profile", dict(go["cost_profile"], status="DRAFT"), "DRAFT"),
-                      ("cost_profile", dict(go["cost_profile"], core_representable=False), "not representable")):
-        path.write_text(json.dumps({"markets": {"M": dict(go, **{k: v})}}))
-        with pytest.raises(MarketGateClosed, match=pat):
-            GatedMarketSource("M", loader=lambda **kw: None, path=path).check()
+# (market-gate tests live in tests/test_m3b2_contract.py since M3-B.2: six-gate registry v2)
 
 
 # ------------------------------------------------------------------------------------------ costs (gap G18)

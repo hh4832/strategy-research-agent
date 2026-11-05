@@ -107,12 +107,12 @@ def test_performance_metrics_complete(two_runs):
 def test_report_and_archive(two_runs):
     _, _, _, r1, _, _ = two_runs
     md = r1.research_report_md
-    for i, title in enumerate(["Experiment summary", "Market mechanism", "Hypothesis", "Exact strategy rules",
-                               "Data source / snapshot / PIT definition", "CostProfile / assumptions",
-                               "Backtest metrics", "Yearly / regime / trade decomposition",
-                               "Bias and data-quality checks", "Negative evidence", "Opponent's view",
-                               "Remaining uncertainties", "Final recommendation"], 1):
+    for i, title in enumerate(["Experiment summary", "Market mechanism", "Hypothesis", "Strategy rules",
+                               "Execution assumptions", "CostProfile / assumptions", "Backtest results",
+                               "Cost sensitivity", "Risk metrics", "Bias and data-quality checks", "Negative evidence",
+                               "Opponent's view", "Remaining uncertainty", "Research decision"], 1):
         assert f"## {i}. {title}" in md
+    assert "### Engineering Verdict" in md and "### Strategy Verdict" in md
     assert "SYNTHETIC FIXTURE RUN" in md
     v = r1.context["verdicts"]
     assert v["engineering"]["status"] == "PASS" and v["strategy"]["decision"] == UNDECIDABLE

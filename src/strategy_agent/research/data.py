@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -96,44 +97,55 @@ class SyntheticSource:
         return MarketData(frame, tuple(sbars), tuple(rows), md)
 
 
+GATES = ("DATA_QUALITY", "TEMPORAL_SAFETY", "COST_MODEL_COMPATIBILITY", "COST_APPROVAL", "HOLDOUT_APPROVAL",
+         "FORMAL_EXECUTION_ELIGIBILITY")
+# gates that need a named human approval on top of PASS + evidence
+APPROVAL_GATES = {"TEMPORAL_SAFETY", "COST_APPROVAL", "HOLDOUT_APPROVAL"}
+# gates whose PASS must come from a pinned Core document (the Agent never declares these itself)
+CORE_GATES = {"DATA_QUALITY", "TEMPORAL_SAFETY", "COST_MODEL_COMPATIBILITY", "FORMAL_EXECUTION_ELIGIBILITY"}
+_PINNED_CORE = re.compile(r"^https://github\.com/hh4832/market-research-core/blob/[0-9a-f]{40}/")
+
+
 @dataclass(frozen=True)
 class Readiness:
     market: str
     entry: dict
+    required: tuple[str, ...] = GATES
 
     @property
     def status(self) -> str:
         return str(self.entry.get("status", "UNKNOWN"))
 
+    def gate_status(self) -> dict[str, str]:
+        """Effective status per gate. A recorded PASS that lacks pinned evidence or approval counts as FAIL."""
+        gates = self.entry.get("gates") or {}
+        out = {}
+        for g in self.required:
+            r = gates.get(g) or {}
+            st = str(r.get("status", "UNKNOWN"))
+            if st == "PASS":
+                ev = r.get("evidence_ref") or ""
+                if g in CORE_GATES and not _PINNED_CORE.match(ev):
+                    st = "FAIL_UNPINNED_EVIDENCE"
+                elif not ev:
+                    st = "FAIL_NO_EVIDENCE"
+                elif g in APPROVAL_GATES and not r.get("approved_by"):
+                    st = "FAIL_NO_APPROVAL"
+            out[g] = st
+        return out
+
     def missing(self) -> list[str]:
         e = self.entry
-        from .contract import gate_issues
-        out = gate_issues(e)
+        gates = e.get("gates") or {}
+        out = []
         if self.status != "GO":
             out.append(f"status {self.status} (needs GO): {e.get('status_reason', '')}".strip())
-        for k in ("evidence_ref", "approved_by", "approved_at", "snapshot_id", "producer_commit_sha"):
+        for g, st in self.gate_status().items():
+            if st != "PASS":
+                out.append(f"gate {g} {st}: {(gates.get(g) or {}).get('reason', 'not recorded')}")
+        for k in ("snapshot_id", "producer_commit_sha"):
             if not e.get(k):
                 out.append(f"{k} not set")
-        if e.get("bar_label") not in ("START", "END"):
-            out.append(f"bar_label {e.get('bar_label')}")
-        if e.get("session_coverage") in (None, "UNKNOWN"):
-            out.append("session_coverage UNKNOWN")
-        # fields M3-A added: absent fields count as unknown (fail closed)
-        for k in ("available_at_rule", "per_bar_session_mask"):
-            if e.get(k) in (None, "UNKNOWN"):
-                out.append(f"{k} {e.get(k) or 'UNKNOWN'}")
-        el = e.get("execution_eligibility") or {}
-        if not (el.get("buy") is True and el.get("sell") is True):
-            out.append(f"execution eligibility buy={el.get('buy')} sell={el.get('sell')} "
-                       f"({el.get('rejection_reason') or 'not recorded'})")
-        cp = e.get("cost_profile") or {}
-        if cp.get("status") != "APPROVED":
-            out.append(f"cost profile {cp.get('profile_id')}@{cp.get('version')} {cp.get('status') or 'not recorded'}")
-        if cp.get("core_representable") is not True:
-            out.append(f"cost profile not representable in Core: {cp.get('core_gap') or 'not recorded'}")
-        m3a = e.get("m3a") or {}
-        if m3a.get("formal_execution") != "GO":
-            out.append(f"M3-A formal_execution {m3a.get('formal_execution') or 'not recorded'}")
         w = e.get("allowed_window") or {}
         if not w.get("start") or not w.get("end"):
             out.append("allowed_window not set")
@@ -145,9 +157,12 @@ class Readiness:
 def readiness(market: str, path: Path = READINESS) -> Readiness:
     d = json.loads(Path(path).read_text(encoding="utf-8"))
     entry = d.get("markets", {}).get(market)
+    req = tuple(d.get("required_gates") or GATES)
+    if set(GATES) - set(req):                       # a registry may add gates, never drop the six
+        req = GATES + tuple(g for g in req if g not in GATES)
     if entry is None:
-        return Readiness(market, {"status": "UNKNOWN", "status_reason": f"no readiness entry for {market}"})
-    return Readiness(market, entry)
+        return Readiness(market, {"status": "UNKNOWN", "status_reason": f"no readiness entry for {market}"}, req)
+    return Readiness(market, entry, req)
 
 
 class GatedMarketSource:

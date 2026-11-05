@@ -83,7 +83,7 @@ def run_batch(runner: ResearchRunner, jobs: Sequence[ResearchJob], *, batch_id: 
         from . import pipeline
         if pipeline.R02_ENFORCED is not True:
             raise pipeline.ResearchContractError('R02 is mandatory, including resume')
-        ident = identity_of(job) if identity_of else runner.identity_of(job)
+        ident = identity_of(job) if identity_of else runner.identity(job)
         from strategy_agent.runner import parameter_issues
         # Resume is also a governed entry: a cached identity cannot mask invalid parameters.
         valid_parameters = not parameter_issues(job.spec, dict(job.parameters))

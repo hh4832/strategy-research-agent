@@ -132,8 +132,9 @@ def opponent_view(res) -> list[str]:
 
 
 def uncertainties(res) -> list[str]:
-    out = ["M3-A market readiness for IBKR TSM (timestamp label, session coverage, aggregation) is not GO.",
-           "IBKR costs are DRAFT and not expressible in Core (gap G18: per-share commission, bps slippage).",
+    out = ["IBKR TSM market gate is NO_GO (governance/market_readiness.json, Core PR #3 @ c1a3661): timestamp label, "
+           "observed availability and closing auction UNKNOWN; BAR_END_STRICT_LATER pending owner acceptance.",
+           "IBKR costs are DRAFT/ASSUMED and not expressible by the pinned Core (G18); Core PR #3 is unmerged.",
            "No walk-forward split or holdout result exists for this family; multiple-testing correction uses the "
            "family trial count recorded in the registry.",
            "Overnight holding is allowed by the spec; gap risk is visible only in the equity curve, not modelled."]
@@ -173,27 +174,33 @@ def build_report(res) -> str:
         L += ["Rejection / failure reasons recorded in the registry:", ""]
         L += [f"- `{r['code']}` {r['message']}" for r in res.record["rejection_reasons"]] + [""]
     h = spec["hypothesis"]
+    sem = ctx["semantics"]
+    tp = (ctx.get("research_config") or {})
+    scen = ctx.get("cost_scenario")
     L += ["## 2. Market mechanism", "", h["mechanism"], "",
           "## 3. Hypothesis", "", f"- Statement: {h['statement']}", f"- Falsifiable prediction: {h['falsifiable_prediction']}",
           f"- Null: {h['null_hypothesis']}", f"- Known failure modes: {', '.join(h['known_failure_modes'])}", "",
-          "## 4. Exact strategy rules", "",
+          "## 4. Strategy rules", "",
           f"- Universe: {spec['universe']['market']} {', '.join(spec['universe']['symbols'])}, "
           f"{spec['universe']['timeframe']} bars, sessions {spec['universe']['sessions']['allowed']}, "
           f"timezone {spec['universe']['timezone']}",
           f"- Signal: `sma_crossover(fast={j.parameters['fast']}, slow={j.parameters['slow']})` on eligible bars "
           "(zero-volume / missing bars skipped, never filled); enter long when SMA(fast) crosses above SMA(slow) while "
           "flat; exit when it crosses below. Long only.",
-          "- Decision time: the bar's `available_at` (bar end), after the bar is complete.",
-          "- Execution: target-position MARKET orders, TIF DAY, filled by Core `ExecutionEngine.run` at the first "
-          "eligible bar with `bar_start >= decision` (convention v1); no partial fills.",
-          f"- Size: {spec['position_sizing']['units']} units fixed; initial capital "
-          f"{ctx['semantics']['initial_cash']:,.0f}.", "",
-          "## 5. Data source / snapshot / PIT definition", "",
-          f"- Dataset `{md.get('dataset_id')}` snapshot `{md.get('snapshot_id')}` producer `{md.get('producer_commit_sha')}`",
-          f"- Kind: {md.get('kind', 'REAL_MARKET')}; rows {md.get('rows')}; frame sha256 `{md.get('frame_sha256')}`",
-          f"- PIT: {md.get('pit_definition', '—')}",
-          f"- Bar label {ctx['semantics']['bar_label']}, session semantics {ctx['semantics']['session_semantics']}, "
-          f"tick {ctx['semantics']['constant_tick_size']}", "",
+          f"- Size: {spec['position_sizing']['units']} units fixed; initial capital {sem['initial_cash']:,.0f}.", "",
+          "## 5. Execution assumptions", "",
+          "- Temporal rules are enforced by market-research-core, not by the Agent.",
+          f"- Data semantics handed to Core: bar label `{sem['bar_label']}`, session semantics "
+          f"`{sem['session_semantics']}`, timezone `{sem['timezone']}`, tick {sem['constant_tick_size']}.",
+          "- Decision time: the bar's `available_at` (bar end), after the bar is complete. Orders: target-position "
+          "MARKET, TIF DAY; Core fills at the first eligible bar with `bar_start >= available_at` (convention v1); no "
+          "partial fills; no closing-auction orders.",
+          f"- Research configuration: `{tp.get('config_id')}@{tp.get('version')}` sha256 `{tp.get('sha256')}`"
+          if tp else "- Research configuration: none (legacy single-job entry).",
+          f"- Data: dataset `{md.get('dataset_id')}` snapshot `{md.get('snapshot_id')}` producer "
+          f"`{md.get('producer_commit_sha')}`; kind {md.get('kind', 'REAL_MARKET')}; rows {md.get('rows')}; frame sha256 "
+          f"`{md.get('frame_sha256')}`",
+          f"- PIT: {md.get('pit_definition', '—')}", "",
           "## 6. CostProfile / assumptions", "",
           f"- Profile `{prof.get('profile_id')}@{prof.get('version')}` status {prof.get('status')} "
           f"sha256 `{prof.get('provenance', {}).get('profile_sha256')}`"]
@@ -202,12 +209,12 @@ def build_report(res) -> str:
         L.append(f"  - {c['id']} ({c['kind']}, {c['side']}): {v} — basis {c['basis']}")
     if res.report is not None:
         L.append(f"- Core cost profile sha256 `{res.report.provenance.get('cost_profile_sha256')}`; Core status "
-                 f"`{res.report.provenance.get('core_status')}`")
+                 f"`{res.report.provenance.get('core_status')}`; all fees, taxes and slippage computed by Core")
     if ctx.get("overrides"):
         L += ["- Synthetic environment overrides (recorded, never applied to the formal environment):"]
         L += [f"  - {o}" for o in ctx["overrides"]]
     L.append("")
-    L += ["## 7. Backtest metrics", ""]
+    L += ["## 7. Backtest results", ""]
     if m is None:
         L += ["NOT_EVALUABLE: no completed backtest.", ""]
     else:
@@ -219,31 +226,46 @@ def build_report(res) -> str:
                 ("Profit factor", t["profit_factor"]), ("Total return (equity, incl. open)", m["total_return"]),
                 ("Cost-adjusted net return (closed trades)", m["cost_adjusted_net_return"]),
                 ("Gross return (closed trades)", m["gross_return_closed_trades"]),
-                ("Total costs (fees + taxes)", m["costs"]["total"]), ("Maximum drawdown", m["max_drawdown"]),
+                ("Total costs (fees + taxes)", m["costs"]["total"]),
                 ("Sharpe (annualised)", sh.get("annualised") if sh.get("status") != "NOT_EVALUABLE" else sh),
                 ("Exposure (fraction of bars in market)", m["exposure"]),
                 ("Turnover (annualised, one-way)", m["turnover_annualised"])]
         L += ["| metric | value |", "|---|---|"] + [f"| {k} | {_num(v)} |" for k, v in rows]
         L += ["", f"Sample gate (Q5): **{m['sample']['status']}** "
               + ("; ".join(r["message"] for r in m["sample"]["reasons"]) or ""), ""]
-        tr = m["tail_risk"]
-        L += ["Tail risk:", "", "```json", json.dumps(tr, indent=1, default=str), "```", ""]
-    L += ["## 8. Yearly / regime / trade decomposition", ""]
-    if m is not None:
+        L += ["**Decomposition**", ""]
         for title, key in (("By year", "by_year"), ("By symbol", "by_symbol"),
                            ("By holding period (bars)", "by_holding_period_bars"), ("By parameter set", "by_parameter_set")):
-            L += [f"**{title}**", "", "| group | trades | net PnL | win rate | expectancy | PF |", "|---|---|---|---|---|---|"]
+            L += [f"*{title}*", "", "| group | trades | net PnL | win rate | expectancy | PF |", "|---|---|---|---|---|---|"]
             for g, v in m[key].items():
                 L.append(f"| {g} | {v['trade_count']} | {_num(v['net_pnl'])} | {_num(v['win_rate'])} | "
                          f"{_num(v['expectancy'])} | {_num(v['profit_factor'])} |")
             L.append("")
-        L += [f"**By market regime**: {_num(m['by_regime'])}", ""]
+        L += [f"*By market regime*: {_num(m['by_regime'])}", ""]
+    L += ["## 8. Cost sensitivity", ""]
+    if scen:
+        L += [f"- This run is scenario `{scen['scenario_id']}` ({scen['kind']}), Core cost_multiplier "
+              f"{scen['cost_multiplier']}, profile `{scen['profile_id']}@{scen['version']}` sha256 `{scen['sha256']}`, "
+              f"{scen['currency']}; commission {scen['commission_model']}; slippage {scen['slippage_model']}; basis "
+              f"{', '.join(scen['fee_basis'])}; {scen['assumption_status']}; approval {scen['approval_status']}; Core "
+              f"compatibility {scen['core_compatibility']['verdict']}.",
+              "- Scenarios are sensitivity analysis of the same strategy configuration: same parameters, one family "
+              "trial. The cross-scenario table is generated from the archived metrics in the batch summary "
+              "(`_batches/summary_<batch>.json` / `cost_sensitivity_<batch>.md`).", ""]
+    else:
+        L += [f"- Single run at Core cost_multiplier {j.cost_multiplier}; no scenario set (legacy entry). Run a research "
+              "configuration to get BASE / LOW / STRESS / CUSTOM scenarios.", ""]
+    L += ["## 9. Risk metrics", ""]
+    if m is not None:
+        L += [f"- Maximum drawdown {_num(m['max_drawdown'])}; duration {m['max_drawdown_duration_bars']} bars",
+              f"- Exposure {_num(m['exposure'])}; open position at end: {'yes' if m['open_position_at_end'] else 'no'}",
+              "", "```json", json.dumps(m["tail_risk"], indent=1, default=str), "```", ""]
     else:
         L += ["NOT_EVALUABLE", ""]
-    L += ["## 9. Bias and data-quality checks", ""]
+    L += ["## 10. Bias and data-quality checks", ""]
     L += ["- Look-ahead: decisions are emitted at bar `available_at`; Core fills only at `bar_start >= available_at` "
           "(B01–B12 + G16/G17/G14b PASS on this Core); signals are prefix-invariant (M2 tests).",
-          "- Selection bias: one pre-registered parameter set (5/20), no search; family trial index "
+          "- Selection bias: one pre-registered parameter set (5/20), no search (R02 mandatory); family trial index "
           f"{res.record['trial'].get('index')} before this run (registry).",
           f"- Holdout: development role {j.role}; holdout window untouched (guard H03)."]
     if m is not None:
@@ -256,14 +278,15 @@ def build_report(res) -> str:
               f"- Max order participation of bar volume {_num(dq['max_participation_of_bar_volume'])}; slippage cost vs "
               f"bar open {_num(dq['slippage_cost_vs_bar_open'])}; unfillable signals {dq['unfillable_signals']}",
               f"- Rejections by reason: `{json.dumps(dq['rejections_by_reason'])}`"]
-    L += ["", "## 10. Negative evidence", ""] + [f"- {x}" for x in negative_evidence(res)]
-    L += ["", "## 11. Opponent's view (反對者觀點)", ""] + [f"- {x}" for x in opponent_view(res)]
-    L += ["", "## 12. Remaining uncertainties", ""] + [f"- {x}" for x in uncertainties(res)]
-    L += ["", "## 13. Final recommendation", "",
-          f"- Engineering status of this run: **{eng['status']}** (stages: "
-          + ", ".join(f"{k}={v}" for k, v in eng["stages"].items()) + ")",
-          f"- Strategy recommendation: **{rec['decision']}**"]
-    L += [f"  - blocker: {b}" for b in rec["blockers"]] + [f"  - finding: {r}" for r in rec["reasons"]]
-    L += ["", "Engineering PASS and the strategy recommendation are separate verdicts: a correctly executed run "
-          "can still be 淘汰 or 無法判定.", ""]
+    L += ["", "## 11. Negative evidence", ""] + [f"- {x}" for x in negative_evidence(res)]
+    L += ["", "## 12. Opponent's view (反對者觀點)", ""] + [f"- {x}" for x in opponent_view(res)]
+    L += ["", "## 13. Remaining uncertainty", ""] + [f"- {x}" for x in uncertainties(res)]
+    L += ["", "## 14. Research decision", "",
+          "### Engineering Verdict", "",
+          f"**{eng['status']}** — stages: " + ", ".join(f"{k}={v}" for k, v in eng["stages"].items()), "",
+          "### Strategy Verdict", "",
+          f"**{rec['decision']}**"]
+    L += [f"- blocker: {b}" for b in rec["blockers"]] + [f"- finding: {r}" for r in rec["reasons"]]
+    L += ["", "The two verdicts are independent: a correctly executed run (Engineering PASS) can still be 淘汰 or "
+          "無法判定. A positive synthetic result is never evidence that the strategy works in a real market.", ""]
     return "\n".join(L)
