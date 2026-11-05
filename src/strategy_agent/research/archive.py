@@ -89,11 +89,34 @@ class Archiver:
         base, status, reason = self._target_root()
         d = self._new_dir(base, res.context["agent"]["agent_sha"])
         files = self._files(res, status, reason, d)
-        for name, text in files.items():
-            if name.endswith(FORBIDDEN_SUFFIXES):
-                raise ArchiveError(f"refusing to archive {name}")
-            (d / name).write_text(text, encoding="utf-8")
+        written = []
+        try:
+            for name, text in files.items():
+                if name.endswith(FORBIDDEN_SUFFIXES):
+                    raise ArchiveError(f"refusing to archive {name}")
+                (d / name).write_text(text, encoding="utf-8")
+                written.append(name)
+        except (OSError, ArchiveError) as e:
+            return self._record_failure(res, d, written, f"{type(e).__name__}: {e}")
         return {"status": status, "reason": reason, "path": str(d), "files": sorted(files) + ["manifest.json"]}
+
+    def _record_failure(self, res, d: Path, written: list[str], reason: str) -> dict:
+        """A write that fails midway leaves an explicit, traceable failure record - never a half archive that
+        looks complete: ARCHIVE_FAILED.json in the run dir (if writable) and a copy under the local fallback."""
+        rec = {"status": "FAILED", "reason": reason, "run_dir": str(d), "files_written_before_failure": written,
+               "experiment_id": res.record.get("experiment_id"), "registry_status": res.status,
+               "run_identity": res.identity, "metrics_sha256": res.metrics_sha256,
+               "at": self.clock().astimezone(TZ).isoformat(), "note": "no manifest was written; this run is NOT archived"}
+        where = []
+        for target in (d / "ARCHIVE_FAILED.json",
+                       self.local_fallback / "_archive_failures" / f"{d.name}.json"):
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(_dump(rec), encoding="utf-8")
+                where.append(str(target))
+            except OSError:
+                continue
+        return {"status": "FAILED", "reason": reason, "path": str(d), "failure_records": where, "files": written}
 
     def finalize(self, res) -> None:
         """Rewrite the stage log with the archive stage included, then write and verify the manifest."""
@@ -133,6 +156,9 @@ class Archiver:
             f"run_identity: {res.identity}",
             f"strategy: {j.spec['strategy_id']}@{j.spec['version']} spec_sha256={ctx['spec_sha256']}",
             f"parameters: {json.dumps(j.parameters, sort_keys=True)}",
+            f"research_config: {(ctx.get('research_config') or {}).get('config_id')}@"
+            f"{(ctx.get('research_config') or {}).get('version')} sha256={(ctx.get('research_config') or {}).get('sha256')}",
+            f"cost_scenario: {(ctx.get('cost_scenario') or {}).get('scenario_id')} multiplier={j.cost_multiplier}",
             f"window: warmup {j.warmup_start} | {j.window_start} -> {j.window_end} | role {j.role}",
             f"agent_sha: {ctx['agent']['agent_sha']} dirty={ctx['agent'].get('agent_tree_dirty')}",
             f"core_sha: {ctx['engine']['git_sha']} ({ctx['engine']['benchmark_status']})",
@@ -159,9 +185,16 @@ class Archiver:
                                  "core_sha256": rep.provenance.get("cost_profile_sha256") if rep else None},
                 "core": ctx["engine"], "agent": ctx["agent"], "spec_sha256": ctx["spec_sha256"],
                 "runner_version": ctx["runner_version"], "adapter_version": ctx["adapter_version"],
-                "run_identity": res.identity}),
+                "run_identity": res.identity, "research_config": ctx.get("research_config"),
+                "cost_scenario": {k: (ctx.get("cost_scenario") or {}).get(k) for k in (
+                    "scenario_id", "kind", "cost_multiplier", "profile_id", "version", "sha256", "approval_status")}
+                if ctx.get("cost_scenario") else None}),
             "dataset_metadata.json": _dump(md),
         }
+        if ctx.get("research_config"):
+            files["research_config.json"] = _dump(ctx["research_config"])
+        if ctx.get("cost_scenario"):
+            files["cost_scenario.json"] = _dump(ctx["cost_scenario"])
         if res.metrics is not None:
             files["metrics.json"] = _dump({"metrics_sha256": res.metrics_sha256, "metrics": res.metrics,
                                            "verdicts": verdicts})

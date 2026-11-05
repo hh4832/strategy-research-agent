@@ -5,6 +5,8 @@
                                                 [--cost-sensitivity] [--batch-id ID] [--resume] [--summary-out F]
     (no flag can change strategy parameters or turn governance off: parameters are the spec's FIXED defaults and
      R02 is mandatory in the research runner)
+    python -m strategy_agent.research run --config configs/research/<cfg>.json --run-root DIR [--archive-root DIR]
+                                          [--batch-id ID] [--resume] [--summary-out F]
     python -m strategy_agent.research real --market IBKR_TSM          # fails closed until the M3-A gate is GO
 
 Exit codes: 0 all runs COMPLETED + ARCHIVED (+ reproducible when --repeat > 1); 2 a run did not complete, an
@@ -72,6 +74,29 @@ def _synthetic(a) -> int:
     return 0 if ok else 2
 
 
+def _run(a) -> int:
+    """Configuration-driven run: the only research entry that takes a config (CLI, Colab, automation)."""
+    from .config import ResearchConfigError
+    from .entry import run_config
+    try:
+        summ = run_config(Path(a.config), run_root=Path(a.run_root),
+                          archive_root=Path(a.archive_root) if a.archive_root else None,
+                          resume=a.resume, batch_id=a.batch_id)
+    except ResearchConfigError as e:
+        print("CONFIG REFUSED:")
+        for r, m in e.issues:
+            print(f"  - {r}: {m}")
+        return 2
+    runs = summ["runs"]
+    ok = all(o["status"] in ("COMPLETED", "SKIPPED_RESUME") for o in runs) and \
+        all(o["archive_status"] == "ARCHIVED" for o in runs if o["status"] == "COMPLETED")
+    summ["ok"] = ok
+    print(json.dumps(summ, indent=1, ensure_ascii=False, default=str))
+    if a.summary_out:
+        Path(a.summary_out).write_text(json.dumps(summ, indent=1, ensure_ascii=False, default=str), encoding="utf-8")
+    return 0 if ok else 2
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m strategy_agent.research")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -87,10 +112,17 @@ def main(argv=None) -> int:
     s.add_argument("--batch-id")
     s.add_argument("--resume", action="store_true")
     s.add_argument("--summary-out", help="also write the batch summary JSON to this file")
+    c = sub.add_parser("run", help="run a reviewed research configuration (configs/research/*.json)")
+    c.add_argument("--config", required=True)
+    c.add_argument("--run-root", required=True, help="isolated governance + registry directory (SYNTHETIC)")
+    c.add_argument("--archive-root", help="only for configs with output.target LOCAL")
+    c.add_argument("--batch-id")
+    c.add_argument("--resume", action="store_true")
+    c.add_argument("--summary-out")
     x = sub.add_parser("real")
     x.add_argument("--market", default="IBKR_TSM")
     a = ap.parse_args(argv)
-    return {"readiness": _readiness, "synthetic": _synthetic, "real": _real}[a.cmd](a)
+    return {"readiness": _readiness, "synthetic": _synthetic, "real": _real, "run": _run}[a.cmd](a)
 
 
 if __name__ == "__main__":  # pragma: no cover

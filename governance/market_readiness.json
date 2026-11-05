@@ -1,54 +1,90 @@
 {
-  "note": "Market-gate records consumed by strategy_agent.research.readiness. Owned by Codex (M3-A); mirrors the machine-readable M3-A diagnostic pinned below. A real-market research run is allowed only for an entry with status GO, complete evidence, research-lead approval and an allowed window. The research runner never edits this file. Changes go through a PR reviewed by the research lead.",
+  "schema_version": "2.0.0",
+  "note": "Versioned market-gate registry consumed by strategy_agent.research.data. Owned by Codex (M3-A) and the research lead; the Agent only mirrors Core's pinned gate documents and never declares a Core gate passed. A real-market research run starts only when every gate in required_gates is PASS with a pinned evidence_ref (and approval where required), the allowed window is declared, and the snapshot is pinned. Changes go through a PR reviewed by the research lead.",
+  "required_gates": ["DATA_QUALITY", "TEMPORAL_SAFETY", "COST_MODEL_COMPATIBILITY", "COST_APPROVAL", "HOLDOUT_APPROVAL", "FORMAL_EXECUTION_ELIGIBILITY"],
   "markets": {
     "IBKR_TSM": {
-      "owner": "Codex",
-      "decision": "M3-A",
+      "gate_version": "2026-11-05.1",
       "status": "NO_GO",
-      "status_reason": "Codex M3-A (market-research-core@a9e0747): NO-GO for formal TSM execution/backtesting; SCOPED_GO only for pinned-snapshot, read-only research diagnostics. 1m timestamp label, available_at and per-bar session mask are UNKNOWN; CostProfile DRAFT; Core cost model cannot represent per-share commission losslessly (G18).",
-      "m3a": {
-        "report_ref": "https://github.com/hh4832/market-research-core/blob/a9e0747a61e5ff5d6a636ff3c657d98600f0ab01/docs/M3A_IBKR_TSM_READINESS.md",
-        "diagnostic_ref": "https://github.com/hh4832/market-research-core/blob/a9e0747a61e5ff5d6a636ff3c657d98600f0ab01/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
-        "report_commit": "a9e0747a61e5ff5d6a636ff3c657d98600f0ab01",
-        "core_base_sha": "bf01fa92bc95f9fc8b04038875c813f6cd30ad99",
-        "formal_execution": "NO_GO",
-        "bounded_data_diagnostics": "SCOPED_GO_RESEARCH_ONLY",
-        "synced_at": "2026-11-04T05:30:00+08:00",
-        "synced_by": "claude-m3b1"
+      "status_reason": "Core M3-A.1/M3-A.2 (PR #3 @ c1a3661): formal execution NO_GO; only bounded read-only research diagnostics are in scope. Timestamp label, observed availability and closing-auction attribution are UNKNOWN; the conservative temporal policy BAR_END_STRICT_LATER is pending research-owner acceptance; the IBKR CostProfile is DRAFT/ASSUMED. M3-A.4 (conservative temporal execution & configurable costs) is in progress in Core PR #3.",
+      "core_gate_ref": {
+        "repository": "hh4832/market-research-core",
+        "pr": 3,
+        "pr_head_sha": "c1a3661d127c7139ee86d824d1a380edf3d2e114",
+        "merged": false,
+        "report": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/M3A_IBKR_TSM_READINESS.md",
+        "diagnostic": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
+        "diagnostic_schema_version": "1.2.0",
+        "diagnostic_gate_id": "M3-A.1-IBKR-TSM",
+        "previous_ref": "https://github.com/hh4832/market-research-core/blob/a9e0747a61e5ff5d6a636ff3c657d98600f0ab01/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
+        "synced_at": "2026-11-05T10:40:00+08:00",
+        "synced_by": "claude-m3b2"
       },
-      "evidence_ref": null,
-      "approved_by": null,
-      "approved_at": null,
       "dataset_id": "ibkr_tsm_1m_normalized",
       "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
       "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
-      "dataset_quality_verdict": "GO (data quality only; not execution approval)",
       "allowed_window": {"start": null, "end": null},
-      "source_timestamp_timezone": "UTC",
-      "timezone": "America/New_York",
-      "bar_label": "UNKNOWN",
-      "available_at_rule": "UNKNOWN",
-      "session_coverage": "RTH_AND_AVAILABLE_ETH",
-      "per_bar_session_mask": "UNKNOWN",
-      "execution_eligibility": {"buy": false, "sell": false, "rejection_reason": "TIMESTAMP_LABEL_OR_SESSION_UNKNOWN"},
-      "constant_tick_size": null,
+      "facts": {
+        "source_timestamp": "UTC epoch conversion",
+        "timestamp_label": "UNKNOWN",
+        "observed_available_at": "UNKNOWN",
+        "conservative_temporal_policy": {"policy_id": "BAR_END_STRICT_LATER", "defined_in": "core_gate_ref", "approval": "PENDING_RESEARCH_OWNER", "is_observed_latency": false},
+        "session_coverage": "RTH_AND_AVAILABLE_ETH",
+        "per_bar_session_mask": "UNKNOWN (NYSE mask implemented in Core but not applied to the real snapshot)",
+        "default_session_scope_after_gate": "RTH_ONLY",
+        "closing_auction": "UNKNOWN",
+        "execution_eligibility": {"buy": false, "sell": false, "rejection_reason": "TIMESTAMP_LABEL_OR_SESSION_UNKNOWN"}
+      },
+      "gates": {
+        "DATA_QUALITY": {
+          "status": "PASS", "owner": "Codex",
+          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
+          "reason": "pre-existing FINAL GATE data-quality verdict GO (2,193,372 rows); data quality only, not execution approval",
+          "approved_by": null
+        },
+        "TEMPORAL_SAFETY": {
+          "status": "UNKNOWN", "owner": "Codex + research lead",
+          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/M3A_IBKR_TSM_READINESS.md",
+          "reason": "1m timestamp label UNKNOWN; observed availability UNKNOWN; closing auction UNKNOWN; BAR_END_STRICT_LATER pending owner acceptance and Core M3-A.4",
+          "approved_by": null
+        },
+        "COST_MODEL_COMPATIBILITY": {
+          "status": "FAIL", "owner": "Codex",
+          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/src/market_research_core/costs.py",
+          "reason": "pinned Core 2c6ba9a cannot represent per-share commission or bps slippage (G18). Core PR #3 adds these fields but is unmerged and unpinned; compatibility is re-evaluated only after a new Core pin passes B01-B12",
+          "approved_by": null
+        },
+        "COST_APPROVAL": {
+          "status": "FAIL", "owner": "research lead",
+          "evidence_ref": null,
+          "reason": "ibkr_us_equity@0.1.0 is DRAFT; all components RESEARCH_ASSUMPTION; no account pricing evidence",
+          "approved_by": null
+        },
+        "HOLDOUT_APPROVAL": {
+          "status": "FAIL", "owner": "research lead",
+          "evidence_ref": null,
+          "reason": "no approved holdout lock HOLDOUT-TSM-15M-v1 in governance/holdout_locks.jsonl",
+          "approved_by": null
+        },
+        "FORMAL_EXECUTION_ELIGIBILITY": {
+          "status": "FAIL", "owner": "Codex",
+          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
+          "reason": "Core decision formal_execution NO_GO; buy/sell eligibility false (TIMESTAMP_LABEL_OR_SESSION_UNKNOWN)",
+          "approved_by": null
+        }
+      },
       "cost_profile": {
-        "profile_id": "ibkr_us_equity",
-        "version": "0.1.0",
+        "profile_id": "ibkr_us_equity", "version": "0.1.0",
         "file_sha256": "50149cd2198a49ddb9acadff536f6765e7d938e62bd47e3c40089a561c0f97e5",
-        "status": "DRAFT",
-        "core_representable": false,
-        "core_gap": "G18 (per-share commission, bps slippage); spread, sell-side regulatory fees and volume participation unmodelled"
+        "status": "DRAFT"
       },
       "required_before_go": [
-        "bounded evidence correlating returned 1m bars with their trade interval + producer receipt pinning the downloader commit and request parameters (timestamp label)",
-        "confirmed available_at rule for historical bars (data owner)",
-        "per-bar RTH/ETH session mask from the confirmed convention and a versioned NYSE calendar; then source_confirmations.ibkr_tsm_session_coverage CONFIRMED (Q2)",
-        "Core IBKR bars with bar_start/bar_end/available_at/session and side eligibility populated (currently NaT/UNKNOWN, both sides ineligible)",
-        "allowed research window declared in this record",
-        "account commission evidence or explicitly approved assumptions; APPROVED ibkr_us_equity CostProfile",
-        "Core cost model for per-share commission, spread and volume participation (G18), or an approved Core-expressible restatement",
-        "research-lead approved holdout lock HOLDOUT-TSM-15M-v1 (governance/holdout_locks.jsonl)"
+        "TEMPORAL_SAFETY: downloader revision + acquisition receipt and a bounded bar-to-trade-interval correlation (timestamp label); owner decision on BAR_END_STRICT_LATER; row-level NYSE session mask (RTH only); closing-auction policy (fail closed until attributed)",
+        "COST_MODEL_COMPATIBILITY: Core release with per-share commission / bps slippage / half spread / regulatory fee / volume cap, pinned in the Agent after B01-B12 PASS",
+        "COST_APPROVAL: account pricing evidence or research-lead approved assumptions for ibkr_us_equity",
+        "HOLDOUT_APPROVAL: research-lead approved HOLDOUT-TSM-15M-v1",
+        "FORMAL_EXECUTION_ELIGIBILITY: Core gate decision formal_execution GO with side eligibility populated",
+        "allowed research window declared in this record"
       ]
     }
   }

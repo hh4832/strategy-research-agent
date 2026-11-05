@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0.0",
+  "scenario_set_id": "synthetic_equity_test_v1",
+  "version": "1.0.0",
+  "description": "SYNTHETIC fixture cost sensitivity on the test-only profile. Core computes every cost; multipliers are the spec's pre-registered sensitivity_multipliers.",
+  "scenarios": [
+    {
+      "scenario_id": "BASE",
+      "kind": "BASE",
+      "profile_ref": {
+        "profile_id": "synthetic_equity_test",
+        "version": "1.0.0",
+        "sha256": "adba97a41db38ba90d3f55125e3fc5042956171553f5824b40efc7e60747319d"
+      },
+      "cost_multiplier": 1.0,
+      "commission_model": "ALL_IN",
+      "description": "test profile as approved in the isolated environment"
+    },
+    {
+      "scenario_id": "LOW_FRICTIONLESS",
+      "kind": "LOW",
+      "profile_ref": {
+        "profile_id": "synthetic_equity_test",
+        "version": "1.0.0",
+        "sha256": "adba97a41db38ba90d3f55125e3fc5042956171553f5824b40efc7e60747319d"
+      },
+      "cost_multiplier": 0.0,
+      "commission_model": "ALL_IN",
+      "description": "lower bound: Core cost_multiplier 0 (no fees, no slippage)"
+    },
+    {
+      "scenario_id": "STRESS_2X",
+      "kind": "STRESS",
+      "profile_ref": {
+        "profile_id": "synthetic_equity_test",
+        "version": "1.0.0",
+        "sha256": "adba97a41db38ba90d3f55125e3fc5042956171553f5824b40efc7e60747319d"
+      },
+      "cost_multiplier": 2.0,
+      "commission_model": "ALL_IN",
+      "description": "Core cost_multiplier 2"
+    },
+    {
+      "scenario_id": "STRESS_4X",
+      "kind": "STRESS",
+      "profile_ref": {
+        "profile_id": "synthetic_equity_test",
+        "version": "1.0.0",
+        "sha256": "adba97a41db38ba90d3f55125e3fc5042956171553f5824b40efc7e60747319d"
+      },
+      "cost_multiplier": 4.0,
+      "commission_model": "ALL_IN",
+      "description": "Core cost_multiplier 4"
+    }
+  ]
+}

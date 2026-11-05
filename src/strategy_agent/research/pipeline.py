@@ -31,6 +31,7 @@ from strategy_agent.runner import EngineInfo, ExperimentRunner, RunRequest
 from strategy_agent.signals.sma import sma_crossover
 from strategy_agent.spec.validate import canonical_hash, validate
 
+from . import contract
 from .data import MarketData
 from .environment import GovernanceEnv
 
@@ -66,6 +67,8 @@ class ResearchJob:
     cost_multiplier: float = 1.0
     seed: int = 0
     label: str = ""
+    config: dict | None = None        # {config_id, version, sha256, kind} of the research configuration (M3-B.2)
+    scenario: dict | None = None      # derived cost-scenario record (research.cost_scenarios)
 
 
 @dataclass
@@ -112,19 +115,26 @@ def run_identity(job: ResearchJob, *, spec_sha: str, engine: EngineInfo, agent_s
                  dataset: dict) -> str:
     """Same identity <=> same research question on the same inputs and code. Reruns keep the identity; every run
     still gets a new experiment id and a new archive directory."""
-    return sha256_of({"spec_sha256": spec_sha, "parameters": job.parameters, "window": [job.warmup_start,
-                      job.window_start, job.window_end], "role": job.role, "cost_multiplier": job.cost_multiplier,
-                      "seed": job.seed, "engine_git_sha": engine.git_sha, "agent_sha": agent_sha,
-                      "cost_profile_sha256": profile_sha, "dataset": {k: dataset.get(k) for k in (
-                          "dataset_id", "snapshot_id", "producer_commit_sha")}, "runner": RUNNER_VERSION,
-                      "adapter": A.ADAPTER_VERSION})
+    payload = {"spec_sha256": spec_sha, "parameters": job.parameters, "window": [job.warmup_start,
+               job.window_start, job.window_end], "role": job.role, "cost_multiplier": job.cost_multiplier,
+               "seed": job.seed, "engine_git_sha": engine.git_sha, "agent_sha": agent_sha,
+               "cost_profile_sha256": profile_sha, "dataset": {k: dataset.get(k) for k in (
+                   "dataset_id", "snapshot_id", "producer_commit_sha")}, "runner": RUNNER_VERSION,
+               "adapter": A.ADAPTER_VERSION}
+    if job.config:                    # config-driven runs: a changed config is a different research question
+        payload["config_sha256"] = job.config["sha256"]
+    if job.scenario:
+        payload["scenario_id"] = job.scenario["scenario_id"]
+    return sha256_of(payload)
 
 
 class _InstrumentedPort:
     """BacktestPort that runs the M1 port and records the data / signal / core stages it drives."""
 
-    def __init__(self, port: A.MrcBacktestPort, stages: dict[str, Stage]):
+    def __init__(self, port: A.MrcBacktestPort, stages: dict[str, Stage], *, job=None, engine_git_sha=None,
+                 real_market: bool = False):
         self.port, self.stages = port, stages
+        self.job, self.engine_git_sha, self.real_market = job, engine_git_sha, real_market
         self.report = None
 
     def run(self, request: BacktestRequest):
@@ -133,11 +143,14 @@ class _InstrumentedPort:
                      "cost_multiplier": request.cost_multiplier, "engine": "market-research-core ExecutionEngine.run"}
         try:
             rep = self.port.run(request)
+            # Core -> Agent contract (M3_CORE_AGENT_INTEGRATION.md): mismatch => FAILED in the registry
+            cc = contract.enforce(rep, job=self.job, engine_git_sha=self.engine_git_sha, real_market=self.real_market)
         except BaseException as e:
             st.status, st.error = "FAILED", f"{type(e).__name__}: {e}"
             raise
         st.status = "OK"
-        st.outputs = {"fills": len(rep.fills), "round_trips": len(rep.round_trips),
+        st.outputs = {"contract_checks": cc.checks}
+        st.outputs |= {"fills": len(rep.fills), "round_trips": len(rep.round_trips),
                       "invalidated_round_trips": len(rep.invalidated_round_trips), "rejections": len(rep.rejections),
                       "report_status": rep.status, "core_status": rep.provenance.get("core_status"),
                       "engine_git_sha": rep.provenance.get("engine_git_sha"),
@@ -175,6 +188,14 @@ class ResearchRunner:
                       "decision_time_rule": "bar available_at (bar_end) after the bar is complete",
                       "decisions_sha256": sha256_of([(d.decision_ts.isoformat(), d.target, d.reason) for d in kept])}
         return kept
+
+    def identity(self, job: ResearchJob) -> str:
+        spec = job.spec
+        ref = spec.get("costs", {}).get("profile_ref") or {}
+        profile = self.env.cost_profiles.get((ref.get("profile_id"), ref.get("version")))
+        dataset = (spec.get("data_requirements", {}).get("datasets") or [{}])[0]
+        return run_identity(job, spec_sha=canonical_hash(spec), engine=self.engine, agent_sha=self.agent["agent_sha"],
+                            profile_sha=(profile or {}).get("provenance", {}).get("profile_sha256"), dataset=dataset)
 
     def run(self, job: ResearchJob) -> ResearchResult:
         names = ("spec", "governance_admission", "data_access", "signal_generation", "core_execution",
@@ -240,7 +261,8 @@ class ResearchRunner:
         port = A.MrcBacktestPort({k: v for k, v in self.env.cost_profiles.items()},
                                  decisions_provider=decisions_provider, bars_provider=bars_provider,
                                  semantics=sem_map, core=self.core)
-        ip = _InstrumentedPort(port, stages)
+        ip = _InstrumentedPort(port, stages, job=job, engine_git_sha=self.engine.git_sha,
+                               real_market=self.env.kind == "FORMAL")
         runner = ExperimentRunner(self.env.registry, self.env.families, self.env.holdout, self.env.budget, ip,
                                   self.engine, agent_sha=self.agent["agent_sha"], admission=self.env.admission,
                                   actor="strategy-agent-m3b", clock=self.clock, governance=self.env.governance,
@@ -285,6 +307,7 @@ class ResearchRunner:
                                       "environment": self.env.kind, "overrides": list(self.env.overrides),
                                       "cost_profile": profile, "dataset": dataset, "runner_version": RUNNER_VERSION,
                                       "adapter_version": A.ADAPTER_VERSION,
+                                      "research_config": job.config, "cost_scenario": job.scenario,
                                       "semantics": asdict(self.semantics)})
 
         # 8 evaluation
@@ -338,7 +361,7 @@ class ResearchRunner:
             except BaseException as e:  # noqa: BLE001
                 ar.status, ar.error = "FAILED", f"{type(e).__name__}: {e}"
         res.stages = [asdict(s) for s in stages.values()]
-        if self.archiver is not None and res.archive and res.archive.get("path"):
+        if self.archiver is not None and res.archive and res.archive.get("status") in ("ARCHIVED", "DRIVE_UNAVAILABLE"):
             self.archiver.finalize(res)          # stage log incl. the archive stage itself
         self.progress(f"[{job.label or 'run'}] {record['status']} exp {record['experiment_id']} "
                       f"archive {(res.archive or {}).get('status')}")

@@ -238,3 +238,19 @@ Static checks (`tests/test_m3b_notebook.py`, run in CI): exact 40-hex `AGENT_COM
 | APPROVED IBKR CostProfile with account evidence | research lead |
 | G18: per-share commission, spread, volume participation in Core | Codex |
 | Holdout lock `HOLDOUT-TSM-15M-v1` | research lead |
+
+## 11. M3-B.2 production readiness (2026-11-05)
+
+Scope: configuration, R02 on every entry, cost scenarios, six-gate market registry, the Core ↔ Agent contract, Colab and Drive. Not changed: Core, Core pin, Oracle, B01–B12, formal holdout locks, SMA parameters. No TSM run.
+
+| Area | Delivered |
+|---|---|
+| Research configuration | `schemas/RESEARCH_CONFIG_SCHEMA.json` (v1.0.0) and `research/config.py` with rules RC01–RC12. Every config has a version and a sha256. An edited config must be re-hashed, and the same id+version can never run with a different sha256 (config ledger). The temporal policy is a reference to Core's gate: UNKNOWN is never upgraded. Configs: `configs/research/sma_5_20_tsm_synthetic_v1.json` (Drive), `..._local_v1.json` (CI and offline). |
+| Single entry point | `research/entry.py::run_config`, used by CLI `run`, Colab, batch, resume and future automation. There is no parameter flag and no governance switch. Config refusals are written to `_refused_configs/`. |
+| R02 | Mandatory in `ResearchRunner`. Invalid parameters in a new config version are submitted and recorded as `REJECTED_SPEC` R02. A same-version edit is refused (RC02). Resume re-enters the runner, so R02 applies there too. The M2 low-level API is unchanged. |
+| Cost scenarios | `schemas/COST_SCENARIO_SET_SCHEMA.json` and `research/cost_scenarios.py` (rules CS01–CS07): BASE, LOW, STRESS and CUSTOM. Recorded per scenario: profile id, version, SHA, currency, commission and slippage model, fee basis, assumption and approval status (copied, never upgraded) and the Core compatibility verdict. ALL_IN commission plus a separate fee is rejected as double counting. Core does every calculation. Scenarios count as one family trial. The IBKR set is DRAFT, ASSUMED and INCOMPATIBLE (G18), so it is not executable. |
+| Market gate | `governance/market_readiness.json` schema 2.0.0: six gates, pinned to Core PR #3 @ `c1a3661`. A PASS needs pinned Core evidence and a named approval where required. IBKR TSM: DATA_QUALITY PASS; TEMPORAL_SAFETY UNKNOWN; COST_MODEL_COMPATIBILITY, COST_APPROVAL, HOLDOUT_APPROVAL and FORMAL_EXECUTION_ELIGIBILITY FAIL. |
+| Core contract | `M3_CORE_AGENT_INTEGRATION.md` and `research/contract.py` (checks CC01–CC07, inside the port; a mismatch makes the run FAILED in the registry). Core APIs not yet released are marked PENDING. |
+| Report | Sections are now: hypothesis, mechanism, strategy rules, execution assumptions, backtest results, cost sensitivity, risk metrics, negative evidence, opponent's view, remaining uncertainty, and research decision with separate **Engineering Verdict** and **Strategy Verdict**. A program-generated `cost_sensitivity_<batch>.md` sits next to the batch ledger. |
+| Archive | Adds `research_config.json` and `cost_scenario.json`. A write failure leaves `ARCHIVE_FAILED.json` plus a local failure record and no manifest. |
+| Colab | The notebook runs the Drive config twice, checks Python ≥ 3.11, and verifies all 14 required files, manifest coverage of every file, no overwrite, reproducibility, one family trial and that the formal registry is untouched. |
