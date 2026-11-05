@@ -280,7 +280,7 @@ def test_archive_write_failure_leaves_explicit_record(tmp_path, monkeypatch):
     from datetime import datetime, timezone
 
     from strategy_agent.research.archive import Archiver
-    from tests.test_m3b_unit import _fake_result
+    from test_m3b_unit import _fake_result       # tests/ is on sys.path (rootdir-relative, like m2_helpers)
     a = Archiver(tmp_path / "arch", local_fallback=tmp_path / "local",
                  clock=lambda: datetime(2026, 11, 5, 3, 0, tzinfo=timezone.utc))
     real = Path.write_text
