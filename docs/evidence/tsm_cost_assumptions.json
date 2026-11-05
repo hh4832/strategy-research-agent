@@ -1,0 +1,310 @@
+{
+ "schema": "tsm_cost_assumptions/1",
+ "recorded_at": "2026-11-05T22:30:00+08:00",
+ "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+ "dataset": {
+  "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+  "rth_days": 2513,
+  "first_day": "2016-10-19",
+  "last_day": "2026-10-16",
+  "source": "tsm_daily_rth_coverage.csv in the FINAL GATE folder on Drive (read-only; data not re-downloaded or re-validated)"
+ },
+ "assumption": {
+  "cost_model": "IBKR_PRO_FIXED",
+  "approval_scope": "RESEARCH_ONLY",
+  "status": "ACCEPTED_RESEARCH_ONLY",
+  "approval_basis": "USER_EXPLICIT_ACCEPTANCE",
+  "approved_by": "hh4832",
+  "approved_at": "2026-11-05T21:19:00+08:00",
+  "rate_evidence": "LISTED_TERMS_NOT_ACCOUNT_VERIFIED",
+  "never": "BROKER_ACTUAL",
+  "commission_per_share": 0.005,
+  "minimum_per_order": 1.0,
+  "maximum_fraction_of_notional": 0.01,
+  "pricing_plan": "FIXED",
+  "slippage_bps_per_side": {
+   "BASE": 2,
+   "LOW": 1,
+   "STRESS": 4
+  },
+  "half_spread_bps": 0,
+  "half_spread_reason": "not added on top of slippage (double counting)",
+  "exchange_and_clearing_fees": "included in the Fixed commission per IBKR listed terms (exchange_fee_per_unit = clearing_fee_per_unit = 0)",
+  "listed_terms_source": {
+   "url": "https://www.interactivebrokers.co.uk/en/index.php?f=39753",
+   "read_at": "2026-11-05",
+   "states": "USD 0.005/share, minimum USD 1.00, maximum 1% of trade value, all-inclusive of exchange and clearing fees",
+   "evidence_status": "BROKER_LISTED_TERMS (IBKR UK site; www.interactivebrokers.com/en/pricing/commissions-stocks.php not reachable from this environment)"
+  },
+  "conflicting_source": {
+   "url": "https://www.interactivebrokers.com/en/accounts/fees/stknorthambundcoms.php",
+   "states": "flat rate maximum 0.5% and transaction fee USD 0.0000221 x sales (a legacy SEC rate)",
+   "treatment": "recorded, not used; appears to be a legacy flat-rate page"
+  },
+  "volume_participation_cap": "not set (not part of the decision)"
+ },
+ "core_configurations": {
+  "BASE": {
+   "path": "configs/core_cost_profiles/ibkr_pro_fixed_tsm_research_base_v1.json",
+   "profile_id": "ibkr_pro_fixed_tsm_research_base",
+   "configuration_sha256": "bb10abbbd0d1c004daf0cd1441006053d040dbc47e86ebb6f57871576f003f94",
+   "equity_slippage_bps": 2,
+   "resolved_profile_sha256_by_as_of": {
+    "2024-06-03": "e8364d60a0eb00efd03c461e728cec9c2fc9415216eed6274e6cb6816ce82e8e"
+   },
+   "note": "Core profile sha depends on the as_of date (selected SEC interval is part of the profile); pin per run window"
+  },
+  "LOW": {
+   "path": "configs/core_cost_profiles/ibkr_pro_fixed_tsm_research_low_v1.json",
+   "profile_id": "ibkr_pro_fixed_tsm_research_low",
+   "configuration_sha256": "50f9068245076a7a0d739f18deaf13768512992b3b2273658292faebe6726fb8",
+   "equity_slippage_bps": 1,
+   "resolved_profile_sha256_by_as_of": {
+    "2024-06-03": "97c481aab51e866aea389b8dfb9dc9074e19bfc43abccfe1b224d9f3644d939b"
+   },
+   "note": "Core profile sha depends on the as_of date (selected SEC interval is part of the profile); pin per run window"
+  },
+  "STRESS": {
+   "path": "configs/core_cost_profiles/ibkr_pro_fixed_tsm_research_stress_v1.json",
+   "profile_id": "ibkr_pro_fixed_tsm_research_stress",
+   "configuration_sha256": "d2a49ca88a107cd84240a4652219afab33624a81e9dbb8d486877aa5c7ecdf7f",
+   "equity_slippage_bps": 4,
+   "resolved_profile_sha256_by_as_of": {
+    "2024-06-03": "7fb93d8c83fa99fb5d19eee2dbf751c8f5c5925e1fc0deb70443ba11830e3316"
+   },
+   "note": "Core profile sha depends on the as_of date (selected SEC interval is part of the profile); pin per run window"
+  }
+ },
+ "regulatory_fees": {
+  "SEC_SECTION_31": {
+   "side": "SELL",
+   "unit": "fraction of sale notional",
+   "minimum": null,
+   "maximum": null,
+   "charged_by_ibkr_fixed": "PASS_THROUGH (listed by IBKR as third-party regulatory fee; secondary source https://dollarsahead.com/finra-trading-activity-fee/ checked 2026-10-24; IBKR primary page unreachable)",
+   "core_expressible": true,
+   "core_field": "sell_regulatory_fee_rate via dated regulatory_schedule (load_cost_profile)",
+   "coverage": "COMPLETE 2016-10-19..2026-10-16",
+   "status_in_run": "MODELLED",
+   "date_semantics": "SEC applies rates by charge date; trade date is used as the charge date (settlement lag not modelled; affects only the days around a rate change)",
+   "schedule": [
+    {
+     "from": "2016-10-19",
+     "to": "2017-07-03",
+     "rate": 2.18e-05,
+     "per_million": 21.8,
+     "evidence_ref": "https://www.sec.gov/news/pressrelease/2016-206.html (FY2017 #2: current $21.80 continues) + https://www.sec.gov/newsroom/press-releases/2017-111 (prior $21.80 through 2017-07-03)",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2017-07-04",
+     "to": "2018-05-21",
+     "rate": 2.31e-05,
+     "per_million": 23.1,
+     "evidence_ref": "https://www.sec.gov/newsroom/press-releases/2017-111 (FY2017 #3) + https://www.sec.gov/news/press-release/2018-67",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2018-05-22",
+     "to": "2019-04-15",
+     "rate": 1.3e-05,
+     "per_million": 13.0,
+     "evidence_ref": "https://www.sec.gov/news/press-release/2018-67 (FY2018 #3) + https://www.sec.gov/news/press-release/2019-30",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2019-04-16",
+     "to": "2020-02-17",
+     "rate": 2.07e-05,
+     "per_million": 20.7,
+     "evidence_ref": "https://www.sec.gov/news/press-release/2019-30 (FY2019 #2) + https://www.sec.gov/news/press-release/2020-7",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2020-02-18",
+     "to": "2021-02-24",
+     "rate": 2.21e-05,
+     "per_million": 22.1,
+     "evidence_ref": "https://www.sec.gov/news/press-release/2020-7 (FY2020 #2), https://www.sec.gov/news/press-release/2020-49 (#3 unchanged) + https://www.sec.gov/news/press-release/2021-8",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2021-02-25",
+     "to": "2022-05-13",
+     "rate": 5.1e-06,
+     "per_million": 5.1,
+     "evidence_ref": "https://www.sec.gov/news/press-release/2021-8 (FY2021 #2), https://www.sec.gov/news/press-release/2021-36 (#3 unchanged) + https://www.sec.gov/news/press-release/2022-60",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2022-05-14",
+     "to": "2023-02-26",
+     "rate": 2.29e-05,
+     "per_million": 22.9,
+     "evidence_ref": "https://www.sec.gov/news/press-release/2022-60 (FY2022 #2) + https://www.sec.gov/newsroom/press-releases/2023-15",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2023-02-27",
+     "to": "2024-05-21",
+     "rate": 8e-06,
+     "per_million": 8.0,
+     "evidence_ref": "https://www.sec.gov/newsroom/press-releases/2023-15 (FY2023 #2), https://www.sec.gov/newsroom/press-releases/2023-41 (#3 unchanged) + https://www.sec.gov/rules-regulations/fee-rate-advisories/2024-2",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2024-05-22",
+     "to": "2025-05-13",
+     "rate": 2.78e-05,
+     "per_million": 27.8,
+     "evidence_ref": "https://www.sec.gov/rules-regulations/fee-rate-advisories/2024-2 (FY2024 #2) + https://www.sec.gov/rules-regulations/fee-rate-advisories/2025-2",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2025-05-14",
+     "to": "2026-04-03",
+     "rate": 0.0,
+     "per_million": 0.0,
+     "evidence_ref": "https://www.sec.gov/rules-regulations/fee-rate-advisories/2025-2 (FY2025: $0.00 per million) + https://www.sec.gov/rules-regulations/fee-rate-advisories/2026-2",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    },
+    {
+     "from": "2026-04-04",
+     "to": "2026-10-16",
+     "rate": 2.06e-05,
+     "per_million": 20.6,
+     "evidence_ref": "https://www.sec.gov/rules-regulations/fee-rate-advisories/2026-2 (FY2026 #2: $20.60 from 2026-04-04); continues past 2026-09-30 by statute until a FY2027 advisory (none listed on https://sec.gov/rules-regulations/fee-rate-advisories at 2026-11-05); interval ends at the snapshot's last day",
+     "evidence_status": "OFFICIAL_SOURCE_READ",
+     "basis": "OFFICIAL",
+     "approval_status": "PENDING (official rate; IBKR application not account-verified)"
+    }
+   ]
+  },
+  "FINRA_TAF": {
+   "side": "SELL",
+   "unit": "USD per share sold",
+   "maximum": "per trade (see schedule)",
+   "charged_by_ibkr_fixed": "PASS_THROUGH (same secondary source; IBKR primary page unreachable)",
+   "core_expressible": false,
+   "status_in_run": "BLOCKER_NOT_MODELLED",
+   "core_gap": "Core 699e3ad has no sell-only per-share fee with a per-trade maximum and dated schedule: regulatory_fee_per_unit charges BOTH sides, uncapped, and is not dated; the dated loader only sets sell_regulatory_fee_rate (notional)",
+   "magnitude_note": "100 sh x 0.000195 = USD 0.0195 per sell; small relative to the USD 1 minimum, but UNKNOWN is never set to zero",
+   "schedule": [
+    {
+     "from": "2016-10-19",
+     "to": "2021-12-31",
+     "per_share": 0.000119,
+     "max_per_trade": 5.95,
+     "side": "SELL",
+     "evidence_ref": "https://www.finra.org/rules-guidance/notices/12-31 (effective 2012-07-01) + https://www.finra.org/sites/default/files/2020-10/NOF%20IMM%20EFF%20FINRA-2020-032.pdf (2020 current, 2021 no change)",
+     "evidence_status": "OFFICIAL_SOURCE_READ"
+    },
+    {
+     "from": "2022-01-01",
+     "to": "2022-12-31",
+     "per_share": 0.00013,
+     "max_per_trade": 6.49,
+     "side": "SELL",
+     "evidence_ref": "SR-FINRA-2020-032 (immediately effective; FR 2020-10-20) https://www.finra.org/sites/default/files/2020-10/NOF%20IMM%20EFF%20FINRA-2020-032.pdf",
+     "evidence_status": "OFFICIAL_SOURCE_READ"
+    },
+    {
+     "from": "2023-01-01",
+     "to": "2023-12-31",
+     "per_share": 0.000145,
+     "max_per_trade": 7.27,
+     "side": "SELL",
+     "evidence_ref": "SR-FINRA-2020-032 schedule (same source)",
+     "evidence_status": "OFFICIAL_SOURCE_READ"
+    },
+    {
+     "from": "2024-01-01",
+     "to": "2025-12-31",
+     "per_share": 0.000166,
+     "max_per_trade": 8.3,
+     "side": "SELL",
+     "evidence_ref": "SR-FINRA-2020-032 (2024) + https://www.finra.org/rules-guidance/rule-filings/sr-finra-2024-019/fee-adjustment-schedule (2025 no change) + https://www.finra.org/rules-guidance/rulebooks/corporate-organization/section-1-member-regulatory-fees",
+     "evidence_status": "OFFICIAL_SOURCE_READ"
+    },
+    {
+     "from": "2026-01-01",
+     "to": "2026-09-30",
+     "per_share": 0.000195,
+     "max_per_trade": 9.79,
+     "side": "SELL",
+     "evidence_ref": "https://www.finra.org/rules-guidance/rule-filings/sr-finra-2024-019/fee-adjustment-schedule",
+     "evidence_status": "OFFICIAL_SOURCE_READ"
+    },
+    {
+     "from": "2026-10-01",
+     "to": "2026-12-31",
+     "per_share": 0.0,
+     "max_per_trade": 0.0,
+     "side": "SELL",
+     "evidence_ref": "https://www.finra.org/sites/default/files/2026-09/SR-FINRA-2026-021.pdf (temporary fee holiday)",
+     "evidence_status": "OFFICIAL_SOURCE_READ"
+    }
+   ]
+  },
+  "FINRA_CAT": {
+   "side": "UNKNOWN (CAT fees are assessed per executed equivalent share on Industry Members)",
+   "unit": "USD per executed equivalent share",
+   "charged_by_ibkr_fixed": "UNKNOWN (no primary or secondary source found stating IBKR Fixed pass-through)",
+   "core_expressible": "PARTIAL (regulatory_fee_per_unit, undated)",
+   "status_in_run": "BLOCKER_UNKNOWN",
+   "known_fees": "https://catnmsplan.com/cat-fee-alerts: CAT Fee 2024-1 0.000035; Historical CAT Assessment 1 0.000013; CAT Fee 2025-1 0.000022; CAT Fee 2025-2 0.000009; 2026 fees proposed (0.000001, 0.000002); invoices paused after Dec 2025",
+   "applicable_from": "UNKNOWN exact trade period (first CAT fee alert 2024-08-01); not assumed zero"
+  }
+ },
+ "scenarios": {
+  "HISTORICAL_COST_SCENARIO": "dated SEC Section 31 per trade date (modelled); TAF and CAT NOT modelled -> incomplete (blocker)",
+  "CURRENT_COST_SCENARIO": "not created: would apply 2026 rates to 2016-2026 history; allowed only as a separately labelled scenario if the research lead asks; never mixed with HISTORICAL"
+ },
+ "blockers": [
+  {
+   "id": "CORE_GAP_TAF",
+   "what": "FINRA TAF (sell-only, per share, per-trade cap, dated) not expressible in Core 699e3ad CostProfile",
+   "needs": "a Core release (Codex) with a sell-side per-unit regulatory fee + per-trade cap + dated schedule, OR a research-lead decision to accept a documented conservative bound (both sides, uncapped, per-year configs) for RESEARCH_ONLY"
+  },
+  {
+   "id": "CAT_FEE_PASS_THROUGH_UNKNOWN",
+   "what": "whether IBKR Fixed passes FINRA CAT fees through, at what rate per trade date",
+   "needs": "IBKR account statement / IBKR primary pricing page, or a research-lead decision on a documented assumption"
+  },
+  {
+   "id": "HOLDOUT_LOCK_MISSING",
+   "what": "governance/holdout_locks.jsonl is empty; H01 rejects every IBKR TSM run",
+   "needs": "research lead runs strategy_agent.governance.holdout_admin approve for HOLDOUT-TSM-15M-v1 with explicit dates (Agent cannot create locks)"
+  },
+  {
+   "id": "NO_RESEARCH_ONLY_REAL_PATH",
+   "what": "real TSM runs need status GO + six gates PASS (GatedMarketSource, RC12) and Core FORMAL_ELIGIBLE (CC06); the conservative mode is RESEARCH_ONLY by design",
+   "needs": "separate RESEARCH_ONLY authorization (design in docs/TSM_RESEARCH_READINESS.md section 6), implemented and reviewed"
+  },
+  {
+   "id": "NO_REAL_NATIVE_LOADER",
+   "what": "no Agent path from the FINAL GATE snapshot's native 1m rows to Core prepare_conservative_bars, nor from dated Core cost configs to the port",
+   "needs": "adapter work in the same authorized change"
+  }
+ ]
+}

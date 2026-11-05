@@ -11,9 +11,9 @@
   ],
   "markets": {
     "IBKR_TSM": {
-      "gate_version": "2026-11-05.2",
+      "gate_version": "2026-11-05.4",
       "status": "NO_GO",
-      "status_reason": "Core M3-A.4 (PR #3 @ 699e3ad, engineering GO for the research model only): formal_market NO_GO. Timestamp label, observed availability and closing-auction attribution remain UNKNOWN; Core's CONSERVATIVE_LABEL_AGNOSTIC research model is pending research-owner acceptance and can never be FORMAL_ELIGIBLE; the IBKR CostProfile is DRAFT/ASSUMED and Core's IBKR regulatory schedule is PENDING (fails closed); cost and holdout approvals are missing.",
+      "status_reason": "Core M3-A.4 (PR #3 @ 699e3ad, engineering GO for the research model only): formal_market NO_GO. The conservative research model is ACCEPTED by the research lead for RESEARCH_ONLY exploratory use (2026-11-05); timestamp label, publication latency and closing-auction attribution remain UNKNOWN and the model can never be FORMAL_ELIGIBLE; the IBKR CostProfile is DRAFT/ASSUMED and Core's IBKR regulatory schedule is PENDING (fails closed); cost and holdout approvals are missing.",
       "core_gate_ref": {
         "repository": "hh4832/market-research-core",
         "pr": 3,
@@ -27,7 +27,7 @@
         "m3a4_diagnostic": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a4_final.json",
         "ci": "https://github.com/hh4832/market-research-core/actions/runs/41967704177",
         "previous_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
-        "synced_at": "2026-11-05T17:50:00+08:00",
+        "synced_at": "2026-11-05T21:30:00+08:00",
         "synced_by": "claude-m3c"
       },
       "dataset_id": "ibkr_tsm_1m_normalized",
@@ -46,11 +46,39 @@
           "version": "1.0.0",
           "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
           "defined_in": "core_gate_ref.m3a4_contract",
-          "approval": "PENDING_RESEARCH_OWNER",
+          "approval": "ACCEPTED_RESEARCH_ONLY",
           "is_observed_latency": false,
           "supersedes": "BAR_END_STRICT_LATER (M3-A.1 proposal)",
           "core_verdict": "GO_ENGINEERING_RESEARCH_MODEL_ONLY",
-          "can_be_formal_eligible": false
+          "can_be_formal_eligible": false,
+          "research_approval": {
+            "approval_type": "TEMPORAL_ASSUMPTION",
+            "approval_scope": "RESEARCH_ONLY",
+            "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+            "policy_version": "1.0.0",
+            "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+            "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+            "approval_basis": "USER_EXPLICIT_ACCEPTANCE",
+            "approved_by": "hh4832",
+            "approver_role": "research lead (governance/approvers.json research_leads)",
+            "approved_at": "2026-11-05T21:16:00+08:00",
+            "approval_channel": "explicit research-lead decision in Claude session https://claude.ai/code/session_01NWGF1HJk7GEH3xZwia2eXf; recorded on Agent PR #4, effective when merged by the research lead",
+            "use": "time assumption for exploratory TSM backtests only",
+            "source_timestamp_label": "UNKNOWN",
+            "closing_auction_attribution": "UNKNOWN",
+            "actual_publication_latency": "UNKNOWN",
+            "does_not_approve": [
+              "IBKR timestamp label as bar_start or bar_end",
+              "actual market-data publication latency",
+              "closing-auction fill assumptions",
+              "live trading",
+              "use of the formal holdout",
+              "unconfirmed transaction costs",
+              "TEST_ONLY cost rates as approved rates",
+              "formal TEMPORAL_SAFETY gate PASS"
+            ],
+            "gate_effect": "none: TEMPORAL_SAFETY stays UNKNOWN (approved_by null) and FORMAL_EXECUTION_ELIGIBILITY stays FAIL; Core temporal algorithm unchanged"
+          }
         },
         "session_coverage": "RTH_AND_AVAILABLE_ETH",
         "per_bar_session_mask": "NYSE RTH mask applied by Core prepare_conservative_bars (699e3ad); never run on the real snapshot (no authorized real run)",
@@ -60,6 +88,23 @@
           "buy": false,
           "sell": false,
           "rejection_reason": "TIMESTAMP_LABEL_OR_SESSION_UNKNOWN"
+        },
+        "cost_research_assumption": {
+          "cost_model": "IBKR_PRO_FIXED",
+          "approval_scope": "RESEARCH_ONLY",
+          "status": "ACCEPTED_RESEARCH_ONLY",
+          "approval_basis": "USER_EXPLICIT_ACCEPTANCE",
+          "approved_by": "hh4832",
+          "approved_at": "2026-11-05T21:19:00+08:00",
+          "rate_evidence": "LISTED_TERMS_NOT_ACCOUNT_VERIFIED",
+          "core_configurations": {
+            "BASE": "bb10abbbd0d1c004daf0cd1441006053d040dbc47e86ebb6f57871576f003f94",
+            "LOW": "50f9068245076a7a0d739f18deaf13768512992b3b2273658292faebe6726fb8",
+            "STRESS": "d2a49ca88a107cd84240a4652219afab33624a81e9dbb8d486877aa5c7ecdf7f"
+          },
+          "regulatory_coverage": "SEC Section 31 dated and complete for 2016-10-19..2026-10-16; FINRA TAF not expressible in Core (blocker); CAT pass-through UNKNOWN (blocker)",
+          "evidence": "docs/evidence/tsm_cost_assumptions.json",
+          "gate_effect": "none: COST_APPROVAL stays FAIL (no account-verified rates); research acceptance is not a formal approval"
         }
       },
       "gates": {
@@ -74,7 +119,7 @@
           "status": "UNKNOWN",
           "owner": "Codex + research lead",
           "evidence_ref": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a4_final.json",
-          "reason": "Core 699e3ad releases CONSERVATIVE_LABEL_AGNOSTIC (START/END envelopes, RTH only, no closing auction, strictly-later fills); engineering GO for a research model only. The 1m timestamp label, observed availability and closing-auction attribution stay UNKNOWN and the model awaits research-owner acceptance - conservative timing passing is not a confirmed IBKR label.",
+          "reason": "Core 699e3ad CONSERVATIVE_LABEL_AGNOSTIC (START/END envelopes, RTH only, no closing auction, strictly-later fills) is engineering GO and was ACCEPTED by the research lead on 2026-11-05 as a RESEARCH_ONLY temporal assumption (facts.conservative_temporal_policy.research_approval). That acceptance is not a formal pass: the 1m timestamp label, actual publication latency and closing-auction attribution stay UNKNOWN, so this formal gate stays UNKNOWN.",
           "approved_by": null
         },
         "COST_MODEL_COMPATIBILITY": {
@@ -114,7 +159,7 @@
         "status": "DRAFT"
       },
       "required_before_go": [
-        "TEMPORAL_SAFETY: research-owner acceptance of CONSERVATIVE_LABEL_AGNOSTIC for research, and for formal execution an attributed timestamp label / closing auction (out of Phase 3 scope)",
+        "TEMPORAL_SAFETY (formal): an attributed 1m timestamp label, publication latency and closing-auction treatment (out of Phase 3 scope); the RESEARCH_ONLY acceptance of CONSERVATIVE_LABEL_AGNOSTIC is recorded and does not satisfy it",
         "COST_APPROVAL: account pricing evidence or research-lead approved assumptions for ibkr_us_equity, including a dated regulatory-fee schedule",
         "HOLDOUT_APPROVAL: research-lead approved HOLDOUT-TSM-15M-v1",
         "FORMAL_EXECUTION_ELIGIBILITY: Core gate decision formal_execution GO with side eligibility populated",

@@ -105,6 +105,17 @@ def test_n2_pin_is_an_already_committed_integration_commit_with_identical_code(c
     if git("rev-parse", "--git-dir").returncode != 0 or git("cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
         pytest.skip("git history with the pinned commit not available (shallow clone)")
     assert git("merge-base", "--is-ancestor", commit, "HEAD").returncode == 0
-    paths = ["src", "configs", "fixtures", "schemas", "specs", "governance", "benchmark", "pyproject.toml",
-             "docs/evidence/m3c_reference_metrics.json", "tests"]
+    # pipeline code and pinned inputs: byte-identical
+    paths = ["src", "configs", "fixtures", "schemas", "specs", "benchmark", "pyproject.toml",
+             "docs/evidence/m3c_reference_metrics.json"]
     assert git("diff", "--quiet", commit, "--", *paths).returncode == 0, git("diff", "--stat", commit, "--", *paths).stdout
+    # governance records may gain reviewed facts (e.g. the 2026-11-05 RESEARCH_ONLY temporal acceptance), but only
+    # in market_readiness.json and without changing any market or gate status the pinned smoke ran against
+    changed = git("diff", "--name-only", commit, "--", "governance").stdout.split()
+    assert set(changed) <= {"governance/market_readiness.json"}, changed
+    old = json.loads(git("show", f"{commit}:governance/market_readiness.json").stdout)
+    new = json.loads((ROOT / "governance" / "market_readiness.json").read_text(encoding="utf-8"))
+    for m, e in old["markets"].items():
+        assert new["markets"][m]["status"] == e["status"]
+        assert {g: (v["status"], v.get("approved_by")) for g, v in new["markets"][m]["gates"].items()} == \
+            {g: (v["status"], v.get("approved_by")) for g, v in e["gates"].items()}

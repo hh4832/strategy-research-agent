@@ -63,7 +63,7 @@ def test_market_gate_registry_six_gates_synced_to_core_m3a4():
     assert f["timestamp_label"] == f["observed_available_at"] == f["closing_auction"] == "UNKNOWN"
     assert f["conservative_temporal_policy"]["policy_id"] == "CONSERVATIVE_LABEL_AGNOSTIC"
     assert f["conservative_temporal_policy"]["can_be_formal_eligible"] is False
-    assert f["conservative_temporal_policy"]["approval"] == "PENDING_RESEARCH_OWNER"
+    assert f["conservative_temporal_policy"]["approval"] == "ACCEPTED_RESEARCH_ONLY"
     r = readiness("IBKR_TSM")
     st = r.gate_status()
     assert st == {"DATA_QUALITY": "PASS", "TEMPORAL_SAFETY": "UNKNOWN", "COST_MODEL_COMPATIBILITY": "PASS",
@@ -459,3 +459,33 @@ def test_run_level_two_x_note_never_claims_or_ignores():
     assert "single cost multiplier" in two_x_note(res(1.0, sm[:1]))
     for x in (n, two_x_note(res(1.0, None))):
         assert "not yet run" not in x
+
+
+def test_research_only_temporal_acceptance_is_recorded_without_any_gate_upgrade():
+    """2026-11-05 research-lead acceptance of CONSERVATIVE_LABEL_AGNOSTIC: RESEARCH_ONLY fact, never a formal pass."""
+    import json as _json
+    from strategy_agent.adapters import mrc_adapter as A
+    from strategy_agent.research.data import GatedMarketSource, MarketGateClosed, readiness
+    root = Path(__file__).resolve().parents[1]
+    e = _json.loads((root / "governance" / "market_readiness.json").read_text())["markets"]["IBKR_TSM"]
+    ra = e["facts"]["conservative_temporal_policy"]["research_approval"]
+    assert (ra["approval_type"], ra["approval_scope"], ra["approval_basis"]) == \
+        ("TEMPORAL_ASSUMPTION", "RESEARCH_ONLY", "USER_EXPLICIT_ACCEPTANCE")
+    assert (ra["policy_id"], ra["policy_version"], ra["policy_sha256"]) == (
+        "CONSERVATIVE_LABEL_AGNOSTIC", "1.0.0", "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4")
+    for k in ("source_timestamp_label", "closing_auction_attribution", "actual_publication_latency"):
+        assert ra[k] == "UNKNOWN"
+    leads = _json.loads((root / "governance" / "approvers.json").read_text())["research_leads"]
+    assert ra["approved_by"] in leads
+    assert {"use of the formal holdout", "live trading", "unconfirmed transaction costs"} <= set(ra["does_not_approve"])
+    if A.core_supports_conservative():
+        p = A._core().CONSERVATIVE_POLICY
+        assert (p.policy_id, p.version, p.sha256) == (ra["policy_id"], ra["policy_version"], ra["policy_sha256"])
+    # formal gates unchanged: the acceptance is a fact, not a gate approval
+    g = e["gates"]
+    assert g["TEMPORAL_SAFETY"]["status"] == "UNKNOWN" and g["TEMPORAL_SAFETY"]["approved_by"] is None
+    assert g["FORMAL_EXECUTION_ELIGIBILITY"]["status"] == "FAIL" and e["status"] == "NO_GO"
+    assert readiness("IBKR_TSM").gate_status()["TEMPORAL_SAFETY"] == "UNKNOWN"
+    with pytest.raises(MarketGateClosed):
+        GatedMarketSource("IBKR_TSM").load(symbol="TSM", warmup_start="2025-01-01T00:00:00-05:00",
+                                           window_end="2025-02-01T00:00:00-05:00")
