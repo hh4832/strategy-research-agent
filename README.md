@@ -53,3 +53,21 @@ registry/               experiments.jsonl、families.jsonl（雜湊鏈、append-
 schemas/                Experiment Registry 紀錄 schema
 tests/                  oracle／mutants／harness／spec／evaluation／ports
 ```
+
+## M3-B.2 configuration and Core handoff
+
+Use [`schemas/RESEARCH_CONFIG_SCHEMA.json`](schemas/RESEARCH_CONFIG_SCHEMA.json) and
+[`configs/research/synthetic_sma_v1.json`](configs/research/synthetic_sma_v1.json) for an explicit,
+SHA-pinned synthetic run:
+
+```bash
+python -m strategy_agent.research synthetic --run-root /tmp/m3b2-env \
+  --config configs/research/synthetic_sma_v1.json --batch-id review
+```
+
+The example archives locally under `/tmp/m3b2_config_archive`; this is not Drive evidence.
+Configuration changes require a new version and SHA. See
+[`M3_CORE_AGENT_INTEGRATION.md`](M3_CORE_AGENT_INTEGRATION.md) for schema semantics,
+CUSTOM cost profile restrictions, unchanged Core pin and pending minimal integration.
+[`docs/M3B2_HANDOFF.md`](docs/M3B2_HANDOFF.md) distinguishes synthetic engineering results,
+Colab/Drive PENDING, and real TSM NO-GO.

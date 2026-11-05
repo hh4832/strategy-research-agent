@@ -66,6 +66,7 @@ class ResearchJob:
     cost_multiplier: float = 1.0
     seed: int = 0
     label: str = ""
+    research_config: dict | None = None
 
 
 @dataclass
@@ -117,7 +118,7 @@ def run_identity(job: ResearchJob, *, spec_sha: str, engine: EngineInfo, agent_s
                       "seed": job.seed, "engine_git_sha": engine.git_sha, "agent_sha": agent_sha,
                       "cost_profile_sha256": profile_sha, "dataset": {k: dataset.get(k) for k in (
                           "dataset_id", "snapshot_id", "producer_commit_sha")}, "runner": RUNNER_VERSION,
-                      "adapter": A.ADAPTER_VERSION})
+                      "adapter": A.ADAPTER_VERSION, "research_config": job.research_config})
 
 
 class _InstrumentedPort:
@@ -157,6 +158,14 @@ class ResearchRunner:
         self.archiver = archiver
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.progress = progress or (lambda m: None)
+
+    def identity_of(self, job: ResearchJob) -> str:
+        ref = job.spec.get('costs', {}).get('profile_ref') or {}
+        profile = self.env.cost_profiles.get((ref.get('profile_id'), ref.get('version'))) or {}
+        return run_identity(job, spec_sha=canonical_hash(job.spec), engine=self.engine,
+                            agent_sha=self.agent['agent_sha'],
+                            profile_sha=profile.get('provenance', {}).get('profile_sha256'),
+                            dataset=job.spec['data_requirements']['datasets'][0])
 
     # ------------------------------------------------------------------ stages
     def _signals(self, job: ResearchJob, md: MarketData, st: Stage) -> list:
@@ -283,7 +292,7 @@ class ResearchRunner:
         res = ResearchResult(job, ident, record, events, [], ip.report, md_box.get("md"), md_box.get("decisions", []),
                              context={"spec_sha256": spec_sha, "engine": asdict(self.engine), "agent": self.agent,
                                       "environment": self.env.kind, "overrides": list(self.env.overrides),
-                                      "cost_profile": profile, "dataset": dataset, "runner_version": RUNNER_VERSION,
+                                      "cost_profile": profile, "dataset": dataset, "research_config": job.research_config, "runner_version": RUNNER_VERSION,
                                       "adapter_version": A.ADAPTER_VERSION,
                                       "semantics": asdict(self.semantics)})
 

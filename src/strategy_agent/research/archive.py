@@ -87,15 +87,37 @@ class Archiver:
     # ------------------------------------------------------------------ write
     def write(self, res) -> dict:
         base, status, reason = self._target_root()
-        d = self._new_dir(base, res.context["agent"]["agent_sha"])
-        files = self._files(res, status, reason, d)
-        for name, text in files.items():
-            if name.endswith(FORBIDDEN_SUFFIXES):
-                raise ArchiveError(f"refusing to archive {name}")
-            (d / name).write_text(text, encoding="utf-8")
+        try:
+            d = self._new_dir(base, res.context["agent"]["agent_sha"])
+            files = self._files(res, status, reason, d)
+            for name, text in files.items():
+                if name.endswith(FORBIDDEN_SUFFIXES):
+                    raise ArchiveError(f"refusing to archive {name}")
+                (d / name).write_text(text, encoding="utf-8")
+        except OSError as error:
+            # Preserve a local failure receipt even when the Drive target rejects writes.
+            failure = self.local_fallback / "archive_failures"
+            failure.mkdir(parents=True, exist_ok=True)
+            receipt = self._new_dir(failure, res.context["agent"]["agent_sha"])
+            (receipt / "archive_failure.json").write_text(_dump({
+                "status": "ARCHIVE_FAILED", "target": str(base), "identity": res.identity,
+                "error": f"{type(error).__name__}: {error}"}), encoding="utf-8")
+            raise ArchiveError(f"archive write failed; local receipt: {receipt}") from error
         return {"status": status, "reason": reason, "path": str(d), "files": sorted(files) + ["manifest.json"]}
 
     def finalize(self, res) -> None:
+        try:
+            self._finalize(res)
+        except (OSError, ArchiveError) as error:
+            res.archive['verified'] = False
+            res.archive['status'] = 'ARCHIVE_FAILED'
+            failure = self._new_dir(self.local_fallback / 'archive_failures', res.context['agent']['agent_sha'])
+            (failure / 'archive_failure.json').write_text(_dump({
+                'status': 'ARCHIVE_FAILED', 'identity': res.identity, 'target': res.archive['path'],
+                'error': f'{type(error).__name__}: {error}'}), encoding='utf-8')
+            raise ArchiveError(f'archive finalization failed; local receipt: {failure}') from error
+
+    def _finalize(self, res) -> None:
         """Rewrite the stage log with the archive stage included, then write and verify the manifest."""
         from .report import engineering_status  # noqa: PLC0415
         d = Path(res.archive["path"])
@@ -111,10 +133,7 @@ class Archiver:
             b = p.read_bytes()
             man[p.name] = {"sha256": hashlib.sha256(b).hexdigest(), "bytes": len(b)}
         (d / "manifest.json").write_text(_dump({"run_dir": d.name, "files": man}), encoding="utf-8")
-        check = json.loads((d / "manifest.json").read_text(encoding="utf-8"))["files"]
-        for name, v in check.items():
-            if hashlib.sha256((d / name).read_bytes()).hexdigest() != v["sha256"]:
-                raise ArchiveError(f"archive verification failed for {name}")
+        verify_manifest(d)
         res.archive["manifest_sha256"] = hashlib.sha256((d / "manifest.json").read_bytes()).hexdigest()
         res.archive["verified"] = True
 
@@ -146,6 +165,7 @@ class Archiver:
         if ctx.get("overrides"):
             info += ["synthetic_overrides:"] + [f"  - {o}" for o in ctx["overrides"]]
         files = {
+            "research_config.json": _dump(ctx.get("research_config")),
             "run_info.txt": "\n".join(info) + "\n",
             "experiment_record.json": _dump(res.events),
             "stages.json": _dump(res.stages),
@@ -159,7 +179,7 @@ class Archiver:
                                  "core_sha256": rep.provenance.get("cost_profile_sha256") if rep else None},
                 "core": ctx["engine"], "agent": ctx["agent"], "spec_sha256": ctx["spec_sha256"],
                 "runner_version": ctx["runner_version"], "adapter_version": ctx["adapter_version"],
-                "run_identity": res.identity}),
+                "run_identity": res.identity, "research_config": ctx.get("research_config")}),
             "dataset_metadata.json": _dump(md),
         }
         if res.metrics is not None:
@@ -188,3 +208,21 @@ def write_text_atomic(path: Path, text: str) -> None:
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
+
+
+def verify_manifest(directory: Path) -> dict:
+    """Verify exact file membership, safe paths, byte counts and every content SHA."""
+    directory = Path(directory)
+    manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8'))
+    files = manifest['files']
+    actual = {p.name for p in directory.iterdir() if p.name != 'manifest.json'}
+    if set(files) != actual:
+        raise ArchiveError('manifest file membership mismatch')
+    for name, pin in files.items():
+        p = directory / name
+        if Path(name).name != name or p.is_symlink() or not p.is_file():
+            raise ArchiveError(f'unsafe manifest path: {name}')
+        data = p.read_bytes()
+        if len(data) != pin['bytes'] or hashlib.sha256(data).hexdigest() != pin['sha256']:
+            raise ArchiveError(f'archive verification failed for {name}')
+    return manifest

@@ -49,7 +49,22 @@ def _real(a) -> int:
 def _synthetic(a) -> int:
     archive_root = Path(a.archive_root) if a.archive_root else (DRIVE_ROOT if a.drive else None)
     runner, job = synthetic_setup(Path(a.run_root), archive_root=archive_root, require_drive=a.drive, progress=print)
-    jobs = cost_sensitivity_jobs(job) if a.cost_sensitivity else [job] * a.repeat
+    if a.repeat < 1:
+        raise ValueError('repeat must be positive')
+    if a.config:
+        from .config import load_config, configured_jobs
+        from .archive import Archiver
+        config = load_config(Path(a.config))
+        if a.archive_root or a.cost_sensitivity or a.repeat != 1:
+            raise ValueError('--config owns output and scenarios; conflicting flags refused')
+        archive_root = Path(config['output_location'])
+        if a.drive and archive_root.resolve() != DRIVE_ROOT.resolve():
+            raise ValueError('--drive requires the configured Drive archive location')
+        runner.archiver = Archiver(archive_root, require_drive=a.drive,
+                                   local_fallback=Path(a.run_root) / '_local_archive')
+        jobs = configured_jobs(config, job, runner)
+    else:
+        jobs = cost_sensitivity_jobs(job) if a.cost_sensitivity else [job] * a.repeat
     if len(jobs) > MAX_BATCH_RUNS:
         print(f"refusing: {len(jobs)} runs > MAX_BATCH_RUNS {MAX_BATCH_RUNS}")
         return 2
@@ -78,6 +93,7 @@ def main(argv=None) -> int:
     r = sub.add_parser("readiness")
     r.add_argument("--market", default="IBKR_TSM")
     s = sub.add_parser("synthetic")
+    s.add_argument("--config", help="versioned JSON research configuration")
     s.add_argument("--run-root", required=True, help="isolated synthetic governance + registry directory")
     g = s.add_mutually_exclusive_group()
     g.add_argument("--archive-root")

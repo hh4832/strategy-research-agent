@@ -132,6 +132,8 @@ def test_gate_needs_complete_go_record_and_allowed_window(tmp_path):
           "execution_eligibility": {"buy": True, "sell": True}, "m3a": {"formal_execution": "GO"},
           "cost_profile": {"profile_id": "x", "version": "1", "status": "APPROVED", "core_representable": True},
           "allowed_window": {"start": "2024-01-01", "end": "2025-12-31"}}
+    from strategy_agent.research.contract import GATES
+    go["gates"] = {k: {"status": "GO", "evidence_ref": "https://test.invalid/evidence"} for k in GATES}
     path = tmp_path / "r.json"
     path.write_text(json.dumps({"markets": {"M": go}}))
     with pytest.raises(MarketGateClosed, match="no Core data loader"):

@@ -57,7 +57,16 @@ def done_identities(path: Path) -> set[str]:
     for line in path.read_text(encoding="utf-8").splitlines():
         r = json.loads(line)
         if r.get("status") == "COMPLETED" and r.get("archive_status") == "ARCHIVED":
-            out.add(r["identity"])
+            from .archive import verify_manifest, ArchiveError
+            try:
+                archive = Path(r["archive_path"])
+                verify_manifest(archive)
+                final = json.loads((archive / 'final_status.json').read_text())
+                refs = json.loads((archive / 'snapshot_refs.json').read_text())
+                if final.get('status') == 'PASS' and refs.get('run_identity') == r['identity']:
+                    out.add(r['identity'])
+            except (OSError, ValueError, KeyError, TypeError, ArchiveError):
+                continue  # missing/corrupt evidence is rerun, never accepted as cached success
     return out
 
 
@@ -71,8 +80,14 @@ def run_batch(runner: ResearchRunner, jobs: Sequence[ResearchJob], *, batch_id: 
     out: list[BatchOutcome] = []
     for i, job in enumerate(jobs, 1):
         label = job.label or f"job{i}"
-        ident = identity_of(job) if identity_of else None
-        if ident and ident in skip:
+        from . import pipeline
+        if pipeline.R02_ENFORCED is not True:
+            raise pipeline.ResearchContractError('R02 is mandatory, including resume')
+        ident = identity_of(job) if identity_of else runner.identity_of(job)
+        from strategy_agent.runner import parameter_issues
+        # Resume is also a governed entry: a cached identity cannot mask invalid parameters.
+        valid_parameters = not parameter_issues(job.spec, dict(job.parameters))
+        if ident and ident in skip and valid_parameters:
             progress(f"[{i}/{len(jobs)}] {label}: SKIPPED (identity {ident[:12]} already COMPLETED+ARCHIVED)")
             o = BatchOutcome(label, ident, "SKIPPED_RESUME", None, None, None, None)
         else:
