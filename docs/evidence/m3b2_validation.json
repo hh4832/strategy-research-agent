@@ -12,8 +12,10 @@
   "notion_update": "PENDING_CONNECTOR_UNAVAILABLE",
   "real_tsm_execution": "NOT_STARTED_NO_GO",
   "formal_registry_holdout": "UNCHANGED",
-  "local_config_cli": "COVERED_BY_CONFIG_ENTRY_INTEGRATION_TEST_PENDING_FINAL_CLI",
-  "resume_cli": "COVERED_BY_INTEGRATION_TEST",
+  "local_config_cli": "8/8 COMPLETED + ARCHIVED (2 windows x 4 scenarios)",
+  "resume_cli": "8/8 SKIPPED_RESUME",
   "oracle_historical_gate": "NOT_RERUN",
-  "supersedes": "148-test local alternative implementation"
+  "supersedes": "148-test local alternative implementation",
+  "implementation_sha": "f4ab50712010159d7daf5d2bd10b2724958a9bf8",
+  "notebook_static_checks": "5 PASS after final SHA pin"
 }

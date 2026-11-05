@@ -37,3 +37,5 @@ GitHub API returned **Forbidden**; live CI/PR state remains unverified. Push/rem
 Notion Phase 3 update: **PENDING**, no Notion connector is available. This file is prepared handoff content, not evidence of a Notion update.
 
 Next owners: research lead runs the pinned Colab notebook and retains its Drive acceptance JSON; data owner supplies bounded timing/session/auction evidence; Core owner completes M3-A.4 before the minimum integration acceptance; research lead supplies governed cost and holdout approvals. Stop feature work after this bounded delivery.
+
+Notebook Agent pin: `f4ab50712010159d7daf5d2bd10b2724958a9bf8` (merged implementation and 156-test acceptance). The following closure commit only updates the notebook pin and delivery evidence.
