@@ -55,7 +55,10 @@ def test_credentials_only_from_colab_secrets(cells):
     for pat in (r"ghp_[A-Za-z0-9]{10,}", r"github_pat_", r"(?i)password\s*=", r"(?i)api[_-]?key\s*=",
                 r"https://[^/\s]*:[^@\s]*@github\.com"):
         assert not re.search(pat, NB.read_text(encoding="utf-8")), pat
-    assert 'replace(GITHUB_TOKEN, "***")' in code                  # never echoed
+    assert 'out.replace(t, "***")' in code and "MASK = [t for t in (GITHUB_TOKEN,) if t]" in code   # never echoed
+    assert "Bearer" not in code and 'GIT_TERMINAL_PROMPT="0"' in code             # no prompt, valid auth scheme
+    # public clone first; the secret is only a fallback
+    assert code.index('r = sh(f"git clone -q {AGENT_REPO} {WORKDIR}", check=False)') < code.index("x-access-token")
     assert "extraheader" in code.lower() and "not in open(f\"{WORKDIR}/.git/config\")" in code   # never persisted
 
 
