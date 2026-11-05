@@ -27,7 +27,7 @@ from strategy_agent.spec.validate import canonical_hash  # noqa: E402
 
 from m2_helpers import approved_profile, dev_request, env, registered  # noqa: E402
 
-PINNED = "2c6ba9ab7c336e7a4908744abef617e0dce713fd"
+PINNED = "699e3ad59951bbebb769bb69170be8d9a1a96c01"
 ROOT = Path(__file__).parents[1]
 TPE = timezone(timedelta(hours=8))
 SHA = A.core_identity()["git_sha"]

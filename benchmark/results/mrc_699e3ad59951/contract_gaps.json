@@ -1,0 +1,283 @@
+{
+ "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+ "agent_adapter_version": "m1.3-0.4.0",
+ "verdict": "PASS",
+ "counts": {
+  "PASS": 12,
+  "FAIL": 0,
+  "NOT_EXECUTABLE": 0,
+  "PASS_IF_ONLY_C2_FIXED": 12
+ },
+ "gaps": [
+  {
+   "gap_id": "G16",
+   "capability": "C3 order execution chronology",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "status": "CLOSED",
+   "cases": [
+    "B01-B12",
+    "X16_delayed_buy_later_target"
+   ],
+   "expected": "fills in fill-time order; exit_ts >= entry_ts; equity/cash path consistent; prefix invariance; same-timestamp determinism",
+   "actual": {
+    "fills_in_fill_time_order": true,
+    "no_exit_before_entry": true,
+    "equity_starts_at_initial_cash_and_reconciles_when_flat": true,
+    "prefix_invariance_no_future_dependent_fills": true,
+    "unfilled_order_does_not_change_state_before_fill": true,
+    "same_timestamp_orders_deterministic": true
+   },
+   "numeric_difference": null,
+   "first_divergent_event": null,
+   "root_cause": "fixed in Core by the bar_start event loop",
+   "responsible_repository": "market-research-core",
+   "code_location": "src/market_research_core/execution.py: ExecutionEngine.run event loop",
+   "proposed_minimum_correction": "none",
+   "blocking": false
+  },
+  {
+   "gap_id": "G12",
+   "status": "CLOSED",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "B01-B12"
+   ],
+   "evidence": "no case differs on this dimension under exact Decimal comparison",
+   "blocking": false
+  },
+  {
+   "gap_id": "G14",
+   "status": "CLOSED",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "B01-B12"
+   ],
+   "evidence": "no case differs on this dimension under exact Decimal comparison",
+   "blocking": false
+  },
+  {
+   "gap_id": "G15",
+   "status": "CLOSED",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "B01-B12"
+   ],
+   "evidence": "no case differs on this dimension under exact Decimal comparison",
+   "blocking": false
+  },
+  {
+   "gap_id": "G17",
+   "status": "CLOSED",
+   "capability": "K17 target supersession",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "X16_delayed_buy_later_target (oracle-generated expectation; outside B01-B12)"
+   ],
+   "expected": [
+    {
+     "order_ts": "2026-01-05 09:20",
+     "exec_ts": "2026-01-05 09:20",
+     "side": "SELL",
+     "qty": 1000,
+     "contract": "SYNS",
+     "ref_open": "60",
+     "fill_price": "59.9",
+     "fee": "85.3575000",
+     "tax": "179.7000"
+    },
+    {
+     "order_ts": "2026-01-05 09:10",
+     "exec_ts": "2026-01-05 09:25",
+     "side": "BUY",
+     "qty": 1000,
+     "contract": "SYNS",
+     "ref_open": "60",
+     "fill_price": "60.1",
+     "fee": "85.6425000",
+     "tax": "0.0"
+    }
+   ],
+   "actual": [
+    {
+     "exec_ts": "2026-01-05 09:20",
+     "side": "SELL",
+     "qty": 1000,
+     "contract": "SYNS",
+     "fill_price": "59.9",
+     "fee": "85.3575000000",
+     "tax": "179.7000000",
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+    },
+    {
+     "exec_ts": "2026-01-05 09:25",
+     "side": "BUY",
+     "qty": 1000,
+     "contract": "SYNS",
+     "fill_price": "60.1",
+     "fee": "85.6425000000",
+     "tax": "0.0",
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "execution_assumption": "NEXT_ELIGIBLE_BAR_OPEN"
+    }
+   ],
+   "numeric_difference": null,
+   "first_divergent_event": null,
+   "root_cause": "a target_position order that becomes active while an earlier order on the same (strategy, symbol, contract) is still live is sized from the FILLED target (target_positions) only; Oracle v1 sizes it from position + live pending orders. In the G16 scenario Core turns target 0 into a no-op, then fills the delayed BUY and ends LONG 1000 against a latest target of 0; Oracle sells at 09:20, buys at 09:25 and ends flat",
+   "responsible_repository": "market-research-core",
+   "code_location": "src/market_research_core/execution.py:243-244 (`current_target = target_positions.get(...)`; `delta = target_position - current_target`) and :328",
+   "proposed_minimum_correction": "compute the delta once, when the order becomes active (order_time), as target_position - (filled position + remaining signed qty of still-live earlier orders with the same target_key); keep the order's qty fixed after",
+   "blocking": false,
+   "adapter_guard": "known_divergences() refuses any run in which an order activates while an earlier one is live (B01-B12: 0 hits; probe: hit)",
+   "adapter_guard_hits": [],
+   "resolution": "fixed in Core 699e3ad: oracle probe PASS, K17 probe SUPPORTED; root_cause above describes the defect as found in 298956f"
+  },
+  {
+   "gap_id": "G14b",
+   "status": "CLOSED",
+   "capability": "K14 DAY expiry boundary",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "X14b_day_expiry_back_to_back_sessions (oracle-generated expectation; outside B01-B12)"
+   ],
+   "expected": {
+    "fills": [],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-05 09:10",
+      "reason": "LIMIT_UP_LOCKED_BUY"
+     },
+     {
+      "bar_ts": "2026-01-05 09:15",
+      "reason": "LIMIT_UP_LOCKED_BUY"
+     },
+     {
+      "bar_ts": null,
+      "reason": "ORDER_EXPIRED"
+     }
+    ]
+   },
+   "actual": {
+    "fills": [],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-05 09:10",
+      "reason": "LIMIT_UP_LOCKED_BUY",
+      "order_id": "0000-FIXTURE_SIGNAL"
+     },
+     {
+      "bar_ts": "2026-01-05 09:15",
+      "reason": "LIMIT_UP_LOCKED_BUY",
+      "order_id": "0000-FIXTURE_SIGNAL"
+     },
+     {
+      "bar_ts": null,
+      "reason": "ORDER_EXPIRED",
+      "order_id": "0000-FIXTURE_SIGNAL"
+     }
+    ]
+   },
+   "numeric_difference": null,
+   "first_divergent_event": null,
+   "root_cause": "DAY expiry is inclusive: a bar with bar_start == expiry (the first session_close after order_time) is still a candidate. With back-to-back sessions (close 09:20 = next open 09:20) a session-1 DAY order fills on the opening bar of session 2; Oracle v1 expires it (skips bars with ts >= expires_at)",
+   "responsible_repository": "market-research-core",
+   "code_location": "src/market_research_core/execution.py:211 (`matching['bar_start'] <= expiry`) and :232 (`event_ts <= record['expiry']`)",
+   "proposed_minimum_correction": "make the boundary exclusive (`<`) in both places; ORDER_EXPIRED at expiry stays as is",
+   "blocking": false,
+   "adapter_guard": "known_divergences() refuses any run with a fill at bar_start >= its DAY expiry",
+   "adapter_guard_hits": [],
+   "resolution": "fixed in Core 699e3ad: oracle probe PASS, K14b probe SUPPORTED; root_cause above describes the defect as found in 298956f"
+  },
+  {
+   "gap_id": "G12b",
+   "status": "CLOSED",
+   "capability": "K12",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "governance/cost_profiles/tw_equity_cash_v0"
+   ],
+   "expected": "FLOOR_INTEGER fee/tax rounding (TW broker statements)",
+   "actual": "costs.py rounding Literal includes FLOOR_INTEGER (quantize to 1, ROUND_FLOOR); adapter maps it",
+   "numeric_difference": null,
+   "first_divergent_event": null,
+   "root_cause": "fixed",
+   "responsible_repository": "market-research-core",
+   "code_location": "src/market_research_core/costs.py:31-32, :72",
+   "proposed_minimum_correction": "none",
+   "blocking": false
+  },
+  {
+   "gap_id": "G03b",
+   "status": "OPEN",
+   "capability": "K03",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "specs/examples/sma_crossover_tw_2330_5m"
+   ],
+   "expected": "TWSE/TPEx price-banded tick ladder (0.01/0.05/0.1/0.5/1/5) for slippage and tick rounding",
+   "actual": "CostProfile.tick_size is one float; adverse_fill_price uses it for every price",
+   "numeric_difference": null,
+   "first_divergent_event": null,
+   "root_cause": "single tick; TW equities change tick by price band",
+   "responsible_repository": "market-research-core",
+   "code_location": "src/market_research_core/costs.py:29 (tick_size) and :98-100 (adverse_fill_price)",
+   "proposed_minimum_correction": "accept a tick ladder [(upper_price, tick), ...] (or a per-bar tick_size column) and round to the band of the adverse price",
+   "blocking": true,
+   "blocks": "formal TW-equity research only; not a B01-B12 failure (fixtures use one band)"
+  },
+  {
+   "gap_id": "G11",
+   "status": "OPEN",
+   "capability": "K11",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "all"
+   ],
+   "expected": "engine reports its own commit",
+   "actual": "provenance.engine_git_sha = config.core_commit_sha (caller-supplied)",
+   "numeric_difference": null,
+   "first_divergent_event": null,
+   "root_cause": "engine identity is asserted by the caller; the adapter supplies the pip/git-resolved commit and validate_core_provenance rejects a mismatch",
+   "responsible_repository": "market-research-core",
+   "code_location": "src/market_research_core/execution.py: provenance['engine_git_sha'] = config.core_commit_sha",
+   "proposed_minimum_correction": "derive engine_git_sha from package metadata and reject a config value that disagrees",
+   "blocking": false
+  },
+  {
+   "gap_id": "G09",
+   "status": "BY_DESIGN",
+   "capability": "K09",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "B09"
+   ],
+   "expected": "roll from spec schedule",
+   "actual": "adapter expands the roll schedule into explicit orders",
+   "numeric_difference": null,
+   "first_divergent_event": null,
+   "root_cause": "by design",
+   "responsible_repository": "strategy-research-agent",
+   "code_location": "src/strategy_agent/adapters/mrc_adapter.py: expand_roll_schedule",
+   "proposed_minimum_correction": "none",
+   "blocking": false
+  },
+  {
+   "gap_id": "C1",
+   "status": "MAPPED",
+   "capability": "next-bar open",
+   "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+   "cases": [
+    "all"
+   ],
+   "expected": "fill at first bar with bar_start >= order_ts (= available_at)",
+   "actual": "Core default same_timestamp_open_assumption=False fills one bar later; adapter sets True for START/CONFIRMED semantics",
+   "numeric_difference": null,
+   "first_divergent_event": null,
+   "root_cause": "C1 next-bar open: with same_timestamp_open_assumption=False Core requires bar_start > available_at and fills one bar after convention v1 (first bar with ts >= order_ts)",
+   "responsible_repository": "strategy-research-agent",
+   "code_location": "src/strategy_agent/adapters/mrc_adapter.py: core_config",
+   "proposed_minimum_correction": "none",
+   "blocking": false
+  }
+ ]
+}

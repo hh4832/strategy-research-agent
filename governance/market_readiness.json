@@ -1,87 +1,121 @@
 {
   "schema_version": "2.0.0",
   "note": "Versioned market-gate registry consumed by strategy_agent.research.data. Owned by Codex (M3-A) and the research lead; the Agent only mirrors Core's pinned gate documents and never declares a Core gate passed. A real-market research run starts only when every gate in required_gates is PASS with a pinned evidence_ref (and approval where required), the allowed window is declared, and the snapshot is pinned. Changes go through a PR reviewed by the research lead.",
-  "required_gates": ["DATA_QUALITY", "TEMPORAL_SAFETY", "COST_MODEL_COMPATIBILITY", "COST_APPROVAL", "HOLDOUT_APPROVAL", "FORMAL_EXECUTION_ELIGIBILITY"],
+  "required_gates": [
+    "DATA_QUALITY",
+    "TEMPORAL_SAFETY",
+    "COST_MODEL_COMPATIBILITY",
+    "COST_APPROVAL",
+    "HOLDOUT_APPROVAL",
+    "FORMAL_EXECUTION_ELIGIBILITY"
+  ],
   "markets": {
     "IBKR_TSM": {
-      "gate_version": "2026-11-05.1",
+      "gate_version": "2026-11-05.2",
       "status": "NO_GO",
-      "status_reason": "Core M3-A.1/M3-A.2 (PR #3 @ c1a3661): formal execution NO_GO; only bounded read-only research diagnostics are in scope. Timestamp label, observed availability and closing-auction attribution are UNKNOWN; the conservative temporal policy BAR_END_STRICT_LATER is pending research-owner acceptance; the IBKR CostProfile is DRAFT/ASSUMED. M3-A.4 (conservative temporal execution & configurable costs) is in progress in Core PR #3.",
+      "status_reason": "Core M3-A.4 (PR #3 @ 699e3ad, engineering GO for the research model only): formal_market NO_GO. Timestamp label, observed availability and closing-auction attribution remain UNKNOWN; Core's CONSERVATIVE_LABEL_AGNOSTIC research model is pending research-owner acceptance and can never be FORMAL_ELIGIBLE; the IBKR CostProfile is DRAFT/ASSUMED and Core's IBKR regulatory schedule is PENDING (fails closed); cost and holdout approvals are missing.",
       "core_gate_ref": {
         "repository": "hh4832/market-research-core",
         "pr": 3,
-        "pr_head_sha": "c1a3661d127c7139ee86d824d1a380edf3d2e114",
+        "pr_head_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
         "merged": false,
-        "report": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/M3A_IBKR_TSM_READINESS.md",
-        "diagnostic": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
+        "report": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/M3A_IBKR_TSM_READINESS.md",
+        "diagnostic": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
         "diagnostic_schema_version": "1.2.0",
         "diagnostic_gate_id": "M3-A.1-IBKR-TSM",
-        "previous_ref": "https://github.com/hh4832/market-research-core/blob/a9e0747a61e5ff5d6a636ff3c657d98600f0ab01/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
-        "synced_at": "2026-11-05T10:40:00+08:00",
-        "synced_by": "claude-m3b2"
+        "m3a4_contract": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/M3A4_TEMPORAL_COST_CONTRACT.md",
+        "m3a4_diagnostic": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a4_final.json",
+        "ci": "https://github.com/hh4832/market-research-core/actions/runs/41967704177",
+        "previous_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
+        "synced_at": "2026-11-05T17:50:00+08:00",
+        "synced_by": "claude-m3c"
       },
       "dataset_id": "ibkr_tsm_1m_normalized",
       "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
       "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
-      "allowed_window": {"start": null, "end": null},
+      "allowed_window": {
+        "start": null,
+        "end": null
+      },
       "facts": {
         "source_timestamp": "UTC epoch conversion",
         "timestamp_label": "UNKNOWN",
         "observed_available_at": "UNKNOWN",
-        "conservative_temporal_policy": {"policy_id": "BAR_END_STRICT_LATER", "defined_in": "core_gate_ref", "approval": "PENDING_RESEARCH_OWNER", "is_observed_latency": false},
+        "conservative_temporal_policy": {
+          "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+          "version": "1.0.0",
+          "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+          "defined_in": "core_gate_ref.m3a4_contract",
+          "approval": "PENDING_RESEARCH_OWNER",
+          "is_observed_latency": false,
+          "supersedes": "BAR_END_STRICT_LATER (M3-A.1 proposal)",
+          "core_verdict": "GO_ENGINEERING_RESEARCH_MODEL_ONLY",
+          "can_be_formal_eligible": false
+        },
         "session_coverage": "RTH_AND_AVAILABLE_ETH",
-        "per_bar_session_mask": "UNKNOWN (NYSE mask implemented in Core but not applied to the real snapshot)",
+        "per_bar_session_mask": "NYSE RTH mask applied by Core prepare_conservative_bars (699e3ad); never run on the real snapshot (no authorized real run)",
         "default_session_scope_after_gate": "RTH_ONLY",
         "closing_auction": "UNKNOWN",
-        "execution_eligibility": {"buy": false, "sell": false, "rejection_reason": "TIMESTAMP_LABEL_OR_SESSION_UNKNOWN"}
+        "execution_eligibility": {
+          "buy": false,
+          "sell": false,
+          "rejection_reason": "TIMESTAMP_LABEL_OR_SESSION_UNKNOWN"
+        }
       },
       "gates": {
         "DATA_QUALITY": {
-          "status": "PASS", "owner": "Codex",
-          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
+          "status": "PASS",
+          "owner": "Codex",
+          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
           "reason": "pre-existing FINAL GATE data-quality verdict GO (2,193,372 rows); data quality only, not execution approval",
           "approved_by": null
         },
         "TEMPORAL_SAFETY": {
-          "status": "UNKNOWN", "owner": "Codex + research lead",
-          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/M3A_IBKR_TSM_READINESS.md",
-          "reason": "1m timestamp label UNKNOWN; observed availability UNKNOWN; closing auction UNKNOWN; BAR_END_STRICT_LATER pending owner acceptance and Core M3-A.4",
+          "status": "UNKNOWN",
+          "owner": "Codex + research lead",
+          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a4_final.json",
+          "reason": "Core 699e3ad releases CONSERVATIVE_LABEL_AGNOSTIC (START/END envelopes, RTH only, no closing auction, strictly-later fills); engineering GO for a research model only. The 1m timestamp label, observed availability and closing-auction attribution stay UNKNOWN and the model awaits research-owner acceptance - conservative timing passing is not a confirmed IBKR label.",
           "approved_by": null
         },
         "COST_MODEL_COMPATIBILITY": {
-          "status": "FAIL", "owner": "Codex",
-          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/src/market_research_core/costs.py",
-          "reason": "pinned Core 2c6ba9a cannot represent per-share commission or bps slippage (G18). Core PR #3 adds these fields but is unmerged and unpinned; compatibility is re-evaluated only after a new Core pin passes B01-B12",
-          "approved_by": null
+          "status": "PASS",
+          "owner": "Codex",
+          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a4_final.json",
+          "reason": "Core 699e3ad (cost_calculation GO_FIXED_AND_EXPLICIT_COMPONENTS) expresses per-share commission, bps slippage, half spread, SELL regulatory-fee rate, per-unit exchange/clearing fees and fee_mode; pinned in the Agent with B01-B12, G16, G17, G14b PASS and the Agent mapping tested (M3-C Phase C). Representability only: TIERED commissions are unsupported (fail closed), the IBKR regulatory schedule has no rate (fail closed) and nothing here approves a rate (see COST_APPROVAL).",
+          "approved_by": null,
+          "verified_by": "claude-m3c (engineering mirror of Core verdict + Agent mapping test)"
         },
         "COST_APPROVAL": {
-          "status": "FAIL", "owner": "research lead",
+          "status": "FAIL",
+          "owner": "research lead",
           "evidence_ref": null,
-          "reason": "ibkr_us_equity@0.1.0 is DRAFT; all components RESEARCH_ASSUMPTION; no account pricing evidence",
+          "reason": "ibkr_us_equity@0.1.0 is DRAFT; all components RESEARCH_ASSUMPTION; no account pricing evidence; Core's IBKR regulatory schedule is PENDING (no rate supplied) and the Fixed cap rule is not officially verified",
           "approved_by": null
         },
         "HOLDOUT_APPROVAL": {
-          "status": "FAIL", "owner": "research lead",
+          "status": "FAIL",
+          "owner": "research lead",
           "evidence_ref": null,
           "reason": "no approved holdout lock HOLDOUT-TSM-15M-v1 in governance/holdout_locks.jsonl",
           "approved_by": null
         },
         "FORMAL_EXECUTION_ELIGIBILITY": {
-          "status": "FAIL", "owner": "Codex",
-          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/c1a3661d127c7139ee86d824d1a380edf3d2e114/docs/diagnostics/m3a_ibkr_tsm_readiness.json",
-          "reason": "Core decision formal_execution NO_GO; buy/sell eligibility false (TIMESTAMP_LABEL_OR_SESSION_UNKNOWN)",
+          "status": "FAIL",
+          "owner": "Codex",
+          "evidence_ref": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a4_final.json",
+          "reason": "Core formal_market NO_GO; CONSERVATIVE_LABEL_AGNOSTIC mode_cannot_be_formal_eligible; research-owner, cost and holdout approvals PENDING",
           "approved_by": null
         }
       },
       "cost_profile": {
-        "profile_id": "ibkr_us_equity", "version": "0.1.0",
+        "profile_id": "ibkr_us_equity",
+        "version": "0.1.0",
         "file_sha256": "50149cd2198a49ddb9acadff536f6765e7d938e62bd47e3c40089a561c0f97e5",
         "status": "DRAFT"
       },
       "required_before_go": [
-        "TEMPORAL_SAFETY: downloader revision + acquisition receipt and a bounded bar-to-trade-interval correlation (timestamp label); owner decision on BAR_END_STRICT_LATER; row-level NYSE session mask (RTH only); closing-auction policy (fail closed until attributed)",
-        "COST_MODEL_COMPATIBILITY: Core release with per-share commission / bps slippage / half spread / regulatory fee / volume cap, pinned in the Agent after B01-B12 PASS",
-        "COST_APPROVAL: account pricing evidence or research-lead approved assumptions for ibkr_us_equity",
+        "TEMPORAL_SAFETY: research-owner acceptance of CONSERVATIVE_LABEL_AGNOSTIC for research, and for formal execution an attributed timestamp label / closing auction (out of Phase 3 scope)",
+        "COST_APPROVAL: account pricing evidence or research-lead approved assumptions for ibkr_us_equity, including a dated regulatory-fee schedule",
         "HOLDOUT_APPROVAL: research-lead approved HOLDOUT-TSM-15M-v1",
         "FORMAL_EXECUTION_ELIGIBILITY: Core gate decision formal_execution GO with side eligibility populated",
         "allowed research window declared in this record"

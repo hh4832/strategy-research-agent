@@ -45,8 +45,9 @@
       "properties": {
         "policy_id": {"type": "string"},
         "version": {"type": "string"},
-        "status": {"enum": ["UNKNOWN", "PENDING", "ACCEPTED", "FIXTURE_DEFINITION"]},
-        "source": {"enum": ["CORE_GATE", "SYNTHETIC_FIXTURE"]},
+        "status": {"enum": ["UNKNOWN", "PENDING", "ACCEPTED", "FIXTURE_DEFINITION", "RESEARCH_SIMULATION"]},
+        "source": {"enum": ["CORE_GATE", "SYNTHETIC_FIXTURE", "CORE_POLICY"]},
+        "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$", "description": "Core TemporalPolicy.sha256 (CORE_POLICY references)"},
         "evidence_ref": {"type": ["string", "null"]},
         "approved_by": {"type": ["string", "null"]}
       }

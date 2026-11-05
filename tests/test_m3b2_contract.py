@@ -52,20 +52,21 @@ def _bad(cfg, rule, **ctx):
 
 
 # ------------------------------------------------------------------ market gate v2
-def test_market_gate_registry_six_gates_synced_to_core_pr3():
+def test_market_gate_registry_six_gates_synced_to_core_m3a4():
     d = json.loads((ROOT / "governance" / "market_readiness.json").read_text())
     assert d["schema_version"] == "2.0.0" and tuple(d["required_gates"]) == GATES
     e = d["markets"]["IBKR_TSM"]
     ref = e["core_gate_ref"]
-    assert ref["pr"] == 3 and ref["pr_head_sha"] == "c1a3661d127c7139ee86d824d1a380edf3d2e114" and ref["merged"] is False
+    assert ref["pr"] == 3 and ref["pr_head_sha"] == "699e3ad59951bbebb769bb69170be8d9a1a96c01" and ref["merged"] is False
     assert e["snapshot_id"] == "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
     f = e["facts"]
     assert f["timestamp_label"] == f["observed_available_at"] == f["closing_auction"] == "UNKNOWN"
-    assert f["conservative_temporal_policy"]["policy_id"] == "BAR_END_STRICT_LATER"
+    assert f["conservative_temporal_policy"]["policy_id"] == "CONSERVATIVE_LABEL_AGNOSTIC"
+    assert f["conservative_temporal_policy"]["can_be_formal_eligible"] is False
     assert f["conservative_temporal_policy"]["approval"] == "PENDING_RESEARCH_OWNER"
     r = readiness("IBKR_TSM")
     st = r.gate_status()
-    assert st == {"DATA_QUALITY": "PASS", "TEMPORAL_SAFETY": "UNKNOWN", "COST_MODEL_COMPATIBILITY": "FAIL",
+    assert st == {"DATA_QUALITY": "PASS", "TEMPORAL_SAFETY": "UNKNOWN", "COST_MODEL_COMPATIBILITY": "PASS",
                   "COST_APPROVAL": "FAIL", "HOLDOUT_APPROVAL": "FAIL", "FORMAL_EXECUTION_ELIGIBILITY": "FAIL"}
     assert r.status == "NO_GO" and e["cost_profile"]["status"] == "DRAFT"
     assert hashlib.sha256((ROOT / "governance" / "cost_profiles" / "ibkr_us_equity_v0.json").read_bytes()
@@ -183,15 +184,22 @@ def _spec():
     return json.loads((ROOT / "specs" / "research" / "sma_crossover_tsm_15m_5_20.json").read_text())
 
 
-def test_ibkr_scenarios_keep_draft_and_are_not_executable():
-    meta, sc = CS.load_set(IBKR_SET, profiles=load_profiles(), spec=_spec(), core_sha="2c6ba9a")
+def test_ibkr_scenarios_keep_draft_and_compatibility_follows_the_installed_core():
+    from strategy_agent.adapters import mrc_adapter as A
+    m3a4 = A.M3A4_COST_FIELDS <= A.core_cost_fields()
+    meta, sc = CS.load_set(IBKR_SET, profiles=load_profiles(), spec=_spec(), core_sha="pinned")
     for s in sc:
         r = s.record
+        # never upgraded: representable on Core M3-A.4 is still DRAFT / ASSUMED (COST_APPROVAL gate FAIL)
         assert r["approval_status"] == "DRAFT" and r["assumption_status"] == "ASSUMED" and r["currency"] == "USD"
-        assert r["core_compatibility"]["verdict"] == "INCOMPATIBLE" and r["counts_as_new_family_or_trial"] is False
+        assert r["counts_as_new_family_or_trial"] is False
         assert "per_unit 0.005" in r["commission_model"] and r["slippage_model"] == "2 bps"
-        with pytest.raises(Exception, match="K18"):
-            CS.require_executable(s)
+        if m3a4:
+            assert r["core_compatibility"]["verdict"] == "COMPATIBLE" and r["core_compatibility"]["unmappable"] == []
+        else:
+            assert r["core_compatibility"]["verdict"] == "INCOMPATIBLE"
+            with pytest.raises(Exception, match="K18"):
+                CS.require_executable(s)
     assert {s.kind for s in sc} == {"BASE", "LOW", "STRESS"} and meta["sha256"]
 
 

@@ -70,19 +70,41 @@ def build_synthetic(config_path: Path, *, run_root: Path, archive_root: Path | N
     if raw.get("kind") != "SYNTHETIC":
         raise ResearchConfigError([("RC12", "only SYNTHETIC configs are executable in M3-B; REAL_MARKET waits for "
                                             "the market gate (python -m strategy_agent.research readiness)")])
-    src = SyntheticSource()
+    from . import native_fixture as NF  # noqa: PLC0415
+    conservative = (raw.get("dataset") or {}).get("dataset_id") == NF.FIXTURE_ID
+    ctp = None
+    if conservative:                     # Core M3-A.4 research model on the native-1m TEST_ONLY fixture
+        from .data import NativeSyntheticSource  # noqa: PLC0415
+        if not A.core_supports_conservative(core):
+            raise A.CoreContractGap(["K19"], "native-1m conservative config needs Core M3-A.4 "
+                                             "(CONSERVATIVE_LABEL_AGNOSTIC); installed Core lacks it")
+        c = core or A._core()
+        ctp = {"policy_id": c.CONSERVATIVE_POLICY.policy_id, "version": c.CONSERVATIVE_POLICY.version,
+               "sha256": c.CONSERVATIVE_POLICY.sha256}
+        src = NativeSyntheticSource(core=core)
+        if (raw.get("temporal_policy") or {}).get("source") != "CORE_POLICY":
+            raise ResearchConfigError([("RC06", "the native-1m fixture runs only under Core's CONSERVATIVE policy")])
+    else:
+        src = SyntheticSource()
+        if (raw.get("temporal_policy") or {}).get("source") == "CORE_POLICY":
+            raise ResearchConfigError([("RC06", "Core's CONSERVATIVE policy needs the native-1m fixture")])
     env = synthetic_environment(Path(run_root), dataset_id=src.dataset_id, clock=clock)
     cfg = validate_config(raw, path=Path(config_path).resolve(), profiles=env.cost_profiles,
                           fixture_dataset=src.describe(), synthetic_holdout=(SYNTH_LOCK_ID, SYNTH_HOLDOUT_START),
-                          core_sha=A.core_identity().get("git_sha"))
+                          core_sha=A.core_identity().get("git_sha"), core_temporal_policy=ctp)
     if cfg.data["output"]["target"] == "DRIVE" and archive_root is not None and Path(archive_root) != DRIVE_ROOT:
         raise ResearchConfigError([("RC11", "config archives to Drive; --archive-root is only for LOCAL configs")])
     if cfg.data["output"]["target"] == "LOCAL" and archive_root is None:
         raise ResearchConfigError([("RC11", "LOCAL config needs --archive-root")])
     _ledger_check(Path(run_root), cfg)
-    sem = A.MarketSemantics(market="IBKR_EQUITY", bar_label=src.fixture.meta["bar_label"],
-                            session_semantics="CONFIRMED", timezone=FX.TZ,
-                            initial_cash=float(cfg.data["capital"]["initial_capital"]), constant_tick_size=0.01)
+    if conservative:
+        sem = A.MarketSemantics(market="IBKR_EQUITY", bar_label="UNKNOWN", session_semantics="CONFIRMED",
+                                timezone=NF.TZ, initial_cash=float(cfg.data["capital"]["initial_capital"]),
+                                constant_tick_size=0.01, available_at_policy=A.CONSERVATIVE)
+    else:
+        sem = A.MarketSemantics(market="IBKR_EQUITY", bar_label=src.fixture.meta["bar_label"],
+                                session_semantics="CONFIRMED", timezone=FX.TZ,
+                                initial_cash=float(cfg.data["capital"]["initial_capital"]), constant_tick_size=0.01)
     root = DRIVE_ROOT if cfg.data["output"]["target"] == "DRIVE" else Path(archive_root)
     arch = Archiver(root, require_drive=cfg.data["output"]["target"] == "DRIVE",
                     local_fallback=Path(run_root) / "_local_archive", clock=archive_clock)

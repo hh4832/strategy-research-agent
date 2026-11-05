@@ -97,6 +97,39 @@ def _run(a) -> int:
     return 0 if ok else 2
 
 
+def _repro(a) -> int:
+    """M3-C N1: compare a run summary's archives against committed reference metrics.
+
+    Exit 0 when every archive is self-consistent (manifest + metrics self-hash) and numerically reproduces the
+    reference within the fixed tolerance; exit 2 otherwise. Bitwise equality is reported, never required."""
+    from .reproducibility import NUMERIC_TOLERANCE, archive_integrity, compare_metrics
+    summ = json.loads(Path(a.summary).read_text(encoding="utf-8"))
+    ref = json.loads(Path(a.reference).read_text(encoding="utf-8"))
+    rows = {f"{r['role']}/{r['scenario_id']}": r for r in summ["cost_sensitivity"]["rows"]}
+    out = {"tolerance": NUMERIC_TOLERANCE, "reference": str(a.reference), "runs": {}}
+    ok = set(rows) == set(ref["runs"])
+    for key, want in sorted(ref["runs"].items()):
+        r = rows.get(key)
+        if r is None:
+            out["runs"][key] = {"status": "MISSING"}
+            continue
+        d = Path(r["archive_path"])
+        integ = archive_integrity(d)
+        got = json.loads((d / "metrics.json").read_text(encoding="utf-8"))
+        cmp = compare_metrics(want["metrics"], got["metrics"], sha_a=want["metrics_sha256"],
+                              sha_b=got["metrics_sha256"])
+        out["runs"][key] = {"archive_integrity": integ["status"],
+                            "numeric_reproducibility": cmp["numeric_reproducibility"],
+                            "bitwise_cross_environment": cmp["bitwise_cross_environment"],
+                            "max_abs_diff": cmp["max_abs_diff"], "differences": cmp["differences"][:10]}
+        ok = ok and integ["status"] == "PASS" and cmp["numeric_reproducibility"] == "PASS"
+    out["ok"] = ok
+    print(json.dumps(out, indent=1, default=str))
+    if a.out:
+        Path(a.out).write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+    return 0 if ok else 2
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m strategy_agent.research")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -119,10 +152,14 @@ def main(argv=None) -> int:
     c.add_argument("--batch-id")
     c.add_argument("--resume", action="store_true")
     c.add_argument("--summary-out")
+    q = sub.add_parser("repro", help="numeric reproducibility of a run summary vs committed reference metrics")
+    q.add_argument("--summary", required=True)
+    q.add_argument("--reference", required=True)
+    q.add_argument("--out")
     x = sub.add_parser("real")
     x.add_argument("--market", default="IBKR_TSM")
     a = ap.parse_args(argv)
-    return {"readiness": _readiness, "synthetic": _synthetic, "real": _real, "run": _run}[a.cmd](a)
+    return {"readiness": _readiness, "synthetic": _synthetic, "real": _real, "run": _run, "repro": _repro}[a.cmd](a)
 
 
 if __name__ == "__main__":  # pragma: no cover

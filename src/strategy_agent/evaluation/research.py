@@ -93,6 +93,9 @@ def evaluate(report, bars: Sequence[Mapping], *, initial_capital: float, bar_min
     gross = [_f(t["gross_pnl"]) for t in trips]
     fees = float(math.fsum(_f(f["fee"]) for f in fills))
     taxes = float(math.fsum(_f(f["tax"]) for f in fills))
+    # Core >= M3-A.4 debits regulatory_fee separately (explicit_cost = fee + tax + regulatory_fee); older Cores
+    # have no such field. Never drop a debited component from the cost total.
+    regulatory = float(math.fsum(_f(f.get("regulatory_fee", 0)) for f in fills))
     sessions = sorted({str(b["session"]) for b in bars})
 
     # ---------------------------------------------------------------- overall
@@ -106,8 +109,9 @@ def evaluate(report, bars: Sequence[Mapping], *, initial_capital: float, bar_min
     out["total_return"] = (final_equity - initial_capital) / initial_capital
     out["cost_adjusted_net_return"] = float(math.fsum(pnls)) / initial_capital       # closed trades, net of costs
     out["gross_return_closed_trades"] = float(math.fsum(gross)) / initial_capital
-    out["costs"] = {"fees": fees, "taxes": taxes, "total": fees + taxes,
-                    "cost_share_of_gross": (fees + taxes) / abs(math.fsum(gross)) if math.fsum(gross) else None}
+    explicit = fees + taxes + regulatory
+    out["costs"] = {"fees": fees, "taxes": taxes, "regulatory_fees": regulatory, "total": explicit,
+                    "cost_share_of_gross": explicit / abs(math.fsum(gross)) if math.fsum(gross) else None}
     out["max_drawdown"] = M.max_drawdown(equity) if equity else not_evaluable("no equity curve")
     out["max_drawdown_duration_bars"] = M.max_drawdown_duration(equity) if equity else None
 

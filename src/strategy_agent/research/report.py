@@ -147,9 +147,11 @@ def opponent_view(res) -> list[str]:
 
 
 def uncertainties(res) -> list[str]:
-    out = ["IBKR TSM market gate is NO_GO (governance/market_readiness.json, Core PR #3 @ c1a3661): timestamp label, "
-           "observed availability and closing auction UNKNOWN; BAR_END_STRICT_LATER pending owner acceptance.",
-           "IBKR costs are DRAFT/ASSUMED and not expressible by the pinned Core (G18); Core PR #3 is unmerged.",
+    out = ["IBKR TSM market gate is NO_GO (governance/market_readiness.json, Core PR #3 @ 699e3ad): timestamp label, "
+           "observed availability and closing auction UNKNOWN; Core's CONSERVATIVE_LABEL_AGNOSTIC model is a research "
+           "model pending owner acceptance and can never be formal-eligible.",
+           "IBKR costs are DRAFT/ASSUMED: representable by Core 699e3ad but not approved (no account evidence, "
+           "regulatory schedule PENDING); TEST_ONLY synthetic costs say nothing about IBKR.",
            "No walk-forward split or holdout result exists for this family; multiple-testing correction uses the "
            "family trial count recorded in the registry.",
            "Overnight holding is allowed by the spec; gap risk is visible only in the equity curve, not modelled."]
@@ -241,7 +243,7 @@ def build_report(res) -> str:
                 ("Profit factor", t["profit_factor"]), ("Total return (equity, incl. open)", m["total_return"]),
                 ("Cost-adjusted net return (closed trades)", m["cost_adjusted_net_return"]),
                 ("Gross return (closed trades)", m["gross_return_closed_trades"]),
-                ("Total costs (fees + taxes)", m["costs"]["total"]),
+                ("Total explicit costs (fees + taxes + regulatory fees)", m["costs"]["total"]),
                 ("Sharpe (annualised)", sh.get("annualised") if sh.get("status") != "NOT_EVALUABLE" else sh),
                 ("Exposure (fraction of bars in market)", m["exposure"]),
                 ("Turnover (annualised, one-way)", m["turnover_annualised"])]

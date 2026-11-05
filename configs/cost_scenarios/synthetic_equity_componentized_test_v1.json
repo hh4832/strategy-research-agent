@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0.0",
+  "scenario_set_id": "synthetic_equity_componentized_test_v1",
+  "version": "1.0.0",
+  "description": "TEST_ONLY componentized equity costs for the Core M3-A.4 conservative path (per-share commission + minimum, per-share exchange fee, SELL regulatory-fee rate, 2 bps slippage). Core computes every cost; multipliers are the spec's pre-registered sensitivity_multipliers.",
+  "scenarios": [
+    {
+      "scenario_id": "BASE",
+      "kind": "BASE",
+      "profile_ref": {
+        "profile_id": "synthetic_equity_componentized_test",
+        "version": "1.0.0",
+        "sha256": "22a669083337149015c82fe5f415bc4c4704812cbce8c7df956ec8051fb2a66f"
+      },
+      "cost_multiplier": 1.0,
+      "commission_model": "UNBUNDLED",
+      "description": "TEST_ONLY profile as approved in the isolated environment"
+    },
+    {
+      "scenario_id": "LOW_FRICTIONLESS",
+      "kind": "LOW",
+      "profile_ref": {
+        "profile_id": "synthetic_equity_componentized_test",
+        "version": "1.0.0",
+        "sha256": "22a669083337149015c82fe5f415bc4c4704812cbce8c7df956ec8051fb2a66f"
+      },
+      "cost_multiplier": 0.0,
+      "commission_model": "UNBUNDLED",
+      "description": "lower bound: Core cost_multiplier 0"
+    },
+    {
+      "scenario_id": "STRESS_2X",
+      "kind": "STRESS",
+      "profile_ref": {
+        "profile_id": "synthetic_equity_componentized_test",
+        "version": "1.0.0",
+        "sha256": "22a669083337149015c82fe5f415bc4c4704812cbce8c7df956ec8051fb2a66f"
+      },
+      "cost_multiplier": 2.0,
+      "commission_model": "UNBUNDLED",
+      "description": "Core cost_multiplier 2"
+    }
+  ]
+}

@@ -25,6 +25,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -40,6 +41,7 @@ from .data import readiness
 ROOT = Path(__file__).resolve().parents[3]
 SCHEMA = ROOT / "schemas" / "RESEARCH_CONFIG_SCHEMA.json"
 SYNTHETIC_TEMPORAL_POLICY = "SYNTHETIC_FIXTURE_START_LABEL_AVAILABLE_AT_BAR_END"
+_PINNED_CORE_DOC = re.compile(r"^https://github\.com/hh4832/market-research-core/blob/[0-9a-f]{40}/")
 
 
 class ResearchConfigError(ValueError):
@@ -100,7 +102,8 @@ def _dt(s: str) -> datetime:
 
 def validate_config(cfg: dict, *, path: Path | None = None, profiles: dict, fixture_dataset: dict | None = None,
                     synthetic_holdout: tuple[str, str] | None = None, holdout_book=None,
-                    readiness_path: Path | None = None, core_sha: str | None = None) -> ResearchConfig:
+                    readiness_path: Path | None = None, core_sha: str | None = None,
+                    core_temporal_policy: dict | None = None) -> ResearchConfig:
     issues: list[tuple[str, str]] = []
     try:
         jsonschema.validate(cfg, json.loads(SCHEMA.read_text(encoding="utf-8")))
@@ -149,6 +152,20 @@ def validate_config(cfg: dict, *, path: Path | None = None, profiles: dict, fixt
         if tp["status"] == "ACCEPTED" and gate.gate_status().get("TEMPORAL_SAFETY") != "PASS":
             issues.append(("RC06", f"config claims ACCEPTED but gate TEMPORAL_SAFETY is "
                                    f"{gate.gate_status().get('TEMPORAL_SAFETY')} (UNKNOWN is never upgraded)"))
+    elif tp["source"] == "CORE_POLICY":
+        # SYNTHETIC run of Core's released research model (M3-A.4 CONSERVATIVE_LABEL_AGNOSTIC): the config pins
+        # Core's policy by id, version and sha256 and the pinned Core document; it is a research simulation,
+        # never ACCEPTED here (acceptance for a real market is the research owner's, via the market gate).
+        ctp = core_temporal_policy or {}
+        if tp["status"] != "RESEARCH_SIMULATION" or tp.get("approved_by") is not None:
+            issues.append(("RC06", "a CORE_POLICY reference in a SYNTHETIC config is RESEARCH_SIMULATION, unapproved"))
+        if (tp["policy_id"], tp["version"], tp.get("sha256")) != (ctp.get("policy_id"), ctp.get("version"),
+                                                                  ctp.get("sha256")):
+            issues.append(("RC06", f"policy {tp['policy_id']}@{tp['version']} sha {str(tp.get('sha256'))[:12]} != "
+                                   f"installed Core {ctp.get('policy_id')}@{ctp.get('version')} "
+                                   f"sha {str(ctp.get('sha256'))[:12]}"))
+        if not _PINNED_CORE_DOC.match(tp.get("evidence_ref") or ""):
+            issues.append(("RC06", "CORE_POLICY evidence_ref must be a pinned market-research-core blob URL"))
     else:
         if tp["source"] != "SYNTHETIC_FIXTURE" or tp["status"] != "FIXTURE_DEFINITION" or \
                 tp["policy_id"] != SYNTHETIC_TEMPORAL_POLICY:

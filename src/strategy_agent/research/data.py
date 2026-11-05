@@ -97,6 +97,83 @@ class SyntheticSource:
         return MarketData(frame, tuple(sbars), tuple(rows), md)
 
 
+class NativeSyntheticSource:
+    """Committed native-1m synthetic fixture -> Core M3-A.4 conservative frame (TEST_ONLY, not market data).
+
+    Bucketing, START/END uncertainty envelopes, RTH / closing-auction exclusion and eligibility are computed by
+    Core ``prepare_conservative_bars`` (bar_minutes=15). The Agent only filters native rows to the requested window
+    and reads Core's columns; it never re-times a bar or edits eligibility. Signal time = Core
+    ``modeled_available_at`` (latest START/END completion); signal eligibility = Core ``signal_eligible``.
+    """
+
+    kind = "SYNTHETIC"
+    dataset_id = None            # set in __init__ from the native fixture
+    temporal_policy = "CONSERVATIVE_LABEL_AGNOSTIC"
+
+    def __init__(self, directory: Path | None = None, core=None):
+        from . import native_fixture as NF  # noqa: PLC0415
+        self.NF = NF
+        self.fixture = NF.load(directory or NF.FIXTURE_DIR)
+        self.dataset_id = NF.FIXTURE_ID
+        self._core = core
+
+    def describe(self) -> dict:
+        m = self.fixture.meta
+        return {"dataset_id": self.dataset_id, "snapshot_id": f"{self.dataset_id}@{self.fixture.csv_sha256[:12]}",
+                "producer_commit_sha": self.fixture.csv_sha256[:40], "verdict": "GO", "usage_scope": "BACKTEST",
+                "access_contract": "strategy_agent.research.native_fixture.load (generated, sha256-pinned) -> "
+                                   "market_research_core.prepare_conservative_bars(bar_minutes=15)",
+                "kind": "SYNTHETIC", "not_market_data": True, "first_day": m["first_day"], "last_day": m["last_day"]}
+
+    def load(self, *, symbol: str, warmup_start: str, window_end: str) -> MarketData:
+        import pandas as pd  # noqa: PLC0415
+        core = self._core
+        if core is None:                    # Core is reached only through the adapter (single import site)
+            from strategy_agent.adapters.mrc_adapter import _core  # noqa: PLC0415
+            core = _core()
+        if symbol != self.NF.SYMBOL:
+            raise ValueError(f"native fixture is labelled {self.NF.SYMBOL}, spec asks {symbol}")
+        lo, hi = datetime.fromisoformat(warmup_start), datetime.fromisoformat(window_end)
+        native = []
+        for r in self.fixture.rows:
+            t = datetime.fromisoformat(r["source_timestamp"])
+            if lo <= t < hi:
+                native.append({"source_timestamp": pd.Timestamp(t), "symbol": symbol, "contract": symbol,
+                               "open": float(r["open"]), "high": float(r["high"]), "low": float(r["low"]),
+                               "close": float(r["close"]), "volume": float(r["volume"])})
+        if not native:
+            raise ValueError(f"no native fixture rows in [{warmup_start}, {window_end})")
+        frame = core.prepare_conservative_bars(pd.DataFrame(native), bar_minutes=self.NF.BUCKET_MINUTES)
+        rows, sbars = [], []
+        for b in frame.drop(columns=["source_rows"]).to_dict("records"):
+            # evaluator rows: Core's columns in the market timezone (as Core reports fills), plus the trading
+            # date as the evaluator's session key; Core's own session class is kept as session_class
+            b = {k: (v.tz_convert(self.NF.TZ).to_pydatetime() if isinstance(v, pd.Timestamp) and v.tzinfo else v)
+                 for k, v in b.items()}
+            start, avail = b["bar_start"], b["modeled_available_at"]
+            day = b["source_timestamp"].date().isoformat()
+            rows.append(b | {"session_class": b["session"], "session": day})
+            sbars.append(SignalBar(start, avail, float(b["open"]), float(b["high"]), float(b["low"]),
+                                   float(b["close"]), float(b["volume"]), symbol, day, bool(b["signal_eligible"])))
+        md = self.describe() | {
+            "rows": len(rows), "native_rows": len(native), "window": [warmup_start, window_end],
+            "frame_sha256": _frame_sha([{k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in r.items()}
+                                        for r in native]),
+            "fixture_csv_sha256": self.fixture.csv_sha256, "bars_per_day": self.NF.BUCKETS_PER_DAY,
+            "temporal_policy": {"policy_id": core.CONSERVATIVE_POLICY.policy_id,
+                                "version": core.CONSERVATIVE_POLICY.version,
+                                "sha256": core.CONSERVATIVE_POLICY.sha256},
+            "pit_definition": "decision at Core modeled_available_at (latest START/END completion of a complete "
+                              "15-label bucket); fill at Core's first candidate whose EARLIEST possible open is "
+                              "strictly later (Core M3-A.4 CONSERVATIVE_LABEL_AGNOSTIC)",
+            "eligibility_counts": {"buckets": int(len(frame)), "signal_eligible": int(frame.signal_eligible.sum()),
+                                   "buy_execution_eligible": int(frame.buy_execution_eligible.sum()),
+                                   "rejection_reasons": {k: int(v) for k, v in
+                                                         frame.execution_rejection_reason.value_counts().items() if k}},
+            "fixture_meta": self.fixture.meta}
+        return MarketData(frame, tuple(sbars), tuple(rows), md)
+
+
 GATES = ("DATA_QUALITY", "TEMPORAL_SAFETY", "COST_MODEL_COMPATIBILITY", "COST_APPROVAL", "HOLDOUT_APPROVAL",
          "FORMAL_EXECUTION_ELIGIBILITY")
 # gates that need a named human approval on top of PASS + evidence

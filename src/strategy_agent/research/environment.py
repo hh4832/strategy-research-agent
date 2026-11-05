@@ -79,9 +79,45 @@ def synthetic_cost_profile() -> dict:
     return p
 
 
+def _model(citation: str) -> dict:
+    return {"kind": "MODEL", "citation": citation, "ref": None, "verified_at": None, "verified_by": None}
+
+
+def synthetic_componentized_cost_profile() -> dict:
+    """TEST_ONLY componentized equity profile for the Core M3-A.4 path: per-share commission + minimum, bps
+    slippage, a SELL regulatory-fee rate and a per-share exchange fee (fee_mode COMPONENTIZED in Core). Every
+    number is a synthetic test assumption - not an IBKR, SEC or FINRA rate, and never a formal approval."""
+    p = {
+        "profile_id": "synthetic_equity_componentized_test", "version": "1.0.0", "status": "APPROVED",
+        "market": "IBKR", "instrument_scope": "SYNTHETIC native fixture only (TEST_ONLY; not an IBKR schedule)",
+        "currency": "USD", "effective_from": "2025-01-01", "effective_to": None,
+        "components": [
+            {"id": "commission", "kind": "COMMISSION", "side": "BOTH", "per_unit": 0.005,
+             "basis": "RESEARCH_ASSUMPTION", "source": _model("TEST_ONLY synthetic per-share commission")},
+            {"id": "min_commission", "kind": "MIN_COMMISSION", "side": "BOTH", "amount": 1.0,
+             "basis": "RESEARCH_ASSUMPTION", "source": _model("TEST_ONLY synthetic per-order minimum")},
+            {"id": "exchange_fee", "kind": "EXCHANGE_FEE", "side": "BOTH", "per_unit": 0.0003,
+             "basis": "RESEARCH_ASSUMPTION", "source": _model("TEST_ONLY synthetic per-share exchange fee")},
+            {"id": "regulatory_fee", "kind": "REGULATORY_FEE", "side": "SELL", "rate": 0.0000278,
+             "basis": "RESEARCH_ASSUMPTION", "source": _model("TEST_ONLY synthetic sell-side regulatory rate "
+                                                             "(not the SEC/FINRA schedule)")},
+            {"id": "slippage", "kind": "SLIPPAGE", "side": "BOTH", "bps": 2, "basis": "RESEARCH_ASSUMPTION",
+             "source": _model("TEST_ONLY 2 bps adverse")},
+        ],
+        "provenance": {"created_by": "claude-m3c", "created_at": "2026-11-05T14:00:00+08:00",
+                       "approved_by": TEST_LEAD, "approved_at": "2026-11-05T14:00:00+08:00",
+                       "approval_ref": "https://example.test/synthetic-only", "supersedes": None,
+                       "profile_sha256": None,
+                       "notes": "TEST-ONLY approval inside an isolated synthetic environment; never in governance/"},
+    }
+    p["provenance"]["profile_sha256"] = profile_hash(p)
+    return p
+
+
 SYNTHETIC_OVERRIDES = (
     "source_confirmations.ibkr_tsm_session_coverage=CONFIRMED (synthetic fixture definition, not IBKR evidence)",
     "cost profile synthetic_equity_test@1.0.0 APPROVED by test lead (not an IBKR schedule)",
+    "cost profile synthetic_equity_componentized_test@1.0.0 APPROVED by test lead (TEST_ONLY; not an IBKR schedule)",
     f"holdout lock {SYNTH_LOCK_ID} on the synthetic dataset from {SYNTH_HOLDOUT_START}",
     "registry, families, budget, controls and approvers are isolated copies under the run root",
 )
@@ -148,8 +184,8 @@ def synthetic_environment(root: Path, *, dataset_id: str, clock=None, budget: di
     conf = copy.deepcopy(base.confirmations)
     conf["ibkr_tsm_session_coverage"].update(status="CONFIRMED", value="RTH_ONLY",
                                              evidence_ref="synthetic fixture definition (fixtures/synthetic)")
-    prof = synthetic_cost_profile()
-    profiles = {(prof["profile_id"], prof["version"]): prof}
+    profiles = {(p["profile_id"], p["version"]): p
+                for p in (synthetic_cost_profile(), synthetic_componentized_cost_profile())}
     for p in extra_profiles:
         profiles[(p["profile_id"], p["version"])] = p
     ctx = GovernanceContext(conf, profiles, frozenset({TEST_LEAD}))

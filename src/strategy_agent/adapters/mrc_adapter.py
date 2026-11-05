@@ -35,7 +35,7 @@ from strategy_agent.costs.profile import cost_mismatches, profile_hash
 from strategy_agent.ports import (CONVENTION, REQUIRED_PROVENANCE, BacktestReport, BacktestRequest,
                                   ContractViolation, DatasetRef)
 
-ADAPTER_VERSION = "m1.3-0.4.0"
+ADAPTER_VERSION = "m1.3-0.5.0"            # 0.5.0: Core M3-A.4 (699e3ad) conservative mode + cost fields
 CORE_DIST = "market-research-core"
 ALLOWED_DATASET_VERDICTS = {"GO", "SCOPED_GO"}
 TS_FMT = "%Y-%m-%d %H:%M"
@@ -69,6 +69,10 @@ CORE_ONLY_REASONS = {
     # rejection reasons carried on bars by Core's data adapters (taiwan.py / client.py @ a50f390)
     "BAR_NOT_BACKTEST_OR_LIMIT_ELIGIBLE", "BUY_RULE_INELIGIBLE", "SELL_RULE_INELIGIBLE",
     "CLOSING_AUCTION_NOT_EXECUTABLE", "TIMESTAMP_LABEL_OR_SESSION_UNKNOWN",
+    # Core M3-A.4 (docs/M3A4_TEMPORAL_COST_CONTRACT.md @ 699e3ad): order-level and bar-preparation codes
+    "UNSUPPORTED_CONSERVATIVE_ORDER_TYPE", "COST_RATE_OUTSIDE_EFFECTIVE_DATES", "COST_PROFILE_MARKET_MISMATCH",
+    "DAYTRADE_TAX_NOT_QUALIFIED", "VOLUME_PARTICIPATION_EXCEEDED", "INCOMPLETE_SOURCE_BUCKET",
+    "OUTSIDE_CONSERVATIVE_RTH", "CLOSING_AUCTION_EXCLUDED",
 }
 REASON_MAP: dict[str, str] = {r: r for r in ORACLE_REASONS | CORE_ONLY_REASONS}
 # reasons whose cause is not stated (Phase-2 run_sma era); they cannot be mapped without guessing
@@ -116,6 +120,33 @@ def core_identity() -> dict:
 def _core():
     import market_research_core  # noqa: PLC0415 - the only import site of Core in the Agent
     return market_research_core
+
+
+CONSERVATIVE = "CONSERVATIVE_LABEL_AGNOSTIC"
+# CostProfile fields released by Core M3-A.4; the Agent maps a component to them only when the INSTALLED Core
+# has them (measured from the dataclass, never assumed from a version string).
+M3A4_COST_FIELDS = frozenset({"equity_commission_per_share", "equity_slippage_bps", "sell_regulatory_fee_rate",
+                              "exchange_fee_per_unit", "fee_mode", "component_evidence",
+                              "component_approval_status"})
+
+
+def core_cost_fields(core=None) -> frozenset:
+    """CostProfile field names of the installed Core; empty when Core is not installed (fail closed)."""
+    try:
+        core = core or _core()
+    except ImportError:
+        return frozenset()
+    return frozenset(f.name for f in fields(core.CostProfile))
+
+
+def core_supports_conservative(core=None) -> bool:
+    """Core M3-A.4 conservative temporal API present (TemporalPolicy, prepare_conservative_bars, ledger)."""
+    try:
+        core = core or _core()
+    except ImportError:
+        return False
+    return all(hasattr(core, n) for n in ("TemporalPolicy", "CONSERVATIVE_POLICY", "prepare_conservative_bars")) \
+        and hasattr(core.ExecutionResult, "ledger") and "temporal_policy" in {f.name for f in fields(core.ExecutionConfig)}
 
 
 # ------------------------------------------------------------------------------------------ capabilities
@@ -410,10 +441,16 @@ def targets_to_orders(targets: Sequence[Mapping], *, symbol: str, market: str, q
 _BASIS = {"OFFICIAL_RULE": "OFFICIAL", "BROKER_ACTUAL": "BROKER_ACTUAL", "RESEARCH_ASSUMPTION": "ASSUMED"}
 
 
-def unmappable_cost_components(profile: Mapping, instrument_type: str) -> list[str]:
-    """Components the field mapping below would otherwise DROP silently (gap G18). Core equities take only a
-    notional rate + minimum and a SELL tax; futures only a per-contract fee + BOTH-side tax; slippage only in ticks.
-    Anything else must fail closed rather than vanish from the cost model."""
+def unmappable_cost_components(profile: Mapping, instrument_type: str, core_fields: frozenset | None = None) -> list[str]:
+    """Components the field mapping below would otherwise DROP silently (gap G18). Fail closed: anything the
+    INSTALLED Core cannot express is listed and the profile is refused, never approximated.
+
+    Core <= 2c6ba9a: equities take a notional rate + minimum and a SELL tax; futures a per-contract fee + BOTH-side
+    tax; slippage in ticks only. Core M3-A.4 (699e3ad) additionally expresses an equity per-share commission,
+    equity bps slippage, an equity SELL regulatory-fee rate and per-unit exchange fees (``fee_mode`` COMPONENTIZED).
+    ``core_fields`` defaults to the installed Core's CostProfile fields (empty = Core absent = legacy rules)."""
+    cf = core_cost_fields() if core_fields is None else core_fields
+    m3a4 = M3A4_COST_FIELDS <= cf
     fut = instrument_type == "FUTURES"
     out = []
     for c in profile["components"]:
@@ -421,12 +458,23 @@ def unmappable_cost_components(profile: Mapping, instrument_type: str) -> list[s
         if k == "COMMISSION":
             if side != "BOTH":
                 out.append(f"{c['id']}: one-sided commission")
-            if not fut and c.get("per_unit"):
+            if not fut and c.get("per_unit") and not m3a4:
                 out.append(f"{c['id']}: per-unit equity commission {c['per_unit']} (Core: notional rate only)")
+            if not fut and c.get("per_unit") and c.get("rate"):
+                out.append(f"{c['id']}: per-unit AND notional equity commission (Core: one or the other)")
             if fut and c.get("rate"):
                 out.append(f"{c['id']}: notional-rate futures commission {c['rate']} (Core: per contract only)")
-        elif k in {"EXCHANGE_FEE", "REGULATORY_FEE"}:
-            out.append(f"{c['id']}: {k} has no Core field")
+        elif k == "EXCHANGE_FEE":
+            if not m3a4:
+                out.append(f"{c['id']}: {k} has no Core field")
+            elif side != "BOTH" or c.get("rate") or not c.get("per_unit"):
+                out.append(f"{c['id']}: EXCHANGE_FEE must be per-unit on BOTH sides (Core exchange_fee_per_unit)")
+        elif k == "REGULATORY_FEE":
+            if not m3a4:
+                out.append(f"{c['id']}: {k} has no Core field")
+            elif fut or side != "SELL" or c.get("per_unit") or c.get("rate") is None:
+                out.append(f"{c['id']}: REGULATORY_FEE must be an equity SELL notional rate "
+                           "(Core sell_regulatory_fee_rate); a missing rate is never treated as zero")
         elif k == "TAX":
             if not fut and side != "SELL":
                 out.append(f"{c['id']}: equity TAX side {side} (Core: SELL only)")
@@ -435,7 +483,9 @@ def unmappable_cost_components(profile: Mapping, instrument_type: str) -> list[s
             if c.get("per_unit"):
                 out.append(f"{c['id']}: per-unit tax")
         elif k == "SLIPPAGE" and "ticks" not in c:
-            out.append(f"{c['id']}: slippage {c.get('bps')} bps (Core: ticks only)")
+            if not m3a4 or fut:
+                out.append(f"{c['id']}: slippage {c.get('bps')} bps (Core: ticks only"
+                           + (" for futures)" if m3a4 else ")"))
         elif k == "MIN_COMMISSION" and fut and c.get("amount"):
             out.append(f"{c['id']}: futures minimum commission")
     return out
@@ -444,8 +494,13 @@ def unmappable_cost_components(profile: Mapping, instrument_type: str) -> list[s
 def core_cost_profile(profile: Mapping, *, instrument_type: str, tick_size: float, contract_multiplier: float = 1.0,
                       core=None):
     """Agent CostProfile (governance JSON) -> Core CostProfile. Field mapping only; rules Core cannot express
-    (e.g. FLOOR_INTEGER rounding) raise CoreContractGap instead of being approximated."""
-    unmappable = unmappable_cost_components(profile, instrument_type)
+    (e.g. FLOOR_INTEGER rounding) raise CoreContractGap instead of being approximated.
+
+    Profiles that use only legacy components map exactly as before (same Core profile, same sha256). Components
+    that need a Core M3-A.4 field carry their own basis / source evidence / approval status (Core requires all
+    three); approval is APPROVED only when the Agent profile itself is APPROVED, otherwise PENDING."""
+    cf = core_cost_fields(core)             # empty when Core is absent -> legacy rules -> K18 before any import
+    unmappable = unmappable_cost_components(profile, instrument_type, cf)
     if unmappable:
         raise CoreContractGap(["K18"], "cost components not expressible in Core CostProfile: " + "; ".join(unmappable))
     core = core or _core()
@@ -456,26 +511,51 @@ def core_cost_profile(profile: Mapping, *, instrument_type: str, tick_size: floa
         raise CoreContractGap(["K12"], f"rounding rule {rnd} not expressible (Core modes {allowed})")
     basis = lambda kind: _BASIS.get(comp.get(kind, {}).get("basis", "RESEARCH_ASSUMPTION"), "ASSUMED")  # noqa: E731
     is_fut = instrument_type == "FUTURES"
+    com = comp.get("COMMISSION", {})
+    per_share = (not is_fut) and bool(com.get("per_unit"))
+    slip = comp.get("SLIPPAGE", {})
     vals = dict(
-        equity_commission_rate=0.0 if is_fut else comp.get("COMMISSION", {}).get("rate", 0.0),
+        equity_commission_rate=0.0 if is_fut or per_share else com.get("rate", 0.0),
         minimum_commission=comp.get("MIN_COMMISSION", {}).get("amount", 0.0),
         sell_tax_rate=0.0 if is_fut else sum(c.get("rate", 0.0) for c in profile["components"]
                                              if c["kind"] == "TAX" and c["side"] == "SELL"),
-        futures_fee_per_contract_per_side=comp.get("COMMISSION", {}).get("per_unit", 0.0) if is_fut else 0.0,
+        futures_fee_per_contract_per_side=com.get("per_unit", 0.0) if is_fut else 0.0,
         futures_transaction_tax_rate=sum(c.get("rate", 0.0) for c in profile["components"]
                                          if c["kind"] == "TAX" and c["side"] == "BOTH") if is_fut else 0.0,
         contract_multiplier=contract_multiplier, tick_size=tick_size,
-        slippage_ticks=comp.get("SLIPPAGE", {}).get("ticks", 0.0))
+        slippage_ticks=slip.get("ticks", 0.0))
     cb = {k: "ASSUMED" for k in vals} | {"fee_rounding": basis("ROUNDING"), "tax_rounding": basis("ROUNDING")}
     cb.update(equity_commission_rate=basis("COMMISSION"), futures_fee_per_contract_per_side=basis("COMMISSION"),
               minimum_commission=basis("MIN_COMMISSION"), sell_tax_rate=basis("TAX"),
               futures_transaction_tax_rate=basis("TAX"), slippage_ticks=basis("SLIPPAGE"))
+    approved = profile.get("status") == "APPROVED"
+    extra, ev, ap = {}, {}, {}
+
+    def put(field_name, value, kind):
+        c = comp[kind]
+        extra[field_name] = value
+        cb[field_name] = basis(kind)
+        ev[field_name] = (f"agent {profile['profile_id']}@{profile['version']} component {c['id']}: "
+                          f"{c.get('source', {}).get('citation', 'no citation')}")
+        ap[field_name] = "APPROVED" if approved else "PENDING"
+
+    if per_share:
+        put("equity_commission_per_share", float(com["per_unit"]), "COMMISSION")
+    if not is_fut and "bps" in slip and "ticks" not in slip:
+        put("equity_slippage_bps", float(slip["bps"]), "SLIPPAGE")
+    if "REGULATORY_FEE" in comp:
+        put("sell_regulatory_fee_rate", float(comp["REGULATORY_FEE"]["rate"]), "REGULATORY_FEE")
+    if "EXCHANGE_FEE" in comp:
+        put("exchange_fee_per_unit", float(comp["EXCHANGE_FEE"]["per_unit"]), "EXCHANGE_FEE")
+    if extra:                                   # M3-A.4 profile: declare how commission relates to separate fees
+        extra["fee_mode"] = "COMPONENTIZED" if {"REGULATORY_FEE", "EXCHANGE_FEE"} & set(comp) else "ALL_IN"
+        extra["component_evidence"], extra["component_approval_status"] = ev, ap
     return core.CostProfile(
         profile_id=profile["profile_id"], version=profile["version"], instrument_type=instrument_type,
-        approval_status="APPROVED" if profile.get("status") == "APPROVED" else "DRAFT",
+        approval_status="APPROVED" if approved else "DRAFT",
         source_evidence=profile.get("provenance", {}).get("approval_ref") or "agent CostProfile " + profile["profile_id"],
         basis="ASSUMED" if "ASSUMED" in cb.values() else "OFFICIAL", fee_rounding=rnd, tax_rounding=rnd,
-        component_basis=cb, **vals)
+        component_basis=cb, **vals, **extra)
 
 
 @dataclass(frozen=True)
@@ -490,6 +570,30 @@ class MarketSemantics:
     # constant instrument tick (e.g. TXF = 1 point). None = price-banded ladder (TWSE/TPEx equities), which a
     # single Core CostProfile.tick_size cannot express -> CoreContractGap K03 (gap G03b), never approximated
     constant_tick_size: float | None = None
+    # "OBSERVED" (legacy: confirmed START label) or "CONSERVATIVE_LABEL_AGNOSTIC" (Core M3-A.4 research model:
+    # label stays UNKNOWN, Core builds START/END uncertainty envelopes). Never FORMAL_ELIGIBLE.
+    available_at_policy: str = "OBSERVED"
+
+
+def conservative_config(request: BacktestRequest, sem: MarketSemantics, core_sha: str, exclusions=(), core=None):
+    """Core M3-A.4 ``CONSERVATIVE_LABEL_AGNOSTIC`` config (docs/M3A4_TEMPORAL_COST_CONTRACT.md "Exact temporal
+    API"). Label UNKNOWN, NYSE timezone, no same-timestamp fills, Core's own CONSERVATIVE_POLICY, RESEARCH_ONLY."""
+    core = core or _core()
+    if not core_supports_conservative(core):
+        raise CoreContractGap(["K19"], "installed Core lacks the M3-A.4 conservative temporal API")
+    if sem.bar_label != "UNKNOWN" or sem.session_semantics != "CONFIRMED" or sem.timezone != "America/New_York":
+        raise ContractViolation(f"{sem.market}: conservative mode needs bar_label UNKNOWN, session CONFIRMED and "
+                                f"America/New_York (got {sem.bar_label}/{sem.session_semantics}/{sem.timezone})")
+    d0 = request.datasets[0]
+    return core.ExecutionConfig(
+        initial_cash=sem.initial_cash, bar_label="UNKNOWN", session_semantics="CONFIRMED",
+        timestamp_timezone="America/New_York", same_timestamp_open_assumption=False,
+        available_at_policy=CONSERVATIVE, temporal_policy=core.CONSERVATIVE_POLICY,
+        initial_margin_per_contract=sem.initial_margin_per_contract, exclusion_windows=tuple(exclusions),
+        core_commit_sha=core_sha, dataset_snapshot_id=d0.snapshot_id, dataset_producer_sha=d0.producer_commit_sha,
+        dataset_verdict=d0.verdict, permitted_usage_scope="RESEARCH_ONLY", spec_sha256=request.spec_sha256,
+        parameters=dict(request.parameters), cost_multiplier=request.cost_multiplier, seed=request.seed,
+        window_start=request.window_start, window_end=request.window_end)
 
 
 def core_config(request: BacktestRequest, sem: MarketSemantics, core_sha: str, exclusions=(), core=None):
@@ -497,6 +601,8 @@ def core_config(request: BacktestRequest, sem: MarketSemantics, core_sha: str, e
     then available_at == bar_end == next bar_start, and convention v1 §1.4 fills at the first bar with
     bar_start >= order_ts (= available_at). UNKNOWN label/session fails closed in Core itself."""
     core = core or _core()
+    if sem.available_at_policy == CONSERVATIVE:
+        return conservative_config(request, sem, core_sha, exclusions, core)
     if sem.bar_label != "START" or sem.session_semantics != "CONFIRMED":
         raise ContractViolation(f"{sem.market}: bar label {sem.bar_label} / session {sem.session_semantics} "
                                 "not confirmed - formal execution blocked")
@@ -564,6 +670,8 @@ def core_result_to_report(result, request: BacktestRequest, pinned_core_sha: str
                       core_status=result.status, cost_profile_id=prov.get("cost_profile_id"),
                       cost_profile_sha256=prov.get("cost_profile_sha256"), agent_cost_profile_sha256=agent_sha,
                       core_assumptions=prov.get("assumptions"))
+    # Core M3-A.4 provenance, copied through only when Core released it (never invented for older Cores)
+    provenance.update({k: prov[k] for k in M3A4_PROVENANCE if k in prov})
     missing = [k for k in REQUIRED_PROVENANCE if provenance.get(k) in (None, "")]
     if missing:
         raise ContractViolation(f"core result lacks provenance {missing}")
@@ -573,6 +681,11 @@ def core_result_to_report(result, request: BacktestRequest, pinned_core_sha: str
         provenance=provenance,
         status="RESEARCH_BACKTEST" if result.status == "FORMAL_ELIGIBLE" else "RESEARCH_INTEGRATION_DEMO",
         invalidated_round_trips=_records(result.invalidated_round_trips))
+
+
+M3A4_PROVENANCE = ("available_at_policy", "cost_profile_version", "fee_mode", "temporal_policy_id",
+                   "temporal_policy_version", "temporal_policy_sha256", "temporal_policy", "source_timestamp_label",
+                   "modeled_available_at_rule", "execution_eligibility_scope", "permitted_usage_scope")
 
 
 # ------------------------------------------------------------------------------------------ the port
@@ -618,7 +731,8 @@ class MrcBacktestPort:
         sem = self.semantics.get(request.datasets[0].dataset_id)
         if sem is None:
             raise ContractViolation(f"no confirmed market semantics for {request.datasets[0].dataset_id}")
-        if sem.bar_label != "START" or sem.session_semantics != "CONFIRMED":
+        conservative = sem.available_at_policy == CONSERVATIVE
+        if not conservative and (sem.bar_label != "START" or sem.session_semantics != "CONFIRMED"):
             raise ContractViolation(f"{sem.market}: bar label {sem.bar_label} / session {sem.session_semantics} "
                                     "not confirmed - formal execution blocked")
         core = self._core or _core()
@@ -645,6 +759,10 @@ class MrcBacktestPort:
         cfg = core_config(request, sem, sha, core=core)
         result = core.ExecutionEngine().run(bars, orders, cost_profile=cp, config=cfg)
         guard_known_divergences(result, orders, bars, unsupported_divergences(matrix=self.matrix))
+        if conservative:                       # Core M3-A.4 field contract; any mismatch fails the run closed
+            from .m3a4_contract import validate_conservative_result  # noqa: PLC0415
+            self.last_m3a4_checks = validate_conservative_result(result, orders=orders, cost_profile=cp,
+                                                                 policy=core.CONSERVATIVE_POLICY, core_sha=sha)
         return core_result_to_report(result, request, sha, cost_profile=cp, agent_profile=profile)
 
 

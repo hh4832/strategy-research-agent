@@ -15,6 +15,8 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                  # N2: the notebook's pinned integration commit is checked against HEAD
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -27,7 +29,7 @@ jobs:
     # M1: real market-research-core at the pinned commit (read-only dependency; never modified here).
     runs-on: ubuntu-latest
     env:
-      MRC_SHA: 2c6ba9ab7c336e7a4908744abef617e0dce713fd
+      MRC_SHA: 699e3ad59951bbebb769bb69170be8d9a1a96c01
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -57,7 +59,7 @@ jobs:
     # M3-B1: synthetic research run on the real Core, isolated governance, reproducibility + archive evidence.
     runs-on: ubuntu-latest
     env:
-      MRC_SHA: 2c6ba9ab7c336e7a4908744abef617e0dce713fd
+      MRC_SHA: 699e3ad59951bbebb769bb69170be8d9a1a96c01
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -82,6 +84,24 @@ jobs:
             --summary-out "$RUNNER_TEMP/m3b_archive/ci_config_summary.json"
           python -m strategy_agent.research run --config configs/research/sma_5_20_tsm_synthetic_local_v1.json \
             --run-root "$RUNNER_TEMP/m3b_env" --archive-root "$RUNNER_TEMP/m3b_archive" --batch-id ci_config --resume
+          git diff --exit-code -- registry governance
+      - name: M3-C Core M3-A.4 integration (conservative temporal + componentized TEST_ONLY costs, 14 items + tamper)
+        run: pytest -q tests/test_m3c_core_integration.py
+      - name: M3-C bounded E2E on Core 699e3ad (native-1m fixture, CONSERVATIVE_LABEL_AGNOSTIC, BASE/LOW/STRESS) + resume
+        run: |
+          python -m strategy_agent.research run --config configs/research/sma_5_20_tsm_conservative_synthetic_local_v1.json \
+            --run-root "$RUNNER_TEMP/m3c_env" --archive-root "$RUNNER_TEMP/m3b_archive" --batch-id ci_m3c \
+            --summary-out "$RUNNER_TEMP/m3b_archive/ci_m3c_summary.json"
+          python - <<'PY'
+          import json, os
+          s = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "m3b_archive", "ci_m3c_summary.json")))
+          assert s["ok"] and len(s["runs"]) == 6
+          assert all(o["status"] == "COMPLETED" and o["archive_status"] == "ARCHIVED" for o in s["runs"]), s["runs"]
+          for r in s["cost_sensitivity"]["rows"]:
+              print(r["role"], r["scenario_id"], r["trade_count"], r["net_pnl"], r["metrics_sha256"])
+          PY
+          python -m strategy_agent.research run --config configs/research/sma_5_20_tsm_conservative_synthetic_local_v1.json \
+            --run-root "$RUNNER_TEMP/m3c_env" --archive-root "$RUNNER_TEMP/m3b_archive" --batch-id ci_m3c --resume
           git diff --exit-code -- registry governance
       - uses: actions/upload-artifact@v4
         with:

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-TEMPORAL_FIELD_PENDING = "temporal policy id/sha in Core provenance (Core M3-A.4 API not released)"
+TEMPORAL_FIELD_PENDING = "temporal policy id/sha in Core provenance (released by Core M3-A.4; absent here)"
 
 
 class CoreContractMismatch(RuntimeError):
@@ -60,7 +60,17 @@ def check(report, *, job, engine_git_sha: str, real_market: bool) -> ContractRes
         if real_market:
             r.messages.append(f"CC05_temporal_policy: {TEMPORAL_FIELD_PENDING}; REAL_MARKET runs need it")
     else:
-        put("CC05_temporal_policy", got_tp == want_tp, f"Core temporal policy {got_tp} != config {want_tp}")
+        want_sha = ((job.config or {}).get("temporal_policy") or {}).get("sha256")
+        got_sha = p.get("temporal_policy_sha256")
+        put("CC05_temporal_policy", got_tp == want_tp and (want_sha is None or got_sha == want_sha),
+            f"Core temporal policy {got_tp} sha {str(got_sha)[:12]} != config {want_tp} sha {str(want_sha)[:12]}")
+        # CC08 Core M3-A.4 conservative research model: label stays UNKNOWN, scope RESEARCH_ONLY, never formal
+        if got_tp == "CONSERVATIVE_LABEL_AGNOSTIC":
+            put("CC08_conservative_research_only",
+                p.get("source_timestamp_label") == "UNKNOWN" and p.get("execution_eligibility_scope") ==
+                "RESEARCH_ONLY" and p.get("core_status") == "RESEARCH_ONLY",
+                f"label {p.get('source_timestamp_label')} / scope {p.get('execution_eligibility_scope')} / "
+                f"status {p.get('core_status')}")
     # CC06 market eligibility: real-market research needs Core's formal eligibility
     if real_market:
         put("CC06_core_status", p.get("core_status") == "FORMAL_ELIGIBLE",

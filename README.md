@@ -31,7 +31,7 @@ python -m benchmark.harness.crosscheck export out/csv       # Phase 2 交叉驗�
 
 ```bash
 pip install -e '.[test,research]' \
-  "market-research-core @ git+https://github.com/hh4832/market-research-core@2c6ba9ab7c336e7a4908744abef617e0dce713fd"
+  "market-research-core @ git+https://github.com/hh4832/market-research-core@699e3ad59951bbebb769bb69170be8d9a1a96c01"
 python -m strategy_agent.research readiness --market IBKR_TSM       # 真實市場 Gate（M3-A 未 GO 時 exit 3）
 python -m strategy_agent.research synthetic --run-root /tmp/m3b_env --archive-root /tmp/m3b_archive --repeat 2
 python -m strategy_agent.research synthetic --run-root /tmp/m3b_env --drive        # 封存到 MyDrive（Colab）

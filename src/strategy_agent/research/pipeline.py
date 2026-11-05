@@ -150,6 +150,9 @@ class _InstrumentedPort:
             raise
         st.status = "OK"
         st.outputs = {"contract_checks": cc.checks}
+        m3a4 = getattr(self.port, "last_m3a4_checks", None)
+        if m3a4 is not None:                    # Core M3-A.4 field contract (adapters.m3a4_contract), all PASS here
+            st.outputs["core_m3a4_contract_checks"] = m3a4
         st.outputs |= {"fills": len(rep.fills), "round_trips": len(rep.round_trips),
                       "invalidated_round_trips": len(rep.invalidated_round_trips), "rejections": len(rep.rejections),
                       "report_status": rep.status, "core_status": rep.provenance.get("core_status"),

@@ -152,11 +152,11 @@ def test_rerun_is_reproducible_and_never_overwrites(two_runs):
 # 8
 def test_contract_failures_are_recorded_in_the_registry(tmp_path):
     runner, job = synthetic_setup(tmp_path / "env", archive_root=tmp_path / "archive", agent=AGENT)
-    # (a) cost profile Core cannot express (gap G18): per-share commission -> CoreContractGap K18 -> FAILED
-    prof = copy.deepcopy(next(iter(runner.env.cost_profiles.values())))
+    # (a) cost profile no Core expresses (G18 class): exchange fee as a notional rate -> CoreContractGap K18 -> FAILED
+    prof = copy.deepcopy(runner.env.cost_profiles[("synthetic_equity_test", "1.0.0")])
     prof["version"] = "1.0.1"
-    prof["components"][0] = {**prof["components"][0], "per_unit": 0.005}
-    prof["components"][0].pop("rate")
+    prof["components"].append({"id": "xfee", "kind": "EXCHANGE_FEE", "side": "BOTH", "rate": 0.00002,
+                               "basis": "RESEARCH_ASSUMPTION", "source": prof["components"][0]["source"]})
     prof["provenance"]["profile_sha256"] = profile_hash(prof)
     runner.env.cost_profiles[(prof["profile_id"], prof["version"])] = prof
     g = runner.env.governance

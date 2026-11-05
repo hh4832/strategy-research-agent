@@ -70,7 +70,10 @@ def test_drive_is_required_and_archive_is_verified(cells):
                  "trades.csv", "fills.csv", "rejections.csv", "equity_curve.csv", "snapshot_refs.json",
                  "final_status.json", "manifest.json"):
         assert f'"{name}"' in code, name
-    for check in ("manifest_every_file_sha256", "new_directory_per_run", "run1_not_overwritten", "reproducible_metrics",
+    # M3-C: one execution + a resume pass (no second full run); N1 numeric check vs committed reference
+    assert "--resume" in code and "strategy_agent.research repro --summary" in code
+    for check in ("manifest_every_file_sha256", "resume_skips_every_run", "run1_not_overwritten",
+                  "numeric_reproducibility_vs_reference", "archive_integrity_self_sha", "core_m3a4_checks_pass",
                   "formal_registry_holdout_untouched", "git_tree_clean", "cost_scenarios_one_family_trial"):
         assert check in code
     assert "sys.version_info >= (3, 11)" in code
@@ -90,4 +93,18 @@ def test_gate_and_no_strategy_logic(cells):
     allowed = ("rm -rf", "git ", "cd {WORKDIR} && git", "cd {WORKDIR} && pip install", "cd {WORKDIR} && python -m pytest",
                "cd {WORKDIR} && python -m strategy_agent.research", "cd {WORKDIR} && python -c")
     assert cmds and all(c.startswith(allowed) for c in cmds), cmds
-    assert "/content/m3b_env" in code             # isolated run root, not the repository
+    assert "/content/m3c_env" in code             # isolated run root, not the repository
+
+
+def test_n2_pin_is_an_already_committed_integration_commit_with_identical_code(cells):
+    """N2: the notebook pins a commit made BEFORE the notebook edit (no self-referential SHA), and everything Colab
+    executes from that commit is byte-identical to this tree."""
+    import subprocess
+    commit = _cfg(cells)["AGENT_COMMIT"]
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True)  # noqa: E731
+    if git("rev-parse", "--git-dir").returncode != 0 or git("cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
+        pytest.skip("git history with the pinned commit not available (shallow clone)")
+    assert git("merge-base", "--is-ancestor", commit, "HEAD").returncode == 0
+    paths = ["src", "configs", "fixtures", "schemas", "specs", "governance", "benchmark", "pyproject.toml",
+             "docs/evidence/m3c_reference_metrics.json", "tests"]
+    assert git("diff", "--quiet", commit, "--", *paths).returncode == 0, git("diff", "--stat", commit, "--", *paths).stdout

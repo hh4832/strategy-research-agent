@@ -102,10 +102,14 @@ def test_evaluate_small_report_marks_ratios_not_evaluable_and_counts_quality():
 # ------------------------------------------------------------------------------------------ costs (gap G18)
 def test_ibkr_per_share_commission_and_bps_slippage_fail_closed():
     prof = json.loads((ROOT / "governance" / "cost_profiles" / "ibkr_us_equity_v0.json").read_text())
-    miss = A.unmappable_cost_components(prof, "EQUITY")
+    # Core <= 2c6ba9a field set (and Core absent): G18 fails closed
+    miss = A.unmappable_cost_components(prof, "EQUITY", frozenset())
     assert any("per-unit equity commission" in m for m in miss) and any("bps" in m for m in miss)
-    with pytest.raises(A.CoreContractGap, match="K18"):
-        A.core_cost_profile(prof, instrument_type="EQUITY", tick_size=0.01)       # before any Core import
+    # Core M3-A.4 field set: representable (approval is a separate gate)
+    assert A.unmappable_cost_components(prof, "EQUITY", A.M3A4_COST_FIELDS) == []
+    if not A.M3A4_COST_FIELDS <= A.core_cost_fields():
+        with pytest.raises(A.CoreContractGap, match="K18"):
+            A.core_cost_profile(prof, instrument_type="EQUITY", tick_size=0.01)   # before any Core import
     assert A.unmappable_cost_components(synthetic_cost_profile(), "EQUITY") == []
     for name in ("tw_equity_cash_v0", "txf_futures_v0"):
         p = json.loads((ROOT / "governance" / "cost_profiles" / f"{name}.json").read_text())
