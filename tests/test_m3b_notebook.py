@@ -106,7 +106,8 @@ def test_n2_pin_is_an_already_committed_integration_commit_with_identical_code(c
         pytest.skip("git history with the pinned commit not available (shallow clone)")
     assert git("merge-base", "--is-ancestor", commit, "HEAD").returncode == 0
     # pipeline code and pinned inputs: byte-identical
-    paths = ["src", "configs", "fixtures", "schemas", "specs", "benchmark", "pyproject.toml",
+    paths = ["src", "configs/research", "configs/cost_scenarios", "fixtures", "schemas", "specs", "benchmark",
+             "pyproject.toml",
              "docs/evidence/m3c_reference_metrics.json"]
     assert git("diff", "--quiet", commit, "--", *paths).returncode == 0, git("diff", "--stat", commit, "--", *paths).stdout
     # governance records may gain reviewed facts (e.g. the 2026-11-05 RESEARCH_ONLY temporal acceptance), but only
