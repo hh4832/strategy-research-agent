@@ -71,7 +71,7 @@ def recommend(res) -> dict:
             reasons.append(f"net expectancy {exp:.4f} / profit factor {pf:.3f} do not beat costs")
         else:
             reasons.append(f"net expectancy {exp:.4f} > 0 and profit factor {pf:.3f} > 1 at 1x cost")
-            reasons.append("cost-sensitivity (2x) not yet run: required by the falsifiable prediction")
+            reasons.append(two_x_note(res))
     else:
         blockers.append("expectancy / profit factor NOT_EVALUABLE")
     if blockers:
@@ -79,6 +79,21 @@ def recommend(res) -> dict:
     if exp <= 0 or pf <= 1:
         return {"decision": DROP, "blockers": [], "reasons": reasons}
     return {"decision": RETEST, "blockers": [], "reasons": reasons}     # KEEP needs the 2x-cost result as well
+
+
+def two_x_note(res) -> str:
+    """Run-level wording for the falsifiable prediction's 2x-cost condition. A single-run report never claims a
+    comparison it did not compute, and never ignores that its batch has a 2x scenario."""
+    ms = (res.context.get("research_config") or {}).get("scenario_multipliers") or []
+    has_2x = [m for m in ms if float(m["cost_multiplier"]) == 2.0]
+    here = float(res.job.cost_multiplier)
+    if here == 2.0:
+        return "this run IS the 2x-cost scenario; whether the 1x result survives 2x is judged at batch level"
+    if has_2x:
+        return (f"2x-cost condition is not evaluated in this single-run report; the batch's scenario set includes "
+                f"{', '.join(m['scenario_id'] for m in has_2x)} (Core multiplier 2.0) - see the batch-level "
+                "cost-sensitivity table (_batches/cost_sensitivity_<batch>.md)")
+    return "2x-cost condition not evaluated: this invocation ran a single cost multiplier (no 2x scenario)"
 
 
 def negative_evidence(res) -> list[str]:

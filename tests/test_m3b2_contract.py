@@ -341,6 +341,13 @@ def test_config_run_end_to_end_resume_and_one_trial(tmp_path):
     st = {x["name"]: x for x in json.loads((d / "stages.json").read_text())}
     assert st["core_execution"]["outputs"]["contract_checks"]["CC01_engine_git_sha"] == "PASS"
     assert (tmp_path / "arch" / "_batches" / "cost_sensitivity_b1.md").is_file()
+    # M3-C: single-run reports point to the batch-level 2x check instead of claiming "not yet run"
+    md = (tmp_path / "arch" / "_batches" / "cost_sensitivity_b1.md").read_text()
+    assert "## Batch-level 2x-cost check" in md and "TRAIN: 1x net" in md and "VALIDATION: 1x net" in md
+    for o in runs:
+        rep = (Path(o["archive_path"]) / "research_report.md").read_text()
+        assert "not yet run" not in rep and "### Strategy Verdict" in rep
+    assert s["batch_two_x_check"]["TRAIN"]["evaluable"] is True
     # resume: completed identities are skipped, nothing re-submitted
     s2 = run_config(CFG_LOCAL, run_root=tmp_path / "env", archive_root=tmp_path / "arch", agent=AGENT,
                     progress=logs.append, batch_id="b1", resume=True)
@@ -406,3 +413,41 @@ def test_drive_config_without_drive_is_pending_not_pass(tmp_path):
     assert r.status == "COMPLETED" and r.archive["status"] == "DRIVE_UNAVAILABLE"
     assert {s["name"]: s["status"] for s in r.stages}["archive"] == "FAILED"
     assert "NOT a Drive backup" in (Path(r.archive["path"]) / "run_info.txt").read_text()
+
+
+# ------------------------------------------------------------------ M3-C: run-level vs batch-level cost sensitivity
+def test_batch_two_x_check_and_markdown_separate_levels():
+    from strategy_agent.research.entry import batch_two_x, sensitivity_markdown
+
+    def row(role, sid, m, net, st="COMPLETED"):
+        return {"role": role, "scenario_id": sid, "kind": "X", "cost_multiplier": m, "status": st, "trade_count": 20,
+                "net_pnl": net, "profit_factor": 1.1, "expectancy": 1.0, "total_return": 0.01}
+    rows = [row("TRAIN", "BASE", 1.0, 767.303), row("TRAIN", "STRESS_2X", 2.0, 374.606),
+            row("VALIDATION", "BASE", 1.0, 10.0), row("VALIDATION", "STRESS_2X", 2.0, -5.0),
+            row("OTHER", "BASE", 1.0, 3.0)]
+    chk = batch_two_x(rows)
+    assert chk["TRAIN"]["survives_2x"] is True and chk["VALIDATION"]["survives_2x"] is False
+    assert chk["OTHER"]["evaluable"] is False                                 # no 2x run -> never claimed
+    md = sensitivity_markdown({"config": {"config_id": "c", "version": "1", "sha256": "s", "kind": "SYNTHETIC",
+                                          "scenario_set": {"scenario_set_id": "x", "version": "1", "sha256": "y"}},
+                               "cost_sensitivity": {"rows": rows}})
+    assert "## Batch-level 2x-cost check" in md and "TRAIN: 1x net 767.3030, 2x net 374.6060 -> survives 2x: **YES**" in md
+    assert "VALIDATION" in md and "**NO**" in md and "OTHER: NOT_EVALUABLE" in md
+    assert "767.3030" in md                                                   # numbers copied, not recomputed
+
+
+def test_run_level_two_x_note_never_claims_or_ignores():
+    from strategy_agent.research.report import two_x_note
+    sm = [{"scenario_id": "BASE", "kind": "BASE", "cost_multiplier": 1.0},
+          {"scenario_id": "STRESS_2X", "kind": "STRESS", "cost_multiplier": 2.0}]
+
+    def res(m, mults):
+        return SimpleNamespace(job=SimpleNamespace(cost_multiplier=m),
+                               context={"research_config": {"scenario_multipliers": mults} if mults is not None else None})
+    n = two_x_note(res(1.0, sm))
+    assert "not evaluated in this single-run report" in n and "STRESS_2X" in n and "batch-level" in n
+    assert "IS the 2x-cost scenario" in two_x_note(res(2.0, sm))
+    assert "single cost multiplier (no 2x scenario)" in two_x_note(res(1.0, None))
+    assert "single cost multiplier" in two_x_note(res(1.0, sm[:1]))
+    for x in (n, two_x_note(res(1.0, None))):
+        assert "not yet run" not in x

@@ -65,6 +65,9 @@ class ResearchConfig:
                 "path": str(self.path.relative_to(ROOT)) if self.path and self.path.is_relative_to(ROOT) else
                 str(self.path) if self.path else None,
                 "scenario_set": {k: self.scenario_meta[k] for k in ("scenario_set_id", "version", "sha256")},
+                "scenario_multipliers": [{"scenario_id": r["scenario_id"], "kind": r["kind"],
+                                          "cost_multiplier": r["cost_multiplier"]}
+                                         for r in self.scenario_meta.get("scenarios", [])],
                 "temporal_policy": dict(d["temporal_policy"]),
                 "market": dict(d["market"]), "dataset": dict(d["dataset"]), "holdout": dict(d["holdout"]),
                 "windows": d["windows"]}

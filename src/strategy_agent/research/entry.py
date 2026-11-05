@@ -138,9 +138,29 @@ def sensitivity_markdown(summ: dict) -> str:
         L.append(f"| {r['role']} | {r['scenario_id']} | {r['kind']} | {r['cost_multiplier']} | {r['status']} | "
                  f"{f(r['trade_count'])} | {f(r['net_pnl'])} | {f(r['profit_factor'])} | {f(r['expectancy'])} | "
                  f"{f(r['total_return'])} |")
+    L += ["", "## Batch-level 2x-cost check", "",
+          "Falsifiable prediction: positive net PnL at 1x that survives the Core 2x multiplier. Computed here from the "
+          "archived metrics of this batch (a single-run report cannot evaluate it).", ""]
+    for role, chk in batch_two_x(summ["cost_sensitivity"]["rows"]).items():
+        L.append(f"- {role}: " + (f"1x net {f(chk['net_1x'])}, 2x net {f(chk['net_2x'])} -> survives 2x: "
+                                  f"**{'YES' if chk['survives_2x'] else 'NO'}**" if chk["evaluable"]
+                                  else f"NOT_EVALUABLE ({chk['reason']})"))
     if c.get("kind") == "SYNTHETIC":
         L += ["", "SYNTHETIC fixture: engineering evidence only, not evidence about any market."]
     return "\n".join(L) + "\n"
+
+
+def batch_two_x(rows) -> dict:
+    out = {}
+    for role in dict.fromkeys(r["role"] for r in rows):
+        r1 = [r for r in rows if r["role"] == role and float(r["cost_multiplier"]) == 1.0 and r["status"] == "COMPLETED"]
+        r2 = [r for r in rows if r["role"] == role and float(r["cost_multiplier"]) == 2.0 and r["status"] == "COMPLETED"]
+        if not r1 or not r2 or not isinstance(r1[0]["net_pnl"], float) or not isinstance(r2[0]["net_pnl"], float):
+            out[role] = {"evaluable": False, "reason": "needs COMPLETED 1x and 2x runs in this batch"}
+        else:
+            out[role] = {"evaluable": True, "net_1x": r1[0]["net_pnl"], "net_2x": r2[0]["net_pnl"],
+                         "survives_2x": r1[0]["net_pnl"] > 0 and r2[0]["net_pnl"] > 0}
+    return out
 
 
 def run_config(config_path: Path, *, run_root: Path, archive_root: Path | None = None, resume: bool = False,
@@ -166,7 +186,9 @@ def run_config(config_path: Path, *, run_root: Path, archive_root: Path | None =
     summ = {"batch_id": batch_id, "config": cfg.ref, "config_issues": list(cfg.issues),
             "scenario_set": cfg.scenario_meta, "runs": [o.__dict__ for o in out],
             "cost_sensitivity": cost_sensitivity_summary(out, jobs),
+            "batch_two_x_check": None,
             "ledger": str(ledger_dir / f"batch_{batch_id}.jsonl")}
+    summ["batch_two_x_check"] = batch_two_x(summ["cost_sensitivity"]["rows"])
     (ledger_dir / f"summary_{batch_id}.json").write_text(json.dumps(summ, indent=1, default=str), encoding="utf-8")
     (ledger_dir / f"cost_sensitivity_{batch_id}.md").write_text(sensitivity_markdown(summ), encoding="utf-8")
     summ["summary_path"] = str(ledger_dir / f"summary_{batch_id}.json")
