@@ -11,3 +11,10 @@ def core_phase4a():
     import market_research_core.tsm_native as native  # noqa: PLC0415
     import market_research_core.tsm_research_costs as costs  # noqa: PLC0415
     return native, costs
+
+
+def core_development():
+    """Return the reviewed v1.1 producer/reader modules; this never decodes or signs by itself."""
+    import market_research_core.tsm_development as development
+    import market_research_core.tsm_native as native
+    return development, native

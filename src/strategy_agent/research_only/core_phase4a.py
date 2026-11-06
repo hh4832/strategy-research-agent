@@ -41,12 +41,13 @@ class SnapshotBinding:
     integrity_receipt: dict | None                # FileIntegrityReceipt fields, or None
     integrity_receipt_sha256: str | None
     diagnostic_parquet_relative_path: str | None  # observed Drive file name; footer diagnostics ONLY, never loading
+    snapshot_pin: dict | None = None  # explicit reviewed v1.1 development snapshot identity/lineage pin
 
     @classmethod
     def from_config(cls, cfg: dict) -> "SnapshotBinding":
         b = cfg["snapshot_binding"]
         return cls(b["manifest_relative_path"], b.get("manifest_sha256"), dict(b["layout"]), b.get("integrity_receipt"),
-                   b.get("integrity_receipt_sha256"), b.get("diagnostic_parquet_relative_path"))
+                   b.get("integrity_receipt_sha256"), b.get("diagnostic_parquet_relative_path"), b.get("snapshot_pin"))
 
 
 @dataclass
@@ -80,8 +81,10 @@ def probe_snapshot(snapshot_root: str | Path, binding: SnapshotBinding, *, dates
     root = Path(snapshot_root)
     if not root.is_dir():
         return ProbeResult("BLOCKED", [("SNAPSHOT_ID_MISMATCH", f"snapshot root not found: {root}")], obs)
-    if root.name != PINNED_RUN:
-        b.append(("SNAPSHOT_ID_MISMATCH", f"root basename {root.name!r} != {PINNED_RUN}"))
+    expected_run=(binding.snapshot_pin or {}).get("snapshot_id",PINNED_RUN)
+    expected_producer=(binding.snapshot_pin or {}).get("producer_sha",PINNED_PRODUCER)
+    if root.name != expected_run:
+        b.append(("SNAPSHOT_ID_MISMATCH", f"root basename {root.name!r} != {expected_run}"))
 
     # -- manifest bytes (small metadata file; reading it is not data access)
     mpath = root / binding.manifest_relative_path
@@ -119,13 +122,23 @@ def probe_snapshot(snapshot_root: str | Path, binding: SnapshotBinding, *, dates
             resolved[f] = _pointer(doc, p)
         except (KeyError, IndexError, TypeError, ValueError):
             b.append(("MANIFEST_LAYOUT", f"pointer for '{f}' does not resolve: {p}"))
-    if "snapshot_id" in resolved and resolved["snapshot_id"] != PINNED_RUN:
-        b.append(("SNAPSHOT_ID_MISMATCH", f"manifest snapshot id {resolved['snapshot_id']!r} != {PINNED_RUN}"))
-    if "producer_sha" in resolved and resolved["producer_sha"] != PINNED_PRODUCER:
-        b.append(("SNAPSHOT_ID_MISMATCH", f"manifest producer {resolved['producer_sha']!r} != {PINNED_PRODUCER} "
+    if "snapshot_id" in resolved and resolved["snapshot_id"] != expected_run:
+        b.append(("SNAPSHOT_ID_MISMATCH", f"manifest snapshot id {resolved['snapshot_id']!r} != {expected_run}"))
+    if "producer_sha" in resolved and resolved["producer_sha"] != expected_producer:
+        b.append(("SNAPSHOT_ID_MISMATCH", f"manifest producer {resolved['producer_sha']!r} != {expected_producer} "
                                           "(Core requires the full 40-hex producer sha)"))
     if "symbol" in resolved and resolved["symbol"] != "TSM":
         b.append(("SNAPSHOT_ID_MISMATCH", f"manifest symbol {resolved['symbol']!r} != TSM"))
+    if binding.snapshot_pin is not None:
+        try:
+            from strategy_agent.adapters.mrc_phase4a import core_development
+            development,native=core_development()
+            DevelopmentSnapshotPin,validate_derived_manifest=development.DevelopmentSnapshotPin,development.validate_derived_manifest
+            DateWindow=native.DateWindow
+            validate_derived_manifest(root.resolve(),doc,DevelopmentSnapshotPin(**binding.snapshot_pin),
+                                      DateWindow(*dates),tuple(DateWindow(*h) for h in holdout))
+        except (ValueError,TypeError,ImportError,OSError) as e:
+            b.append((getattr(e,'code','DERIVED_PIN'),str(e)))
     obs["layout_resolved"] = {k: (v if k not in ("columns", "arrow_schema") else "present") for k, v in resolved.items()}
 
     # -- Parquet footer: schema and timestamp row-group statistics only
@@ -152,6 +165,13 @@ def probe_snapshot(snapshot_root: str | Path, binding: SnapshotBinding, *, dates
         stamp = dict(device=s.st_dev, inode=s.st_ino, size=s.st_size, mtime_ns=s.st_mtime_ns, ctime_ns=s.st_ctime_ns)
         if binding.integrity_receipt.get("stat") != stamp:
             b.append(("INTEGRITY_RECEIPT", "receipt stat does not match the file in this session (stale receipt)"))
+    if binding.integrity_receipt is not None:
+        receipt=binding.integrity_receipt
+        expected_fields={'parquet_sha256','manifest_sha256','stat','verification_ref'}
+        if (set(receipt)!=expected_fields or not receipt.get('verification_ref') or
+                hashlib.sha256(json.dumps(receipt,sort_keys=True,separators=(',',':')).encode()).hexdigest()!=binding.integrity_receipt_sha256 or
+                receipt.get('manifest_sha256')!=msha or receipt.get('parquet_sha256')!=resolved.get('parquet_sha256')):
+            b.append(('INTEGRITY_RECEIPT','receipt pin does not bind verified file and manifest'))
     return ProbeResult("BLOCKED" if b else "COMPATIBLE", b, obs)
 
 
@@ -315,3 +335,11 @@ def rounding_masked(batch: dict) -> dict:
     return {"status": "ROUNDING_MASKED_DIFFERENCE" if masked else ("DIFFERENCE_VISIBLE" if debit_diff else "NO_DIFFERENCE"),
             "cat_unrounded_difference": str(unrounded_diff), "regulatory_debit_difference": str(debit_diff),
             "interpretation": "a masked difference is a rounding artefact, NOT evidence that CAT has no cost impact"}
+
+
+def native_snapshot_options(binding: SnapshotBinding) -> dict:
+    if binding.snapshot_pin is None:
+        return {}
+    from strategy_agent.adapters.mrc_phase4a import core_development
+    development,_=core_development()
+    return {'snapshot_pin':development.DevelopmentSnapshotPin(**binding.snapshot_pin)}

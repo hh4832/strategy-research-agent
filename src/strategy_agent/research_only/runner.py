@@ -181,6 +181,13 @@ class ResearchOnlyRunner:
         taf = json.loads((self.root / cc["taf_record_path"]).read_text(encoding="utf-8"))
         b += P.cost_set_consistency(cost_set, core_costs, taf, datetime.fromisoformat(cfg["windows"]["start"]).date())
         auth = self._guard(cfg).book.get(cfg["authorization_id"])
+        if auth is None:
+            b.append(('RA01','new derived snapshot requires its own research-lead-approved authorization'))
+            return {'blockers':b,'probe':P.ProbeResult('BLOCKED',[('RA01','unsigned authorization')],{}),
+                    'snapshot_root':Path(snapshot_root),'profiles':profiles}
+        derived=cfg.get('snapshot_binding',{}).get('snapshot_pin')
+        if derived and (derived.get('snapshot_id')!=cfg['dataset']['snapshot_id'] or derived.get('producer_sha')!=cfg['dataset']['producer_commit_sha']):
+            b.append(('RO05','derived binding differs from authorized dataset identity'))
         rw, ho = auth["research_window"], auth["holdout"]
         last = lambda iso: (datetime.fromisoformat(iso).date() - timedelta(days=1)).isoformat()  # noqa: E731
         win = (datetime.fromisoformat(rw["start"]).date().isoformat(), last(rw["end"]))
@@ -265,7 +272,7 @@ class ResearchOnlyRunner:
             layout=core_native.ManifestLayout(**b.layout),
             integrity_receipt=core_native.FileIntegrityReceipt(**b.integrity_receipt),
             expected_receipt_sha256=b.integrity_receipt_sha256, symbol="TSM", dates=DW(*dc["dates"]),
-            research_window=DW(*dc["research_window"]), holdout=tuple(DW(*h) for h in dc["holdout"]))
+            research_window=DW(*dc["research_window"]), holdout=tuple(DW(*h) for h in dc["holdout"]), **P.native_snapshot_options(b))
         spec = json.loads((self.root / cfg["strategy"]["spec_path"]).read_text(encoding="utf-8"))
         frame = loaded.conservative_15m
         batch = P.execute_batch(core, core_costs, frame=frame, core_sha=ident["core_git_sha"],

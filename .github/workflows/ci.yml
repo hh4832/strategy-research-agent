@@ -146,6 +146,29 @@ jobs:
           PY
           git diff --exit-code -- registry governance
 
+  development-snapshot-preflight:
+    # Data preparation ONLY. No strategy, no real data, no authorization consumption.
+    runs-on: ubuntu-latest
+    env:
+      MRC_SHA: 40b7433c1e845de71e9e48a54721979c526ce9bb
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
+      - name: Require actual v1.1 producer import and exact Core pin (no silent zero-test pass)
+        run: |
+          python - <<'PYCODE'
+          import os
+          from strategy_agent.adapters.mrc_phase4a import core_development
+          development, native = core_development()
+          assert native.core_code_identity()["core_git_sha"] == os.environ["MRC_SHA"]
+          assert development.DevelopmentSnapshotPin
+          PYCODE
+      - run: pytest -q tests/test_development_snapshot_preflight.py
+      - run: git diff --exit-code -- registry governance
+
   append-only:
     # Governed logs (registry/, governance/) may only grow relative to the PR base.
     if: github.event_name == 'pull_request'

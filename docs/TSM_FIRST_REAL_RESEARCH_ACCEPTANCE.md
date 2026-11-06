@@ -383,3 +383,51 @@ Schema 本身沒有問題：時間欄有時區，OHLCV 欄位齊全。問題在�
 - 新測試 `tests/test_phase4a_core_integration.py`（10 個）：repository v1.1 preflight、真實 manifest 綁定為 null、Core 成本 profile 與 CO07、真實格式 layout → MANIFEST_LAYOUT／SHA_REQUIRED／INTEGRITY_RECEIPT（不消耗）、單一 row group → HOLDOUT_ROW_GROUP_OVERLAP（Agent 與 Core 都拒絕）、RO05、過期收據、synthetic 端到端＋RA11、消耗後失敗、probe 不消耗。
 - 全套件：Core e31c57b 下 373 passed（唯一失敗是 Phase 3 `test_15` 的 SHA 釘選，在 699e3ad job 中執行）；Core 699e3ad 下 367 passed／1 skipped；無 Core 273 passed／52 skipped。
 - 沒有修改 Core、Oracle、formal gates、既有治理紀錄、已接受的成本集或 Phase 3 檔案；沒有重新下載 IBKR 資料、沒有讀取 Holdout、沒有消耗額度、沒有合併 PR。
+
+## 11. Development-only Snapshot repair (Core/Agent existing PRs; no batch consumed)
+
+The original §10.4–10.8 real evidence is retained unchanged. Original Snapshot
+MANIFEST_LAYOUT / mixed group1 / missing receipt are **not waived**. Core's new
+`tsm-development-snapshot-v1.1` accepts only an explicitly pinned immutable
+subset, with full seven-field manifest, daily New York groups, independently
+hashed Parquet/receipt and parent/source lineage. It reuses the accepted temporal
+policy; original default reader still rejects the mixed original.
+
+Core module: `market_research_core.tsm_development`; code pin
+`40b7433c1e845de71e9e48a54721979c526ce9bb`. Exact producer/preflight contract is
+`docs/TSM_DEVELOPMENT_SNAPSHOT_CONTRACT.md` in Core. The controlled producer
+rebuilds risk facts from actual footers before executing; editing and rehashing
+a JSON `requires_research_lead_approval` flag cannot bypass permission. If mixed
+input is necessary, only a personally signed artifact binding the actual plan
+SHA and explicit hash/decode scopes permits conversion. Codex has not signed it.
+
+Agent now supports `snapshot_binding.snapshot_pin` and verifies receipt SHA,
+manifest/file pins and exact new dataset identity before consumption. New
+`research_only.development_snapshot.prepare_development_proposal` calls only
+Core's data preflight and writes a new UNSIGNED proposal/config. It imports no
+signoff admin and calls no run/consume/ExecutionEngine/SMA. Old authorizations,
+Holdout lock, formal gates, approved costs and use history remain unchanged.
+The original SMOKE-0001 authorization fails RA04 for the new dataset; an unsigned
+new config fails RA01. The checked-in DEV-TEMPLATE contains null pins and is not
+approvable until the real producer bundle exists. A real proposal must be signed
+personally by the research lead, not by Codex.
+
+**Real-data status: PENDING, not PASS.** This cloud workspace has no mounted
+Drive or upstream chunks. It cannot determine that isolated2024 chunks are
+absent. Core's pinned Colab preparation notebook inventories caller-declared
+TSM upstream roots metadata-only, otherwise emits the exact fallback plan and
+stops before any unapproved mixed hash/decode. It produces real Manifest,
+Receipt, lineage, data preflight and the new unsigned proposal only after legal
+source access. No real new Snapshot has been claimed created here.
+
+Local engineering evidence: Core full regressions each104 PASS on Python3.11/3.12;
+Agent no-Core suites each273 PASS /53 skipped; legacy immutable Core e31c57b
+Phase4/M1 checks106 PASS /2 skipped; new derived-data/proposal test PASS on the
+new Core. All new producer fixtures are synthetic, never real compatibility proof.
+Original authorization uses remains0; formal/authorization/use/lock/cost files
+are byte-identical to4c1c70a. CI includes a dedicated exact-Core v1.1 non-consuming
+job; Phase3 and original Phase4 pins/jobs are preserved.
+
+After real derived data PASS and personal new-RA approval, the existing read-only
+`ResearchOnlyRunner.probe` can establish readiness for the NEXT separately
+requested SMA batch. This task does not run it, reserve it or authorize it.
