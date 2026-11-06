@@ -150,7 +150,7 @@ jobs:
     # Data preparation ONLY. No strategy, no real data, no authorization consumption.
     runs-on: ubuntu-latest
     env:
-      MRC_SHA: 40b7433c1e845de71e9e48a54721979c526ce9bb
+      MRC_SHA: b16179a7cc077c36046574769a32c367fa476cae
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

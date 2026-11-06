@@ -394,7 +394,7 @@ hashed Parquet/receipt and parent/source lineage. It reuses the accepted tempora
 policy; original default reader still rejects the mixed original.
 
 Core module: `market_research_core.tsm_development`; code pin
-`40b7433c1e845de71e9e48a54721979c526ce9bb`. Exact producer/preflight contract is
+`b16179a7cc077c36046574769a32c367fa476cae`. Exact producer/preflight contract is
 `docs/TSM_DEVELOPMENT_SNAPSHOT_CONTRACT.md` in Core. The controlled producer
 rebuilds risk facts from actual footers before executing; editing and rehashing
 a JSON `requires_research_lead_approval` flag cannot bypass permission. If mixed
