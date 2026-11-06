@@ -26,7 +26,7 @@
   },
   "holdout_lock": {
     "lock_id": "HOLDOUT-TSM-15M-v1",
-    "status": "NOT_CREATED_AWAITING_RESEARCH_LEAD",
+    "status": "APPROVED_BY_RESEARCH_LEAD",
     "reason": "holdout_admin is a research-lead tool (M2 §3); the Agent does not sign as the lead",
     "approved_boundaries": {
       "development": [
@@ -58,12 +58,18 @@
         "source": "repository history",
         "fact": "no record that SMA 5/20 was fixed before TSM data was viewed"
       }
-    ]
+    ],
+    "signed": {
+      "commit": "d7796d6afe850d7e6fdc2149204ae38acbf9fd87",
+      "approved_by": "hh4832",
+      "approval_ref": "https://github.com/hh4832/strategy-research-agent/pull/5",
+      "tool": "holdout_admin via notebooks/Phase4A_Research_Lead_Signoff.ipynb"
+    }
   },
   "research_authorization": {
     "authorization_id": "RA-IBKR_TSM-SMA520_SMOKE-0001",
     "contract": "research-only-authorization-v1",
-    "status": "PROPOSED_UNSIGNED",
+    "status": "APPROVED_BY_RESEARCH_LEAD",
     "proposal_path": "governance/proposals/RA-IBKR_TSM-SMA520_SMOKE-0001.json",
     "proposal_sha256": "56028012f88ee475c641642e9f3086550329d4ceab474e67c8e58f167791fe15",
     "max_batches": 1,
@@ -81,7 +87,14 @@
       "RA10",
       "RA11",
       "RA12"
-    ]
+    ],
+    "signed": {
+      "commit": "d7796d6afe850d7e6fdc2149204ae38acbf9fd87",
+      "approved_by": "hh4832",
+      "approved_at": "2026-11-06T06:28:06+00:00",
+      "expires_at": "2026-11-30T23:59:59+08:00",
+      "batches_used": 0
+    }
   },
   "formal_gates": {
     "gate_version": "2026-11-05.4",
@@ -138,12 +151,11 @@
     "taf_per_share": 0.000166
   },
   "preflight_repository": {
-    "status": "BLOCKED",
+    "status": "WAITING_FOR_CORE_ADAPTER",
     "blockers": [
-      "H01",
-      "RA01",
       "RO04"
-    ]
+    ],
+    "verified_at_commit": "d7796d6"
   },
   "real_smoke_test": {
     "executed": false,
@@ -187,5 +199,6 @@
     "governance/holdout_locks.jsonl (empty)",
     "Phase 3 documents",
     "SMA parameters"
-  ]
+  ],
+  "ci_after_signoff": "https://github.com/hh4832/strategy-research-agent/actions/runs/42176829932 (5/5 success)"
 }

@@ -14,11 +14,15 @@
 | 面向 | 判定 | 理由 |
 |---|---|---|
 | Engineering | **SCOPED_GO** | Phase A／B 中不依賴 Codex 的部分都已完成並通過測試；Core 整合點刻意停在 `WAITING_FOR_CORE_ADAPTER` |
-| Research-only Eligibility | **NO-GO** | Holdout lock 與 research-only 授權都還沒由研究負責人簽核，Core Phase 4-A 也未交付 |
+| Research-only Eligibility | **NO-GO**（治理已就緒） | Holdout lock 與授權已簽核（`d7796d6`）；只剩 Core Phase 4-A 未交付 |
 | Formal Market Eligibility | **NO-GO** | 所有 formal gate 原封不動：market NO_GO、TEMPORAL_SAFETY UNKNOWN、COST_APPROVAL FAIL、FORMAL_EXECUTION_ELIGIBILITY FAIL |
 | Strategy Effectiveness | **無法判定** | 沒有執行任何真實回測，不存在任何績效數字 |
 
-**狀態：`WAITING_FOR_CORE_ADAPTER`，同時等待研究負責人執行兩個簽核指令（§2、§3）。** 依任務規定，Holdout lock 和研究授權都未成立，所以沒有執行真實回測，也沒有寫入 Google Drive。
+**狀態：`WAITING_FOR_CORE_ADAPTER`。**
+
+> **更新 2026-11-06 14:49**：研究負責人已透過 `notebooks/Phase4A_Research_Lead_Signoff.ipynb` 簽核 Holdout lock `HOLDOUT-TSM-15M-v1` 和授權 `RA-IBKR_TSM-SMA520_SMOKE-0001`（commit `d7796d6`，hh4832）。兩條雜湊鏈驗證通過、append-only PASS，PR CI 5/5 綠（[run 42176829932](https://github.com/hh4832/strategy-research-agent/actions/runs/42176829932)）。Preflight 現在只剩 **RO04（等待 Core Phase 4-A）**；formal gates 仍為 NO_GO／UNKNOWN／FAIL／FAIL，批次額度 0/1 未使用。
+
+真實回測仍未執行，也還沒寫入 Google Drive，因為 Core Phase 4-A 尚未交付。
 
 ## 1. 起始狀態查核
 
