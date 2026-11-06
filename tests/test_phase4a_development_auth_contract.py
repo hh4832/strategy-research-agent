@@ -45,3 +45,20 @@ def test_signoff_notebook_requires_personal_github_identity_and_never_runs_strat
     assert "ResearchOnlyRunner.run(" not in program
     assert ".consume(" not in program
     assert "git\", \"push" in program
+
+
+def test_nonconsuming_probe_renews_only_development_receipt_without_strategy():
+    notebook = ROOT / "notebooks/Phase4A_TSM_Development_Nonconsuming_Probe.ipynb"
+    nb = json.loads(notebook.read_text(encoding="utf-8"))
+    code = "\\n".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code")
+    for i, cell in enumerate(nb["cells"]):
+        if cell["cell_type"] == "code":
+            compile("".join(cell["source"]), f"{notebook}:cell{i}", "exec")
+    assert "renew_development_receipt(source_binding)" in code
+    assert 'source_binding["integrity_receipt_sha256"] == cfg["snapshot_binding"]["integrity_receipt_sha256"]' in code
+    assert "ephemeral = copy.deepcopy(cfg)" in code
+    assert "canonical_sha(ephemeral)" in code
+    assert "runner.probe(temp_config,snapshot_root=SNAPSHOT)" in code
+    assert "result[\\"slot_consumed\\"] is False" in code
+    assert "runner.run(" not in code
+    assert ".consume(" not in code
