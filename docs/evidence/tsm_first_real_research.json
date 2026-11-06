@@ -3,12 +3,12 @@
   "record": "PHASE4A_TSM_FIRST_REAL_RESEARCH",
   "date": "2026-11-06",
   "timezone": "Asia/Taipei",
-  "status": "WAITING_FOR_CORE_ADAPTER",
+  "status": "BLOCKED_BEFORE_CONSUMPTION",
   "verdicts": {
     "engineering": "SCOPED_GO",
-    "research_only_eligibility": "NO-GO",
+    "research_only_eligibility": "NO-GO (real snapshot incompatible with Core Phase 4-A data contract; slot not consumed)",
     "formal_market_eligibility": "NO-GO",
-    "strategy_effectiveness": "CANNOT_DETERMINE (no real run executed)"
+    "strategy_effectiveness": "CANNOT_DETERMINE (no real price data read, no real run executed)"
   },
   "agent": {
     "repository": "hh4832/strategy-research-agent",
@@ -19,10 +19,25 @@
   "core": {
     "repository": "hh4832/market-research-core",
     "baseline_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
-    "phase4a_sha": null,
-    "phase4a_delivered": false,
-    "checked_at": "2026-11-06T09:00:00+08:00",
-    "evidence": "no commit after 699e3ad and no Phase 4-A branch on origin"
+    "phase4a_sha": "e31c57b6c9dd599d808516ce6664628bdc79319e",
+    "phase4a_delivered": true,
+    "checked_at": "2026-11-06T18:00:00+08:00",
+    "evidence": "no commit after 699e3ad and no Phase 4-A branch on origin",
+    "phase4a_branch": "feature/phase4a-tsm-native-research-adapter",
+    "phase4a_core_pr": 4,
+    "phase4a_core_ci_run": "42142535761",
+    "phase4a_review": "SCOPED_GO",
+    "phase4a_contract_ref": "https://github.com/hh4832/market-research-core/blob/e31c57b6c9dd599d808516ce6664628bdc79319e/docs/TSM_RESEARCH_ONLY_ADAPTER_CONTRACT.md",
+    "benchmark": {
+      "result_dir": "benchmark/results/mrc_e31c57b6c9dd/",
+      "verdict": "PASS",
+      "pass": 12,
+      "G16": "PASS",
+      "G17": "PASS",
+      "G14b": "PASS",
+      "status": "BENCHMARK_PASS"
+    },
+    "ci": "phase4a-core job pins e31c57b; Phase 3 jobs stay on 699e3ad"
   },
   "holdout_lock": {
     "lock_id": "HOLDOUT-TSM-15M-v1",
@@ -159,9 +174,18 @@
   },
   "real_smoke_test": {
     "executed": false,
-    "reason": "holdout lock and research authorization not established; Core Phase 4-A not delivered",
+    "reason": "stopped before consumption: real snapshot does not meet the Core Phase 4-A data contract (B1-B3)",
+    "authorization_uses": "0/1",
     "metrics": null,
-    "drive_archive": null
+    "drive_archive": null,
+    "counts": {
+      "native_1m_rows": null,
+      "conservative_15m_bars": null,
+      "pit_rth_rejections": null,
+      "fills": null,
+      "trades": null
+    },
+    "probe_notebook": "notebooks/Phase4A_Real_Snapshot_Probe.ipynb"
   },
   "findings": [
     {
@@ -189,6 +213,15 @@
       "reason": "Phase 4-A only adds files; the N2 guarantee (pinned Colab code == tree) is unchanged; avoids CI failure when the research lead appends a holdout lock",
       "verified": "worktree mutations: additions/lock-append PASS; pinned-src edit, approvers delete/edit, formal gate PASS -> FAIL",
       "notebook_pin_changed": false
+    },
+    "phase4a_core_integration": {
+      "file": "tests/test_phase4a_core_integration.py",
+      "count": 10
+    },
+    "full_suite": {
+      "core_e31c57b": "373 passed, 1 failed (Phase 3 test_15 core_sha pin only; runs in 699e3ad job)",
+      "core_699e3ad": "367 passed, 1 skipped",
+      "no_core": "273 passed, 52 skipped"
     }
   },
   "unchanged": [
@@ -200,5 +233,99 @@
     "Phase 3 documents",
     "SMA parameters"
   ],
-  "ci_after_signoff": "https://github.com/hh4832/strategy-research-agent/actions/runs/42176829932 (5/5 success)"
+  "ci_after_signoff": "https://github.com/hh4832/strategy-research-agent/actions/runs/42176829932 (5/5 success)",
+  "status_history": [
+    {
+      "at": "2026-11-06T09:00:00+08:00",
+      "status": "WAITING_FOR_CORE_ADAPTER"
+    },
+    {
+      "at": "2026-11-06T14:49:00+08:00",
+      "status": "WAITING_FOR_CORE_ADAPTER",
+      "note": "lead signed d7796d6; RO04 only"
+    },
+    {
+      "at": "2026-11-06T18:00:00+08:00",
+      "status": "BLOCKED_BEFORE_CONSUMPTION",
+      "note": "Core e31c57b integrated; real snapshot data contract incompatible"
+    }
+  ],
+  "integration": {
+    "agent_commit": "ba8f23334f95060a7122226542e3110daa2e944b",
+    "run_config": {
+      "path": "configs/research_only/tsm_sma_5_20_smoke_2024_06_v1_1.json",
+      "version": "1.1.0",
+      "config_sha256": "c4661042b3a13fbdd44eaf8a621d84d0ac8a209053a9b2e0219a30daa9b8f15d",
+      "supersedes_config_sha256": "7c7f53f4cd92dc2fbe789b2cf24341faf6803b530d1310f1d2bbbbd3f8cd087e"
+    },
+    "core_import_site": "src/strategy_agent/adapters/mrc_phase4a.py",
+    "taf_record": {
+      "path": "configs/research_only/core_phase4a/finra_taf_2024_v1.json",
+      "rate_record_sha256": "23aba5e2b82db84ad6efb9a4e059befb4f879f8c78ae8dbd918f2568063a2043",
+      "usd_per_share": 0.000166,
+      "source_basis": "OFFICIAL",
+      "verification_status": "RECORDED"
+    },
+    "sec_configuration_sha256": "bb10abbbd0d1c004daf0cd1441006053d040dbc47e86ebb6f57871576f003f94",
+    "cost_profiles": {
+      "BASE": {
+        "slippage_bps": 2,
+        "taf_plus_cat": 0.000216,
+        "sha256": "ea2cb1932ba83eadcdc12720a56d7404d30686a03c6fe6ce10482cceca63c529"
+      },
+      "LOW": {
+        "slippage_bps": 1,
+        "taf_plus_cat": 0.000216,
+        "sha256": "4111a7d0798162ff2c0cb6a8fd7f4e15f59d8f830e70f04da7b41e660efb101b"
+      },
+      "STRESS": {
+        "slippage_bps": 4,
+        "taf_plus_cat": 0.000216,
+        "sha256": "80c00d97c8dc333ba7d39e54782e3af123cc09a46ca5703331faef82e105c401"
+      },
+      "CAT_STRESS": {
+        "slippage_bps": 2,
+        "taf_plus_cat": 0.000266,
+        "sha256": "bd42c2661b3bf6dcf1b7d9f68b51762af2682ff13035384a49a340b1d574cbfc"
+      }
+    },
+    "cost_set_consistency_CO07": "PASS",
+    "cat_rounding_note": "Core rounds combined TAF+CAT per fill; at 100 shares 0.0216->0.02 vs 0.0266->0.03, so CAT_STRESS is visible (not ROUNDING_MASKED_DIFFERENCE); runner records the actual status per run",
+    "synthetic_e2e": "COMPLETED once (TEST_ONLY), second attempt RA11; failure after consumption archived, never reset"
+  },
+  "real_snapshot": {
+    "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+    "drive_folder_id": "1KZYX8ODg5o8gss5LgBxjJEzaFvObuh_d",
+    "files": {
+      "final_gate_manifest.json": {
+        "drive_id": "1taOQAafy7CPznKIeMw5TP3xlPrEQwvEW",
+        "size": 2986342,
+        "sha256": null
+      },
+      "tsm_normalized.parquet": {
+        "drive_id": "1B_2WyFRHXUzwg3C1BR7GLApGl722Ezli",
+        "size": 29363599,
+        "sha256_ref": "manifest /results/2/published_sha256 (value not yet read)"
+      }
+    },
+    "evidence_basis": "producer code hh4832/ibkr-pipe@06359faf7ef4 src/ibkr_qc/final_gate.py + Drive listing; real bytes to be confirmed by notebooks/Phase4A_Real_Snapshot_Probe.ipynb",
+    "blockers": [
+      {
+        "id": "B1",
+        "code": "MANIFEST_LAYOUT",
+        "detail": "5 of 7 Core ManifestLayout fields unbindable: snapshot_id, producer_sha (only 12-char git_sha), parquet_path, columns, arrow_schema; manifest sha256 not pinned (SHA_REQUIRED)"
+      },
+      {
+        "id": "B2",
+        "code": "HOLDOUT_ROW_GROUP_OVERLAP",
+        "detail": "single-file parquet written with default row groups; the candidate row group cannot lie wholly inside 2024-05-29..2024-06-28 and is expected to reach the holdout"
+      },
+      {
+        "id": "B3",
+        "code": "INTEGRITY_RECEIPT",
+        "detail": "no trusted FileIntegrityReceipt; only verify_file_bytes (full opaque-byte hash incl. holdout bytes) could create one, which is not authorized"
+      }
+    ],
+    "slot_consumed": false
+  }
 }

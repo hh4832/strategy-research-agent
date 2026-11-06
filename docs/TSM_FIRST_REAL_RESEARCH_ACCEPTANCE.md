@@ -6,10 +6,24 @@
 | Agent baseline | `8f3f6e13248fe36e7e64cc59ec7c93cecfc78263`（PR #4 head，未合併） |
 | Agent 分支 | `feature/phase4a-tsm-research-only`（stacked PR，base = `feature/m3b-research-runner`） |
 | Core baseline | `699e3ad59951bbebb769bb69170be8d9a1a96c01`（2026-11-05；未修改） |
-| Core Phase 4-A | **未交付**：`market-research-core` 沒有 699e3ad 之後的 commit，也沒有 Phase 4-A 分支（2026-11-06 查核） |
+| Core Phase 4-A | **已交付並釘選**：`e31c57b6c9dd599d808516ce6664628bdc79319e`（Core PR #4 `feature/phase4a-tsm-native-research-adapter`，Core CI 42142535761，SCOPED_GO）。Phase 3 CI 仍在 699e3ad |
+| Agent 整合 commit | `ba8f23334f95060a7122226542e3110daa2e944b`（§10） |
 | 機器可讀 | `docs/evidence/tsm_first_real_research.json` |
 
-## 0. 判定
+## 0. 判定（2026-11-06，Core e31c57b 整合後）
+
+| 面向 | 判定 | 理由 |
+|---|---|---|
+| Engineering | **SCOPED_GO** | Core e31c57b 已整合：preflight → 不消耗額度的資料契約檢查 → 原子消耗 → Core 載入與執行 → write-once 封存，全部在 synthetic snapshot 上端到端通過；BENCHMARK_PASS 已對新 SHA 重新推導 |
+| Research-only Eligibility | **NO-GO**（資料契約不相容） | 真實 Snapshot 的 manifest 缺少 Core 需要的 5／7 個欄位，單一 Parquet 檔的 row group 跨越研究窗口與 Holdout，且沒有可信的完整性收據（§10.4）。依任務書停止，**批次額度 0/1 未消耗** |
+| Formal Market Eligibility | **NO-GO** | Formal gates 原封不動：market NO_GO、TEMPORAL_SAFETY UNKNOWN、COST_APPROVAL FAIL、HOLDOUT_APPROVAL FAIL、FORMAL_EXECUTION_ELIGIBILITY FAIL |
+| Strategy Effectiveness | **無法判定** | 沒有在真實資料上執行任何回測，沒有任何真實績效數字 |
+
+**狀態：`BLOCKED_BEFORE_CONSUMPTION`（資料契約）。** 治理已簽核，Core 已整合；剩下的阻擋都在真實 Snapshot 的格式與完整性收據，需要 Codex 或研究負責人決定（§10.5）。
+
+<details><summary>先前狀態（簽核後、Core 交付前）</summary>
+
+### 0.0 判定（Core 交付前）
 
 | 面向 | 判定 | 理由 |
 |---|---|---|
@@ -23,6 +37,9 @@
 > **更新 2026-11-06 14:49**：研究負責人已透過 `notebooks/Phase4A_Research_Lead_Signoff.ipynb` 簽核 Holdout lock `HOLDOUT-TSM-15M-v1` 和授權 `RA-IBKR_TSM-SMA520_SMOKE-0001`（commit `d7796d6`，hh4832）。兩條雜湊鏈驗證通過、append-only PASS，PR CI 5/5 綠（[run 42176829932](https://github.com/hh4832/strategy-research-agent/actions/runs/42176829932)）。Preflight 現在只剩 **RO04（等待 Core Phase 4-A）**；formal gates 仍為 NO_GO／UNKNOWN／FAIL／FAIL，批次額度 0/1 未使用。
 
 真實回測仍未執行，也還沒寫入 Google Drive，因為 Core Phase 4-A 尚未交付。
+
+
+</details>
 
 ## 1. 起始狀態查核
 
@@ -217,11 +234,14 @@ git push
 
 | ID | 問題 | 誰來處理 |
 |---|---|---|
-| LEAD_SIGN_HOLDOUT | 執行 §2.3 | 研究負責人 |
-| LEAD_SIGN_AUTH | 執行 §3.3 | 研究負責人 |
-| CORE_PHASE4A | Snapshot adapter、保守聚合、CostProfile、ExecutionEngine 交付與契約 | Codex |
-| CORE_FEE_SEPARATION | SEC／TAF／CAT 分行、TAF 日期化 | Codex（Phase 4-A 契約） |
-| CAT_ROUNDING | CAT 敏感度在每筆 100 股時被取整抹平 | Codex 決定取整粒度，或研究負責人接受這個限制 |
+| ~~LEAD_SIGN_HOLDOUT／LEAD_SIGN_AUTH~~ | 已完成（`d7796d6`） | — |
+| ~~CORE_PHASE4A~~ | 已交付 e31c57b 並整合（§10） | — |
+| ~~CORE_FEE_SEPARATION~~ | Core `tsm_cost_diagnostics` 分開揭露 SEC／TAF／CAT（以 Core 實際取整後的扣款按比例歸屬） | — |
+| CAT_ROUNDING | Core 以 TAF＋CAT 合併的每股費率取整；結果以 `cat_rounding` 欄位如實標示（§10.3） | 研究負責人知悉 |
+| SNAPSHOT_MANIFEST_LAYOUT | §10.4 B1 | Codex |
+| SNAPSHOT_ROW_GROUPS | §10.4 B2 | Codex／研究負責人 |
+| SNAPSHOT_INTEGRITY_RECEIPT | §10.4 B3 | 研究負責人 |
+| REAL_PROBE | 在 Colab 執行 `notebooks/Phase4A_Real_Snapshot_Probe.ipynb`，以真實位元組確認 §10.4 | 研究負責人 |
 | BLINDNESS_UNVERIFIED | Holdout 曾被 Phase 2 smoke 以 SMA 5/20 觸及 | 永久標記；之後的 Holdout 結果不得稱為完全盲測 |
 | CODEOWNERS | `main` 仍沒有 branch protection／ruleset | 研究負責人（repo 設定） |
 
@@ -240,3 +260,117 @@ git push
   N2 的保證（Colab 從 pin 執行的內容與這棵樹相同）沒有減弱。這也避免了一件事：研究負責人日後簽 holdout lock 時，那個 commit 不會讓 CI 失敗。驗證方式：在暫存 worktree 中分別測試只有新增／追加 lock（通過），以及改 pin 程式碼／刪改 approvers／formal gate 改 PASS（失敗）。Notebook pin 沒有改動，既有 Colab 證據的對應關係也維持不變。
 - 全套件：Core 699e3ad 下 367 passed；無 Core 273 passed／51 skipped；append-only check PASS。
 - 沒有修改 Core、Oracle 或任何手算答案，也沒有改 formal registry、formal gates、Phase 3 文件和 SMA 參數。沒有讀取 Holdout，沒有執行真實回測，也沒有合併任何 PR。
+
+## 10. Core e31c57b 整合（2026-11-06）
+
+### 10.1 重新驗證治理（不重簽、不覆寫）
+
+- `governance/holdout_locks.jsonl`：1 筆（hh4832，`HOLDOUT-TSM-15M-v1`），雜湊鏈驗證通過。
+- `governance/research_authorizations.jsonl`：1 筆（hh4832，`RA-IBKR_TSM-SMA520_SMOKE-0001`），雜湊鏈驗證通過。
+- `registry/research_authorization_uses.jsonl`：空，**額度 0/1**。
+- Preflight（v1.1 config）：`READY_FOR_CORE_INTEGRATION`，無阻擋。v1.0 config 維持 RO04（未改動）。
+
+### 10.2 釘選 Core 並重新推導 BENCHMARK_PASS
+
+| 項目 | 值 |
+|---|---|
+| Core | `e31c57b6c9dd599d808516ce6664628bdc79319e`，`core_code_identity()` clean |
+| 契約 | [`docs/TSM_RESEARCH_ONLY_ADAPTER_CONTRACT.md` @ e31c57b](https://github.com/hh4832/market-research-core/blob/e31c57b6c9dd599d808516ce6664628bdc79319e/docs/TSM_RESEARCH_ONLY_ADAPTER_CONTRACT.md) |
+| B01–B12 + G16 + G17 + G14b | PASS 12/12，數值與 699e3ad 完全相同 → `benchmark/results/mrc_e31c57b6c9dd/`，`BENCHMARK_PASS` |
+| CI | 新增 `phase4a-core` job（e31c57b）：重新推導 BENCHMARK_PASS、Phase 4-A 測試、repository preflight、`git diff --exit-code registry governance`。Phase 3 的 `core-compat`／`research-synthetic` 仍在 699e3ad |
+| Run config | `configs/research_only/tsm_sma_5_20_smoke_2024_06_v1_1.json`，v1.1.0，config sha `c4661042…f15d`；取代 v1.0.0（`7c7f53f4…087e`，保留不動） |
+
+`test_15`（Phase 3 數值重現）在 e31c57b 下只因 `core_sha` 釘選斷言失敗，數字完全相同；所以 Phase 3 job 留在 699e3ad，不改已結案的 Phase 3。
+
+### 10.3 實作（沿用既有功能，不自行重算時序或費用）
+
+| 步驟 | 由誰計算 |
+|---|---|
+| 載入原生 1m、保守 15m 聚合、RTH／收盤競價排除、signal／execution eligibility | Core `load_native_tsm`（內部呼叫 `prepare_conservative_bars`） |
+| SMA 5/20 決策 | Agent M2 純函式 `sma_crossover`，時間點 = Core `modeled_available_at` |
+| 決策 → 訂單、`ExecutionConfig`、報告轉換、M3-A.4 欄位契約、G17／G14b 防護 | 既有 M1 adapter 函式（未修改） |
+| 成本 profile（每個情境） | Core `build_tsm_research_profile`（SEC = 既有 BASE 設定 `bb10abbb…3f94`；TAF = 新增的 Core 格式紀錄） |
+| 執行、成交、費用扣款 | Core `ExecutionEngine.run` |
+| SEC／TAF／CAT 分別揭露 | Core `tsm_cost_diagnostics` |
+| 指標 | 既有 M3-B 評估器 `evaluate` |
+
+新增檔案：
+- `src/strategy_agent/adapters/mrc_phase4a.py`：Phase 4-A 的 Core import 點。`mrc_adapter.py` 被 Phase 3 notebook 釘選，因此不改它；兩個隔離測試改成明確列出這兩個允許的模組。
+- `src/strategy_agent/research_only/core_phase4a.py`：只讀 metadata 的 Snapshot 探測、成本 profile、執行批次、CO07。
+- `configs/research_only/core_phase4a/finra_taf_2024_v1.json`：TAF 2024 = 0.000166，`source_basis OFFICIAL`、`verification_status RECORDED`，`rate_record_sha256 = 23aba5e2…2043`。數值取自已接受的成本集，該成本集檔案未改動（sha 仍為 `bf4f2365…9cd3`）。
+- `ResearchOnlyRunner.probe()`：preflight＋所有消耗前檢查，**沒有** consume 路徑。
+- `ResearchOnlyRunner.run()`：preflight → RO05（已安裝的 Core 必須等於釘選 SHA 且乾淨）→ Core 成本 profile → CO07 → Snapshot 探測 → 立即重檢 guard → **原子 consume** → `load_native_tsm` → 四個情境 → write-once 封存。消耗額度後的任何失敗都寫入 `FAILURE.json`，額度不釋放、不重試。
+
+Core 成本 profile（真實計算，與成本集交叉核對 CO07 = 無差異）：
+
+| 情境 | Core 參數 | 滑價 bps | TAF＋CAT／股 | profile sha |
+|---|---|---|---|---|
+| BASE | slippage BASE, CAT BASE | 2 | 0.000216 | `ea2cb193…c529` |
+| LOW | LOW, BASE | 1 | 0.000216 | `4111a7d0…101b` |
+| STRESS | STRESS, BASE | 4 | 0.000216 | `80c00d97…5401` |
+| CAT_STRESS | BASE, STRESS | 2 | 0.000266 | `bd42c266…cbfc` |
+
+CAT 取整：Core 把 TAF＋CAT 合併成一個每股費率再取整，所以 100 股時 BASE 為 0.0216 → 0.02，CAT_STRESS 為 0.0266 → 0.03，差異**看得到**（不是 `ROUNDING_MASKED_DIFFERENCE`）。這與 §5 第 2 點（CAT 單獨取整時被抹平）的前提不同；runner 依實際扣款判斷並寫入 `cat_rounding`，兩種結果都會如實標示。
+
+Synthetic 端到端（TEST_ONLY，非市場資料，僅證明路徑）：22 個交易日 8,580 列 1m → 572 根 15m；兩天 Holdout 列與 warm-up 之前的列存在於檔案中，但都沒有被回傳；四個情境 COMPLETED；額度用掉後第二次執行被 RA11 拒絕；消耗後失敗會封存 `FAILURE.json`，第二次仍是 RA11。
+
+### 10.4 真實 Snapshot：相容性阻擋（停止，不消耗額度）
+
+依據：producer `hh4832/ibkr-pipe@06359faf7ef4` 的 `src/ibkr_qc/final_gate.py`（產生這個 manifest 的程式碼），以及 Drive 上的檔案清單（資料夾 `1KZYX8ODg5o8gss5LgBxjJEzaFvObuh_d`：`final_gate_manifest.json` 2,986,342 bytes、`tsm_normalized.parquet` 29,363,599 bytes）。真實位元組要用 §10.6 的 notebook 確認；在確認前，config 中無法確定的值一律為 `null`，不填猜測值。
+
+**B1 — MANIFEST_LAYOUT（7 個 Core 欄位中 5 個無法綁定）**
+
+| Core `ManifestLayout` 欄位 | 既有 manifest（schema 1.0.0） | 結果 |
+|---|---|---|
+| `snapshot_id` | 沒有記錄 run 名稱的欄位 | ✗ |
+| `producer_sha` | 只有 12 字元 `git_sha = "06359faf7ef4"`；Core 要求 40 字元完整 SHA | ✗ |
+| `symbol` | `/results/2/symbol`（NQ, ES, TSM, SOXX 順序） | ✓（探測時驗證等於 TSM） |
+| `parquet_path` | 沒有記錄 | ✗ |
+| `parquet_sha256` | `/results/2/published_sha256` | ✓ |
+| `columns` | 沒有記錄（producer 寫出 `timestamp_utc`＋OHLCV） | ✗ |
+| `arrow_schema` | 沒有記錄 | ✗ |
+
+另外，manifest 本身的 SHA256 尚未釘選（`SHA_REQUIRED`）；探測 notebook 會算出來。
+
+**B2 — HOLDOUT_ROW_GROUP_OVERLAP**：producer 以 `merged.to_parquet(target, index=False)` 寫出單一檔案，使用預設 row group 大小。一個約 29 MB、涵蓋 2016-10-19 … 2026-10-16 的檔案只會有一個或少數幾個 row group，包含 2024-06 的那個 row group 必定遠超出授權的 22 天研究窗口，且很可能跨進 Holdout。Core 會在解碼前拒絕（`HOLDOUT_ROW_GROUP_OVERLAP`），Agent 的探測也會。FINAL GATE Snapshot 中沒有已隔離的分割檔。
+
+**B3 — INTEGRITY_RECEIPT**：沒有既有的可信 `FileIntegrityReceipt`（需要綁定當下 session 的 inode／ctime 等 stat）。唯一能產生的方式是 Core `verify_file_bytes(allow_full_file_hash=True)`，它會讀取整個檔案的位元組（包含 Holdout 部分），任務書禁止 Agent 自行這樣做。
+
+### 10.5 解除阻擋的選項（需要決定，Agent 不自行執行）
+
+| 阻擋 | 選項 |
+|---|---|
+| B1 | (a) Codex 在 Core 審查一個對既有 manifest v1.0.0 的綁定方式（例如以 run 名稱目錄、12 字元前綴對 40 字元 SHA、固定檔名與 producer 的欄位定義）；或 (b) 由 producer 產生一份新的、不可變的 sidecar manifest，含 7 個欄位（需要新的 Snapshot 版本與研究負責人核准） |
+| B2 | 只能用「已隔離、row group 不跨越研究／Holdout」的既有分割。FINAL GATE Snapshot 沒有；需要 Codex／producer 產生按日期分割的衍生 Snapshot（新的 snapshot id、新的授權），不得改寫既有 Snapshot |
+| B3 | (a) 研究負責人明確授權一次 opaque-byte 全檔 hash（會讀到 Holdout 位元組，但不解碼、不用於任何計算），並記錄在治理中；或 (b) Codex 提供不需要讀全檔的收據方式；或 (c) B2 的分割 Snapshot 本身附帶逐檔收據 |
+
+這三項都需要新的審查或授權，不是 Agent 可以自行解決的工程問題。授權 `RA-IBKR_TSM-SMA520_SMOKE-0001` 釘的是 dataset snapshot id；若 B2 採用新的衍生 Snapshot，需要研究負責人簽一份新的授權。
+
+### 10.6 真實位元組確認（不消耗額度）
+
+[`notebooks/Phase4A_Real_Snapshot_Probe.ipynb`](https://colab.research.google.com/github/hh4832/strategy-research-agent/blob/feature/phase4a-tsm-research-only/notebooks/Phase4A_Real_Snapshot_Probe.ipynb)：
+
+- 匿名 clone 並 checkout `ba8f233`，安裝 Core e31c57b，確認 `core_code_identity`。
+- 掛載 Drive，以完全相同的資料夾名稱定位 Snapshot（必須恰好一個，否則要你填路徑）。
+- 執行 `probe()`：讀 manifest（metadata）並算 SHA256；讀 Parquet footer 的 schema 和 **timestamp 欄位** 的 row-group min/max。不解碼 OHLCV、不對 Parquet 做全檔 hash、不寫入 Snapshot、不消耗額度（notebook 也斷言 uses 檔前後相同）。
+- 結果以 write-once 寫入 `MyDrive/Quant_Research/strategy-research-agent/probes/` 並下載。
+
+### 10.7 本輪實際數字
+
+| 項目 | 值 |
+|---|---|
+| Agent SHA | `ba8f23334f95060a7122226542e3110daa2e944b`（整合）；文件與 notebook 在其後 |
+| Core SHA | `e31c57b6c9dd599d808516ce6664628bdc79319e` |
+| Snapshot | `20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL`，producer `06359faf7ef4b8ff702a7ab1a6d07521d3b68f28` |
+| Manifest SHA | **未取得**（等待 §10.6） |
+| CostProfile SHA | BASE `ea2cb193…`、LOW `4111a7d0…`、STRESS `80c00d97…`、CAT_STRESS `bd42c266…` |
+| 授權／lock | `RA-IBKR_TSM-SMA520_SMOKE-0001`／`HOLDOUT-TSM-15M-v1` |
+| 額度 | **0/1，未消耗** |
+| 1m rows、15m bars、PIT／RTH 拒絕、fills／trades、gross／net、commission／SEC／TAF／CAT、滑價、equity／drawdown | **無**：沒有讀取任何真實價格資料，所以沒有任何真實數字 |
+| Drive 封存 | 無（沒有執行） |
+
+### 10.8 驗證
+
+- 新測試 `tests/test_phase4a_core_integration.py`（10 個）：repository v1.1 preflight、真實 manifest 綁定為 null、Core 成本 profile 與 CO07、真實格式 layout → MANIFEST_LAYOUT／SHA_REQUIRED／INTEGRITY_RECEIPT（不消耗）、單一 row group → HOLDOUT_ROW_GROUP_OVERLAP（Agent 與 Core 都拒絕）、RO05、過期收據、synthetic 端到端＋RA11、消耗後失敗、probe 不消耗。
+- 全套件：Core e31c57b 下 373 passed（唯一失敗是 Phase 3 `test_15` 的 SHA 釘選，在 699e3ad job 中執行）；Core 699e3ad 下 367 passed／1 skipped；無 Core 273 passed／52 skipped。
+- 沒有修改 Core、Oracle、formal gates、既有治理紀錄、已接受的成本集或 Phase 3 檔案；沒有重新下載 IBKR 資料、沒有讀取 Holdout、沒有消耗額度、沒有合併 PR。
