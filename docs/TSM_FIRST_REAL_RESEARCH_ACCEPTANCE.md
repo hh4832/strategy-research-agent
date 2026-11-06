@@ -209,5 +209,11 @@ git push
 ## 9. 驗證
 
 - 新測試：`tests/test_phase4a_research_only.py`，36 passed。
+- **調整一個既有的 Phase 3 測試**（`tests/test_m3b_notebook.py::test_n2_pin_…`，最小必要）：原本要求 notebook pin 與 HEAD 在 `src/`、`schemas/` 等路徑「完全沒有差異」，`governance/` 只准 `market_readiness.json` 變動。Phase 4-A 只新增檔案，第一次 CI 因此失敗。調整後的規則：
+  - pin 當時存在的每個檔案都必須逐位元相同（不得 M/D/R/T）；
+  - 新增檔案允許，但 pin 內的程式碼不得引用它們；
+  - `governance/` 允許新增檔案，以及既有 `*.jsonl` 只能追加；`market_readiness.json` 的狀態檢查不變。
+
+  N2 的保證（Colab 從 pin 執行的內容與這棵樹相同）沒有減弱。這也避免了一件事：研究負責人日後簽 holdout lock 時，那個 commit 不會讓 CI 失敗。驗證方式：在暫存 worktree 中分別測試只有新增／追加 lock（通過），以及改 pin 程式碼／刪改 approvers／formal gate 改 PASS（失敗）。Notebook pin 沒有改動，既有 Colab 證據的對應關係也維持不變。
 - 全套件：Core 699e3ad 下 367 passed；無 Core 273 passed／51 skipped；append-only check PASS。
 - 沒有修改 Core、Oracle 或任何手算答案，也沒有改 formal registry、formal gates、Phase 3 文件和 SMA 參數。沒有讀取 Holdout，沒有執行真實回測，也沒有合併任何 PR。

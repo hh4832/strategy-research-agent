@@ -109,11 +109,28 @@ def test_n2_pin_is_an_already_committed_integration_commit_with_identical_code(c
     paths = ["src", "configs/research", "configs/cost_scenarios", "fixtures", "schemas", "specs", "benchmark",
              "pyproject.toml",
              "docs/evidence/m3c_reference_metrics.json"]
-    assert git("diff", "--quiet", commit, "--", *paths).returncode == 0, git("diff", "--stat", commit, "--", *paths).stdout
+    # Every file present at the pin must be unchanged (no M/D/R/T). Files ADDED after the pin (e.g. the Phase 4-A
+    # research-only modules) are allowed: the pinned Colab clone does not contain them, so they cannot change what
+    # it executes - provided no pinned file references them.
+    status = [ln.split("\t") for ln in git("diff", "--name-status", commit, "--", *paths).stdout.splitlines() if ln]
+    assert not [s for s in status if s[0] != "A"], status
+    for _, added in status:
+        if added.endswith(".py") and added.startswith("src/"):
+            mod = added[len("src/"):-len(".py")].replace("/", ".").removesuffix(".__init__")
+            assert git("grep", "-q", mod, commit, "--", "src", "notebooks").returncode != 0, f"pinned code references {mod}"
     # governance records may gain reviewed facts (e.g. the 2026-11-05 RESEARCH_ONLY temporal acceptance), but only
     # in market_readiness.json and without changing any market or gate status the pinned smoke ran against
-    changed = git("diff", "--name-only", commit, "--", "governance").stdout.split()
-    assert set(changed) <= {"governance/market_readiness.json"}, changed
+    # Allowed governance drift since the pin: market_readiness.json (statuses checked below), newly ADDED files
+    # (e.g. Phase 4-A research-only authorization book and proposals), and append-only growth of existing *.jsonl
+    # logs (e.g. a research-lead holdout lock). The pinned smoke only fingerprints governance before/after its own
+    # run and must still find the market gate closed, which the status check below guarantees.
+    gstatus = [ln.split("\t") for ln in git("diff", "--name-status", commit, "--", "governance").stdout.splitlines() if ln]
+    for st, path in ((s[0], s[-1]) for s in gstatus):
+        if st == "A" or path == "governance/market_readiness.json":
+            continue
+        assert st == "M" and path.endswith(".jsonl"), (st, path)
+        old_bytes = subprocess.run(["git", "show", f"{commit}:{path}"], cwd=ROOT, capture_output=True).stdout
+        assert (ROOT / path).read_bytes().startswith(old_bytes), f"{path} was not append-only since the pin"
     old = json.loads(git("show", f"{commit}:governance/market_readiness.json").stdout)
     new = json.loads((ROOT / "governance" / "market_readiness.json").read_text(encoding="utf-8"))
     for m, e in old["markets"].items():

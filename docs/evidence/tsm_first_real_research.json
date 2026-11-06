@@ -170,7 +170,14 @@
     "suite_with_core_699e3ad": "367 passed",
     "suite_without_core": "273 passed, 51 skipped",
     "append_only": "PASS",
-    "ci": "see PR description"
+    "ci": "see PR description",
+    "phase3_test_adjusted": {
+      "test": "tests/test_m3b_notebook.py::test_n2_pin_is_an_already_committed_integration_commit_with_identical_code",
+      "change": "files present at the pin must be unchanged; added files allowed if unreferenced by pinned code; governance: added files and append-only *.jsonl growth allowed",
+      "reason": "Phase 4-A only adds files; the N2 guarantee (pinned Colab code == tree) is unchanged; avoids CI failure when the research lead appends a holdout lock",
+      "verified": "worktree mutations: additions/lock-append PASS; pinned-src edit, approvers delete/edit, formal gate PASS -> FAIL",
+      "notebook_pin_changed": false
+    }
   },
   "unchanged": [
     "market-research-core",
