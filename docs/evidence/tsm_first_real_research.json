@@ -185,7 +185,16 @@
       "fills": null,
       "trades": null
     },
-    "probe_notebook": "notebooks/Phase4A_Real_Snapshot_Probe.ipynb"
+    "probe_notebook": "notebooks/Phase4A_Real_Snapshot_Probe.ipynb",
+    "probe": {
+      "executed": true,
+      "slot_consumed": false,
+      "record": "docs/evidence/phase4a_real_snapshot_probe_20261106_080607.json",
+      "core_identity": {
+        "core_git_sha": "e31c57b6c9dd599d808516ce6664628bdc79319e",
+        "core_tree_dirty": null
+      }
+    }
   },
   "findings": [
     {
@@ -248,6 +257,11 @@
       "at": "2026-11-06T18:00:00+08:00",
       "status": "BLOCKED_BEFORE_CONSUMPTION",
       "note": "Core e31c57b integrated; real snapshot data contract incompatible"
+    },
+    {
+      "at": "2026-11-06T16:11:00+08:00",
+      "status": "BLOCKED_BEFORE_CONSUMPTION",
+      "note": "real-byte probe confirmed B1-B3; uses 0/1"
     }
   ],
   "integration": {
@@ -300,32 +314,76 @@
       "final_gate_manifest.json": {
         "drive_id": "1taOQAafy7CPznKIeMw5TP3xlPrEQwvEW",
         "size": 2986342,
-        "sha256": null
+        "sha256": "d960602cff24f7350b056d69e19d8e0b8734cdad266d3782bc56ebc507818828",
+        "schema_version": "1.0.0",
+        "gate": "IBKR_FINAL_GATE",
+        "mode": "FULL",
+        "overall_verdict": "SCOPED_GO",
+        "git_sha": "06359faf7ef4",
+        "tsm_result_pointer": "/results/2",
+        "tsm_verdict": "GO"
       },
       "tsm_normalized.parquet": {
         "drive_id": "1B_2WyFRHXUzwg3C1BR7GLApGl722Ezli",
         "size": 29363599,
-        "sha256_ref": "manifest /results/2/published_sha256 (value not yet read)"
+        "published_sha256_from_manifest": "572d19476eecd38020da8ddbfbd5f7b128c7cd79d807e4f16fd787a66a8c96e7",
+        "sha256_independently_verified": false,
+        "rows": 2193372,
+        "arrow_schema": {
+          "timestamp_utc": "timestamp[us, tz=UTC]",
+          "open": "double",
+          "high": "double",
+          "low": "double",
+          "close": "double",
+          "volume": "double"
+        },
+        "created_by": "parquet-cpp-arrow version 23.0.1",
+        "row_groups": [
+          {
+            "index": 0,
+            "rows": 1048576,
+            "first_date": "2016-10-19",
+            "last_date": "2021-12-14"
+          },
+          {
+            "index": 1,
+            "rows": 1048576,
+            "first_date": "2021-12-14",
+            "last_date": "2026-05-26",
+            "candidate_for_2024-05-29..2024-06-28": true,
+            "overlaps_holdout": true
+          },
+          {
+            "index": 2,
+            "rows": 96220,
+            "first_date": "2026-05-26",
+            "last_date": "2026-10-16"
+          }
+        ]
       }
     },
-    "evidence_basis": "producer code hh4832/ibkr-pipe@06359faf7ef4 src/ibkr_qc/final_gate.py + Drive listing; real bytes to be confirmed by notebooks/Phase4A_Real_Snapshot_Probe.ipynb",
+    "evidence_basis": "CONFIRMED on real bytes by notebooks/Phase4A_Real_Snapshot_Probe.ipynb @ba8f233 (Colab, 2026-11-06 08:06 UTC); probe record docs/evidence/phase4a_real_snapshot_probe_20261106_080607.json; slot not consumed",
     "blockers": [
       {
         "id": "B1",
         "code": "MANIFEST_LAYOUT",
-        "detail": "5 of 7 Core ManifestLayout fields unbindable: snapshot_id, producer_sha (only 12-char git_sha), parquet_path, columns, arrow_schema; manifest sha256 not pinned (SHA_REQUIRED)"
+        "status": "CONFIRMED",
+        "detail": "5 of 7 unbindable: snapshot_id, producer_sha (only 12-char git_sha), parquet_path, columns, arrow_schema; manifest sha256 observed d960602c… but not pinned (SHA_REQUIRED, needs reviewed config)"
       },
       {
         "id": "B2",
         "code": "HOLDOUT_ROW_GROUP_OVERLAP",
-        "detail": "single-file parquet written with default row groups; the candidate row group cannot lie wholly inside 2024-05-29..2024-06-28 and is expected to reach the holdout"
+        "status": "CONFIRMED",
+        "detail": "the only candidate row group (index 1, 1,048,576 rows) spans 2021-12-14..2026-05-26: outside the authorized window and ~17 months into the holdout"
       },
       {
         "id": "B3",
         "code": "INTEGRITY_RECEIPT",
-        "detail": "no trusted FileIntegrityReceipt; only verify_file_bytes (full opaque-byte hash incl. holdout bytes) could create one, which is not authorized"
+        "status": "CONFIRMED",
+        "detail": "no trusted FileIntegrityReceipt; creating one requires a full opaque-byte hash including holdout bytes (not authorized)"
       }
     ],
-    "slot_consumed": false
+    "slot_consumed": false,
+    "colab_path": "/content/drive/MyDrive/00Quant_Research/data/00_Quant_Research_Hub/20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
   }
 }

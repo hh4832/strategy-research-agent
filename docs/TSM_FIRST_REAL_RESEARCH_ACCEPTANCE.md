@@ -19,7 +19,7 @@
 | Formal Market Eligibility | **NO-GO** | Formal gates 原封不動：market NO_GO、TEMPORAL_SAFETY UNKNOWN、COST_APPROVAL FAIL、HOLDOUT_APPROVAL FAIL、FORMAL_EXECUTION_ELIGIBILITY FAIL |
 | Strategy Effectiveness | **無法判定** | 沒有在真實資料上執行任何回測，沒有任何真實績效數字 |
 
-**狀態：`BLOCKED_BEFORE_CONSUMPTION`（資料契約）。** 治理已簽核，Core 已整合；剩下的阻擋都在真實 Snapshot 的格式與完整性收據，需要 Codex 或研究負責人決定（§10.5）。
+**狀態：`BLOCKED_BEFORE_CONSUMPTION`（資料契約；2026-11-06 已用真實位元組確認，§10.4）。** 治理已簽核，Core 已整合；剩下的阻擋都在真實 Snapshot 的格式與完整性收據，需要 Codex 或研究負責人決定（§10.5）。
 
 <details><summary>先前狀態（簽核後、Core 交付前）</summary>
 
@@ -241,7 +241,7 @@ git push
 | SNAPSHOT_MANIFEST_LAYOUT | §10.4 B1 | Codex |
 | SNAPSHOT_ROW_GROUPS | §10.4 B2 | Codex／研究負責人 |
 | SNAPSHOT_INTEGRITY_RECEIPT | §10.4 B3 | 研究負責人 |
-| REAL_PROBE | 在 Colab 執行 `notebooks/Phase4A_Real_Snapshot_Probe.ipynb`，以真實位元組確認 §10.4 | 研究負責人 |
+| ~~REAL_PROBE~~ | 已完成（2026-11-06 08:06 UTC），B1–B3 全部確認 | — |
 | BLINDNESS_UNVERIFIED | Holdout 曾被 Phase 2 smoke 以 SMA 5/20 觸及 | 永久標記；之後的 Holdout 結果不得稱為完全盲測 |
 | CODEOWNERS | `main` 仍沒有 branch protection／ruleset | 研究負責人（repo 設定） |
 
@@ -314,27 +314,33 @@ CAT 取整：Core 把 TAF＋CAT 合併成一個每股費率再取整，所以 10
 
 Synthetic 端到端（TEST_ONLY，非市場資料，僅證明路徑）：22 個交易日 8,580 列 1m → 572 根 15m；兩天 Holdout 列與 warm-up 之前的列存在於檔案中，但都沒有被回傳；四個情境 COMPLETED；額度用掉後第二次執行被 RA11 拒絕；消耗後失敗會封存 `FAILURE.json`，第二次仍是 RA11。
 
-### 10.4 真實 Snapshot：相容性阻擋（停止，不消耗額度）
+### 10.4 真實 Snapshot：相容性阻擋（真實位元組已確認；停止，不消耗額度）
 
-依據：producer `hh4832/ibkr-pipe@06359faf7ef4` 的 `src/ibkr_qc/final_gate.py`（產生這個 manifest 的程式碼），以及 Drive 上的檔案清單（資料夾 `1KZYX8ODg5o8gss5LgBxjJEzaFvObuh_d`：`final_gate_manifest.json` 2,986,342 bytes、`tsm_normalized.parquet` 29,363,599 bytes）。真實位元組要用 §10.6 的 notebook 確認；在確認前，config 中無法確定的值一律為 `null`，不填猜測值。
+2026-11-06 08:06 UTC，研究負責人在 Colab 執行 `notebooks/Phase4A_Real_Snapshot_Probe.ipynb`（程式碼 `ba8f233`、Core `e31c57b`）。原始紀錄存放在 `docs/evidence/phase4a_real_snapshot_probe_20261106_080607.json`（sha256 `0f42cd93…0e8e`）。結果：`BLOCKED_BEFORE_CONSUMPTION`，`slot_consumed = false`，授權使用次數 0。Governance preflight 本身沒有阻擋（`READY_FOR_CORE_INTEGRATION`），formal gates 也和簽核時相同。
 
-**B1 — MANIFEST_LAYOUT（7 個 Core 欄位中 5 個無法綁定）**
+觀測到的事實：
 
-| Core `ManifestLayout` 欄位 | 既有 manifest（schema 1.0.0） | 結果 |
-|---|---|---|
-| `snapshot_id` | 沒有記錄 run 名稱的欄位 | ✗ |
-| `producer_sha` | 只有 12 字元 `git_sha = "06359faf7ef4"`；Core 要求 40 字元完整 SHA | ✗ |
-| `symbol` | `/results/2/symbol`（NQ, ES, TSM, SOXX 順序） | ✓（探測時驗證等於 TSM） |
-| `parquet_path` | 沒有記錄 | ✗ |
-| `parquet_sha256` | `/results/2/published_sha256` | ✓ |
-| `columns` | 沒有記錄（producer 寫出 `timestamp_utc`＋OHLCV） | ✗ |
-| `arrow_schema` | 沒有記錄 | ✗ |
+| 項目 | 值 |
+|---|---|
+| Colab 路徑 | `/content/drive/MyDrive/00Quant_Research/data/00_Quant_Research_Hub/20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL` |
+| Manifest | `final_gate_manifest.json`，2,986,342 bytes，**sha256 `d960602cff24f7350b056d69e19d8e0b8734cdad266d3782bc56ebc507818828`**；gate `IBKR_FINAL_GATE`、mode FULL、schema 1.0.0、`git_sha 06359faf7ef4`、overall SCOPED_GO |
+| TSM 結果 | `/results/2`：verdict GO，2,193,372 列，2016-10-19T08:43Z … 2026-10-16T23:59Z，`published_sha256 572d19476eecd38020da8ddbfbd5f7b128c7cd79d807e4f16fd787a66a8c96e7`（manifest 宣稱值，尚未獨立驗證） |
+| Parquet | `tsm_normalized.parquet`，29,363,599 bytes，2,193,372 列，parquet-cpp-arrow 23.0.1 |
+| Arrow schema | `timestamp_utc: timestamp[us, tz=UTC]`；`open/high/low/close/volume: double` |
+| Row groups | #0 2016-10-19 … 2021-12-14（1,048,576 列）；**#1 2021-12-14 … 2026-05-26（1,048,576 列）**；#2 2026-05-26 … 2026-10-16（96,220 列） |
 
-另外，manifest 本身的 SHA256 尚未釘選（`SHA_REQUIRED`）；探測 notebook 會算出來。
+**B1 — MANIFEST_LAYOUT（已確認）**：7 個 Core 欄位中只有 `symbol`（`/results/2/symbol`）和 `parquet_sha256`（`/results/2/published_sha256`）能綁定。以下 5 個沒有對應欄位：
+- `snapshot_id`
+- `producer_sha`：manifest 只有 12 字元的 `git_sha`
+- `parquet_path`
+- `columns`
+- `arrow_schema`
 
-**B2 — HOLDOUT_ROW_GROUP_OVERLAP**：producer 以 `merged.to_parquet(target, index=False)` 寫出單一檔案，使用預設 row group 大小。一個約 29 MB、涵蓋 2016-10-19 … 2026-10-16 的檔案只會有一個或少數幾個 row group，包含 2024-06 的那個 row group 必定遠超出授權的 22 天研究窗口，且很可能跨進 Holdout。Core 會在解碼前拒絕（`HOLDOUT_ROW_GROUP_OVERLAP`），Agent 的探測也會。FINAL GATE Snapshot 中沒有已隔離的分割檔。
+Schema 本身沒有問題：時間欄有時區，OHLCV 欄位齊全。問題在於 manifest 沒有記錄這些資訊。Manifest SHA 已經觀測到，但要先經審查才能釘進 config，所以本輪不升版 config。
 
-**B3 — INTEGRITY_RECEIPT**：沒有既有的可信 `FileIntegrityReceipt`（需要綁定當下 session 的 inode／ctime 等 stat）。唯一能產生的方式是 Core `verify_file_bytes(allow_full_file_hash=True)`，它會讀取整個檔案的位元組（包含 Holdout 部分），任務書禁止 Agent 自行這樣做。
+**B2 — HOLDOUT_ROW_GROUP_OVERLAP（已確認）**：2024-05-29 … 2024-06-28 唯一的候選 row group 是 #1，它橫跨 2021-12-14 … 2026-05-26。這遠超出授權窗口，並且有約 17 個月落在 Holdout 內。Core 會在解碼前拒絕。
+
+**B3 — INTEGRITY_RECEIPT（已確認）**：沒有可信收據。要產生收據只能做全檔 opaque-byte hash，而這需要讀到 row group #1 和 #2 裡的 Holdout 位元組。
 
 ### 10.5 解除阻擋的選項（需要決定，Agent 不自行執行）
 
@@ -362,11 +368,14 @@ Synthetic 端到端（TEST_ONLY，非市場資料，僅證明路徑）：22 個�
 | Agent SHA | `ba8f23334f95060a7122226542e3110daa2e944b`（整合）；文件與 notebook 在其後 |
 | Core SHA | `e31c57b6c9dd599d808516ce6664628bdc79319e` |
 | Snapshot | `20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL`，producer `06359faf7ef4b8ff702a7ab1a6d07521d3b68f28` |
-| Manifest SHA | **未取得**（等待 §10.6） |
+| Manifest SHA | `d960602cff24f7350b056d69e19d8e0b8734cdad266d3782bc56ebc507818828`（真實位元組；未釘選） |
+| Parquet SHA（manifest 宣稱） | `572d19476eecd38020da8ddbfbd5f7b128c7cd79d807e4f16fd787a66a8c96e7`（未獨立驗證） |
+| 探測紀錄 | `docs/evidence/phase4a_real_snapshot_probe_20261106_080607.json` |
 | CostProfile SHA | BASE `ea2cb193…`、LOW `4111a7d0…`、STRESS `80c00d97…`、CAT_STRESS `bd42c266…` |
 | 授權／lock | `RA-IBKR_TSM-SMA520_SMOKE-0001`／`HOLDOUT-TSM-15M-v1` |
 | 額度 | **0/1，未消耗** |
-| 1m rows、15m bars、PIT／RTH 拒絕、fills／trades、gross／net、commission／SEC／TAF／CAT、滑價、equity／drawdown | **無**：沒有讀取任何真實價格資料，所以沒有任何真實數字 |
+| 1m rows（整個檔案，來自 footer） | 2,193,372；研究窗口內的 1m／15m 數量**未讀取** |
+| 15m bars、PIT／RTH 拒絕、fills／trades、gross／net、commission／SEC／TAF／CAT、滑價、equity／drawdown | **無**：沒有讀取任何真實價格資料，所以沒有任何真實數字 |
 | Drive 封存 | 無（沒有執行） |
 
 ### 10.8 驗證
