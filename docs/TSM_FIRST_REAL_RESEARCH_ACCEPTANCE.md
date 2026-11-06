@@ -454,3 +454,29 @@ PASS (3.11/3.12). Final notebook/evidence HEAD checks are reported in the delive
 Engineering verdict: SCOPED_GO. Real data admission and first SMA eligibility:
 PENDING / NO-GO until lawful actual bundle/preflight and personal NEW research
 approval exist. The original three blockers are never waived for the old file.
+
+## 12. 正式 Research-only smoke 執行路徑（Core b16179a，2026-11-06）
+
+**狀態：程式與 CI 完成；等待研究負責人在 Colab 執行唯一一次批次。** 額度 `RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e` 目前 **0/1**。
+
+| 項目 | 值 |
+|---|---|
+| 執行程式碼 pin | `9439f8c6f53b9c6c7f2f49b5a543ffdbc84f2f2a`（CI 8/8 綠，[run 42238841240](https://github.com/hh4832/strategy-research-agent/actions/runs/42238841240)） |
+| Core | `b16179a7cc077c36046574769a32c367fa476cae`；B01–B12＋G16/G17/G14b PASS 12/12，與 e31c57b 逐案相同 → `benchmark/results/mrc_b16179a7cc07/` |
+| Config | `configs/research_only/tsm_sma_5_20_smoke_2024_06_dev_18350b3adba8e28a7e5e.json`，sha `b6ac297f…bfe9`（未修改） |
+| Snapshot | `TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e`；manifest `8b6fc838…cfc5`；parquet `239d5741…8452`；lineage `3455f2b3…92a4` |
+| Notebook | `notebooks/Phase4A_TSM_SMA520_Research_Smoke_Run_v1.ipynb`（`P4A-SMOKE-RUN-v1`） |
+
+執行順序（全部在 `src/`，notebook 只是 thin runner）：
+1. Version Sync：remote HEAD、checkout HEAD、pin、working tree、Core 身分、notebook 版本與 GitHub 上同名檔的版本、import 來源；既有 checkout 只在完全吻合時沿用，不 reset、不刪除。
+2. 授權 0/1：本機 checkout、GitHub 分支 HEAD、Drive archive 三處都不得有此授權的使用或失敗紀錄。
+3. `development_run.session_config`：Core `renew_development_receipt`（先驗證 manifest／lineage／每個 row group 為單一 2024 開發日，再只對 458 KB 的開發檔做 hash）。Session config 與 canonical config 只差 `integrity_receipt`／`integrity_receipt_sha256`（有斷言），write-once 存在 Drive `_session_configs/`，不 commit。
+4. 非消耗性 `probe()` 必須 `COMPATIBLE_READY_TO_CONSUME`。
+5. `ResearchOnlyRunner.run()`：再檢一次 → 原子消耗 → Core `load_native_tsm(snapshot_pin=…)` → 保守 15m → SMA 5/20 → Core `ExecutionEngine` ×4 → `tsm_cost_diagnostics` → archive。
+6. 使用紀錄（1 行）與結果摘要推回 PR #5（或下載 zip 交給 Claude 提交）。
+
+Archive（`MyDrive/Quant_Research/strategy-research-agent/<YYYYMMDD_HHMMSS>_<agent7>/`，Asia/Taipei，全部 `O_EXCL`）：`run_info.txt`、`config.json`、`config_canonical.json`、`dataset_manifest.json`、`execution_diagnostics.json`、`decisions.csv`、`trades.csv`、`fills.csv`、`rejected_orders.csv`、`cost_breakdown.csv`、`metrics.json`、`equity_curve.csv`、`research_report.md`、`MANIFEST.json`（其他檔案的 sha256，最後寫入）。
+
+時序檢查（對 Core 的 fill ledger 做檢查，不重算）：每筆成交嚴格晚於訊號 `modeled_available_at`、成交 bar 晚於訊號 bar、order time = signal time；最後一筆 1m 早於 Holdout 起點。
+
+Synthetic（TEST_ONLY，由 Core 自己的 development producer 產生）端到端：一次 COMPLETED、14 個檔案 hash 相符、四個情境時序 PASS、第二次被 Drive 先前紀錄擋下（PRIOR_ATTEMPT），直接呼叫 run 也被 RA11 擋下；probe 失敗不消耗；session config 若綁到其他 manifest 會停止。
