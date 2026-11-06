@@ -59,6 +59,6 @@ def test_nonconsuming_probe_renews_only_development_receipt_without_strategy():
     assert "ephemeral = copy.deepcopy(cfg)" in code
     assert "canonical_sha(ephemeral)" in code
     assert "runner.probe(temp_config,snapshot_root=SNAPSHOT)" in code
-    assert "result[\\"slot_consumed\\"] is False" in code
+    assert 'result["slot_consumed"] is False' in code
     assert "runner.run(" not in code
     assert ".consume(" not in code
