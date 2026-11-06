@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "evaluation_timestamp": "2026-11-06T23:00:26.634111+08:00",
+    "evaluator_commit_sha": "9258a48f58a18a502e52a13b2bdf1137485bb0e2",
+    "evaluator_version": "1.0.0",
+    "schema_version": "1.0.0",
+    "source_archive_path": "SYNTHETIC_FIXTURE_NO_REAL_ARCHIVE",
+    "source_commit_sha": "1111111111111111111111111111111111111111",
+    "source_run_id": "SYNTHETIC_FIXTURE_positive_short_run"
+  },
+  "risk_flags": [
+    {
+      "code": "COST_SENSITIVITY_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "cost_sensitivity",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "in_sample_vs_out_of_sample",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "LESS_THAN_ONE_YEAR_OBSERVED",
+      "evidence": {
+        "elapsed_days": 35.0
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "MULTIPLE_TESTING_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "multiple_testing",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "PARAMETER_STABILITY_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "parameter_stability",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SELECTION_BIAS_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "selection_bias",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SINGLE_CALENDAR_YEAR_COVERS_ALL_NET_PROFIT",
+      "evidence": {
+        "dimension": "calendar_year",
+        "group": "2024",
+        "net_pnl": 80.0,
+        "status": "AVAILABLE",
+        "trade_count": 32
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SINGLE_SYMBOL_COVERS_ALL_NET_PROFIT",
+      "evidence": {
+        "dimension": "symbol",
+        "group": "TSM",
+        "net_pnl": 80.0,
+        "status": "AVAILABLE",
+        "trade_count": 32
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SURVIVORSHIP_BIAS_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "survivorship_bias",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SYNTHETIC_FIXTURE",
+      "evidence": {
+        "meaning": "engineering test only; no real strategy conclusion"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "TAIL_RISK_NOT_ESTABLISHED",
+      "evidence": {
+        "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+        "status": "NOT_AVAILABLE"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "TEMPORAL_STABILITY_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "temporal_stability",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    }
+  ]
+}

@@ -78,3 +78,7 @@ pytest -q tests/test_universal_evaluator.py
 完整 API、指標定義、Phase 4-A Archive 缺失欄位與限制：
 [`RESEARCH_EVALUATOR_CONTRACT.md`](docs/RESEARCH_EVALUATOR_CONTRACT.md)。
 Synthetic 範例僅證明工程行為，不是真實策略研究結論。
+
+已執行的工程範例：[`SYNTHETIC_FIXTURE evaluation_report.md`](docs/examples/phase4b/SYNTHETIC_FIXTURE_example/evaluation_report.md)；
+輸出 Schema：[`RESEARCH_EVALUATION_SCHEMA.json`](schemas/RESEARCH_EVALUATION_SCHEMA.json)；
+驗收範圍：[`PHASE4B_ACCEPTANCE.md`](docs/PHASE4B_ACCEPTANCE.md)。
