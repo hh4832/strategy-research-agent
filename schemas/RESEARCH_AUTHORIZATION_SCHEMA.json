@@ -23,7 +23,7 @@
       "properties": {
         "action": {"const": "APPROVE"},
         "contract": {"const": "research-only-authorization-v1"},
-        "authorization_id": {"type": "string", "pattern": "^RA-[A-Z0-9_]+-[A-Z0-9_]+-\\d{4}$"},
+        "authorization_id": {"type": "string", "pattern": "^(?:RA-[A-Z0-9_]+-[A-Z0-9_]+-\\d{4}|RA-IBKR_TSM-SMA520_DEV-[0-9a-f]{20})$"},
         "scope": {"const": "RESEARCH_ONLY_EXPLORATORY"},
         "market_id": {"const": "IBKR_TSM"},
         "symbol": {"const": "TSM"},
