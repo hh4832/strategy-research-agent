@@ -62,3 +62,18 @@ def test_nonconsuming_probe_renews_only_development_receipt_without_strategy():
     assert 'result["slot_consumed"] is False' in code
     assert "runner.run(" not in code
     assert ".consume(" not in code
+
+
+def test_v3_colab_uses_signed_authorization_for_formal_gate_pin():
+    notebook = ROOT / "notebooks/Phase4A_TSM_Development_Nonconsuming_Probe_v3.ipynb"
+    nb = json.loads(notebook.read_text(encoding="utf-8"))
+    code_cells = ["".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code"]
+    for i, code in enumerate(code_cells):
+        compile(code, f"{notebook}:cell{i}", "exec")
+    program = "\\n".join(code_cells)
+    assert 'assert "formal_gate_pin" not in cfg' in program
+    assert 'auth["formal_gate_pin"]["market_status"] == "NO_GO"' in program
+    assert 'ephemeral["formal_gate_pin"]' not in program
+    assert 'runner.probe(temp_config,snapshot_root=SNAPSHOT)' in program
+    assert "runner.run(" not in program
+    assert ".consume(" not in program
