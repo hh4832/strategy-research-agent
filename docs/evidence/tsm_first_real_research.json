@@ -1,0 +1,184 @@
+{
+  "schema_version": "1.0.0",
+  "record": "PHASE4A_TSM_FIRST_REAL_RESEARCH",
+  "date": "2026-11-06",
+  "timezone": "Asia/Taipei",
+  "status": "WAITING_FOR_CORE_ADAPTER",
+  "verdicts": {
+    "engineering": "SCOPED_GO",
+    "research_only_eligibility": "NO-GO",
+    "formal_market_eligibility": "NO-GO",
+    "strategy_effectiveness": "CANNOT_DETERMINE (no real run executed)"
+  },
+  "agent": {
+    "repository": "hh4832/strategy-research-agent",
+    "baseline_sha": "8f3f6e13248fe36e7e64cc59ec7c93cecfc78263",
+    "branch": "feature/phase4a-tsm-research-only",
+    "final_sha": "see PR head (this file is committed in that commit)"
+  },
+  "core": {
+    "repository": "hh4832/market-research-core",
+    "baseline_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+    "phase4a_sha": null,
+    "phase4a_delivered": false,
+    "checked_at": "2026-11-06T09:00:00+08:00",
+    "evidence": "no commit after 699e3ad and no Phase 4-A branch on origin"
+  },
+  "holdout_lock": {
+    "lock_id": "HOLDOUT-TSM-15M-v1",
+    "status": "NOT_CREATED_AWAITING_RESEARCH_LEAD",
+    "reason": "holdout_admin is a research-lead tool (M2 §3); the Agent does not sign as the lead",
+    "approved_boundaries": {
+      "development": [
+        "2016-10-19T00:00:00-04:00",
+        "2025-01-01T00:00:00-05:00"
+      ],
+      "holdout": [
+        "2025-01-01T00:00:00-05:00",
+        "2026-10-17T00:00:00-04:00"
+      ],
+      "interval": "[start,end)",
+      "timezone": "America/New_York"
+    },
+    "blindness": "BLINDNESS_UNVERIFIED",
+    "blindness_evidence": [
+      {
+        "source": "market-research-core@699e3ad notebooks/colab_phase2_drive_smoke_test.ipynb cell 3",
+        "fact": "run_sma(fast_window=5, slow_window=20) on IBKR TSM frame.tail(2000); snapshot ends 2026-10-16, so these bars are inside the holdout"
+      },
+      {
+        "source": "IBKR FINAL GATE data QA",
+        "fact": "full-period data-quality review incl. 2025-2026 (not strategy selection)"
+      },
+      {
+        "source": "Agent registry",
+        "fact": "experiments.jsonl / families.jsonl empty; all Agent M3 runs synthetic (proves Agent-side only)"
+      },
+      {
+        "source": "repository history",
+        "fact": "no record that SMA 5/20 was fixed before TSM data was viewed"
+      }
+    ]
+  },
+  "research_authorization": {
+    "authorization_id": "RA-IBKR_TSM-SMA520_SMOKE-0001",
+    "contract": "research-only-authorization-v1",
+    "status": "PROPOSED_UNSIGNED",
+    "proposal_path": "governance/proposals/RA-IBKR_TSM-SMA520_SMOKE-0001.json",
+    "proposal_sha256": "56028012f88ee475c641642e9f3086550329d4ceab474e67c8e58f167791fe15",
+    "max_batches": 1,
+    "expires_at": "2026-11-30T23:59:59+08:00",
+    "rules": [
+      "RA01",
+      "RA02",
+      "RA03",
+      "RA04",
+      "RA05",
+      "RA06",
+      "RA07",
+      "RA08",
+      "RA09",
+      "RA10",
+      "RA11",
+      "RA12"
+    ]
+  },
+  "formal_gates": {
+    "gate_version": "2026-11-05.4",
+    "market_status": "NO_GO",
+    "gates": {
+      "DATA_QUALITY": "PASS",
+      "TEMPORAL_SAFETY": "UNKNOWN",
+      "COST_MODEL_COMPATIBILITY": "PASS",
+      "COST_APPROVAL": "FAIL",
+      "HOLDOUT_APPROVAL": "FAIL",
+      "FORMAL_EXECUTION_ELIGIBILITY": "FAIL"
+    },
+    "market_readiness_sha256": "0ce0d36960bd2bc44bcb7f00ac1256a706f94559124723b659179917d5b8171a",
+    "modified_in_phase4a": false
+  },
+  "pins": {
+    "dataset": {
+      "dataset_id": "ibkr_tsm_1m_normalized",
+      "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+      "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
+      "snapshot_sha_verification": "NOT_RUN (needs Core adapter)"
+    },
+    "temporal_policy": {
+      "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+      "version": "1.0.0",
+      "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4"
+    },
+    "cost_set": {
+      "path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+      "sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3"
+    },
+    "sec_schedule_source_sha256": "af4a29c0d42b13c89d96b794a165cdf5e658e69759e4d705c000e4cc13c37eb1",
+    "run_config": {
+      "path": "configs/research_only/tsm_sma_5_20_smoke_2024_06_v1.json",
+      "config_sha256": "7c7f53f4cd92dc2fbe789b2cf24341faf6803b530d1310f1d2bbbbd3f8cd087e"
+    },
+    "spec": {
+      "path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+      "sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+      "parameters": {
+        "fast": 5,
+        "slow": 20
+      }
+    }
+  },
+  "windows": {
+    "warmup_start": "2024-05-29T00:00:00-04:00",
+    "start": "2024-06-03T00:00:00-04:00",
+    "end": "2024-06-29T00:00:00-04:00"
+  },
+  "cost_window": {
+    "sec_version": "SEC31-2024-05-22",
+    "sec_rate": 2.78e-05,
+    "taf_per_share": 0.000166
+  },
+  "preflight_repository": {
+    "status": "BLOCKED",
+    "blockers": [
+      "H01",
+      "RA01",
+      "RO04"
+    ]
+  },
+  "real_smoke_test": {
+    "executed": false,
+    "reason": "holdout lock and research authorization not established; Core Phase 4-A not delivered",
+    "metrics": null,
+    "drive_archive": null
+  },
+  "findings": [
+    {
+      "id": "CORE_FEE_SEPARATION",
+      "detail": "Core 699e3ad merges SEC and per-unit fees in one regulatory ledger line and has no dated per-unit fee; SEC/TAF/CAT cannot be reported separately; no mapping guessed"
+    },
+    {
+      "id": "CAT_ROUNDING",
+      "detail": "at 100 shares per fill, CAT 0.00005 and 0.00010 both round HALF_UP to 0.01 per line, so CAT_STRESS equals BASE in CAT cost"
+    },
+    {
+      "id": "N3",
+      "detail": "not triggered (no batch resume); research-only path writes O_EXCL with unique run_id"
+    }
+  ],
+  "tests": {
+    "new": "tests/test_phase4a_research_only.py: 36 passed",
+    "suite_with_core_699e3ad": "367 passed",
+    "suite_without_core": "273 passed, 51 skipped",
+    "append_only": "PASS",
+    "ci": "see PR description"
+  },
+  "unchanged": [
+    "market-research-core",
+    "Oracle code and hand-computed answers",
+    "formal registry",
+    "formal market gates",
+    "governance/holdout_locks.jsonl (empty)",
+    "Phase 3 documents",
+    "SMA parameters"
+  ]
+}
