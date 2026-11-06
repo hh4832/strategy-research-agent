@@ -420,7 +420,7 @@ stops before any unapproved mixed hash/decode. It produces real Manifest,
 Receipt, lineage, data preflight and the new unsigned proposal only after legal
 source access. No real new Snapshot has been claimed created here.
 
-Local engineering evidence: Core full regressions each104 PASS on Python3.11/3.12;
+Local engineering evidence: Core full regressions each106 PASS on Python3.11/3.12;
 Agent no-Core suites each273 PASS /53 skipped; legacy immutable Core e31c57b
 Phase4/M1 checks106 PASS /2 skipped; new derived-data/proposal test PASS on the
 new Core. All new producer fixtures are synthetic, never real compatibility proof.
@@ -431,3 +431,26 @@ job; Phase3 and original Phase4 pins/jobs are preserved.
 After real derived data PASS and personal new-RA approval, the existing read-only
 `ResearchOnlyRunner.probe` can establish readiness for the NEXT separately
 requested SMA batch. This task does not run it, reserve it or authorize it.
+
+
+### 11.1 Executable handoff and non-consuming evidence
+
+Core notebook (cleared outputs, pinned Core/Agent implementation revisions):
+https://github.com/hh4832/market-research-core/blob/94a1f9faf485e65c46304f37c75da28b3472fb9e/notebooks/TSM_Development_Snapshot_Preparation.ipynb
+
+It can renew a moved development file's receipt outside the immutable Snapshot,
+without opening original data. Missing personal mixed-conversion permission
+stops before source-body hashing or decoding. Real source inventory remains
+unconfirmed until that bounded Drive run. No fabricated Manifest/Receipt/lineage
+for unavailable real bytes is checked in. The producer generates those artifacts
+only from legally accessible, independently hashed actual inputs.
+
+Implementation CI (Agent9e368f8):
+https://github.com/hh4832/strategy-research-agent/actions/runs/42198357047
+PASS. PR checks additionally include append-only. Core receipt implementation
+b16179a: https://github.com/hh4832/market-research-core/actions/runs/42198298813
+PASS (3.11/3.12). Final notebook/evidence HEAD checks are reported in the delivery.
+
+Engineering verdict: SCOPED_GO. Real data admission and first SMA eligibility:
+PENDING / NO-GO until lawful actual bundle/preflight and personal NEW research
+approval exist. The original three blockers are never waived for the old file.
