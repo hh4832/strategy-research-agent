@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "sha256": "23aba5e2b82db84ad6efb9a4e059befb4f879f8c78ae8dbd918f2568063a2043",
+  "version": "FINRA-TAF-CS-2024",
+  "effective_from": "2024-01-01",
+  "effective_to": "2024-12-31",
+  "usd_per_share": 0.000166,
+  "source_ref": "SR-FINRA-2020-032; SR-FINRA-2024-019",
+  "source_basis": "OFFICIAL",
+  "verification_status": "RECORDED"
+}

@@ -77,8 +77,11 @@ def test_adapter_is_the_only_core_importer_and_never_imports_the_oracle():
     adapter = ROOT / "src" / "strategy_agent" / "adapters" / "mrc_adapter.py"
     mods = _imports(adapter)
     assert "market_research_core" in mods and not any(m.startswith("benchmark") for m in mods)
+    phase4a = ROOT / "src" / "strategy_agent" / "adapters" / "mrc_phase4a.py"   # Phase 4-A sibling (adapter pinned)
+    assert {m for m in _imports(phase4a) if m.startswith("market_research_core")} == {
+        "market_research_core.tsm_native", "market_research_core.tsm_research_costs"}
     for p in (ROOT / "src").rglob("*.py"):
-        if p != adapter:
+        if p not in (adapter, phase4a):
             assert not any(m.startswith("market_research_core") for m in _imports(p)), p
 
 

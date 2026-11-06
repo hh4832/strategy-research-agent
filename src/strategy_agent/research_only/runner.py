@@ -1,11 +1,13 @@
 """Research-only real-market runner (Phase 4-A): preflight + archive discipline.
 
-Execution against real TSM data is deliberately NOT implemented yet. The Core
-Phase 4-A snapshot adapter is being built by Codex; its API is not released,
-so nothing here guesses it. ``preflight`` decides, fail-closed, whether a run
-would be allowed; ``run`` only proceeds to Core once a Phase 4-A SHA and
-contract are pinned in the run config, and until that integration is written
-it stops with WAITING_FOR_CORE_ADAPTER.
+``preflight`` decides, fail-closed, whether a run would be allowed (governance
+only, no data). ``run`` then performs the NON-consuming data-contract checks
+(Core identity pin, Core cost profiles, cost-set consistency, metadata-only
+snapshot probe - see ``core_phase4a``) and only when all of them pass does it
+atomically consume the single authorization batch slot, load data through Core
+``load_native_tsm`` and execute every scenario with Core ``ExecutionEngine``.
+A failure after the slot is consumed is archived and reported; the slot is
+never released or reset.
 
 There is no ignore_gate / force_run / skip_* parameter anywhere in this module
 (tested). The formal market gates are read, never written.
@@ -16,6 +18,8 @@ RO02 config pins equal the authorization (built into the ResearchRequest)
 RO03 formal gates are exactly the expected NO-GO state: market NO_GO,
      TEMPORAL_SAFETY UNKNOWN, COST_APPROVAL FAIL, FORMAL_EXECUTION_ELIGIBILITY FAIL
 RO04 Core Phase 4-A SHA + delivery contract pinned (else WAITING_FOR_CORE_ADAPTER)
+RO05 installed Core is exactly the pinned Phase 4-A SHA with a clean tree (checked by ``run`` before consuming)
+CO07 Core research constants (slippage, CAT, TAF record) equal the accepted Agent cost set
 """
 from __future__ import annotations
 
@@ -37,7 +41,8 @@ from .costs import CostSet, CostSetError
 ROOT = Path(__file__).resolve().parents[3]
 EXPECTED_FORMAL = {"TEMPORAL_SAFETY": "UNKNOWN", "COST_APPROVAL": "FAIL", "FORMAL_EXECUTION_ELIGIBILITY": "FAIL"}
 CONFIG_KEYS = {"schema_version", "run_config_id", "version", "kind", "purpose", "authorization_id", "market", "dataset",
-               "strategy", "temporal_policy", "costs", "windows", "core", "sample", "archive", "provenance"}
+               "strategy", "temporal_policy", "costs", "windows", "core", "sample", "archive", "provenance",
+               "snapshot_binding", "core_costs"}
 
 
 def canonical_sha(obj: dict) -> str:
@@ -150,12 +155,181 @@ class ResearchOnlyRunner:
         gov["core"] = {"baseline_sha": core["baseline_sha"], "phase4a_sha": core.get("phase4a_sha")}
         return Preflight(status, b, gov)
 
-    def run(self, config_path: Path) -> dict:
-        """Preflight, then (only when READY) hand off to the Core Phase 4-A integration, which is not written yet."""
+    def _guard(self, cfg: dict) -> ResearchAuthorizationGuard:
+        market = json.loads(self.readiness_path.read_text(encoding="utf-8"))["markets"][cfg["market"]["market_id"]]
+        return ResearchAuthorizationGuard(ResearchAuthorizationBook(self.auth_path, self.approvers_path),
+                                          HoldoutBook(self.locks_path, self.approvers_path), market, self.uses_path,
+                                          clock=self.clock)
+
+    def data_checks(self, cfg: dict, *, snapshot_root: Path, core, core_costs, core_identity: dict) -> dict:
+        """Everything that can fail BEFORE the batch slot is consumed. Reads no OHLCV and no holdout bytes."""
+        from . import core_phase4a as P  # noqa: PLC0415
+        b: list = []
+        pin = cfg["core"]["phase4a_sha"]
+        if core_identity.get("core_git_sha") != pin or core_identity.get("core_tree_dirty"):
+            b.append(("RO05", f"installed Core {core_identity} != pinned {pin} (clean)"))
+        cc = cfg["core_costs"]
+        profiles = {}
+        try:
+            profiles = P.research_profiles(core_costs, sec_config=self.root / cc["sec_config_path"],
+                                           sec_sha=cc["sec_configuration_sha256"],
+                                           taf_record=self.root / cc["taf_record_path"], taf_sha=cc["taf_record_sha256"],
+                                           scenarios=list(cfg["costs"]["scenarios"] + cfg["costs"]["sensitivity"]))
+        except (ValueError, KeyError, OSError) as e:
+            b.append(("CO", f"Core build_tsm_research_profile refused: {e}"))
+        cost_set = CostSet(self.root / cfg["costs"]["scenario_set_path"], root=self.root)
+        taf = json.loads((self.root / cc["taf_record_path"]).read_text(encoding="utf-8"))
+        b += P.cost_set_consistency(cost_set, core_costs, taf, datetime.fromisoformat(cfg["windows"]["start"]).date())
+        auth = self._guard(cfg).book.get(cfg["authorization_id"])
+        rw, ho = auth["research_window"], auth["holdout"]
+        last = lambda iso: (datetime.fromisoformat(iso).date() - timedelta(days=1)).isoformat()  # noqa: E731
+        win = (datetime.fromisoformat(rw["start"]).date().isoformat(), last(rw["end"]))
+        hold = ((datetime.fromisoformat(ho["start"]).date().isoformat(), last(ho["end"])),)
+        dates = (datetime.fromisoformat(cfg["windows"]["warmup_start"]).date().isoformat(), last(cfg["windows"]["end"]))
+        probe = P.probe_snapshot(snapshot_root, P.SnapshotBinding.from_config(cfg), dates=dates, research_window=win,
+                                 holdout=hold)
+        b += probe.blockers
+        return {"blockers": b, "probe": probe, "snapshot_root": Path(snapshot_root), "profiles": profiles, "dates": dates, "research_window": win,
+                "holdout": hold}
+
+    def probe(self, config_path: Path, *, snapshot_root: Path, core_costs=None, core_native=None) -> dict:
+        """Preflight + every pre-consumption data-contract check. NEVER consumes the slot, never loads OHLCV."""
+        pf = self.preflight(config_path)
+        if core_costs is None or core_native is None:
+            from strategy_agent.adapters.mrc_phase4a import core_phase4a  # noqa: PLC0415
+            native_mod, costs_mod = core_phase4a()
+            core_costs, core_native = core_costs or costs_mod, core_native or native_mod
+        cfg, _ = self.load_config(config_path)
+        ident = core_native.core_code_identity()
+        dc = self.data_checks(cfg, snapshot_root=Path(snapshot_root), core=None, core_costs=core_costs,
+                              core_identity=ident)
+        blockers = pf.blockers + dc["blockers"]
+        return {"status": "COMPATIBLE_READY_TO_CONSUME" if not blockers else "BLOCKED_BEFORE_CONSUMPTION",
+                "slot_consumed": False, "preflight": pf.as_dict(), "core_identity": ident,
+                "blockers": [{"code": c, "message": m} for c, m in blockers], "probe": dc["probe"].as_dict(),
+                "profiles": {k: v.sha256 for k, v in dc["profiles"].items()}}
+
+    def run(self, config_path: Path, *, snapshot_root: Path | None = None, archive_root: Path | None = None,
+            git_commit: str | None = None, actor: str | None = None, core=None, core_costs=None,
+            core_native=None) -> dict:
+        """Preflight -> non-consuming data checks -> consume ONE slot -> Core load + execute -> immutable archive."""
         pf = self.preflight(config_path)
         if pf.status != "READY_FOR_CORE_INTEGRATION":
-            return {"executed": False, **pf.as_dict()}
-        raise NotImplementedError("Core Phase 4-A integration is written only after the delivery contract is read")
+            return {"executed": False, "slot_consumed": False, **pf.as_dict()}
+        if snapshot_root is None or archive_root is None or not git_commit or not actor:
+            raise ValueError("snapshot_root, archive_root, git_commit and actor are required to run")
+        if core is None:
+            from strategy_agent.adapters.mrc_adapter import _core  # noqa: PLC0415
+            core = _core()
+        if core_costs is None or core_native is None:
+            from strategy_agent.adapters.mrc_phase4a import core_phase4a  # noqa: PLC0415
+            native_mod, costs_mod = core_phase4a()
+            core_costs, core_native = core_costs or costs_mod, core_native or native_mod
+        cfg, _ = self.load_config(config_path)
+        ident = core_native.core_code_identity()
+        dc = self.data_checks(cfg, snapshot_root=Path(snapshot_root), core=core, core_costs=core_costs,
+                              core_identity=ident)
+        base = {"preflight": pf.as_dict(), "core_identity": ident, "probe": dc["probe"].as_dict()}
+        if dc["blockers"]:
+            return {"executed": False, "slot_consumed": False, "status": "BLOCKED_BEFORE_CONSUMPTION",
+                    "blockers": [{"code": c, "message": m} for c, m in dc["blockers"]], **base}
+
+        rid = run_id(self.clock(), git_commit)
+        guard = self._guard(cfg)
+        cost_set = CostSet(self.root / cfg["costs"]["scenario_set_path"], root=self.root)
+        req = self.request(cfg, cost_set)
+        d = guard.check(req)                                     # re-check immediately before the atomic reserve
+        if d.failures:
+            return {"executed": False, "slot_consumed": False, "status": "BLOCKED_BEFORE_CONSUMPTION",
+                    "blockers": [{"code": c, "message": m} for c, m in d.failures], **base}
+        use = guard.consume(req, run_id=rid, actor=actor)        # raises ConditionFailed (RA11) when used
+        out_dir = Path(archive_root) / rid
+        try:
+            return self._execute(cfg, rid, use, out_dir, dc, ident, base, core, core_costs, core_native)
+        except Exception as e:  # noqa: BLE001 - the slot stays consumed; record and stop
+            import traceback  # noqa: PLC0415
+            failure = {"status": "FAILED_AFTER_CONSUMPTION", "run_id": rid, "slot": use,
+                       "error": f"{type(e).__name__}: {e}", "code": getattr(e, "code", None),
+                       "traceback": traceback.format_exc(limit=5),
+                       "policy": "slot is NOT released; no retry; report to research lead"}
+            write_once(out_dir / "FAILURE.json", _dumps(failure))
+            return {"executed": False, "slot_consumed": True, **failure, **base}
+
+    def _execute(self, cfg, rid, use, out_dir, dc, ident, base, core, core_costs, core_native) -> dict:
+        from . import core_phase4a as P  # noqa: PLC0415
+        b = P.SnapshotBinding.from_config(cfg)
+        DW = core_native.DateWindow
+        loaded = core_native.load_native_tsm(
+            dc["snapshot_root"], manifest_relative_path=b.manifest_relative_path,
+            expected_manifest_sha256=b.manifest_sha256,
+            layout=core_native.ManifestLayout(**b.layout),
+            integrity_receipt=core_native.FileIntegrityReceipt(**b.integrity_receipt),
+            expected_receipt_sha256=b.integrity_receipt_sha256, symbol="TSM", dates=DW(*dc["dates"]),
+            research_window=DW(*dc["research_window"]), holdout=tuple(DW(*h) for h in dc["holdout"]))
+        spec = json.loads((self.root / cfg["strategy"]["spec_path"]).read_text(encoding="utf-8"))
+        frame = loaded.conservative_15m
+        batch = P.execute_batch(core, core_costs, frame=frame, core_sha=ident["core_git_sha"],
+                                profiles=dc["profiles"], spec=spec, parameters=dict(cfg["strategy"]["parameters"]),
+                                window_start=cfg["windows"]["start"], window_end=cfg["windows"]["end"],
+                                warmup_start=cfg["windows"]["warmup_start"], dataset=dict(cfg["dataset"]))
+        files: dict = {}
+        files["decisions.json"] = write_once(out_dir / "decisions.json", _dumps(batch["decisions"]))
+        scen_summary = {}
+        for name, sc in batch["scenarios"].items():
+            fills = sc["result"].fills
+            files[f"{name}/fills.csv"] = write_once(out_dir / name / "fills.csv", fills.to_csv(index=False).encode())
+            files[f"{name}/rejections.csv"] = write_once(out_dir / name / "rejections.csv",
+                                                         sc["result"].rejections.to_csv(index=False).encode())
+            files[f"{name}/metrics.json"] = write_once(out_dir / name / "metrics.json", _dumps(sc["metrics"]))
+            files[f"{name}/cost_diagnostics.json"] = write_once(out_dir / name / "cost_diagnostics.json",
+                                                                _dumps(sc["cost_diagnostics"]))
+            files[f"{name}/equity_curve.json"] = write_once(out_dir / name / "equity_curve.json",
+                                                            _dumps([dict(e) for e in sc["report"].equity_curve]))
+            files[f"{name}/m3a4_checks.json"] = write_once(out_dir / name / "m3a4_checks.json", _dumps(sc["m3a4_checks"]))
+            t = sc["cost_diagnostics"]["totals"]
+            m = sc["metrics"]
+            scen_summary[name] = {"profile_sha256": sc["profile_sha256"], "fills": int(len(fills)),
+                                  "rejections": int(len(sc["result"].rejections)),
+                                  "trades": m["trades"]["trade_count"],
+                                  "sample": ("INSUFFICIENT_SAMPLE" if m["trades"]["trade_count"] <
+                                             int(cfg["sample"]["min_trades"]) else "SAMPLE_OK"),
+                                  "cost_totals": {k: str(v) for k, v in t.items()}, "metrics_headline": {
+                                      k: m.get(k) for k in ("total_return", "gross_return_closed_trades",
+                                                            "cost_adjusted_net_return", "max_drawdown",
+                                                            "max_drawdown_duration_bars", "exposure", "costs",
+                                                            "fills", "rejections", "sessions") if k in m} | {
+                                      "net_pnl": m["trades"].get("net_pnl"),
+                                      "sample_status": m.get("sample", {}).get("status")}}
+        rejections = frame.execution_rejection_reason.value_counts()
+        summary = {
+            "status": "COMPLETED", "run_id": rid, "slot": use, "scope": "RESEARCH_ONLY_EXPLORATORY",
+            "not": ["formal strategy validation", "formal gate PASS", "holdout evaluation"],
+            "config": {"path": str(cfg.get("run_config_id")), "config_sha256": cfg["provenance"]["config_sha256"]},
+            "authorization_id": cfg["authorization_id"], "core_identity": ident,
+            "loader_provenance": loaded.provenance,
+            "counts": {"native_1m_rows": int(len(loaded.native)), "conservative_15m_bars": int(len(frame)),
+                       "signal_eligible": int(frame.signal_eligible.sum()),
+                       "buy_execution_eligible": int(frame.buy_execution_eligible.sum()),
+                       "execution_rejection_reasons": {str(k): int(v) for k, v in rejections.items() if k},
+                       "decisions_total": batch["decisions_total"], "decisions_in_window": len(batch["decisions"]),
+                       "orders": batch["orders"]},
+            "scenarios": scen_summary, "cat_rounding": P.rounding_masked(batch), "files_sha256": files}
+        write_once(out_dir / "MANIFEST.json", _dumps(summary))
+        return {"executed": True, "slot_consumed": True, **summary, **base}
+
+
+def _dumps(obj) -> bytes:
+    return (json.dumps(obj, indent=2, sort_keys=True, default=_jsonable, ensure_ascii=False) + "\n").encode()
+
+
+def _jsonable(v):
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    if hasattr(v, "item"):
+        return v.item()
+    if hasattr(v, "to_dict"):
+        return v.to_dict()
+    return str(v)
 
 
 # --------------------------------------------------------------- archiving

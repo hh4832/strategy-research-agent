@@ -109,6 +109,43 @@ jobs:
           path: ${{ runner.temp }}/m3b_archive
           retention-days: 30
 
+  phase4a-core:
+    # Phase 4-A research-only integration on Core e31c57b (TSM native adapter, SCOPED_GO, Core CI 42142535761).
+    # Phase 3 jobs above stay on 699e3ad. BENCHMARK_PASS is re-derived here for the new SHA before anything else.
+    runs-on: ubuntu-latest
+    env:
+      MRC_SHA: e31c57b6c9dd599d808516ce6664628bdc79319e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
+      - name: B01-B12 + G16 + G17 + G14b on Core e31c57b and BENCHMARK_PASS derived
+        run: |
+          python -m benchmark.harness.mrc_crosscheck --out "$RUNNER_TEMP/mrc"
+          python - <<'PY'
+          import json, os, pathlib
+          rec = json.loads(next(pathlib.Path(os.environ["RUNNER_TEMP"], "mrc").glob("mrc_*/crosscheck.json")).read_text())
+          assert rec["engine"]["kind"] == "REAL_CORE" and rec["engine"]["git_sha"] == os.environ["MRC_SHA"]
+          assert rec["verdict"] == "PASS" and rec["counts"]["PASS"] == 12
+          from strategy_agent.adapters import mrc_adapter as A
+          st = A.engine_benchmark_status(os.environ["MRC_SHA"], pathlib.Path(os.environ["RUNNER_TEMP"], "mrc"))
+          print(st)
+          assert st["status"] == "BENCHMARK_PASS"
+          PY
+      - run: pytest -q tests/test_phase4a_research_only.py tests/test_phase4a_core_integration.py tests/test_m1_core_compat.py tests/test_m1_adapter.py
+      - name: Repository preflight (governance only, no data, no slot)
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from strategy_agent.research_only.runner import ResearchOnlyRunner
+          pf = ResearchOnlyRunner().preflight(Path("configs/research_only/tsm_sma_5_20_smoke_2024_06_v1_1.json"))
+          print(pf.status, pf.blockers)
+          assert {c for c, _ in pf.blockers} <= {"RA02", "RA11"}, pf.blockers   # expiry / spent slot only
+          PY
+          git diff --exit-code -- registry governance
+
   append-only:
     # Governed logs (registry/, governance/) may only grow relative to the PR base.
     if: github.event_name == 'pull_request'

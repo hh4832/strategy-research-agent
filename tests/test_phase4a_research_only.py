@@ -150,12 +150,13 @@ def test_full_governance_then_waiting_for_core(tmp_path):
     assert runner.run(CFG)["executed"] is False
 
 
-def test_core_pinned_reaches_integration_point_but_never_guesses_api(tmp_path):
-    runner, _ = gov(tmp_path)
+def test_core_pinned_reaches_integration_point_and_needs_explicit_run_inputs(tmp_path):
+    runner, g = gov(tmp_path)
     p = cfg_copy(tmp_path, lambda c: c["core"].update(phase4a_sha="a" * 40, phase4a_contract_ref="https://x/contract"))
     assert runner.preflight(p).status == "READY_FOR_CORE_INTEGRATION"
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError):          # no snapshot / archive / actor => nothing is guessed, nothing consumed
         runner.run(p)
+    assert (g / "uses.jsonl").read_text() == ""
 
 
 # --------------------------------------------------------- RA rules (guard)

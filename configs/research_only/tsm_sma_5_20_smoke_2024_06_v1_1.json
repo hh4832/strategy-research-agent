@@ -1,0 +1,121 @@
+{
+  "schema_version": "1.0.0",
+  "run_config_id": "tsm_sma_5_20_smoke_2024_06",
+  "version": "1.1.0",
+  "kind": "REAL_RESEARCH_ONLY",
+  "purpose": "first real-data smoke test: prove the full backtest + archive path works on real TSM 1m data; NOT evidence that SMA works",
+  "authorization_id": "RA-IBKR_TSM-SMA520_SMOKE-0001",
+  "market": {
+    "market_id": "IBKR_TSM",
+    "symbol": "TSM",
+    "readiness_path": "governance/market_readiness.json"
+  },
+  "dataset": {
+    "dataset_id": "ibkr_tsm_1m_normalized",
+    "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+    "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28"
+  },
+  "strategy": {
+    "spec_path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+    "spec_file_sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.0",
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    }
+  },
+  "temporal_policy": {
+    "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+    "version": "1.0.0",
+    "source": "CORE_POLICY",
+    "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "scope": "RESEARCH_ONLY"
+  },
+  "costs": {
+    "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+    "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+    "scenarios": [
+      "BASE",
+      "LOW",
+      "STRESS"
+    ],
+    "sensitivity": [
+      "CAT_STRESS"
+    ]
+  },
+  "windows": {
+    "warmup_start": "2024-05-29T00:00:00-04:00",
+    "start": "2024-06-03T00:00:00-04:00",
+    "end": "2024-06-29T00:00:00-04:00",
+    "interval": "[start,end)"
+  },
+  "core": {
+    "repository": "hh4832/market-research-core",
+    "baseline_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+    "phase4a_sha": "e31c57b6c9dd599d808516ce6664628bdc79319e",
+    "phase4a_contract_ref": "https://github.com/hh4832/market-research-core/blob/e31c57b6c9dd599d808516ce6664628bdc79319e/docs/TSM_RESEARCH_ONLY_ADAPTER_CONTRACT.md",
+    "phase4a_ci_run": "42142535761",
+    "phase4a_review": "SCOPED_GO",
+    "status": "PINNED"
+  },
+  "sample": {
+    "min_trades": 30,
+    "below_min": "INSUFFICIENT_SAMPLE"
+  },
+  "archive": {
+    "drive_root": "MyDrive/Quant_Research/strategy-research-agent/",
+    "run_id_format": "YYYYMMDD_HHMMSS_<git_commit>",
+    "immutable": true
+  },
+  "provenance": {
+    "created_by": "claude-phase4a",
+    "created_at": "2026-11-06T18:00:00+08:00",
+    "supersedes": "tsm_sma_5_20_smoke_2024_06 v1.0.0 (config_sha256 7c7f53f4cd92dc2fbe789b2cf24341faf6803b530d1310f1d2bbbbd3f8cd087e)",
+    "config_sha256": "c4661042b3a13fbdd44eaf8a621d84d0ac8a209053a9b2e0219a30daa9b8f15d"
+  },
+  "core_costs": {
+    "sec_config_path": "configs/core_cost_profiles/ibkr_pro_fixed_tsm_research_base_v1.json",
+    "sec_config_file_sha256": "af4a29c0d42b13c89d96b794a165cdf5e658e69759e4d705c000e4cc13c37eb1",
+    "sec_configuration_sha256": "bb10abbbd0d1c004daf0cd1441006053d040dbc47e86ebb6f57871576f003f94",
+    "taf_record_path": "configs/research_only/core_phase4a/finra_taf_2024_v1.json",
+    "taf_record_sha256": "23aba5e2b82db84ad6efb9a4e059befb4f879f8c78ae8dbd918f2568063a2043",
+    "scenario_map": {
+      "BASE": [
+        "BASE",
+        "BASE"
+      ],
+      "LOW": [
+        "LOW",
+        "BASE"
+      ],
+      "STRESS": [
+        "STRESS",
+        "BASE"
+      ],
+      "CAT_STRESS": [
+        "BASE",
+        "STRESS"
+      ]
+    },
+    "scenario_map_meaning": "name -> [Core slippage_scenario, Core cat_scenario]"
+  },
+  "snapshot_binding": {
+    "source": "producer hh4832/ibkr-pipe@06359faf7ef4 src/ibkr_qc/final_gate.py (manifest schema_version 1.0.0); Drive folder 1KZYX8ODg5o8gss5LgBxjJEzaFvObuh_d",
+    "manifest_relative_path": "final_gate_manifest.json",
+    "manifest_sha256": null,
+    "layout": {
+      "snapshot_id": null,
+      "producer_sha": null,
+      "symbol": "/results/2/symbol",
+      "parquet_path": null,
+      "parquet_sha256": "/results/2/published_sha256",
+      "columns": null,
+      "arrow_schema": null
+    },
+    "integrity_receipt": null,
+    "integrity_receipt_sha256": null,
+    "diagnostic_parquet_relative_path": "tsm_normalized.parquet",
+    "null_means": "the existing manifest has no such field / no trusted value exists; never filled by guessing"
+  }
+}
