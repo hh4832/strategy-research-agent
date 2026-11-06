@@ -1,0 +1,137 @@
+{
+  "schema_version": "1.0.0",
+  "run_config_id": "tsm_sma_5_20_smoke_2024_06_dev_18350b3adba8e28a7e5e",
+  "version": "1.0.0",
+  "kind": "REAL_RESEARCH_ONLY",
+  "purpose": "first real-data smoke test: prove the full backtest + archive path works on real TSM 1m data; NOT evidence that SMA works",
+  "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+  "market": {
+    "market_id": "IBKR_TSM",
+    "symbol": "TSM",
+    "readiness_path": "governance/market_readiness.json"
+  },
+  "dataset": {
+    "dataset_id": "ibkr_tsm_1m_normalized",
+    "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+    "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae"
+  },
+  "strategy": {
+    "spec_path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+    "spec_file_sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.0",
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    }
+  },
+  "temporal_policy": {
+    "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+    "version": "1.0.0",
+    "source": "CORE_POLICY",
+    "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "scope": "RESEARCH_ONLY"
+  },
+  "costs": {
+    "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+    "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+    "scenarios": [
+      "BASE",
+      "LOW",
+      "STRESS"
+    ],
+    "sensitivity": [
+      "CAT_STRESS"
+    ]
+  },
+  "windows": {
+    "warmup_start": "2024-05-29T00:00:00-04:00",
+    "start": "2024-06-03T00:00:00-04:00",
+    "end": "2024-06-29T00:00:00-04:00",
+    "interval": "[start,end)"
+  },
+  "core": {
+    "repository": "hh4832/market-research-core",
+    "baseline_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+    "phase4a_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "phase4a_contract_ref": "https://github.com/hh4832/market-research-core/blob/b16179a7cc077c36046574769a32c367fa476cae/docs/TSM_DEVELOPMENT_SNAPSHOT_CONTRACT.md",
+    "phase4a_ci_run": null,
+    "phase4a_review": "PENDING_DERIVED_SNAPSHOT_AND_NEW_LEAD_AUTHORIZATION",
+    "status": "PINNED"
+  },
+  "sample": {
+    "min_trades": 30,
+    "below_min": "INSUFFICIENT_SAMPLE"
+  },
+  "archive": {
+    "drive_root": "MyDrive/Quant_Research/strategy-research-agent/",
+    "run_id_format": "YYYYMMDD_HHMMSS_<git_commit>",
+    "immutable": true
+  },
+  "provenance": {
+    "created_by": "codex-development-proposal-only",
+    "created_at": "2026-11-06T11:00:45.450778+00:00",
+    "supersedes": "old configuration preserved; new snapshot requires new signed authorization",
+    "config_sha256": "b6ac297faec9e289b422086b06eccd22d65afed5c38525a9c3eb6247e15bbfe9"
+  },
+  "core_costs": {
+    "sec_config_path": "configs/core_cost_profiles/ibkr_pro_fixed_tsm_research_base_v1.json",
+    "sec_config_file_sha256": "af4a29c0d42b13c89d96b794a165cdf5e658e69759e4d705c000e4cc13c37eb1",
+    "sec_configuration_sha256": "bb10abbbd0d1c004daf0cd1441006053d040dbc47e86ebb6f57871576f003f94",
+    "taf_record_path": "configs/research_only/core_phase4a/finra_taf_2024_v1.json",
+    "taf_record_sha256": "23aba5e2b82db84ad6efb9a4e059befb4f879f8c78ae8dbd918f2568063a2043",
+    "scenario_map": {
+      "BASE": [
+        "BASE",
+        "BASE"
+      ],
+      "LOW": [
+        "LOW",
+        "BASE"
+      ],
+      "STRESS": [
+        "STRESS",
+        "BASE"
+      ],
+      "CAT_STRESS": [
+        "BASE",
+        "STRESS"
+      ]
+    },
+    "scenario_map_meaning": "name -> [Core slippage_scenario, Core cat_scenario]"
+  },
+  "snapshot_binding": {
+    "manifest_relative_path": "manifest.json",
+    "layout": {
+      "snapshot_id": "/snapshot_id",
+      "producer_sha": "/producer_sha",
+      "symbol": "/symbol",
+      "parquet_path": "/parquet_path",
+      "parquet_sha256": "/parquet_sha256",
+      "columns": "/columns",
+      "arrow_schema": "/arrow_schema"
+    },
+    "integrity_receipt": {
+      "parquet_sha256": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452",
+      "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+      "stat": {
+        "device": 57,
+        "inode": 203,
+        "size": 458760,
+        "mtime_ns": 1793962786000000000,
+        "ctime_ns": 1793962786000000000
+      },
+      "verification_ref": "DERIVED_OUTPUT_INDEPENDENT_HASH:bbb3cb2e486c85093477303bcc41cd5600fee6f991577c54cd3d4440976bd2f5"
+    },
+    "integrity_receipt_sha256": "fdd7a4c67817b3b77ca3ed1cf32be09f8a06c1de19c32a0b1076bb1346e75cc4",
+    "snapshot_pin": {
+      "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+      "producer_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+      "lineage_sha256": "3455f2b3d39f4fd05dda7ca9fed472c9ff0bcbf345f89f177e78eccbe5fd92a4",
+      "start": "2024-05-29",
+      "end": "2024-06-28"
+    },
+    "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "diagnostic_parquet_relative_path": "tsm_development_1m.parquet"
+  }
+}
