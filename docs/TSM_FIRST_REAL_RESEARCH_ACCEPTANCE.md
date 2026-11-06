@@ -42,7 +42,22 @@ M2 規約（`M2_GOVERNANCE.md` §3、`holdout_admin.py` 檔頭）規定 `holdout
 
 以下一天後的 00:00 為終點，2026-10-16 這個交易日因此完整包含在 Holdout 內，不會因時區或收盤時間產生歧義。H03 確保開發窗口最晚只能在 holdout 起點結束（測試：剛好在 `2025-01-01T00:00:00-05:00` 結束允許，晚 1 秒就拒絕）。
 
-### 2.3 指令（在本分支的 clone 中執行）
+### 2.3 指令
+
+**最簡單的方式：Colab notebook**
+[`notebooks/Phase4A_Research_Lead_Signoff.ipynb`](https://colab.research.google.com/github/hh4832/strategy-research-agent/blob/feature/phase4a-tsm-research-only/notebooks/Phase4A_Research_Lead_Signoff.ipynb)
+
+它依序完成以下步驟：
+1. 匿名 clone，並確認程式碼與已審查的 `8933f94` 完全相同。
+2. 顯示將要簽核的內容。
+3. 要你手動把 `I_CONFIRM_I_AM_THE_RESEARCH_LEAD` 改成 True。
+4. 執行下面兩個指令。
+5. 驗證 preflight 只剩 RO04、formal gates 未變，並跑測試與 append-only 檢查。
+6. 用 Colab Secret `GITHUB_TOKEN` push；沒有 token 時改成下載檔案，再到 GitHub 網頁上傳。
+
+這個 notebook 不讀 TSM 資料，也不掛載 Drive。
+
+**手動方式**（在本分支的 clone 中執行）：
 
 ```bash
 pip install -e .
@@ -209,6 +224,10 @@ git push
 ## 9. 驗證
 
 - 新測試：`tests/test_phase4a_research_only.py`，36 passed。
+- **簽核後狀態已預先驗證**：在暫存 worktree 中依 notebook 執行兩個簽核並 commit 後，preflight = `WAITING_FOR_CORE_ADAPTER`（只剩 RO04）；全套件在有 Core 和無 Core 下都通過，append-only 也 PASS。為此調整了兩個原本把 lock book 寫死為空的 repo 狀態測試：
+  - `test_tsm_cost_assumptions.py::test_research_acceptance_never_upgrades_formal_gates`
+  - Phase 4-A 自己的兩個測試
+  - 調整後只接受兩種狀態：「空」，或「只含研究負責人簽核、邊界完全一致的那一筆」。
 - **調整一個既有的 Phase 3 測試**（`tests/test_m3b_notebook.py::test_n2_pin_…`，最小必要）：原本要求 notebook pin 與 HEAD 在 `src/`、`schemas/` 等路徑「完全沒有差異」，`governance/` 只准 `market_readiness.json` 變動。Phase 4-A 只新增檔案，第一次 CI 因此失敗。調整後的規則：
   - pin 當時存在的每個檔案都必須逐位元相同（不得 M/D/R/T）；
   - 新增檔案允許，但 pin 內的程式碼不得引用它們；

@@ -89,20 +89,46 @@ def guard_and_request(tmp: Path, **kw):
 
 # ------------------------------------------------------- repository state
 
-def test_repository_preflight_is_blocked_exactly_by_lock_authorization_and_core():
-    pf = ResearchOnlyRunner().preflight(CFG)
-    assert pf.status == "BLOCKED"
-    assert codes(pf) == {"H01", "RA01", "RO04"}
+def _repo_signed() -> tuple[bool, bool]:
+    lock = HoldoutBook(ROOT / "governance" / "holdout_locks.jsonl", ROOT / "governance" / "approvers.json") \
+        .for_dataset("ibkr_tsm_1m_normalized")
+    auth = ResearchAuthorizationBook(ROOT / "governance" / "research_authorizations.jsonl",
+                                     ROOT / "governance" / "approvers.json").get("RA-IBKR_TSM-SMA520_SMOKE-0001")
+    return lock is not None, auth is not None
+
+
+def test_repository_preflight_blocks_until_signed_then_waits_for_core():
+    """Valid in both repository states: before and after the research lead signs (Colab notebook)."""
+    lock, auth = _repo_signed()
+    pf = ResearchOnlyRunner(clock=lambda: NOW).preflight(CFG)
+    expected = {"RO04"} | ({"H01"} if not lock else set()) | ({"RA01"} if not auth else set())
+    assert codes(pf) == expected, pf.blockers
+    assert pf.status == ("WAITING_FOR_CORE_ADAPTER" if expected == {"RO04"} else "BLOCKED")
     assert pf.governance["formal"]["market_status"] == "NO_GO"
 
 
-def test_repository_governance_files_untouched_vs_baseline():
-    for f in ("governance/market_readiness.json", "governance/holdout_locks.jsonl", "governance/approvers.json"):
-        r = subprocess.run(["git", "show", f"8f3f6e13248fe36e7e64cc59ec7c93cecfc78263:{f}"], cwd=ROOT, capture_output=True)
+def test_repository_governance_only_grows_by_lead_signatures():
+    base = "8f3f6e13248fe36e7e64cc59ec7c93cecfc78263"
+    for f in ("governance/market_readiness.json", "governance/approvers.json"):
+        r = subprocess.run(["git", "show", f"{base}:{f}"], cwd=ROOT, capture_output=True)
         if r.returncode == 0:
             assert r.stdout == (ROOT / f).read_bytes(), f
-    assert (ROOT / "governance" / "holdout_locks.jsonl").read_bytes() == b""
-    assert (ROOT / "governance" / "research_authorizations.jsonl").read_bytes() == b""
+    locks = ChainedLog(ROOT / "governance" / "holdout_locks.jsonl").verify()
+    assert len(locks) <= 1
+    if locks:   # exactly the approved boundaries, signed by an allow-listed lead with an https reference
+        lk = HoldoutBook(ROOT / "governance" / "holdout_locks.jsonl", ROOT / "governance" / "approvers.json") \
+            .for_dataset("ibkr_tsm_1m_normalized")
+        assert lk.lock_id == "HOLDOUT-TSM-15M-v1"
+        assert (lk.holdout_start, lk.holdout_end) == tuple(datetime.fromisoformat(x) for x in HOLDOUT)
+    auths = ChainedLog(ROOT / "governance" / "research_authorizations.jsonl").verify()
+    assert len(auths) <= 1
+    if auths:
+        a = auths[0]
+        assert locks, "authorization signed before the holdout lock"
+        prop = json.loads(PROPOSAL.read_text())
+        for k in ("authorization_id", "dataset", "temporal_policy", "costs", "strategy", "research_window",
+                  "development_boundary", "holdout", "formal_gate_pin", "max_batches", "issued_at"):
+            assert a[k] == prop[k], k
 
 
 def test_proposal_is_unsigned_and_cannot_be_appended_as_is(tmp_path):
