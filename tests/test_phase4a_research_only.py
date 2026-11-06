@@ -120,15 +120,34 @@ def test_repository_governance_only_grows_by_lead_signatures():
             .for_dataset("ibkr_tsm_1m_normalized")
         assert lk.lock_id == "HOLDOUT-TSM-15M-v1"
         assert (lk.holdout_start, lk.holdout_end) == tuple(datetime.fromisoformat(x) for x in HOLDOUT)
+    # ChainedLog.verify() validates every record hash, sequence and predecessor link.
+    # There may be two research-lead approvals: the original SMOKE authorization
+    # and the separately signed immutable development-snapshot authorization.
     auths = ChainedLog(ROOT / "governance" / "research_authorizations.jsonl").verify()
-    assert len(auths) <= 1
+    expected = (
+        ("RA-IBKR_TSM-SMA520_SMOKE-0001", PROPOSAL),
+        ("RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+         ROOT / "governance/proposals/RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e.json"),
+    )
+    assert len(auths) <= len(expected), "unexpected governance authorization appended"
+    assert [a["authorization_id"] for a in auths] == [aid for aid, _ in expected[:len(auths)]]
     if auths:
-        a = auths[0]
         assert locks, "authorization signed before the holdout lock"
-        prop = json.loads(PROPOSAL.read_text())
+    approvers = set(json.loads((ROOT / "governance/approvers.json").read_text())["research_leads"])
+    for a, (aid, proposal_path) in zip(auths, expected):
+        assert a["action"] == "APPROVE"
+        assert a["authorization_id"] == aid
+        assert a["approved_by"] in approvers
+        assert a["approval_ref"].startswith("https://")
+        assert datetime.fromisoformat(a["approved_at"]).tzinfo is not None
+        prop = json.loads(proposal_path.read_text())
         for k in ("authorization_id", "dataset", "temporal_policy", "costs", "strategy", "research_window",
                   "development_boundary", "holdout", "formal_gate_pin", "max_batches", "issued_at"):
-            assert a[k] == prop[k], k
+            assert a[k] == prop[k], (aid, k)
+    if len(auths) == 2:
+        assert auths[0]["dataset"]["snapshot_id"] == "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
+        assert auths[1]["dataset"]["snapshot_id"] == "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+        assert auths[1]["max_batches"] == 1
 
 
 def test_proposal_is_unsigned_and_cannot_be_appended_as_is(tmp_path):
