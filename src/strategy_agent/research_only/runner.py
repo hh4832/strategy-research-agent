@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
+from zoneinfo import ZoneInfo
 
 from strategy_agent.governance.holdout import HoldoutBook, LockBookInvalid
 from strategy_agent.governance.research_authorization import (AuthorizationBookInvalid, ResearchAuthorizationBook,
@@ -37,6 +38,8 @@ from strategy_agent.governance.research_authorization import (AuthorizationBookI
 from strategy_agent.runner import parameter_issues
 
 from .costs import CostSet, CostSetError
+
+TAIPEI = ZoneInfo("Asia/Taipei")
 
 ROOT = Path(__file__).resolve().parents[3]
 EXPECTED_FORMAL = {"TEMPORAL_SAFETY": "UNKNOWN", "COST_APPROVAL": "FAIL", "FORMAL_EXECUTION_ELIGIBILITY": "FAIL"}
@@ -218,7 +221,7 @@ class ResearchOnlyRunner:
 
     def run(self, config_path: Path, *, snapshot_root: Path | None = None, archive_root: Path | None = None,
             git_commit: str | None = None, actor: str | None = None, core=None, core_costs=None,
-            core_native=None) -> dict:
+            core_native=None, run_context: dict | None = None) -> dict:
         """Preflight -> non-consuming data checks -> consume ONE slot -> Core load + execute -> immutable archive."""
         pf = self.preflight(config_path)
         if pf.status != "READY_FOR_CORE_INTEGRATION":
@@ -241,7 +244,8 @@ class ResearchOnlyRunner:
             return {"executed": False, "slot_consumed": False, "status": "BLOCKED_BEFORE_CONSUMPTION",
                     "blockers": [{"code": c, "message": m} for c, m in dc["blockers"]], **base}
 
-        rid = run_id(self.clock(), git_commit)
+        started_at = self.clock()
+        rid = run_id(started_at.astimezone(TAIPEI), git_commit)      # archive id in Asia/Taipei
         guard = self._guard(cfg)
         cost_set = CostSet(self.root / cfg["costs"]["scenario_set_path"], root=self.root)
         req = self.request(cfg, cost_set)
@@ -252,7 +256,8 @@ class ResearchOnlyRunner:
         use = guard.consume(req, run_id=rid, actor=actor)        # raises ConditionFailed (RA11) when used
         out_dir = Path(archive_root) / rid
         try:
-            return self._execute(cfg, rid, use, out_dir, dc, ident, base, core, core_costs, core_native)
+            return self._execute(cfg, rid, use, out_dir, dc, ident, base, core, core_costs, core_native,
+                                 run_context=run_context, started_at=started_at)
         except Exception as e:  # noqa: BLE001 - the slot stays consumed; record and stop
             import traceback  # noqa: PLC0415
             failure = {"status": "FAILED_AFTER_CONSUMPTION", "run_id": rid, "slot": use,
@@ -262,7 +267,9 @@ class ResearchOnlyRunner:
             write_once(out_dir / "FAILURE.json", _dumps(failure))
             return {"executed": False, "slot_consumed": True, **failure, **base}
 
-    def _execute(self, cfg, rid, use, out_dir, dc, ident, base, core, core_costs, core_native) -> dict:
+    def _execute(self, cfg, rid, use, out_dir, dc, ident, base, core, core_costs, core_native, *,
+                 run_context=None, started_at=None) -> dict:
+        from . import archive_contract as AC  # noqa: PLC0415
         from . import core_phase4a as P  # noqa: PLC0415
         b = P.SnapshotBinding.from_config(cfg)
         DW = core_native.DateWindow
@@ -272,57 +279,21 @@ class ResearchOnlyRunner:
             layout=core_native.ManifestLayout(**b.layout),
             integrity_receipt=core_native.FileIntegrityReceipt(**b.integrity_receipt),
             expected_receipt_sha256=b.integrity_receipt_sha256, symbol="TSM", dates=DW(*dc["dates"]),
-            research_window=DW(*dc["research_window"]), holdout=tuple(DW(*h) for h in dc["holdout"]), **P.native_snapshot_options(b))
+            research_window=DW(*dc["research_window"]), holdout=tuple(DW(*h) for h in dc["holdout"]),
+            **P.native_snapshot_options(b))
         spec = json.loads((self.root / cfg["strategy"]["spec_path"]).read_text(encoding="utf-8"))
-        frame = loaded.conservative_15m
-        batch = P.execute_batch(core, core_costs, frame=frame, core_sha=ident["core_git_sha"],
+        batch = P.execute_batch(core, core_costs, frame=loaded.conservative_15m, core_sha=ident["core_git_sha"],
                                 profiles=dc["profiles"], spec=spec, parameters=dict(cfg["strategy"]["parameters"]),
                                 window_start=cfg["windows"]["start"], window_end=cfg["windows"]["end"],
                                 warmup_start=cfg["windows"]["warmup_start"], dataset=dict(cfg["dataset"]))
-        files: dict = {}
-        files["decisions.json"] = write_once(out_dir / "decisions.json", _dumps(batch["decisions"]))
-        scen_summary = {}
-        for name, sc in batch["scenarios"].items():
-            fills = sc["result"].fills
-            files[f"{name}/fills.csv"] = write_once(out_dir / name / "fills.csv", fills.to_csv(index=False).encode())
-            files[f"{name}/rejections.csv"] = write_once(out_dir / name / "rejections.csv",
-                                                         sc["result"].rejections.to_csv(index=False).encode())
-            files[f"{name}/metrics.json"] = write_once(out_dir / name / "metrics.json", _dumps(sc["metrics"]))
-            files[f"{name}/cost_diagnostics.json"] = write_once(out_dir / name / "cost_diagnostics.json",
-                                                                _dumps(sc["cost_diagnostics"]))
-            files[f"{name}/equity_curve.json"] = write_once(out_dir / name / "equity_curve.json",
-                                                            _dumps([dict(e) for e in sc["report"].equity_curve]))
-            files[f"{name}/m3a4_checks.json"] = write_once(out_dir / name / "m3a4_checks.json", _dumps(sc["m3a4_checks"]))
-            t = sc["cost_diagnostics"]["totals"]
-            m = sc["metrics"]
-            scen_summary[name] = {"profile_sha256": sc["profile_sha256"], "fills": int(len(fills)),
-                                  "rejections": int(len(sc["result"].rejections)),
-                                  "trades": m["trades"]["trade_count"],
-                                  "sample": ("INSUFFICIENT_SAMPLE" if m["trades"]["trade_count"] <
-                                             int(cfg["sample"]["min_trades"]) else "SAMPLE_OK"),
-                                  "cost_totals": {k: str(v) for k, v in t.items()}, "metrics_headline": {
-                                      k: m.get(k) for k in ("total_return", "gross_return_closed_trades",
-                                                            "cost_adjusted_net_return", "max_drawdown",
-                                                            "max_drawdown_duration_bars", "exposure", "costs",
-                                                            "fills", "rejections", "sessions") if k in m} | {
-                                      "net_pnl": m["trades"].get("net_pnl"),
-                                      "sample_status": m.get("sample", {}).get("status")}}
-        rejections = frame.execution_rejection_reason.value_counts()
-        summary = {
-            "status": "COMPLETED", "run_id": rid, "slot": use, "scope": "RESEARCH_ONLY_EXPLORATORY",
-            "not": ["formal strategy validation", "formal gate PASS", "holdout evaluation"],
-            "config": {"path": str(cfg.get("run_config_id")), "config_sha256": cfg["provenance"]["config_sha256"]},
-            "authorization_id": cfg["authorization_id"], "core_identity": ident,
-            "loader_provenance": loaded.provenance,
-            "counts": {"native_1m_rows": int(len(loaded.native)), "conservative_15m_bars": int(len(frame)),
-                       "signal_eligible": int(frame.signal_eligible.sum()),
-                       "buy_execution_eligible": int(frame.buy_execution_eligible.sum()),
-                       "execution_rejection_reasons": {str(k): int(v) for k, v in rejections.items() if k},
-                       "decisions_total": batch["decisions_total"], "decisions_in_window": len(batch["decisions"]),
-                       "orders": batch["orders"]},
-            "scenarios": scen_summary, "cat_rounding": P.rounding_masked(batch), "files_sha256": files}
-        write_once(out_dir / "MANIFEST.json", _dumps(summary))
-        return {"executed": True, "slot_consumed": True, **summary, **base}
+        ctx = dict(run_context or {})
+        mpath = Path(dc["snapshot_root"]) / b.manifest_relative_path
+        ctx.setdefault("snapshot_manifest", json.loads(mpath.read_text(encoding="utf-8")))
+        summary = AC.write_contract_archive(
+            out_dir, write_once=write_once, cfg=cfg, run_id=rid, use=use, loaded=loaded, batch=batch,
+            core_identity=ident, holdout=dc["holdout"], context=ctx, cat_rounding=P.rounding_masked(batch),
+            started_at=started_at or self.clock())
+        return {"executed": True, "slot_consumed": True, "archive_dir": str(out_dir), **summary, **base}
 
 
 def _dumps(obj) -> bytes:

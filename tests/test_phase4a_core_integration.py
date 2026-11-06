@@ -161,7 +161,7 @@ def test_single_row_group_crossing_holdout_is_blocked_before_consumption(tmp_pat
     runner, g = gov(tmp_path)
     root, binding = make_snapshot(tmp_path, per_day_groups=False)
     out = run(runner, cfg_with(tmp_path, binding), root, tmp_path)
-    assert {b["code"] for b in out["blockers"]} == {"HOLDOUT_ROW_GROUP_OVERLAP"}
+    assert {b["code"] for b in out["blockers"]} - {"RO05"} == {"HOLDOUT_ROW_GROUP_OVERLAP"}   # RO05 iff Core != e31c57b
     assert out["slot_consumed"] is False and (g / "uses.jsonl").read_text() == ""
     # Core itself agrees (independent enforcement inside load_native_tsm)
     b = binding
