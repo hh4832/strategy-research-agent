@@ -325,7 +325,7 @@ def test_15_registry_and_archives_are_never_overwritten(env):
     d = replay_request(env["src"]); d["request_id"] = "RR-COLLISION-TEST"
     t2 = o2.submit(d, actor="hh4832")["task_id"]
     o2.approve(t2, approver="hh4832", approval_ref=URL)
-    taken = env["tmp"] / "out/tasks" / f"{fz.t:%Y%m%d_%H%M%S}_{o2.code['git_sha'][:7]}"
+    taken = env["tmp"] / "out/tasks" / f"{fz.t:%Y%m%d_%H%M%S}_{o2.code['git_sha'][:7]}_{t2}"
     taken.mkdir(parents=True)
     with pytest.raises(FileExistsError):
         o2.dispatch(t2)
@@ -339,6 +339,37 @@ def test_15_registry_and_archives_are_never_overwritten(env):
     log.write_text("\n".join(lines) + "\n")
     with pytest.raises(ChainError):
         TaskLog(log, env["clock"]).records()
+
+
+
+def test_15b_two_distinct_tasks_archived_same_second_have_distinct_paths(env):
+    """Different requests may complete in one second; neither may strand the other in EVALUATED."""
+    class Frozen:
+        t = datetime(2026, 11, 7, 13, 2, tzinfo=TPE)
+
+        def __call__(self):
+            return self.t
+
+    clock = Frozen()
+    o = Orchestrator(env["tmp"] / "same_second", env["tmp"] / "same_second_outputs",
+                     clock=clock, governance_root=env["gov"], source_archive_root=env["src"])
+    paths = []
+    for i in range(2):
+        doc = replay_request(env["src"])
+        doc["request_id"] = f"RR-SAME-SECOND-{i}"
+        tid = o.submit(doc, actor="hh4832")["task_id"]
+        o.approve(tid, approver="hh4832", approval_ref=URL)
+        assert o.dispatch(tid)["state"] == "ARCHIVED"
+        record = next(e for e in o.log.get(tid).events if e["to"] == "ARCHIVED")
+        archive_dir = Path(record["data"]["task_archive"])
+        assert archive_dir.is_dir()
+        assert tid in archive_dir.name
+        assert set(p.name for p in archive_dir.iterdir()) == set(ARCHIVE_FILES)
+        paths.append(archive_dir)
+    assert paths[0] != paths[1]
+    assert paths[0].parent == paths[1].parent
+    assert o.recover() == []
+
 
 
 def test_16_17_never_calls_the_real_runner_core_or_a_broker(env):
