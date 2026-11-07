@@ -1,0 +1,79 @@
+{
+  "files_sha256": {
+    "config.json": "94ae8e765c2a968251318a0f7c7d43ad5e5fd6b703bc2cb3e3eb002f726d9a1c",
+    "config_canonical.json": "3b354a90e59cd65b22eff43b350568159f7db89c6e5d2c6e07b9415c5c0c44ad",
+    "cost_breakdown.csv": "d28ca1e227373efaafdf6edbd4f056a5755c1da4e9e083054a66331c3278d052",
+    "dataset_manifest.json": "7f88fb3fdecd4e98ee745c156a92ee896b161ae98b3399f377c13ede35b1722f",
+    "decisions.csv": "34b2b537ab95270fc4933aa713b233b8e200cb054aca941f5f29019fcd7d26cd",
+    "equity_curve.csv": "d7cedbadf223ce8bb69f8b5e5b52ae56e51ed76ea0144b16daadd01c9d632706",
+    "execution_diagnostics.json": "d446f4ad51e5be285bf2ab0eb59e6f41ab9effa57ba7a5cc5eecf520abf84733",
+    "fills.csv": "96334c899939cd9abc48ef1728ef57920e38d010bd6aacffb2c7e8c9dc8d17a0",
+    "metrics.json": "2b5a386a3b8071cf6be055eba5cbd3e89725ea9079403dd8d688887c6b2c75b3",
+    "rejected_orders.csv": "a6b9c45ba26ecbf30fb4b6da5009352548319b4e0cd29ab6354ea87df719aa7f",
+    "research_report.md": "b3390249476a203916c7682a276baeb5afbd4556431d4f08f824c2ace8392994",
+    "run_info.txt": "110d30d73e3820e3a36dd91028a5e1b5b296c585343afa072a52dd6006445e2d",
+    "trades.csv": "07c44aca000f51b2d69289e467935450b53def358971b8cc2b3c109d2197f0d6"
+  },
+  "not": [
+    "formal strategy validation",
+    "Formal Market Eligibility (gate stays NO_GO)",
+    "out-of-sample, cross-year or cross-regime robustness",
+    "holdout evaluation",
+    "family promotion / FROZEN / deployment",
+    "account-verified (BROKER_ACTUAL) costs"
+  ],
+  "run_id": "20261106_224000_0123456",
+  "run_info": {
+    "agent_checkout_clean": true,
+    "agent_git_sha": "0123456789abcdef0123456789abcdef01234567",
+    "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+    "authorization_record_sha256": "3eaf77611c411e0969ea83f9191147ee735465396fa48aadecabbff0d5c5e201",
+    "authorization_use": {
+      "actor": "hh4832",
+      "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+      "prev_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "record_sha256": "658e05a895e416e3cdb3bf8cb1be6dadf3defdb44062a0af72847ccea5b9c99b",
+      "reserved_at": "2026-11-06T22:40:00+08:00",
+      "run_id": "20261106_224000_0123456",
+      "scenarios": [
+        "BASE",
+        "LOW",
+        "STRESS",
+        "CAT_STRESS"
+      ],
+      "seq": 0
+    },
+    "broker_api_called": false,
+    "canonical_config_path": "/tmp/tmp1vlqxda9/canonical.json",
+    "canonical_config_sha256": "76c8b41177a58cc0e4951461f30b1816c04e7f8f332f79ec95c92287752ecba1",
+    "core_git_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "core_tree_dirty": false,
+    "cost_profile_sha256": {
+      "BASE": "ea2cb1932ba83eadcdc12720a56d7404d30686a03c6fe6ce10482cceca63c529",
+      "CAT_STRESS": "bd42c2661b3bf6dcf1b7d9f68b51762af2682ff13035384a49a340b1d574cbfc",
+      "LOW": "4111a7d0798162ff2c0cb6a8fd7f4e15f59d8f830e70f04da7b41e660efb101b",
+      "STRESS": "80c00d97c8dc333ba7d39e54782e3af123cc09a46ca5703331faef82e105c401"
+    },
+    "execution_finished_at_asia_taipei": "2026-11-07T08:39:11.372189+08:00",
+    "execution_started_at_asia_taipei": "2026-11-06T22:40:00+08:00",
+    "formal_market_status": "NO_GO (unchanged)",
+    "holdout_accessed": false,
+    "integrity_receipt_sha256": "0b7ff3749bb01d4464fc9fc5f686e6d7988597519691961efa3e9321f1d0b242",
+    "integrity_verification_ref": "DEVELOPMENT_RECEIPT_RENEWAL:28e4adf1ffd03b2f16f737105474aa6af845badf00dfcbb394ac1705badc38e0",
+    "lineage_sha256": "6f5884dedf578971394290e98e6288ef16b0318d70e5e3d6a713b1af05f3140f",
+    "manifest_sha256": "90bba07364ac93a75d9efdefdd6a9dfd40840c9780d774f65ade3722a91ab288",
+    "notebook": "SYNTHETIC_FIXTURE",
+    "parquet_sha256": "785161e81993df77f25c816a97ccb91f97ebfb3d76988b74b49d93e49ac1fbca",
+    "producer_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "run_id": "20261106_224000_0123456",
+    "scope": "RESEARCH_ONLY_EXPLORATORY",
+    "session_config_difference": "snapshot_binding.integrity_receipt + integrity_receipt_sha256 (Core renew_development_receipt; verification_ref DEVELOPMENT_RECEIPT_RENEWAL:28e4adf1ffd03b2f16f737105474aa6af845badf00dfcbb394ac1705badc38e0)",
+    "session_config_sha256": "27389705d07e7d8f9d54e61ba44d1c223775353aa09c0035fe702d21007ca22c",
+    "snapshot_id": "TSM_DEV_1M_20240529_20240628_529b6b7c5c6ff616a618",
+    "strategy": "sma_crossover_tsm_15m_5_20 0.1.0 {'fast': 5, 'slow': 20}",
+    "temporal_policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "window": "warm-up 2024-05-29T00:00:00-04:00; [2024-06-03T00:00:00-04:00, 2024-06-29T00:00:00-04:00)"
+  },
+  "scope": "RESEARCH_ONLY_EXPLORATORY",
+  "status": "COMPLETED"
+}

@@ -1,0 +1,1093 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "SYNTHETIC_FIXTURE",
+  "source": {
+    "run_id": "SYNTHETIC_FIXTURE_positive_short_run",
+    "archive_path": "SYNTHETIC_FIXTURE_NO_REAL_ARCHIVE",
+    "commit_sha": "1111111111111111111111111111111111111111",
+    "core_sha": "2222222222222222222222222222222222222222",
+    "dataset_snapshot": "SYNTHETIC_FIXTURE_snapshot",
+    "manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "strategy_id": "SYNTHETIC_FIXTURE_strategy",
+    "parameter_family": "SYNTHETIC_FIXTURE_family",
+    "timeframe": "EVENT_DRIVEN",
+    "sample_period": {
+      "start": "2024-01-01T00:00:00+00:00",
+      "end": "2024-02-05T00:00:00+00:00",
+      "timezone": "America/New_York"
+    },
+    "currency": "USD"
+  },
+  "initial_capital": 100000,
+  "equity_sampling": "IRREGULAR",
+  "sample_role": "IN_SAMPLE",
+  "holdout": {
+    "status": "AVAILABLE",
+    "value": {
+      "status": "NOT_ACCESSED",
+      "lock_id": "SYNTHETIC_FIXTURE_lock"
+    }
+  },
+  "trades": {
+    "status": "AVAILABLE",
+    "value": [
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_0",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-02T10:00:00+00:00",
+        "exit_ts": "2024-01-02T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_1",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-03T10:00:00+00:00",
+        "exit_ts": "2024-01-03T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_2",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-04T10:00:00+00:00",
+        "exit_ts": "2024-01-04T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_3",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-05T10:00:00+00:00",
+        "exit_ts": "2024-01-05T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_4",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-06T10:00:00+00:00",
+        "exit_ts": "2024-01-06T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_5",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-07T10:00:00+00:00",
+        "exit_ts": "2024-01-07T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_6",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-08T10:00:00+00:00",
+        "exit_ts": "2024-01-08T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_7",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-09T10:00:00+00:00",
+        "exit_ts": "2024-01-09T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_8",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-10T10:00:00+00:00",
+        "exit_ts": "2024-01-10T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_9",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-11T10:00:00+00:00",
+        "exit_ts": "2024-01-11T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_10",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-12T10:00:00+00:00",
+        "exit_ts": "2024-01-12T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_11",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-13T10:00:00+00:00",
+        "exit_ts": "2024-01-13T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_12",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-14T10:00:00+00:00",
+        "exit_ts": "2024-01-14T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_13",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-15T10:00:00+00:00",
+        "exit_ts": "2024-01-15T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_14",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-16T10:00:00+00:00",
+        "exit_ts": "2024-01-16T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_15",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-17T10:00:00+00:00",
+        "exit_ts": "2024-01-17T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_16",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-18T10:00:00+00:00",
+        "exit_ts": "2024-01-18T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_17",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-19T10:00:00+00:00",
+        "exit_ts": "2024-01-19T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_18",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-20T10:00:00+00:00",
+        "exit_ts": "2024-01-20T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_19",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-21T10:00:00+00:00",
+        "exit_ts": "2024-01-21T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_20",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-22T10:00:00+00:00",
+        "exit_ts": "2024-01-22T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_21",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-23T10:00:00+00:00",
+        "exit_ts": "2024-01-23T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_22",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-24T10:00:00+00:00",
+        "exit_ts": "2024-01-24T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_23",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-25T10:00:00+00:00",
+        "exit_ts": "2024-01-25T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_24",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-26T10:00:00+00:00",
+        "exit_ts": "2024-01-26T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_25",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-27T10:00:00+00:00",
+        "exit_ts": "2024-01-27T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_26",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-28T10:00:00+00:00",
+        "exit_ts": "2024-01-28T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_27",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-29T10:00:00+00:00",
+        "exit_ts": "2024-01-29T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_28",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-30T10:00:00+00:00",
+        "exit_ts": "2024-01-30T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_29",
+        "symbol": "TSM",
+        "entry_ts": "2024-01-31T10:00:00+00:00",
+        "exit_ts": "2024-01-31T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_30",
+        "symbol": "TSM",
+        "entry_ts": "2024-02-01T10:00:00+00:00",
+        "exit_ts": "2024-02-01T11:00:00+00:00",
+        "net_pnl": 10,
+        "gross_pnl": 12,
+        "status": "VALID"
+      },
+      {
+        "trade_id": "SYNTHETIC_FIXTURE_trade_31",
+        "symbol": "TSM",
+        "entry_ts": "2024-02-02T10:00:00+00:00",
+        "exit_ts": "2024-02-02T11:00:00+00:00",
+        "net_pnl": -5,
+        "gross_pnl": -3,
+        "status": "VALID"
+      }
+    ]
+  },
+  "fills": {
+    "status": "AVAILABLE",
+    "value": [
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_0_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-02T10:00:00+00:00",
+        "signal_available_at": "2024-01-02T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_0_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-02T11:00:00+00:00",
+        "signal_available_at": "2024-01-02T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_1_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-03T10:00:00+00:00",
+        "signal_available_at": "2024-01-03T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_1_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-03T11:00:00+00:00",
+        "signal_available_at": "2024-01-03T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_2_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-04T10:00:00+00:00",
+        "signal_available_at": "2024-01-04T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_2_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-04T11:00:00+00:00",
+        "signal_available_at": "2024-01-04T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_3_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-05T10:00:00+00:00",
+        "signal_available_at": "2024-01-05T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_3_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-05T11:00:00+00:00",
+        "signal_available_at": "2024-01-05T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_4_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-06T10:00:00+00:00",
+        "signal_available_at": "2024-01-06T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_4_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-06T11:00:00+00:00",
+        "signal_available_at": "2024-01-06T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_5_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-07T10:00:00+00:00",
+        "signal_available_at": "2024-01-07T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_5_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-07T11:00:00+00:00",
+        "signal_available_at": "2024-01-07T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_6_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-08T10:00:00+00:00",
+        "signal_available_at": "2024-01-08T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_6_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-08T11:00:00+00:00",
+        "signal_available_at": "2024-01-08T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_7_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-09T10:00:00+00:00",
+        "signal_available_at": "2024-01-09T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_7_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-09T11:00:00+00:00",
+        "signal_available_at": "2024-01-09T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_8_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-10T10:00:00+00:00",
+        "signal_available_at": "2024-01-10T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_8_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-10T11:00:00+00:00",
+        "signal_available_at": "2024-01-10T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_9_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-11T10:00:00+00:00",
+        "signal_available_at": "2024-01-11T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_9_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-11T11:00:00+00:00",
+        "signal_available_at": "2024-01-11T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_10_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-12T10:00:00+00:00",
+        "signal_available_at": "2024-01-12T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_10_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-12T11:00:00+00:00",
+        "signal_available_at": "2024-01-12T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_11_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-13T10:00:00+00:00",
+        "signal_available_at": "2024-01-13T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_11_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-13T11:00:00+00:00",
+        "signal_available_at": "2024-01-13T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_12_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-14T10:00:00+00:00",
+        "signal_available_at": "2024-01-14T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_12_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-14T11:00:00+00:00",
+        "signal_available_at": "2024-01-14T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_13_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-15T10:00:00+00:00",
+        "signal_available_at": "2024-01-15T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_13_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-15T11:00:00+00:00",
+        "signal_available_at": "2024-01-15T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_14_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-16T10:00:00+00:00",
+        "signal_available_at": "2024-01-16T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_14_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-16T11:00:00+00:00",
+        "signal_available_at": "2024-01-16T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_15_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-17T10:00:00+00:00",
+        "signal_available_at": "2024-01-17T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_15_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-17T11:00:00+00:00",
+        "signal_available_at": "2024-01-17T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_16_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-18T10:00:00+00:00",
+        "signal_available_at": "2024-01-18T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_16_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-18T11:00:00+00:00",
+        "signal_available_at": "2024-01-18T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_17_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-19T10:00:00+00:00",
+        "signal_available_at": "2024-01-19T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_17_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-19T11:00:00+00:00",
+        "signal_available_at": "2024-01-19T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_18_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-20T10:00:00+00:00",
+        "signal_available_at": "2024-01-20T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_18_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-20T11:00:00+00:00",
+        "signal_available_at": "2024-01-20T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_19_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-21T10:00:00+00:00",
+        "signal_available_at": "2024-01-21T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_19_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-21T11:00:00+00:00",
+        "signal_available_at": "2024-01-21T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_20_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-22T10:00:00+00:00",
+        "signal_available_at": "2024-01-22T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_20_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-22T11:00:00+00:00",
+        "signal_available_at": "2024-01-22T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_21_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-23T10:00:00+00:00",
+        "signal_available_at": "2024-01-23T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_21_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-23T11:00:00+00:00",
+        "signal_available_at": "2024-01-23T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_22_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-24T10:00:00+00:00",
+        "signal_available_at": "2024-01-24T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_22_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-24T11:00:00+00:00",
+        "signal_available_at": "2024-01-24T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_23_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-25T10:00:00+00:00",
+        "signal_available_at": "2024-01-25T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_23_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-25T11:00:00+00:00",
+        "signal_available_at": "2024-01-25T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_24_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-26T10:00:00+00:00",
+        "signal_available_at": "2024-01-26T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_24_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-26T11:00:00+00:00",
+        "signal_available_at": "2024-01-26T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_25_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-27T10:00:00+00:00",
+        "signal_available_at": "2024-01-27T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_25_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-27T11:00:00+00:00",
+        "signal_available_at": "2024-01-27T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_26_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-28T10:00:00+00:00",
+        "signal_available_at": "2024-01-28T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_26_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-28T11:00:00+00:00",
+        "signal_available_at": "2024-01-28T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_27_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-29T10:00:00+00:00",
+        "signal_available_at": "2024-01-29T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_27_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-29T11:00:00+00:00",
+        "signal_available_at": "2024-01-29T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_28_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-30T10:00:00+00:00",
+        "signal_available_at": "2024-01-30T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_28_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-30T11:00:00+00:00",
+        "signal_available_at": "2024-01-30T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_29_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-31T10:00:00+00:00",
+        "signal_available_at": "2024-01-31T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_29_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-01-31T11:00:00+00:00",
+        "signal_available_at": "2024-01-31T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_30_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-02-01T10:00:00+00:00",
+        "signal_available_at": "2024-02-01T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_30_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-02-01T11:00:00+00:00",
+        "signal_available_at": "2024-02-01T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_31_0",
+        "symbol": "TSM",
+        "exec_ts": "2024-02-02T10:00:00+00:00",
+        "signal_available_at": "2024-02-02T09:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      },
+      {
+        "fill_id": "SYNTHETIC_FIXTURE_fill_31_1",
+        "symbol": "TSM",
+        "exec_ts": "2024-02-02T11:00:00+00:00",
+        "signal_available_at": "2024-02-02T10:59:00+00:00",
+        "qty": 1,
+        "fill_price": 1000,
+        "notional": 1000
+      }
+    ]
+  },
+  "equity_curve": {
+    "status": "AVAILABLE",
+    "value": [
+      {
+        "timestamp": "2024-01-01T10:00:00+00:00",
+        "equity": 100000
+      },
+      {
+        "timestamp": "2024-01-02T11:00:00+00:00",
+        "equity": 100010
+      },
+      {
+        "timestamp": "2024-01-03T11:00:00+00:00",
+        "equity": 100005
+      },
+      {
+        "timestamp": "2024-01-04T11:00:00+00:00",
+        "equity": 100015
+      },
+      {
+        "timestamp": "2024-01-05T11:00:00+00:00",
+        "equity": 100010
+      },
+      {
+        "timestamp": "2024-01-06T11:00:00+00:00",
+        "equity": 100020
+      },
+      {
+        "timestamp": "2024-01-07T11:00:00+00:00",
+        "equity": 100015
+      },
+      {
+        "timestamp": "2024-01-08T11:00:00+00:00",
+        "equity": 100025
+      },
+      {
+        "timestamp": "2024-01-09T11:00:00+00:00",
+        "equity": 100020
+      },
+      {
+        "timestamp": "2024-01-10T11:00:00+00:00",
+        "equity": 100030
+      },
+      {
+        "timestamp": "2024-01-11T11:00:00+00:00",
+        "equity": 100025
+      },
+      {
+        "timestamp": "2024-01-12T11:00:00+00:00",
+        "equity": 100035
+      },
+      {
+        "timestamp": "2024-01-13T11:00:00+00:00",
+        "equity": 100030
+      },
+      {
+        "timestamp": "2024-01-14T11:00:00+00:00",
+        "equity": 100040
+      },
+      {
+        "timestamp": "2024-01-15T11:00:00+00:00",
+        "equity": 100035
+      },
+      {
+        "timestamp": "2024-01-16T11:00:00+00:00",
+        "equity": 100045
+      },
+      {
+        "timestamp": "2024-01-17T11:00:00+00:00",
+        "equity": 100040
+      },
+      {
+        "timestamp": "2024-01-18T11:00:00+00:00",
+        "equity": 100050
+      },
+      {
+        "timestamp": "2024-01-19T11:00:00+00:00",
+        "equity": 100045
+      },
+      {
+        "timestamp": "2024-01-20T11:00:00+00:00",
+        "equity": 100055
+      },
+      {
+        "timestamp": "2024-01-21T11:00:00+00:00",
+        "equity": 100050
+      },
+      {
+        "timestamp": "2024-01-22T11:00:00+00:00",
+        "equity": 100060
+      },
+      {
+        "timestamp": "2024-01-23T11:00:00+00:00",
+        "equity": 100055
+      },
+      {
+        "timestamp": "2024-01-24T11:00:00+00:00",
+        "equity": 100065
+      },
+      {
+        "timestamp": "2024-01-25T11:00:00+00:00",
+        "equity": 100060
+      },
+      {
+        "timestamp": "2024-01-26T11:00:00+00:00",
+        "equity": 100070
+      },
+      {
+        "timestamp": "2024-01-27T11:00:00+00:00",
+        "equity": 100065
+      },
+      {
+        "timestamp": "2024-01-28T11:00:00+00:00",
+        "equity": 100075
+      },
+      {
+        "timestamp": "2024-01-29T11:00:00+00:00",
+        "equity": 100070
+      },
+      {
+        "timestamp": "2024-01-30T11:00:00+00:00",
+        "equity": 100080
+      },
+      {
+        "timestamp": "2024-01-31T11:00:00+00:00",
+        "equity": 100075
+      },
+      {
+        "timestamp": "2024-02-01T11:00:00+00:00",
+        "equity": 100085
+      },
+      {
+        "timestamp": "2024-02-02T11:00:00+00:00",
+        "equity": 100080
+      }
+    ]
+  },
+  "cost_breakdown": {
+    "status": "AVAILABLE",
+    "value": {
+      "explicit_total": 64,
+      "components": {
+        "commission": 32,
+        "regulatory": 32
+      },
+      "slippage_accounting": "EMBEDDED_IN_PRICES",
+      "slippage_cost": 3
+    }
+  },
+  "rejections": {
+    "status": "AVAILABLE",
+    "value": []
+  },
+  "execution_diagnostics": {
+    "status": "AVAILABLE",
+    "value": {
+      "status": "PASS",
+      "orders_submitted": 64,
+      "lookahead_checked": true,
+      "lookahead_violations": 0,
+      "exposure": 0.5
+    }
+  },
+  "data_quality": {
+    "status": "AVAILABLE",
+    "value": {
+      "status": "PASS",
+      "evidence_ref": "SYNTHETIC_FIXTURE_known_complete"
+    }
+  },
+  "metrics": {
+    "status": "AVAILABLE",
+    "value": {
+      "trades": {
+        "trade_count": 32,
+        "net_pnl": 80
+      },
+      "total_return": 0.0008,
+      "cost_adjusted_net_return": 0.0008
+    }
+  },
+  "budget_consumption": {
+    "status": "AVAILABLE",
+    "value": {
+      "batches_consumed": 0,
+      "authorization_id": "SYNTHETIC_FIXTURE_NO_AUTHORIZATION"
+    }
+  }
+}

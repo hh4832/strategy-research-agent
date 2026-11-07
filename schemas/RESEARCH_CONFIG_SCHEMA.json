@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hh4832/strategy-research-agent/schemas/RESEARCH_CONFIG_SCHEMA.json",
+  "title": "Research configuration (M3-B.2)",
+  "description": "One reviewed research question: which pinned strategy spec, parameters, data snapshot, temporal policy reference, cost scenarios, windows, holdout and output. Changing anything (including parameters) means a new config file with a new version and sha256. Semantic rules RC01-RC12 are enforced by strategy_agent.research.config.validate_config.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "config_id", "version", "kind", "market", "instrument", "dataset", "timeframe",
+               "strategy", "parameters", "temporal_policy", "costs", "windows", "holdout", "capital",
+               "position_sizing", "risk_limits", "output", "provenance"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "config_id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "kind": {"enum": ["SYNTHETIC", "REAL_MARKET"]},
+    "market": {
+      "type": "object", "additionalProperties": false, "required": ["market_id", "gate_version"],
+      "properties": {
+        "market_id": {"type": "string"},
+        "gate_version": {"type": ["string", "null"], "description": "governance/market_readiness.json gate_version this config was reviewed against (REAL_MARKET)"}
+      }
+    },
+    "instrument": {
+      "type": "object", "additionalProperties": false, "required": ["symbol", "venue", "currency"],
+      "properties": {"symbol": {"type": "string"}, "venue": {"type": "string"}, "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}}
+    },
+    "dataset": {
+      "type": "object", "additionalProperties": false, "required": ["dataset_id", "snapshot_id", "producer_commit_sha"],
+      "properties": {"dataset_id": {"type": "string"}, "snapshot_id": {"type": "string"}, "producer_commit_sha": {"type": "string"}}
+    },
+    "timeframe": {"type": "string", "pattern": "^[0-9]+m$"},
+    "strategy": {
+      "type": "object", "additionalProperties": false, "required": ["spec_path", "spec_file_sha256", "strategy_id", "version"],
+      "properties": {
+        "spec_path": {"type": "string", "description": "repository-relative path of the base strategy spec"},
+        "spec_file_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "strategy_id": {"type": "string"},
+        "version": {"type": "string"}
+      }
+    },
+    "parameters": {"type": "object", "minProperties": 1, "additionalProperties": {"type": ["integer", "number"]}},
+    "temporal_policy": {
+      "type": "object", "additionalProperties": false, "required": ["policy_id", "version", "status", "source", "evidence_ref"],
+      "description": "Reference only. Core enforces temporal rules; the Agent stores and cross-checks the policy id, version and evidence.",
+      "properties": {
+        "policy_id": {"type": "string"},
+        "version": {"type": "string"},
+        "status": {"enum": ["UNKNOWN", "PENDING", "ACCEPTED", "FIXTURE_DEFINITION", "RESEARCH_SIMULATION"]},
+        "source": {"enum": ["CORE_GATE", "SYNTHETIC_FIXTURE", "CORE_POLICY"]},
+        "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$", "description": "Core TemporalPolicy.sha256 (CORE_POLICY references)"},
+        "evidence_ref": {"type": ["string", "null"]},
+        "approved_by": {"type": ["string", "null"]}
+      }
+    },
+    "costs": {
+      "type": "object", "additionalProperties": false, "required": ["profile_ref", "scenario_set"],
+      "properties": {
+        "profile_ref": {
+          "type": "object", "additionalProperties": false, "required": ["profile_id", "version", "sha256"],
+          "properties": {"profile_id": {"type": "string"}, "version": {"type": "string"},
+                         "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+        },
+        "scenario_set": {
+          "type": "object", "additionalProperties": false, "required": ["path", "file_sha256"],
+          "properties": {"path": {"type": "string"}, "file_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+        }
+      }
+    },
+    "windows": {
+      "type": "object", "additionalProperties": false, "required": ["warmup_start", "in_sample", "validation"],
+      "properties": {
+        "warmup_start": {"type": "string", "format": "date-time"},
+        "in_sample": {"$ref": "#/$defs/window"},
+        "validation": {"$ref": "#/$defs/window"}
+      }
+    },
+    "holdout": {
+      "type": "object", "additionalProperties": false, "required": ["holdout_id"],
+      "properties": {"holdout_id": {"type": "string"}}
+    },
+    "capital": {
+      "type": "object", "additionalProperties": false, "required": ["initial_capital", "currency"],
+      "properties": {"initial_capital": {"type": "number", "exclusiveMinimum": 0}, "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}}
+    },
+    "position_sizing": {"type": "object"},
+    "risk_limits": {"type": "object"},
+    "output": {
+      "type": "object", "additionalProperties": false, "required": ["target"],
+      "properties": {
+        "target": {"enum": ["DRIVE", "LOCAL"]},
+        "path": {"type": ["string", "null"], "description": "only for LOCAL (SYNTHETIC); DRIVE always uses MyDrive/Quant_Research/strategy-research-agent"}
+      }
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false, "required": ["created_by", "created_at", "config_sha256"],
+      "properties": {
+        "created_by": {"type": "string"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "notes": {"type": "string"},
+        "config_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  },
+  "$defs": {
+    "window": {
+      "type": "object", "additionalProperties": false, "required": ["start", "end"],
+      "properties": {"start": {"type": "string", "format": "date-time"}, "end": {"type": "string", "format": "date-time"}}
+    }
+  }
+}
