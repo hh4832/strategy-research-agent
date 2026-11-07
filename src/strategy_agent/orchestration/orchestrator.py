@@ -247,7 +247,7 @@ class Orchestrator:
         gov = next(e["data"]["governance"] for e in reversed(st.events) if e["to"] == "RUNNING")
         now = self.clock()
         out = self.archive_root / ("test_tasks" if self.test_mode else "tasks") / \
-            f"{now.astimezone(TPE):%Y%m%d_%H%M%S}_{self.code['git_sha'][:7]}"
+            f"{now.astimezone(TPE):%Y%m%d_%H%M%S}_{self.code['git_sha'][:7]}_{task_id}"
         events = [e for e in self.log.records() if e["task_id"] == task_id]
         files = {
             "research_request.json": _dumps(doc),
