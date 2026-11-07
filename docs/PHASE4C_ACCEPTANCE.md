@@ -75,7 +75,31 @@ Minimal fix if wanted later (a producer change for future runs only, not this ru
 | C7 | Same input and time give a byte-identical payload; a different time changes only metadata |
 | C8 | Uses 1/1 and matching the run; governance/registry unchanged; formal gates equal the authorization pin (NO_GO); holdout lock present; no executor module loaded in the process |
 
-## 5. Status
+## 5. Status — real archive acceptance: PASS (2026-11-07 10:03:44 Asia/Taipei)
 
-- SYNTHETIC_FIXTURE (produced by the real Phase 4-A producer): C1–C8 PASS; 16 Phase 4-C tests.
-- **Real archive: pending execution of `notebooks/Phase4C_Real_Evaluation_Acceptance.ipynb` in Colab.** A synthetic PASS is not the real acceptance.
+Executed by the research lead in a fresh Colab runtime with `notebooks/Phase4C_Real_Evaluation_Acceptance.ipynb` (`P4C-EVAL-v1`).
+
+**Version Sync:** evaluator `883d14c` (clean checkout, GitHub HEAD `6cd5ac9`). Core was neither installed nor imported, and no executor module was loaded.
+
+**Evaluation archive:** `MyDrive/Quant_Research/strategy-research-agent/evaluations/20261107_100344_883d14c/`. All 8 files are mirrored in `docs/evidence/phase4c/20261107_100344_883d14c/`.
+
+| Check | Result | Real evidence |
+|---|---|---|
+| C1 identity | PASS | run `20261107_081300_9439f8c`; Agent `9439f8c6…`; Core `b16179a7…`; canonical config `b6ac297f…`; session `ca8bb1b1…`; snapshot `TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e`; dataset manifest `8b6fc838…` ≠ archive manifest `328f2cf9…`; authorization `RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e` |
+| C2 integrity | PASS | pinned MANIFEST.json; 13/13 file SHAs; no unlisted entries or symlinks; source unchanged before/after |
+| C3 trade integrity | PASS | each scenario: 13 trades, all matched to entry and exit fills; 26 fills; 3 rejection rows = 1 rejected order (`0019-CROSS_ABOVE`); cost allocation = fill ledger. **Gap:** 1 of 28 orders has no fill/rejection record (the order ledger is not archived) |
+| C4 performance | PASS | Evaluator = Core within 1e-9 for all 4 scenarios: net return, total return, win rate, payoff, expectancy, PF, MDD, net PnL, trade count; cost identities hold (BASE 136.65 / LOW 84.65 / STRESS 216.65 / CAT_STRESS 136.91) |
+| C5 temporal | PASS | all fills strictly after signal availability, on a later bar, NEXT_ELIGIBLE_BAR_OPEN, T01 PASS; last 1m 2024-06-28T23:59Z < holdout 2025-01-01; holdout not read. Signal-computation look-ahead is not independently re-verified (`LOOK_AHEAD_NOT_TESTED` stays) |
+| C6 research evaluation | PASS | flags INSUFFICIENT_SAMPLE, NET_PROFIT_COVERED_BY_TOP_TRADES (**top 2 of 13 = +1,845.97 ≥ net +1,844.35; other 11 = −1.62**), IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED, BLINDNESS_UNVERIFIED, MARKET_REGIME_COVERAGE_NOT_ESTABLISHED, LESS_THAN_ONE_YEAR_OBSERVED, single year/symbol covers all profit; cost sensitivity AVAILABLE (4 scenarios); verdict **RETEST / UNDETERMINED**, not KEEP |
+| C7 reproducibility | PASS | input `9edfa519…`; payload `38903d4c…`; same input and time → identical; a different time changes metadata only |
+| C8 governance isolation | PASS | uses 1/1 (matches run); governance/registry unchanged; formal gates = authorization pin, NO_GO; holdout lock present; 0 batches consumed; no executor, no broker API |
+
+Minor (cosmetic, Phase 4-B): in `robustness_matrix.csv` the cost-sensitivity row has status AVAILABLE but its reason column reads "required evidence absent". Not changed in this phase.
+
+**Verdicts:**
+- Engineering: **GO** (real end-to-end evaluation path accepted).
+- Archive Integrity: **PASS**.
+- Evaluator Compatibility: **PASS**, with the 3 documented evidence gaps.
+- Strategy Evidence Sufficiency: **UNDETERMINED**.
+- Strategy: **RETEST**.
+- Formal Market Eligibility: **NO_GO**.
