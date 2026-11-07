@@ -59,3 +59,26 @@ registry/               experiments.jsonl、families.jsonl（雜湊鏈、append-
 schemas/                Experiment Registry 紀錄 schema
 tests/                  oracle／mutants／harness／spec／evaluation／ports
 ```
+
+## Phase 4-B 共用 Research Evaluator
+
+獨立、唯讀的結果評估入口；不啟動回測、不讀原始 OHLCV／Holdout、不消耗授權。
+沿用既有 trade statistics、Q5 與 G1–G11；工程狀態和策略結論分開。
+必要證據缺失時為 `BLOCKED / RETEST / UNDETERMINED`，正報酬不等於 `KEEP`。
+
+```bash
+# 需 clean checkout；使用實際 Git HEAD 作為 Evaluator provenance。
+python -m strategy_agent.evaluation \
+  --input tests/fixtures/evaluator/positive_short_run.json \
+  --output /tmp/new_synthetic_evaluation
+pytest -q tests/test_universal_evaluator.py
+```
+
+輸入 Schema：[`RESEARCH_EVALUATOR_INPUT_SCHEMA.json`](schemas/RESEARCH_EVALUATOR_INPUT_SCHEMA.json)。
+完整 API、指標定義、Phase 4-A Archive 缺失欄位與限制：
+[`RESEARCH_EVALUATOR_CONTRACT.md`](docs/RESEARCH_EVALUATOR_CONTRACT.md)。
+Synthetic 範例僅證明工程行為，不是真實策略研究結論。
+
+已執行的工程範例：[`SYNTHETIC_FIXTURE evaluation_report.md`](docs/examples/phase4b/SYNTHETIC_FIXTURE_example/evaluation_report.md)；
+輸出 Schema：[`RESEARCH_EVALUATION_SCHEMA.json`](schemas/RESEARCH_EVALUATION_SCHEMA.json)；
+驗收範圍：[`PHASE4B_ACCEPTANCE.md`](docs/PHASE4B_ACCEPTANCE.md)。
