@@ -1,0 +1,232 @@
+{
+ "schema": "m3c_n1_reproducibility/1",
+ "generated_at": "2026-11-05T17:45:00+08:00",
+ "policy": {
+  "tolerance": {
+   "rel_tol": 1e-09,
+   "abs_tol": 1e-09
+  },
+  "fixed_in": "src/strategy_agent/research/reproducibility.py (before comparison)",
+  "levels": {
+   "numeric_reproducibility": "all metric leaves equal; floats within tolerance; ints/strings/structure exact",
+   "archive_integrity": "each archive exact against itself: manifest file hashes + stored metrics_sha256 == recomputed",
+   "bitwise_cross_environment": "equal metrics_sha256 across environments; IDENTICAL if so, otherwise NOT_GUARANTEED (never forced)"
+  },
+  "never": "stored metrics are never rewritten, rounded or re-hashed to make two archives agree"
+ },
+ "colab_vs_local_train_base": {
+  "colab": {
+   "source": "Google Drive Quant_Research/strategy-research-agent run TRAIN BASE (fileId 1f8V9xzbXTBP6txVUP3KmbF7h3Fj0pDWL), agent 8f6f798, Core 2c6ba9a, Python 3.13.18",
+   "metrics_sha256": "736fe065b0c7987e0f2e8a7fe28e470e58f465ce61a661caad9668f3943fded3",
+   "metrics_self_hash": "PASS",
+   "manifest": "verified inside Colab by acceptance check (m3b2_colab_20261105_113140_8f6f798.json, 16/16)"
+  },
+  "local": {
+   "source": "local run agent 6309a73, Core 2c6ba9a, Python 3.11",
+   "metrics_sha256": "f0bf3f69b13212829d4e5e79ab64747ce3cf6af82b543ab5f59c5a7eeec5c34d",
+   "manifest": "PASS",
+   "metrics_self_hash": "PASS"
+  },
+  "archive_integrity": {
+   "colab": "PASS",
+   "local": "PASS"
+  },
+  "numeric_reproducibility": "PASS",
+  "bitwise_cross_environment": "NOT_GUARANTEED",
+  "within_tolerance": [
+   {
+    "path": "metrics.sample.effective_net_pnl",
+    "kind": "WITHIN_TOLERANCE",
+    "a": 767.3029999999999,
+    "b": 767.3029999999998,
+    "abs_diff": 1.1368683772161603e-13,
+    "rel_diff": 1.4816420334811157e-16
+   }
+  ],
+  "differences": [],
+  "max_abs_diff": 1.1368683772161603e-13,
+  "max_rel_diff": 1.4816420334811157e-16,
+  "cause": "plain sum() over trade PnL in evaluation/sufficiency.py (sample.effective_net_pnl); every formal figure identical"
+ },
+ "cross_core_legacy_config": {
+  "description": "configs/research/sma_5_20_tsm_synthetic_local_v1.json (8 runs) on Core 2c6ba9a vs Core 699e3ad, same agent code except the M3-C Phase C changes; declared schema addition metrics.costs.regulatory_fees = 0.0",
+  "runs": {
+   "TRAIN/BASE": {
+    "numeric": "PASS",
+    "bitwise": "NOT_GUARANTEED",
+    "metrics_sha256_core_2c6ba9a": "f0bf3f69b13212829d4e5e79ab64747ce3cf6af82b543ab5f59c5a7eeec5c34d",
+    "metrics_sha256_core_699e3ad": "4547764fa8ab82ef2ea6637b81f06f799bc0a6004c6bc5c7e478cdc788853713",
+    "net_pnl": [
+     767.3029999999999,
+     767.3029999999999
+    ],
+    "trade_count": [
+     25,
+     25
+    ],
+    "differences": [],
+    "declared_schema_additions": [
+     "metrics.costs.regulatory_fees"
+    ],
+    "archive_integrity": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "TRAIN/LOW_FRICTIONLESS": {
+    "numeric": "PASS",
+    "bitwise": "NOT_GUARANTEED",
+    "metrics_sha256_core_2c6ba9a": "56f4ec72bd24e405bc12eb637bdc179e624532fce9d915028ab99503ed1fa2cd",
+    "metrics_sha256_core_699e3ad": "ce788a8548663a7937ce836b1491a03f6981e17c4dba9d18c25466a554596e19",
+    "net_pnl": [
+     1160.0,
+     1160.0
+    ],
+    "trade_count": [
+     25,
+     25
+    ],
+    "differences": [],
+    "declared_schema_additions": [
+     "metrics.costs.regulatory_fees"
+    ],
+    "archive_integrity": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "TRAIN/STRESS_2X": {
+    "numeric": "PASS",
+    "bitwise": "NOT_GUARANTEED",
+    "metrics_sha256_core_2c6ba9a": "4540004aedbf7a55584e77815a1c6550e2b44652ba06d084d8b6f3e780639b96",
+    "metrics_sha256_core_699e3ad": "dddfe4d669a3321a8170a2b2e86c8287a14aca8cdd3ea1496372d120349f95e9",
+    "net_pnl": [
+     374.606,
+     374.606
+    ],
+    "trade_count": [
+     25,
+     25
+    ],
+    "differences": [],
+    "declared_schema_additions": [
+     "metrics.costs.regulatory_fees"
+    ],
+    "archive_integrity": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "TRAIN/STRESS_4X": {
+    "numeric": "PASS",
+    "bitwise": "NOT_GUARANTEED",
+    "metrics_sha256_core_2c6ba9a": "195810944e58f3b986fcd814cc520571a7ca175a7a2a461c70b3eaa0dec243f9",
+    "metrics_sha256_core_699e3ad": "a8184d83054f2bb6bc89aa0854672f87a076f10374f7d767b60bdb7cd6cfac34",
+    "net_pnl": [
+     -410.78799999999995,
+     -410.78799999999995
+    ],
+    "trade_count": [
+     25,
+     25
+    ],
+    "differences": [],
+    "declared_schema_additions": [
+     "metrics.costs.regulatory_fees"
+    ],
+    "archive_integrity": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "VALIDATION/BASE": {
+    "numeric": "PASS",
+    "bitwise": "NOT_GUARANTEED",
+    "metrics_sha256_core_2c6ba9a": "f5ff087c4cfd2ccdd5bff45ee2e80c0e7ec467f5e28f1e0245b43c0cf8a30a1f",
+    "metrics_sha256_core_699e3ad": "ea8089945691feeedb26bf5432b0635fbdc92e80434c34b1cd3c136816f3dc55",
+    "net_pnl": [
+     806.253,
+     806.253
+    ],
+    "trade_count": [
+     14,
+     14
+    ],
+    "differences": [],
+    "declared_schema_additions": [
+     "metrics.costs.regulatory_fees"
+    ],
+    "archive_integrity": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "VALIDATION/LOW_FRICTIONLESS": {
+    "numeric": "PASS",
+    "bitwise": "NOT_GUARANTEED",
+    "metrics_sha256_core_2c6ba9a": "82b4cb214ad9a6e1061129c433c124e34bf77704bff4ce5d286854e743ba1cf7",
+    "metrics_sha256_core_699e3ad": "e976c4ff1d593682dbea6aad3935ef89a3ab3c5a4a11d90ed7870bcde1abb4ab",
+    "net_pnl": [
+     1004.0,
+     1004.0
+    ],
+    "trade_count": [
+     14,
+     14
+    ],
+    "differences": [],
+    "declared_schema_additions": [
+     "metrics.costs.regulatory_fees"
+    ],
+    "archive_integrity": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "VALIDATION/STRESS_2X": {
+    "numeric": "PASS",
+    "bitwise": "NOT_GUARANTEED",
+    "metrics_sha256_core_2c6ba9a": "05e813111081055cf7e24626c7507b5964baba9ff217046ece8e165163dec54e",
+    "metrics_sha256_core_699e3ad": "d6584944c27616c33e296979b4aec6f51a13cb4dfed6ca26f680701158c3d85f",
+    "net_pnl": [
+     608.506,
+     608.506
+    ],
+    "trade_count": [
+     14,
+     14
+    ],
+    "differences": [],
+    "declared_schema_additions": [
+     "metrics.costs.regulatory_fees"
+    ],
+    "archive_integrity": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "VALIDATION/STRESS_4X": {
+    "numeric": "PASS",
+    "bitwise": "NOT_GUARANTEED",
+    "metrics_sha256_core_2c6ba9a": "f7c49fe13177dac71665d951bfcdbc4768e8ff6b1c46a5b2a34fcb5c21fbd632",
+    "metrics_sha256_core_699e3ad": "ffd0d3bedec2bc060aa58124c86f8797c4918b9d72de6e217a26d27ee9cc8bbd",
+    "net_pnl": [
+     213.012,
+     213.012
+    ],
+    "trade_count": [
+     14,
+     14
+    ],
+    "differences": [],
+    "declared_schema_additions": [
+     "metrics.costs.regulatory_fees"
+    ],
+    "archive_integrity": [
+     "PASS",
+     "PASS"
+    ]
+   }
+  }
+ }
+}

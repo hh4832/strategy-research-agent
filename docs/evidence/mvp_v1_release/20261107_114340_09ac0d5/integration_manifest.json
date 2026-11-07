@@ -1,0 +1,73 @@
+{
+  "components_present": {
+    "docs/evidence/phase4a_dev_smoke/20261107_081300_9439f8c/MANIFEST.json": true,
+    "docs/evidence/phase4c/20261107_100344_883d14c/acceptance_checks.json": true,
+    "src/strategy_agent/evaluation/phase4c.py": true,
+    "src/strategy_agent/evaluation/universal.py": true,
+    "src/strategy_agent/research/pipeline.py": true,
+    "src/strategy_agent/research_only/runner.py": true
+  },
+  "core_real_run": "b16179a7cc077c36046574769a32c367fa476cae",
+  "merge_commits": [
+    {
+      "commit": "c9f2a7547ce388f2e1b421642f66b49e79921f05",
+      "parents": [
+        "d738f7fa38596cb4996d093c81ad3da4bdf8236a",
+        "d455ed104817c44d5147dab0bcd460fb4c758635"
+      ],
+      "subject": "MVP v1 RC: integrate PR #7 head d455ed1 (contains M3-B #4, Phase 4-A #5, Phase 4-B #6, Phase 4-C #7) into main d738f7f"
+    },
+    {
+      "commit": "ab82919f2cf5062ec663faa83d8fad2e2aae9b08",
+      "parents": [
+        "a6509151fee5a5c0d103e3860b41fcbc616777a4",
+        "00f561aa51bce2d4b3974a0c27b46125c15d2209"
+      ],
+      "subject": "Integrate Phase 4-B evaluator (PR #6 @00f561a) onto Phase 4-A (PR #5 @a650915) for Phase 4-C"
+    },
+    {
+      "commit": "f4ab50712010159d7daf5d2bd10b2724958a9bf8",
+      "parents": [
+        "035eaf2c2f5074fcadd5abaccf48fd8ed9472488",
+        "f9c2ecfa6a0568a71ab547a6c80806fdcf4d733e"
+      ],
+      "subject": "Merge concurrent M3-B.2 work and harden archive resume evidence"
+    }
+  ],
+  "rc_commit": "09ac0d5ac4315e56dcfae44f1deea810d1dc8910",
+  "rc_parents": [
+    "80e89dea84084490c4d53273b0cbc46351308df8"
+  ],
+  "sources": {
+    "main_base": {
+      "ancestor_of_rc": true,
+      "sha": "d738f7fa38596cb4996d093c81ad3da4bdf8236a"
+    },
+    "phase4a_real_run_agent": {
+      "ancestor_of_rc": true,
+      "sha": "9439f8c6f53b9c6c7f2f49b5a543ffdbc84f2f2a"
+    },
+    "phase4c_evaluator": {
+      "ancestor_of_rc": true,
+      "sha": "883d14c0059add270d596e4bdc86be46052219ea"
+    },
+    "pr4_m3b": {
+      "ancestor_of_rc": true,
+      "sha": "8f3f6e13248fe36e7e64cc59ec7c93cecfc78263"
+    },
+    "pr5_phase4a": {
+      "ancestor_of_rc": true,
+      "sha": "a6509151fee5a5c0d103e3860b41fcbc616777a4"
+    },
+    "pr6_phase4b": {
+      "ancestor_of_rc": true,
+      "sha": "00f561aa51bce2d4b3974a0c27b46125c15d2209"
+    },
+    "pr7_phase4c": {
+      "ancestor_of_rc": true,
+      "sha": "d455ed104817c44d5147dab0bcd460fb4c758635"
+    }
+  },
+  "status": "PASS",
+  "working_tree_clean": true
+}

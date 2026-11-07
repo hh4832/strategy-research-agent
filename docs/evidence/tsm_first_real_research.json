@@ -1,0 +1,454 @@
+{
+  "schema_version": "1.0.0",
+  "record": "PHASE4A_TSM_FIRST_REAL_RESEARCH",
+  "date": "2026-11-06",
+  "timezone": "Asia/Taipei",
+  "status": "DEV_SMOKE_COMPLETED",
+  "verdicts": {
+    "engineering": "GO (research-only smoke path, scoped)",
+    "strategy_effectiveness": "CANNOT_DETERMINE",
+    "formal_market_eligibility": "NO_GO",
+    "research_only_eligibility": "single authorized dev smoke COMPLETED; no further batch authorized"
+  },
+  "agent": {
+    "repository": "hh4832/strategy-research-agent",
+    "baseline_sha": "8f3f6e13248fe36e7e64cc59ec7c93cecfc78263",
+    "branch": "feature/phase4a-tsm-research-only",
+    "final_sha": "see PR head (this file is committed in that commit)"
+  },
+  "core": {
+    "repository": "hh4832/market-research-core",
+    "baseline_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+    "phase4a_sha": "e31c57b6c9dd599d808516ce6664628bdc79319e",
+    "phase4a_delivered": true,
+    "checked_at": "2026-11-06T18:00:00+08:00",
+    "evidence": "no commit after 699e3ad and no Phase 4-A branch on origin",
+    "phase4a_branch": "feature/phase4a-tsm-native-research-adapter",
+    "phase4a_core_pr": 4,
+    "phase4a_core_ci_run": "42142535761",
+    "phase4a_review": "SCOPED_GO",
+    "phase4a_contract_ref": "https://github.com/hh4832/market-research-core/blob/e31c57b6c9dd599d808516ce6664628bdc79319e/docs/TSM_RESEARCH_ONLY_ADAPTER_CONTRACT.md",
+    "benchmark": {
+      "result_dir": "benchmark/results/mrc_e31c57b6c9dd/",
+      "verdict": "PASS",
+      "pass": 12,
+      "G16": "PASS",
+      "G17": "PASS",
+      "G14b": "PASS",
+      "status": "BENCHMARK_PASS"
+    },
+    "ci": "phase4a-core job pins e31c57b; Phase 3 jobs stay on 699e3ad"
+  },
+  "holdout_lock": {
+    "lock_id": "HOLDOUT-TSM-15M-v1",
+    "status": "APPROVED_BY_RESEARCH_LEAD",
+    "reason": "holdout_admin is a research-lead tool (M2 §3); the Agent does not sign as the lead",
+    "approved_boundaries": {
+      "development": [
+        "2016-10-19T00:00:00-04:00",
+        "2025-01-01T00:00:00-05:00"
+      ],
+      "holdout": [
+        "2025-01-01T00:00:00-05:00",
+        "2026-10-17T00:00:00-04:00"
+      ],
+      "interval": "[start,end)",
+      "timezone": "America/New_York"
+    },
+    "blindness": "BLINDNESS_UNVERIFIED",
+    "blindness_evidence": [
+      {
+        "source": "market-research-core@699e3ad notebooks/colab_phase2_drive_smoke_test.ipynb cell 3",
+        "fact": "run_sma(fast_window=5, slow_window=20) on IBKR TSM frame.tail(2000); snapshot ends 2026-10-16, so these bars are inside the holdout"
+      },
+      {
+        "source": "IBKR FINAL GATE data QA",
+        "fact": "full-period data-quality review incl. 2025-2026 (not strategy selection)"
+      },
+      {
+        "source": "Agent registry",
+        "fact": "experiments.jsonl / families.jsonl empty; all Agent M3 runs synthetic (proves Agent-side only)"
+      },
+      {
+        "source": "repository history",
+        "fact": "no record that SMA 5/20 was fixed before TSM data was viewed"
+      }
+    ],
+    "signed": {
+      "commit": "d7796d6afe850d7e6fdc2149204ae38acbf9fd87",
+      "approved_by": "hh4832",
+      "approval_ref": "https://github.com/hh4832/strategy-research-agent/pull/5",
+      "tool": "holdout_admin via notebooks/Phase4A_Research_Lead_Signoff.ipynb"
+    }
+  },
+  "research_authorization": {
+    "authorization_id": "RA-IBKR_TSM-SMA520_SMOKE-0001",
+    "contract": "research-only-authorization-v1",
+    "status": "APPROVED_BY_RESEARCH_LEAD",
+    "proposal_path": "governance/proposals/RA-IBKR_TSM-SMA520_SMOKE-0001.json",
+    "proposal_sha256": "56028012f88ee475c641642e9f3086550329d4ceab474e67c8e58f167791fe15",
+    "max_batches": 1,
+    "expires_at": "2026-11-30T23:59:59+08:00",
+    "rules": [
+      "RA01",
+      "RA02",
+      "RA03",
+      "RA04",
+      "RA05",
+      "RA06",
+      "RA07",
+      "RA08",
+      "RA09",
+      "RA10",
+      "RA11",
+      "RA12"
+    ],
+    "signed": {
+      "commit": "d7796d6afe850d7e6fdc2149204ae38acbf9fd87",
+      "approved_by": "hh4832",
+      "approved_at": "2026-11-06T06:28:06+00:00",
+      "expires_at": "2026-11-30T23:59:59+08:00",
+      "batches_used": 0
+    }
+  },
+  "formal_gates": {
+    "gate_version": "2026-11-05.4",
+    "market_status": "NO_GO",
+    "gates": {
+      "DATA_QUALITY": "PASS",
+      "TEMPORAL_SAFETY": "UNKNOWN",
+      "COST_MODEL_COMPATIBILITY": "PASS",
+      "COST_APPROVAL": "FAIL",
+      "HOLDOUT_APPROVAL": "FAIL",
+      "FORMAL_EXECUTION_ELIGIBILITY": "FAIL"
+    },
+    "market_readiness_sha256": "0ce0d36960bd2bc44bcb7f00ac1256a706f94559124723b659179917d5b8171a",
+    "modified_in_phase4a": false
+  },
+  "pins": {
+    "dataset": {
+      "dataset_id": "ibkr_tsm_1m_normalized",
+      "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+      "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
+      "snapshot_sha_verification": "NOT_RUN (needs Core adapter)"
+    },
+    "temporal_policy": {
+      "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+      "version": "1.0.0",
+      "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4"
+    },
+    "cost_set": {
+      "path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+      "sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3"
+    },
+    "sec_schedule_source_sha256": "af4a29c0d42b13c89d96b794a165cdf5e658e69759e4d705c000e4cc13c37eb1",
+    "run_config": {
+      "path": "configs/research_only/tsm_sma_5_20_smoke_2024_06_v1.json",
+      "config_sha256": "7c7f53f4cd92dc2fbe789b2cf24341faf6803b530d1310f1d2bbbbd3f8cd087e"
+    },
+    "spec": {
+      "path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+      "sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+      "parameters": {
+        "fast": 5,
+        "slow": 20
+      }
+    }
+  },
+  "windows": {
+    "warmup_start": "2024-05-29T00:00:00-04:00",
+    "start": "2024-06-03T00:00:00-04:00",
+    "end": "2024-06-29T00:00:00-04:00"
+  },
+  "cost_window": {
+    "sec_version": "SEC31-2024-05-22",
+    "sec_rate": 2.78e-05,
+    "taf_per_share": 0.000166
+  },
+  "preflight_repository": {
+    "status": "WAITING_FOR_CORE_ADAPTER",
+    "blockers": [
+      "RO04"
+    ],
+    "verified_at_commit": "d7796d6"
+  },
+  "real_smoke_test": {
+    "executed": false,
+    "reason": "stopped before consumption: real snapshot does not meet the Core Phase 4-A data contract (B1-B3)",
+    "authorization_uses": "0/1",
+    "metrics": null,
+    "drive_archive": null,
+    "counts": {
+      "native_1m_rows": null,
+      "conservative_15m_bars": null,
+      "pit_rth_rejections": null,
+      "fills": null,
+      "trades": null
+    },
+    "probe_notebook": "notebooks/Phase4A_Real_Snapshot_Probe.ipynb",
+    "probe": {
+      "executed": true,
+      "slot_consumed": false,
+      "record": "docs/evidence/phase4a_real_snapshot_probe_20261106_080607.json",
+      "core_identity": {
+        "core_git_sha": "e31c57b6c9dd599d808516ce6664628bdc79319e",
+        "core_tree_dirty": null
+      }
+    }
+  },
+  "findings": [
+    {
+      "id": "CORE_FEE_SEPARATION",
+      "detail": "Core 699e3ad merges SEC and per-unit fees in one regulatory ledger line and has no dated per-unit fee; SEC/TAF/CAT cannot be reported separately; no mapping guessed"
+    },
+    {
+      "id": "CAT_ROUNDING",
+      "detail": "at 100 shares per fill, CAT 0.00005 and 0.00010 both round HALF_UP to 0.01 per line, so CAT_STRESS equals BASE in CAT cost"
+    },
+    {
+      "id": "N3",
+      "detail": "not triggered (no batch resume); research-only path writes O_EXCL with unique run_id"
+    }
+  ],
+  "tests": {
+    "new": "tests/test_phase4a_research_only.py: 36 passed",
+    "suite_with_core_699e3ad": "367 passed",
+    "suite_without_core": "273 passed, 51 skipped",
+    "append_only": "PASS",
+    "ci": "see PR description",
+    "phase3_test_adjusted": {
+      "test": "tests/test_m3b_notebook.py::test_n2_pin_is_an_already_committed_integration_commit_with_identical_code",
+      "change": "files present at the pin must be unchanged; added files allowed if unreferenced by pinned code; governance: added files and append-only *.jsonl growth allowed",
+      "reason": "Phase 4-A only adds files; the N2 guarantee (pinned Colab code == tree) is unchanged; avoids CI failure when the research lead appends a holdout lock",
+      "verified": "worktree mutations: additions/lock-append PASS; pinned-src edit, approvers delete/edit, formal gate PASS -> FAIL",
+      "notebook_pin_changed": false
+    },
+    "phase4a_core_integration": {
+      "file": "tests/test_phase4a_core_integration.py",
+      "count": 10
+    },
+    "full_suite": {
+      "core_e31c57b": "373 passed, 1 failed (Phase 3 test_15 core_sha pin only; runs in 699e3ad job)",
+      "core_699e3ad": "367 passed, 1 skipped",
+      "no_core": "273 passed, 52 skipped"
+    }
+  },
+  "unchanged": [
+    "market-research-core",
+    "Oracle code and hand-computed answers",
+    "formal registry",
+    "formal market gates",
+    "governance/holdout_locks.jsonl (empty)",
+    "Phase 3 documents",
+    "SMA parameters"
+  ],
+  "ci_after_signoff": "https://github.com/hh4832/strategy-research-agent/actions/runs/42176829932 (5/5 success)",
+  "status_history": [
+    {
+      "at": "2026-11-06T09:00:00+08:00",
+      "status": "WAITING_FOR_CORE_ADAPTER"
+    },
+    {
+      "at": "2026-11-06T14:49:00+08:00",
+      "status": "WAITING_FOR_CORE_ADAPTER",
+      "note": "lead signed d7796d6; RO04 only"
+    },
+    {
+      "at": "2026-11-06T18:00:00+08:00",
+      "status": "BLOCKED_BEFORE_CONSUMPTION",
+      "note": "Core e31c57b integrated; real snapshot data contract incompatible"
+    },
+    {
+      "at": "2026-11-06T16:11:00+08:00",
+      "status": "BLOCKED_BEFORE_CONSUMPTION",
+      "note": "real-byte probe confirmed B1-B3; uses 0/1"
+    },
+    {
+      "at": "2026-11-07T08:14:07+08:00",
+      "status": "DEV_SMOKE_COMPLETED",
+      "note": "run 20261107_081300_9439f8c; RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e 1/1"
+    }
+  ],
+  "integration": {
+    "agent_commit": "ba8f23334f95060a7122226542e3110daa2e944b",
+    "run_config": {
+      "path": "configs/research_only/tsm_sma_5_20_smoke_2024_06_v1_1.json",
+      "version": "1.1.0",
+      "config_sha256": "c4661042b3a13fbdd44eaf8a621d84d0ac8a209053a9b2e0219a30daa9b8f15d",
+      "supersedes_config_sha256": "7c7f53f4cd92dc2fbe789b2cf24341faf6803b530d1310f1d2bbbbd3f8cd087e"
+    },
+    "core_import_site": "src/strategy_agent/adapters/mrc_phase4a.py",
+    "taf_record": {
+      "path": "configs/research_only/core_phase4a/finra_taf_2024_v1.json",
+      "rate_record_sha256": "23aba5e2b82db84ad6efb9a4e059befb4f879f8c78ae8dbd918f2568063a2043",
+      "usd_per_share": 0.000166,
+      "source_basis": "OFFICIAL",
+      "verification_status": "RECORDED"
+    },
+    "sec_configuration_sha256": "bb10abbbd0d1c004daf0cd1441006053d040dbc47e86ebb6f57871576f003f94",
+    "cost_profiles": {
+      "BASE": {
+        "slippage_bps": 2,
+        "taf_plus_cat": 0.000216,
+        "sha256": "ea2cb1932ba83eadcdc12720a56d7404d30686a03c6fe6ce10482cceca63c529"
+      },
+      "LOW": {
+        "slippage_bps": 1,
+        "taf_plus_cat": 0.000216,
+        "sha256": "4111a7d0798162ff2c0cb6a8fd7f4e15f59d8f830e70f04da7b41e660efb101b"
+      },
+      "STRESS": {
+        "slippage_bps": 4,
+        "taf_plus_cat": 0.000216,
+        "sha256": "80c00d97c8dc333ba7d39e54782e3af123cc09a46ca5703331faef82e105c401"
+      },
+      "CAT_STRESS": {
+        "slippage_bps": 2,
+        "taf_plus_cat": 0.000266,
+        "sha256": "bd42c2661b3bf6dcf1b7d9f68b51762af2682ff13035384a49a340b1d574cbfc"
+      }
+    },
+    "cost_set_consistency_CO07": "PASS",
+    "cat_rounding_note": "Core rounds combined TAF+CAT per fill; at 100 shares 0.0216->0.02 vs 0.0266->0.03, so CAT_STRESS is visible (not ROUNDING_MASKED_DIFFERENCE); runner records the actual status per run",
+    "synthetic_e2e": "COMPLETED once (TEST_ONLY), second attempt RA11; failure after consumption archived, never reset"
+  },
+  "real_snapshot": {
+    "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+    "drive_folder_id": "1KZYX8ODg5o8gss5LgBxjJEzaFvObuh_d",
+    "files": {
+      "final_gate_manifest.json": {
+        "drive_id": "1taOQAafy7CPznKIeMw5TP3xlPrEQwvEW",
+        "size": 2986342,
+        "sha256": "d960602cff24f7350b056d69e19d8e0b8734cdad266d3782bc56ebc507818828",
+        "schema_version": "1.0.0",
+        "gate": "IBKR_FINAL_GATE",
+        "mode": "FULL",
+        "overall_verdict": "SCOPED_GO",
+        "git_sha": "06359faf7ef4",
+        "tsm_result_pointer": "/results/2",
+        "tsm_verdict": "GO"
+      },
+      "tsm_normalized.parquet": {
+        "drive_id": "1B_2WyFRHXUzwg3C1BR7GLApGl722Ezli",
+        "size": 29363599,
+        "published_sha256_from_manifest": "572d19476eecd38020da8ddbfbd5f7b128c7cd79d807e4f16fd787a66a8c96e7",
+        "sha256_independently_verified": false,
+        "rows": 2193372,
+        "arrow_schema": {
+          "timestamp_utc": "timestamp[us, tz=UTC]",
+          "open": "double",
+          "high": "double",
+          "low": "double",
+          "close": "double",
+          "volume": "double"
+        },
+        "created_by": "parquet-cpp-arrow version 23.0.1",
+        "row_groups": [
+          {
+            "index": 0,
+            "rows": 1048576,
+            "first_date": "2016-10-19",
+            "last_date": "2021-12-14"
+          },
+          {
+            "index": 1,
+            "rows": 1048576,
+            "first_date": "2021-12-14",
+            "last_date": "2026-05-26",
+            "candidate_for_2024-05-29..2024-06-28": true,
+            "overlaps_holdout": true
+          },
+          {
+            "index": 2,
+            "rows": 96220,
+            "first_date": "2026-05-26",
+            "last_date": "2026-10-16"
+          }
+        ]
+      }
+    },
+    "evidence_basis": "CONFIRMED on real bytes by notebooks/Phase4A_Real_Snapshot_Probe.ipynb @ba8f233 (Colab, 2026-11-06 08:06 UTC); probe record docs/evidence/phase4a_real_snapshot_probe_20261106_080607.json; slot not consumed",
+    "blockers": [
+      {
+        "id": "B1",
+        "code": "MANIFEST_LAYOUT",
+        "status": "CONFIRMED",
+        "detail": "5 of 7 unbindable: snapshot_id, producer_sha (only 12-char git_sha), parquet_path, columns, arrow_schema; manifest sha256 observed d960602c… but not pinned (SHA_REQUIRED, needs reviewed config)"
+      },
+      {
+        "id": "B2",
+        "code": "HOLDOUT_ROW_GROUP_OVERLAP",
+        "status": "CONFIRMED",
+        "detail": "the only candidate row group (index 1, 1,048,576 rows) spans 2021-12-14..2026-05-26: outside the authorized window and ~17 months into the holdout"
+      },
+      {
+        "id": "B3",
+        "code": "INTEGRITY_RECEIPT",
+        "status": "CONFIRMED",
+        "detail": "no trusted FileIntegrityReceipt; creating one requires a full opaque-byte hash including holdout bytes (not authorized)"
+      }
+    ],
+    "slot_consumed": false,
+    "colab_path": "/content/drive/MyDrive/00Quant_Research/data/00_Quant_Research_Hub/20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
+  },
+  "dev_smoke": {
+    "run_id": "20261107_081300_9439f8c",
+    "agent_sha": "9439f8c6f53b9c6c7f2f49b5a543ffdbc84f2f2a",
+    "core_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+    "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "parquet_sha256": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452",
+    "canonical_config_sha256": "b6ac297faec9e289b422086b06eccd22d65afed5c38525a9c3eb6247e15bbfe9",
+    "session_config_sha256": "ca8bb1b13deecd326aeae342006bf6fe1133ccf8e66adbb08fb77fa9d1dc8586",
+    "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+    "authorization_uses": "1/1",
+    "use_record_sha256": "f0d064930531716bcacb7b4d2442a813e1ac2ff9e3ec1dc1dfc6d4bf52584212",
+    "use_commit": "d456fed8b78d26067ee734b06a6ac809e2cbd3b2",
+    "drive_archive": "MyDrive/Quant_Research/strategy-research-agent/20261107_081300_9439f8c/",
+    "evidence_dir": "docs/evidence/phase4a_dev_smoke/20261107_081300_9439f8c/",
+    "counts": {
+      "native_1m_rows": 21119,
+      "conservative_15m_bars": 1408,
+      "sessions": 22,
+      "signal_eligible": 506,
+      "decisions_in_window": 29,
+      "orders": 28,
+      "fills": 26,
+      "rejected_orders": 1,
+      "trades": 13
+    },
+    "temporal": "PASS all scenarios (NEXT_ELIGIBLE_BAR_OPEN, 14 min available->fill, 0 on/before signal bar)",
+    "results": {
+      "BASE": {
+        "net_return": 0.0184435,
+        "win_rate": 0.4615,
+        "payoff": 3.624,
+        "expectancy_usd": 141.87,
+        "profit_factor": 3.107,
+        "max_drawdown": -0.00783,
+        "total_cost_usd": 136.65
+      },
+      "LOW": {
+        "net_return": 0.018963,
+        "total_cost_usd": 84.65
+      },
+      "STRESS": {
+        "net_return": 0.017643,
+        "win_rate": 0.3846,
+        "total_cost_usd": 216.65
+      },
+      "CAT_STRESS": {
+        "net_return": 0.018443,
+        "total_cost_usd": 136.91,
+        "cat_rounding": "DIFFERENCE_VISIBLE"
+      }
+    },
+    "sample": "INSUFFICIENT_SAMPLE (13 < 30)",
+    "concentration": "top 3 trades +2504.45 > net +1844.35; remaining 10 trades -660.10",
+    "verdicts": {
+      "engineering": "GO (research-only smoke path, scoped)",
+      "strategy_effectiveness": "CANNOT_DETERMINE",
+      "formal_market_eligibility": "NO_GO"
+    }
+  }
+}

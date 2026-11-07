@@ -62,6 +62,51 @@ class RunRequest:
     datasets: tuple = field(default=())
 
 
+SEARCH_MODES = {"FIXED", "PREREGISTERED_GRID"}
+
+
+def parameter_issues(spec: dict, params: dict) -> list[Issue]:
+    """R02 (research-lead decision, M3-B.1): run parameters must be exactly the declared names, numeric, inside
+    [min, max], on the step grid, satisfy the spec constraints, and - for search mode FIXED - equal the declared
+    defaults (whatever max_trials says). Mandatory for every formal research entry point; the M2 low-level
+    ``ExperimentRunner`` keeps it opt-in (``enforce_parameter_ranges``) for backward compatibility."""
+    from decimal import Decimal, InvalidOperation  # noqa: PLC0415
+    decl = spec["parameters"]["values"]
+    srch = spec["parameters"].get("search", {})
+    if srch.get("mode") not in SEARCH_MODES:
+        return [Issue("ERROR", "R02", "/parameters/search/mode", f"unknown search mode {srch.get('mode')!r}")]
+    if set(params) != set(decl):
+        return [Issue("ERROR", "R02", "/parameters", f"parameters {sorted(params)} != declared {sorted(decl)}")]
+    out = []
+    for k, d in decl.items():
+        try:
+            if isinstance(params[k], bool) or not isinstance(params[k], (int, float, Decimal)):
+                raise InvalidOperation
+            v = Decimal(str(params[k]))
+            if not v.is_finite():
+                raise InvalidOperation
+        except (InvalidOperation, ValueError):
+            out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]!r} is not a finite number")]
+            continue
+        if d.get("type") == "integer" and v != v.to_integral_value():
+            out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} is not an integer")]
+        if not Decimal(str(d["min"])) <= v <= Decimal(str(d["max"])):
+            out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} outside [{d['min']}, {d['max']}]")]
+        elif d.get("step") and (v - Decimal(str(d["min"]))) % Decimal(str(d["step"])) != 0:
+            out += [Issue("ERROR", "R02", f"/parameters/{k}", f"{k}={params[k]} not on the step grid")]
+    if out:
+        return out
+    ops = {"<": lambda a, b: a < b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b, ">=": lambda a, b: a >= b}
+    for c in spec["parameters"].get("constraints", []):
+        if c["op"] not in ops:
+            out += [Issue("ERROR", "R02", "/parameters/constraints", f"unknown constraint op {c['op']!r}")]
+        elif not ops[c["op"]](params[c["left"]], params[c["right"]]):
+            out += [Issue("ERROR", "R02", "/parameters/constraints", f"violates {c['left']} {c['op']} {c['right']}")]
+    if srch["mode"] == "FIXED" and any(Decimal(str(params[k])) != Decimal(str(d["default"])) for k, d in decl.items()):
+        out += [Issue("ERROR", "R02", "/parameters", "FIXED spec runs its declared defaults only")]
+    return out
+
+
 class OracleNotAllowed(TypeError):
     """Decision Q4: the Decimal oracle is an acceptance tool, never the executor."""
 
@@ -70,7 +115,8 @@ class ExperimentRunner:
     def __init__(self, registry: ExperimentRegistry, families: FamilyIndex, holdout: HoldoutGuard,
                  budget: BudgetGuard, port: BacktestPort, engine: EngineInfo, agent_sha: str,
                  admission: AdmissionLock, actor: str = "strategy-agent",
-                 clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc), governance=None):
+                 clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc), governance=None,
+                 enforce_parameter_ranges: bool = False):
         if type(port).__module__.split(".")[0] == "benchmark":
             raise OracleNotAllowed("benchmark oracle cannot be used as the BacktestPort; "
                                    "market-research-core is the only formal executor")
@@ -78,6 +124,9 @@ class ExperimentRunner:
         self.port, self.engine, self.agent_sha, self.actor, self.clock = port, engine, agent_sha, actor, clock
         self.admission = admission
         self.governance = governance          # GovernanceContext; None = repository governance files
+        # M3-B: opt-in check that run parameters lie inside the spec's declared ranges / grid / constraints.
+        # Off by default to keep M2 behaviour (M2 budgets trials by max_trials, not by range).
+        self.enforce_parameter_ranges = enforce_parameter_ranges
 
     # ------------------------------------------------------------ helpers
 
@@ -169,6 +218,8 @@ class ExperimentRunner:
         issues = [i for i in validate(spec, self.governance) if i.level == "ERROR"]
         if not issues and spec["status"] not in {"REGISTERED", "FROZEN"}:
             issues = [Issue("ERROR", "R01", "/status", "only REGISTERED/FROZEN specs may execute")]
+        if not issues and self.enforce_parameter_ranges:
+            issues = parameter_issues(spec, req.parameters)
         if issues:
             trial = {"family_id": "UNASSIGNED", "index": 0, "parameters": req.parameters, "params_sha256": p_sha}
             return self._emit(self._base(exp_id, created, req, trial, spec_sha), "REJECTED_SPEC",

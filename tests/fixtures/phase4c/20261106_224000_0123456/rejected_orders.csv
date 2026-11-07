@@ -1,0 +1,9 @@
+scenario,order_id,bar_ts,reason,detail,expiry_ts
+BASE,0020-CROSS_BELOW,2024-06-13T15:44:00-04:00,BAR_NOT_ELIGIBLE,candidate bar was not eligible for this order,NaT
+BASE,0020-CROSS_BELOW,NaT,ORDER_EXPIRED,DAY order expired at the first session close after order_time,2024-06-13T16:00:00-04:00
+LOW,0020-CROSS_BELOW,2024-06-13T15:44:00-04:00,BAR_NOT_ELIGIBLE,candidate bar was not eligible for this order,NaT
+LOW,0020-CROSS_BELOW,NaT,ORDER_EXPIRED,DAY order expired at the first session close after order_time,2024-06-13T16:00:00-04:00
+STRESS,0020-CROSS_BELOW,2024-06-13T15:44:00-04:00,BAR_NOT_ELIGIBLE,candidate bar was not eligible for this order,NaT
+STRESS,0020-CROSS_BELOW,NaT,ORDER_EXPIRED,DAY order expired at the first session close after order_time,2024-06-13T16:00:00-04:00
+CAT_STRESS,0020-CROSS_BELOW,2024-06-13T15:44:00-04:00,BAR_NOT_ELIGIBLE,candidate bar was not eligible for this order,NaT
+CAT_STRESS,0020-CROSS_BELOW,NaT,ORDER_EXPIRED,DAY order expired at the first session close after order_time,2024-06-13T16:00:00-04:00

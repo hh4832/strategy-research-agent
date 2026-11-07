@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0.0",
+  "config_id": "sma_5_20_tsm_synthetic_local",
+  "version": "1.0.0",
+  "kind": "SYNTHETIC",
+  "market": {
+    "market_id": "IBKR_TSM",
+    "gate_version": null
+  },
+  "instrument": {
+    "symbol": "TSM",
+    "venue": "IBKR",
+    "currency": "USD"
+  },
+  "dataset": {
+    "dataset_id": "synthetic_tsm_15m_v1",
+    "snapshot_id": "synthetic_tsm_15m_v1@f209b19b6e05",
+    "producer_commit_sha": "f209b19b6e05e9090bde66522c6d395593ae0457"
+  },
+  "timeframe": "15m",
+  "strategy": {
+    "spec_path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+    "spec_file_sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.0"
+  },
+  "parameters": {
+    "fast": 5,
+    "slow": 20
+  },
+  "temporal_policy": {
+    "policy_id": "SYNTHETIC_FIXTURE_START_LABEL_AVAILABLE_AT_BAR_END",
+    "version": "1",
+    "status": "FIXTURE_DEFINITION",
+    "source": "SYNTHETIC_FIXTURE",
+    "evidence_ref": "fixtures/synthetic/synthetic_tsm_15m_v1.meta.json",
+    "approved_by": null
+  },
+  "costs": {
+    "profile_ref": {
+      "profile_id": "synthetic_equity_test",
+      "version": "1.0.0",
+      "sha256": "adba97a41db38ba90d3f55125e3fc5042956171553f5824b40efc7e60747319d"
+    },
+    "scenario_set": {
+      "path": "configs/cost_scenarios/synthetic_equity_test_v1.json",
+      "file_sha256": "830100df605ddf9d7ef503feb238063cfa5b5192d078d051f60774ff40e06063"
+    }
+  },
+  "windows": {
+    "warmup_start": "2025-01-06T00:00:00-05:00",
+    "in_sample": {
+      "start": "2025-01-07T00:00:00-05:00",
+      "end": "2025-03-03T00:00:00-05:00"
+    },
+    "validation": {
+      "start": "2025-03-03T00:00:00-05:00",
+      "end": "2025-04-01T00:00:00-04:00"
+    }
+  },
+  "holdout": {
+    "holdout_id": "HOLDOUT-SYNTH-TSM-15M-TEST"
+  },
+  "capital": {
+    "initial_capital": 100000,
+    "currency": "USD"
+  },
+  "position_sizing": {
+    "method": "FIXED_UNITS",
+    "units": 100,
+    "max_units": 100
+  },
+  "risk_limits": {
+    "allowed_directions": [
+      "LONG"
+    ],
+    "max_position_units": 100
+  },
+  "output": {
+    "target": "LOCAL",
+    "path": null
+  },
+  "provenance": {
+    "created_by": "claude-m3b2",
+    "created_at": "2026-11-05T11:00:00+08:00",
+    "notes": "Same research question as sma_5_20_tsm_synthetic, archived to a local directory given at run time (CI / offline). SYNTHETIC only.",
+    "config_sha256": "6781041b6c9414786de94e0cda0a5d745fc2090ed3d02e78ee4d95a18eaf2cdb"
+  }
+}

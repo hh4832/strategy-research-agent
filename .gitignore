@@ -6,3 +6,6 @@ out/
 .venv/
 registry/.admission.lock
 registry/runner_host.json
+_local_runs/
+*.parquet
+.env

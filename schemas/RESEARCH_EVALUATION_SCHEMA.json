@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hh4832/strategy-research-agent/schemas/RESEARCH_EVALUATION_SCHEMA.json",
+  "title": "Research evaluation v1.0; engineering independent of three strategy verdicts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metadata",
+    "input_sha256",
+    "engineering_status",
+    "strategy_verdict",
+    "evidence_sufficiency",
+    "errors",
+    "layers",
+    "metrics",
+    "risk_flags",
+    "robustness_matrix",
+    "protocol_gates",
+    "research_decision",
+    "evaluation_batch_consumption",
+    "registry_written"
+  ],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_run_id",
+        "source_archive_path",
+        "source_commit_sha",
+        "evaluator_commit_sha",
+        "evaluation_timestamp",
+        "schema_version",
+        "evaluator_version"
+      ],
+      "properties": {
+        "source_run_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_archive_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_commit_sha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evaluator_commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "evaluation_timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "evaluator_version": {
+          "const": "1.0.0"
+        }
+      }
+    },
+    "input_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "engineering_status": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "BLOCKED"
+      ]
+    },
+    "strategy_verdict": {
+      "enum": [
+        "KEEP",
+        "RETEST",
+        "REJECT"
+      ]
+    },
+    "evidence_sufficiency": {
+      "enum": [
+        "UNDETERMINED",
+        "DESCRIPTIVE_ONLY",
+        "PROTOCOL_GATES_SATISFIED"
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "layers": {
+      "type": "object"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "robustness_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "protocol_gates": {
+      "type": "object"
+    },
+    "research_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "reasons"
+      ],
+      "properties": {
+        "verdict": {
+          "enum": [
+            "KEEP",
+            "RETEST",
+            "REJECT"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evaluation_batch_consumption": {
+      "const": 0
+    },
+    "registry_written": {
+      "const": false
+    },
+    "upstream_metrics": {
+      "type": "object"
+    }
+  }
+}

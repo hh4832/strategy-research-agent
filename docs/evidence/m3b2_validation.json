@@ -1,0 +1,21 @@
+{
+  "scope": "Final merged M3-B.2 bounded acceptance",
+  "python": "3.11.17",
+  "result": "PASS",
+  "passed": 156,
+  "skipped": 0,
+  "command": "python -m pytest -q tests/test_m3b2_contract.py tests/test_m3b2_archive_resume.py tests/test_m3b_unit.py tests/test_m3b_integration.py tests/test_m3b_notebook.py tests/test_m1_core_compat.py tests/test_m1_adapter.py tests/test_m2_governance.py tests/test_m2_review.py",
+  "core_sha": "2c6ba9ab7c336e7a4908744abef617e0dce713fd",
+  "colab_run_all": "PENDING_NOT_EXECUTED",
+  "drive_archive": "PENDING_NOT_MOUNTED",
+  "github_ci": "PENDING_API_FORBIDDEN",
+  "notion_update": "PENDING_CONNECTOR_UNAVAILABLE",
+  "real_tsm_execution": "NOT_STARTED_NO_GO",
+  "formal_registry_holdout": "UNCHANGED",
+  "local_config_cli": "8/8 COMPLETED + ARCHIVED (2 windows x 4 scenarios)",
+  "resume_cli": "8/8 SKIPPED_RESUME",
+  "oracle_historical_gate": "NOT_RERUN",
+  "supersedes": "148-test local alternative implementation",
+  "implementation_sha": "f4ab50712010159d7daf5d2bd10b2724958a9bf8",
+  "notebook_static_checks": "5 PASS after final SHA pin"
+}

@@ -1,0 +1,217 @@
+{
+  "cat_rounding": {
+    "cat_unrounded_difference": "0.2000000",
+    "interpretation": "a masked difference is a rounding artefact, NOT evidence that CAT has no cost impact",
+    "regulatory_debit_difference": "0.400",
+    "status": "DIFFERENCE_VISIBLE"
+  },
+  "data": {
+    "buy_execution_eligible_bars": 528,
+    "conservative_15m_bars": 572,
+    "execution_rejection_reasons": {
+      "CLOSING_AUCTION_EXCLUDED": 22,
+      "OUTSIDE_CONSERVATIVE_RTH": 22
+    },
+    "holdout_start": "2025-01-01",
+    "max_native_timestamp_before_holdout": true,
+    "native_1m_rows": 8580,
+    "native_first_utc": "2024-05-29T13:30:00+00:00",
+    "native_last_utc": "2024-06-28T19:59:00+00:00",
+    "sell_execution_eligible_bars": 528,
+    "sessions": 22,
+    "signal_eligible_bars": 506
+  },
+  "decisions": {
+    "in_window": 43,
+    "orders": 42,
+    "total_including_warmup": 48
+  },
+  "loader_provenance": {
+    "arrow_schema": {
+      "close": "double",
+      "high": "double",
+      "low": "double",
+      "open": "double",
+      "timestamp_utc": "timestamp[us, tz=UTC]",
+      "volume": "double"
+    },
+    "conservative_buckets": 572,
+    "core_git_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "core_tree_dirty": false,
+    "derived_snapshot_pin": {
+      "end": "2024-06-28",
+      "lineage_sha256": "6f5884dedf578971394290e98e6288ef16b0318d70e5e3d6a713b1af05f3140f",
+      "producer_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+      "snapshot_id": "TSM_DEV_1M_20240529_20240628_529b6b7c5c6ff616a618",
+      "start": "2024-05-29"
+    },
+    "formal_execution_eligible": false,
+    "holdout": [
+      {
+        "end": "2026-10-16",
+        "start": "2025-01-01"
+      }
+    ],
+    "integrity_method": "REUSED_TRUSTED_SHA256_RECEIPT_WITH_STAT_GUARD",
+    "integrity_receipt_sha256": "0b7ff3749bb01d4464fc9fc5f686e6d7988597519691961efa3e9321f1d0b242",
+    "integrity_verification_ref": "DEVELOPMENT_RECEIPT_RENEWAL:28e4adf1ffd03b2f16f737105474aa6af845badf00dfcbb394ac1705badc38e0",
+    "manifest_relative_path": "manifest.json",
+    "manifest_sha256": "90bba07364ac93a75d9efdefdd6a9dfd40840c9780d774f65ade3722a91ab288",
+    "native_rows": 8580,
+    "parquet_relative_path": "tsm_development_1m.parquet",
+    "parquet_sha256": "785161e81993df77f25c816a97ccb91f97ebfb3d76988b74b49d93e49ac1fbca",
+    "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+    "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "policy_version": "1.0.0",
+    "producer_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "requested_dates": {
+      "end": "2024-06-28",
+      "start": "2024-05-29"
+    },
+    "research_window": {
+      "end": "2024-06-28",
+      "start": "2024-05-29"
+    },
+    "scope": "RESEARCH_ONLY",
+    "snapshot_id": "TSM_DEV_1M_20240529_20240628_529b6b7c5c6ff616a618",
+    "source_snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+    "source_timestamp_column": "timestamp_utc",
+    "source_timestamp_label": "UNKNOWN",
+    "source_timezone": "UTC"
+  },
+  "m3a4_checks": {
+    "BASE": {
+      "K00_ledger_is_fills": "PASS",
+      "K01_ledger_fields": "PASS",
+      "K02_ledger_cost_identities": "PASS",
+      "K03_round_trip_costs_equal_ledger": "PASS",
+      "P01_engine_git_sha": "PASS",
+      "P02_engine_version": "PASS",
+      "P03_available_at_policy": "PASS",
+      "P04_temporal_policy_sha256": "PASS",
+      "P05_temporal_policy_id": "PASS",
+      "P06_label_unknown": "PASS",
+      "P07_modeled_rule": "PASS",
+      "P08_research_only": "PASS",
+      "P09_cost_profile_sha256": "PASS",
+      "P10_cost_profile_version": "PASS",
+      "P11_cost_components_declared": "PASS",
+      "R01_rejection_codes_reviewed": "PASS",
+      "T01_no_lookahead": "PASS"
+    },
+    "CAT_STRESS": {
+      "K00_ledger_is_fills": "PASS",
+      "K01_ledger_fields": "PASS",
+      "K02_ledger_cost_identities": "PASS",
+      "K03_round_trip_costs_equal_ledger": "PASS",
+      "P01_engine_git_sha": "PASS",
+      "P02_engine_version": "PASS",
+      "P03_available_at_policy": "PASS",
+      "P04_temporal_policy_sha256": "PASS",
+      "P05_temporal_policy_id": "PASS",
+      "P06_label_unknown": "PASS",
+      "P07_modeled_rule": "PASS",
+      "P08_research_only": "PASS",
+      "P09_cost_profile_sha256": "PASS",
+      "P10_cost_profile_version": "PASS",
+      "P11_cost_components_declared": "PASS",
+      "R01_rejection_codes_reviewed": "PASS",
+      "T01_no_lookahead": "PASS"
+    },
+    "LOW": {
+      "K00_ledger_is_fills": "PASS",
+      "K01_ledger_fields": "PASS",
+      "K02_ledger_cost_identities": "PASS",
+      "K03_round_trip_costs_equal_ledger": "PASS",
+      "P01_engine_git_sha": "PASS",
+      "P02_engine_version": "PASS",
+      "P03_available_at_policy": "PASS",
+      "P04_temporal_policy_sha256": "PASS",
+      "P05_temporal_policy_id": "PASS",
+      "P06_label_unknown": "PASS",
+      "P07_modeled_rule": "PASS",
+      "P08_research_only": "PASS",
+      "P09_cost_profile_sha256": "PASS",
+      "P10_cost_profile_version": "PASS",
+      "P11_cost_components_declared": "PASS",
+      "R01_rejection_codes_reviewed": "PASS",
+      "T01_no_lookahead": "PASS"
+    },
+    "STRESS": {
+      "K00_ledger_is_fills": "PASS",
+      "K01_ledger_fields": "PASS",
+      "K02_ledger_cost_identities": "PASS",
+      "K03_round_trip_costs_equal_ledger": "PASS",
+      "P01_engine_git_sha": "PASS",
+      "P02_engine_version": "PASS",
+      "P03_available_at_policy": "PASS",
+      "P04_temporal_policy_sha256": "PASS",
+      "P05_temporal_policy_id": "PASS",
+      "P06_label_unknown": "PASS",
+      "P07_modeled_rule": "PASS",
+      "P08_research_only": "PASS",
+      "P09_cost_profile_sha256": "PASS",
+      "P10_cost_profile_version": "PASS",
+      "P11_cost_components_declared": "PASS",
+      "R01_rejection_codes_reviewed": "PASS",
+      "T01_no_lookahead": "PASS"
+    }
+  },
+  "rejections_by_scenario": {
+    "BASE": 2,
+    "CAT_STRESS": 2,
+    "LOW": 2,
+    "STRESS": 2
+  },
+  "scope": "RESEARCH_ONLY_EXPLORATORY",
+  "temporal": {
+    "BASE": {
+      "execution_assumptions": [
+        "NEXT_ELIGIBLE_BAR_OPEN"
+      ],
+      "fills_checked": 40,
+      "fills_not_strictly_after_signal_available_at": 0,
+      "fills_on_or_before_signal_bar": 0,
+      "max_minutes_signal_available_to_fill": 14.0,
+      "min_minutes_signal_available_to_fill": 14.0,
+      "order_time_equals_signal_time": true,
+      "status": "PASS"
+    },
+    "CAT_STRESS": {
+      "execution_assumptions": [
+        "NEXT_ELIGIBLE_BAR_OPEN"
+      ],
+      "fills_checked": 40,
+      "fills_not_strictly_after_signal_available_at": 0,
+      "fills_on_or_before_signal_bar": 0,
+      "max_minutes_signal_available_to_fill": 14.0,
+      "min_minutes_signal_available_to_fill": 14.0,
+      "order_time_equals_signal_time": true,
+      "status": "PASS"
+    },
+    "LOW": {
+      "execution_assumptions": [
+        "NEXT_ELIGIBLE_BAR_OPEN"
+      ],
+      "fills_checked": 40,
+      "fills_not_strictly_after_signal_available_at": 0,
+      "fills_on_or_before_signal_bar": 0,
+      "max_minutes_signal_available_to_fill": 14.0,
+      "min_minutes_signal_available_to_fill": 14.0,
+      "order_time_equals_signal_time": true,
+      "status": "PASS"
+    },
+    "STRESS": {
+      "execution_assumptions": [
+        "NEXT_ELIGIBLE_BAR_OPEN"
+      ],
+      "fills_checked": 40,
+      "fills_not_strictly_after_signal_available_at": 0,
+      "fills_on_or_before_signal_bar": 0,
+      "max_minutes_signal_available_to_fill": 14.0,
+      "min_minutes_signal_available_to_fill": 14.0,
+      "order_time_equals_signal_time": true,
+      "status": "PASS"
+    }
+  }
+}

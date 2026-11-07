@@ -1,0 +1,1758 @@
+{
+ "schema": "m3c_reference_metrics/1",
+ "description": "Reference metrics of configs/research/sma_5_20_tsm_conservative_synthetic_*_v1.json (identical config content except output target) on Core 699e3ad; used by the N1 numeric reproducibility check (tolerance in strategy_agent.research.reproducibility). SYNTHETIC TEST_ONLY engineering evidence - not TSM, not IBKR.",
+ "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+ "python": "3.11.17",
+ "config_sha256_local": "4995e41438f17617607ff1037f0c6ceeec0f0acb4ac6bae07208b695656c32c1",
+ "runs": {
+  "TRAIN/BASE": {
+   "metrics_sha256": "3ac6f0d1b01bf8cdcbbc7a2f70f0bb65361632599da5bcafbe8b3f12f72e0a22",
+   "metrics": {
+    "bars": 468,
+    "by_holding_period_bars": {
+     "1-4": {
+      "average_loss": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -22.350232,
+      "payoff_ratio": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 1,
+      "win_rate": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     "5-16": {
+      "average_loss": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -178.6939032,
+      "payoff_ratio": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 2,
+      "win_rate": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     ">=65": {
+      "average_loss": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 22.5965144,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_parameter_set": {
+     "fast=5,slow=20": {
+      "average_loss": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -178.44762079999998,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_regime": {
+     "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+     "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+     "TSM": {
+      "average_loss": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -178.44762079999998,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_year": {
+     "2025": {
+      "average_loss": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -178.44762079999998,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "cost_adjusted_net_return": -0.0017844762079999997,
+    "costs": {
+     "cost_share_of_gross": 0.10788654814814815,
+     "fees": 15.450000000000001,
+     "regulatory_fees": 2.0276208000000002,
+     "taxes": 0.0,
+     "total": 17.4776208
+    },
+    "data_quality": {
+     "expected_bars_from_session_template": 468,
+     "max_participation_of_bar_volume": 0.0017150893561554558,
+     "median_bar_volume": 67922.0,
+     "missing_bars": 0,
+     "order_qty": 100.0,
+     "rejections_by_reason": {
+      "BAR_NOT_ELIGIBLE": 3,
+      "ORDER_EXPIRED": 3
+     },
+     "slippage_cost_vs_bar_open": 45.000000000000284,
+     "unfillable_signals": 3,
+     "zero_volume_bars": 0
+    },
+    "exposure": 0.3269230769230769,
+    "fills": 15,
+    "gross_return_closed_trades": -0.00162,
+    "max_drawdown": -0.003402973284906463,
+    "max_drawdown_duration_bars": 349,
+    "multiple_testing": {
+     "deflated_sharpe": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     },
+     "family_id": "FAM-1b859060b496",
+     "family_trials": 1,
+     "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+     "psr_vs_zero": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "open_position_at_end": {
+     "positions": [
+      {
+       "contract": "TSM",
+       "entry_price": 102.08,
+       "entry_ts": "2025-01-31T14:14:00-05:00",
+       "experiment_id": "8329e6dbb82a26ac",
+       "margin_requirement": 0.0,
+       "mark_price": 101.32,
+       "qty": 100.0,
+       "side": "LONG",
+       "strategy_id": "sma_crossover_tsm_15m_5_20",
+       "symbol": "TSM",
+       "unrealized_pnl": -76.00000000000051
+      }
+     ]
+    },
+    "parameters": {
+     "fast": 5,
+     "slow": 20
+    },
+    "rejections": 6,
+    "sample": {
+     "effective_net_pnl": -178.44762079999998,
+     "invalidated_abs_pnl_share": 0.0,
+     "invalidated_fraction": 0.0,
+     "invalidated_net_pnl_for_reference": 0,
+     "invalidated_trades": 0,
+     "reasons": [
+      {
+       "code": "Q5-1",
+       "message": "valid trades 7 < 30 after invalidation"
+      }
+     ],
+     "status": "INSUFFICIENT",
+     "valid_trades": 7
+    },
+    "sessions": 18,
+    "sharpe_ratio": {
+     "reason": "needs >= 20 sessions and >= 10 valid trades (have 18, 7)",
+     "status": "NOT_EVALUABLE"
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+     "bar_return": {
+      "cvar_95": -0.0004443622949798081,
+      "excess_kurtosis": 6.466834853467354,
+      "skew": -0.23723417954359477,
+      "var_95": -0.0003276244758973539,
+      "worst": -0.0008106872622862739
+     },
+     "trades": {
+      "best_trade": 113.650463,
+      "extreme_losses_below_mean_minus_3sd": 0,
+      "max_consecutive_losses": 5,
+      "worst_trade": -120.3479524
+     },
+     "worst_session_return": -0.0009244608610841029
+    },
+    "total_return": -0.002554776207999821,
+    "trades": {
+     "average_loss": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "average_win": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "expectancy": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "net_pnl": -178.44762079999998,
+     "payoff_ratio": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "profit_factor": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "trade_count": 7,
+     "win_rate": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "turnover_annualised": 10.951567562454965
+   }
+  },
+  "VALIDATION/BASE": {
+   "metrics_sha256": "6a602c3f18b200876d359239fb6f00e8de437906376d2bff8460929c21714c4b",
+   "metrics": {
+    "bars": 780,
+    "by_holding_period_bars": {
+     "5-16": {
+      "average_loss": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -123.3658,
+      "payoff_ratio": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 1,
+      "win_rate": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     ">=65": {
+      "average_loss": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 888.9494152,
+      "payoff_ratio": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 3,
+      "win_rate": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_parameter_set": {
+     "fast=5,slow=20": {
+      "average_loss": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 765.5836151999999,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_regime": {
+     "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+     "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+     "TSM": {
+      "average_loss": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 765.5836151999999,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_year": {
+     "2025": {
+      "average_loss": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 765.5836151999999,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "cost_adjusted_net_return": 0.0076558361519999995,
+    "costs": {
+     "cost_share_of_gross": 0.01215017393548387,
+     "fees": 8.24,
+     "regulatory_fees": 1.1763848000000001,
+     "taxes": 0.0,
+     "total": 9.4163848
+    },
+    "data_quality": {
+     "expected_bars_from_session_template": 780,
+     "max_participation_of_bar_volume": 0.0019183180187611502,
+     "median_bar_volume": 67732.5,
+     "missing_bars": 0,
+     "order_qty": 100.0,
+     "rejections_by_reason": {},
+     "slippage_cost_vs_bar_open": 23.999999999998067,
+     "unfillable_signals": 0,
+     "zero_volume_bars": 0
+    },
+    "exposure": 0.2128205128205128,
+    "fills": 8,
+    "gross_return_closed_trades": 0.00775,
+    "max_drawdown": -0.0031627235746551907,
+    "max_drawdown_duration_bars": 109,
+    "multiple_testing": {
+     "deflated_sharpe": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     },
+     "family_id": "FAM-1b859060b496",
+     "family_trials": 1,
+     "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+     "psr_vs_zero": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "open_position_at_end": null,
+    "parameters": {
+     "fast": 5,
+     "slow": 20
+    },
+    "rejections": 0,
+    "sample": {
+     "effective_net_pnl": 765.5836151999999,
+     "invalidated_abs_pnl_share": 0.0,
+     "invalidated_fraction": 0.0,
+     "invalidated_net_pnl_for_reference": 0,
+     "invalidated_trades": 0,
+     "reasons": [
+      {
+       "code": "Q5-1",
+       "message": "valid trades 4 < 30 after invalidation"
+      }
+     ],
+     "status": "INSUFFICIENT",
+     "valid_trades": 4
+    },
+    "sessions": 30,
+    "sharpe_ratio": {
+     "reason": "needs >= 20 sessions and >= 10 valid trades (have 30, 4)",
+     "status": "NOT_EVALUABLE"
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+     "bar_return": {
+      "cvar_95": -0.0003458047875521341,
+      "excess_kurtosis": 11.402877446510526,
+      "skew": 0.7272648269878461,
+      "var_95": -0.00017923511415931094,
+      "worst": -0.0009399585316654245
+     },
+     "trades": {
+      "best_trade": 815.6309752,
+      "extreme_losses_below_mean_minus_3sd": 0,
+      "max_consecutive_losses": 1,
+      "worst_trade": -123.3658
+     },
+     "worst_session_return": -0.0017744341728560382
+    },
+    "total_return": 0.007655836151999974,
+    "trades": {
+     "average_loss": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "average_win": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "expectancy": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "net_pnl": 765.5836151999999,
+     "payoff_ratio": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "profit_factor": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "trade_count": 4,
+     "win_rate": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "turnover_annualised": 3.5155009504122194
+   }
+  },
+  "TRAIN/LOW_FRICTIONLESS": {
+   "metrics_sha256": "562eab679eee6496f918e09d32c25c41b6f9677dc5ed56d68319ea8528f79c75",
+   "metrics": {
+    "bars": 468,
+    "by_holding_period_bars": {
+     "1-4": {
+      "average_loss": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -14.0,
+      "payoff_ratio": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 1,
+      "win_rate": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     "5-16": {
+      "average_loss": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -162.0,
+      "payoff_ratio": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 2,
+      "win_rate": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     ">=65": {
+      "average_loss": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 56.0,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_parameter_set": {
+     "fast=5,slow=20": {
+      "average_loss": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -120.0,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_regime": {
+     "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+     "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+     "TSM": {
+      "average_loss": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -120.0,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_year": {
+     "2025": {
+      "average_loss": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -120.0,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "cost_adjusted_net_return": -0.0012,
+    "costs": {
+     "cost_share_of_gross": 0.0,
+     "fees": 0.0,
+     "regulatory_fees": 0.0,
+     "taxes": 0.0,
+     "total": 0.0
+    },
+    "data_quality": {
+     "expected_bars_from_session_template": 468,
+     "max_participation_of_bar_volume": 0.0017150893561554558,
+     "median_bar_volume": 67922.0,
+     "missing_bars": 0,
+     "order_qty": 100.0,
+     "rejections_by_reason": {
+      "BAR_NOT_ELIGIBLE": 3,
+      "ORDER_EXPIRED": 3
+     },
+     "slippage_cost_vs_bar_open": 0.0,
+     "unfillable_signals": 3,
+     "zero_volume_bars": 0
+    },
+    "exposure": 0.3269230769230769,
+    "fills": 15,
+    "gross_return_closed_trades": -0.0012,
+    "max_drawdown": -0.0030689565547713515,
+    "max_drawdown_duration_bars": 349,
+    "multiple_testing": {
+     "deflated_sharpe": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     },
+     "family_id": "FAM-1b859060b496",
+     "family_trials": 1,
+     "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+     "psr_vs_zero": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "open_position_at_end": {
+     "positions": [
+      {
+       "contract": "TSM",
+       "entry_price": 102.05,
+       "entry_ts": "2025-01-31T14:14:00-05:00",
+       "experiment_id": "8329e6dbb82a26ac",
+       "margin_requirement": 0.0,
+       "mark_price": 101.32,
+       "qty": 100.0,
+       "side": "LONG",
+       "strategy_id": "sma_crossover_tsm_15m_5_20",
+       "symbol": "TSM",
+       "unrealized_pnl": -73.0000000000004
+      }
+     ]
+    },
+    "parameters": {
+     "fast": 5,
+     "slow": 20
+    },
+    "rejections": 6,
+    "sample": {
+     "effective_net_pnl": -120.0,
+     "invalidated_abs_pnl_share": 0.0,
+     "invalidated_fraction": 0.0,
+     "invalidated_net_pnl_for_reference": 0,
+     "invalidated_trades": 0,
+     "reasons": [
+      {
+       "code": "Q5-1",
+       "message": "valid trades 7 < 30 after invalidation"
+      }
+     ],
+     "status": "INSUFFICIENT",
+     "valid_trades": 7
+    },
+    "sessions": 18,
+    "sharpe_ratio": {
+     "reason": "needs >= 20 sessions and >= 10 valid trades (have 18, 7)",
+     "status": "NOT_EVALUABLE"
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+     "bar_return": {
+      "cvar_95": -0.00043996336549083245,
+      "excess_kurtosis": 6.546795069215614,
+      "skew": -0.2168380370735749,
+      "var_95": -0.0003170595663433101,
+      "worst": -0.0008103160232490671
+     },
+     "trades": {
+      "best_trade": 122.0,
+      "extreme_losses_below_mean_minus_3sd": 0,
+      "max_consecutive_losses": 5,
+      "worst_trade": -112.0
+     },
+     "worst_session_return": -0.0008004562600682389
+    },
+    "total_return": -0.00193,
+    "trades": {
+     "average_loss": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "average_win": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "expectancy": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "net_pnl": -120.0,
+     "payoff_ratio": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "profit_factor": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "trade_count": 7,
+     "win_rate": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "turnover_annualised": 10.947877184692416
+   }
+  },
+  "VALIDATION/LOW_FRICTIONLESS": {
+   "metrics_sha256": "32243abdc0c5e6bb39fc16b507420bcb164857d55b840aca9ecec87655fd76c5",
+   "metrics": {
+    "bars": 780,
+    "by_holding_period_bars": {
+     "5-16": {
+      "average_loss": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -115.0,
+      "payoff_ratio": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 1,
+      "win_rate": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     ">=65": {
+      "average_loss": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 914.0,
+      "payoff_ratio": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 3,
+      "win_rate": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_parameter_set": {
+     "fast=5,slow=20": {
+      "average_loss": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 799.0,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_regime": {
+     "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+     "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+     "TSM": {
+      "average_loss": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 799.0,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_year": {
+     "2025": {
+      "average_loss": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 799.0,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "cost_adjusted_net_return": 0.00799,
+    "costs": {
+     "cost_share_of_gross": 0.0,
+     "fees": 0.0,
+     "regulatory_fees": 0.0,
+     "taxes": 0.0,
+     "total": 0.0
+    },
+    "data_quality": {
+     "expected_bars_from_session_template": 780,
+     "max_participation_of_bar_volume": 0.0019183180187611502,
+     "median_bar_volume": 67732.5,
+     "missing_bars": 0,
+     "order_qty": 100.0,
+     "rejections_by_reason": {},
+     "slippage_cost_vs_bar_open": 0.0,
+     "unfillable_signals": 0,
+     "zero_volume_bars": 0
+    },
+    "exposure": 0.2128205128205128,
+    "fills": 8,
+    "gross_return_closed_trades": 0.00799,
+    "max_drawdown": -0.0030364172254860877,
+    "max_drawdown_duration_bars": 109,
+    "multiple_testing": {
+     "deflated_sharpe": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     },
+     "family_id": "FAM-1b859060b496",
+     "family_trials": 1,
+     "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+     "psr_vs_zero": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "open_position_at_end": null,
+    "parameters": {
+     "fast": 5,
+     "slow": 20
+    },
+    "rejections": 0,
+    "sample": {
+     "effective_net_pnl": 799.0,
+     "invalidated_abs_pnl_share": 0.0,
+     "invalidated_fraction": 0.0,
+     "invalidated_net_pnl_for_reference": 0,
+     "invalidated_trades": 0,
+     "reasons": [
+      {
+       "code": "Q5-1",
+       "message": "valid trades 4 < 30 after invalidation"
+      }
+     ],
+     "status": "INSUFFICIENT",
+     "valid_trades": 4
+    },
+    "sessions": 30,
+    "sharpe_ratio": {
+     "reason": "needs >= 20 sessions and >= 10 valid trades (have 30, 4)",
+     "status": "NOT_EVALUABLE"
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+     "bar_return": {
+      "cvar_95": -0.00034545877255135984,
+      "excess_kurtosis": 11.402139777537752,
+      "skew": 0.7320801624122718,
+      "var_95": -0.00017852066634170045,
+      "worst": -0.0009397659488173788
+     },
+     "trades": {
+      "best_trade": 824.0,
+      "extreme_losses_below_mean_minus_3sd": 0,
+      "max_consecutive_losses": 1,
+      "worst_trade": -115.0
+     },
+     "worst_session_return": -0.0017311478004530662
+    },
+    "total_return": 0.00799,
+    "trades": {
+     "average_loss": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "average_win": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "expectancy": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "net_pnl": 799.0,
+     "payoff_ratio": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "profit_factor": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "trade_count": 4,
+     "win_rate": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "turnover_annualised": 3.515237668134696
+   }
+  },
+  "TRAIN/STRESS_2X": {
+   "metrics_sha256": "cb68ec6ddf0efd4b0e17994ae7eb5ebb3db2b956970a08f8ce3f989b279d6136",
+   "metrics": {
+    "bars": 468,
+    "by_holding_period_bars": {
+     "1-4": {
+      "average_loss": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -28.7003528,
+      "payoff_ratio": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 1,
+      "win_rate": {
+       "reason": "1 valid round trips in 1-4 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     "5-16": {
+      "average_loss": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -191.387584,
+      "payoff_ratio": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 2,
+      "win_rate": {
+       "reason": "2 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     ">=65": {
+      "average_loss": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -2.8065264000000028,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_parameter_set": {
+     "fast=5,slow=20": {
+      "average_loss": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -222.89446320000002,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_regime": {
+     "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+     "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+     "TSM": {
+      "average_loss": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -222.89446320000002,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_year": {
+     "2025": {
+      "average_loss": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -222.89446320000002,
+      "payoff_ratio": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 7,
+      "win_rate": {
+       "reason": "7 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "cost_adjusted_net_return": -0.002228944632,
+    "costs": {
+     "cost_share_of_gross": 0.18397085894736842,
+     "fees": 30.900000000000002,
+     "regulatory_fees": 4.0544632,
+     "taxes": 0.0,
+     "total": 34.9544632
+    },
+    "data_quality": {
+     "expected_bars_from_session_template": 468,
+     "max_participation_of_bar_volume": 0.0017150893561554558,
+     "median_bar_volume": 67922.0,
+     "missing_bars": 0,
+     "order_qty": 100.0,
+     "rejections_by_reason": {
+      "BAR_NOT_ELIGIBLE": 3,
+      "ORDER_EXPIRED": 3
+     },
+     "slippage_cost_vs_bar_open": 75.00000000000284,
+     "unfillable_signals": 3,
+     "zero_volume_bars": 0
+    },
+    "exposure": 0.3269230769230769,
+    "fills": 15,
+    "gross_return_closed_trades": -0.0019,
+    "max_drawdown": -0.0037039019368181325,
+    "max_drawdown_duration_bars": 349,
+    "multiple_testing": {
+     "deflated_sharpe": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     },
+     "family_id": "FAM-1b859060b496",
+     "family_trials": 1,
+     "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+     "psr_vs_zero": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "open_position_at_end": {
+     "positions": [
+      {
+       "contract": "TSM",
+       "entry_price": 102.1,
+       "entry_ts": "2025-01-31T14:14:00-05:00",
+       "experiment_id": "8329e6dbb82a26ac",
+       "margin_requirement": 0.0,
+       "mark_price": 101.32,
+       "qty": 100.0,
+       "side": "LONG",
+       "strategy_id": "sma_crossover_tsm_15m_5_20",
+       "symbol": "TSM",
+       "unrealized_pnl": -78.00000000000011
+      }
+     ]
+    },
+    "parameters": {
+     "fast": 5,
+     "slow": 20
+    },
+    "rejections": 6,
+    "sample": {
+     "effective_net_pnl": -222.89446320000002,
+     "invalidated_abs_pnl_share": 0.0,
+     "invalidated_fraction": 0.0,
+     "invalidated_net_pnl_for_reference": 0,
+     "invalidated_trades": 0,
+     "reasons": [
+      {
+       "code": "Q5-1",
+       "message": "valid trades 7 < 30 after invalidation"
+      }
+     ],
+     "status": "INSUFFICIENT",
+     "valid_trades": 7
+    },
+    "sessions": 18,
+    "sharpe_ratio": {
+     "reason": "needs >= 20 sessions and >= 10 valid trades (have 18, 7)",
+     "status": "NOT_EVALUABLE"
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+     "bar_return": {
+      "cvar_95": -0.00044828505121851937,
+      "excess_kurtosis": 6.386026441287525,
+      "skew": -0.25648828464052464,
+      "var_95": -0.0003277081584605067,
+      "worst": -0.0008109695138656814
+     },
+     "trades": {
+      "best_trade": 107.3010372,
+      "extreme_losses_below_mean_minus_3sd": 0,
+      "max_consecutive_losses": 5,
+      "worst_trade": -126.6957936
+     },
+     "worst_session_return": -0.001018437884843571
+    },
+    "total_return": -0.003029544631999888,
+    "trades": {
+     "average_loss": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "average_win": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "expectancy": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "net_pnl": -222.89446320000002,
+     "payoff_ratio": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "profit_factor": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "trade_count": 7,
+     "win_rate": {
+      "reason": "7 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "turnover_annualised": 10.954354529194108
+   }
+  },
+  "VALIDATION/STRESS_2X": {
+   "metrics_sha256": "10762efea2ad474607efac36aa7d191e8a6dfa69e742630e4302164d5f60f294",
+   "metrics": {
+    "bars": 780,
+    "by_holding_period_bars": {
+     "5-16": {
+      "average_loss": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": -129.7314888,
+      "payoff_ratio": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 1,
+      "win_rate": {
+       "reason": "1 valid round trips in 5-16 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     },
+     ">=65": {
+      "average_loss": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 869.899164,
+      "payoff_ratio": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 3,
+      "win_rate": {
+       "reason": "3 valid round trips in >=65 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_parameter_set": {
+     "fast=5,slow=20": {
+      "average_loss": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 740.1676752000001,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in fast=5,slow=20 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_regime": {
+     "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+     "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+     "TSM": {
+      "average_loss": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 740.1676752000001,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in TSM < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "by_year": {
+     "2025": {
+      "average_loss": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "average_win": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "expectancy": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "net_pnl": 740.1676752000001,
+      "payoff_ratio": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "profit_factor": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      },
+      "trade_count": 4,
+      "win_rate": {
+       "reason": "4 valid round trips in 2025 < 10",
+       "status": "NOT_EVALUABLE"
+      }
+     }
+    },
+    "cost_adjusted_net_return": 0.007401676752000001,
+    "costs": {
+     "cost_share_of_gross": 0.024812022134387355,
+     "fees": 16.48,
+     "regulatory_fees": 2.3523248,
+     "taxes": 0.0,
+     "total": 18.832324800000002
+    },
+    "data_quality": {
+     "expected_bars_from_session_template": 780,
+     "max_participation_of_bar_volume": 0.0019183180187611502,
+     "median_bar_volume": 67732.5,
+     "missing_bars": 0,
+     "order_qty": 100.0,
+     "rejections_by_reason": {},
+     "slippage_cost_vs_bar_open": 39.999999999997726,
+     "unfillable_signals": 0,
+     "zero_volume_bars": 0
+    },
+    "exposure": 0.2128205128205128,
+    "fills": 8,
+    "gross_return_closed_trades": 0.00759,
+    "max_drawdown": -0.003259234248761622,
+    "max_drawdown_duration_bars": 109,
+    "multiple_testing": {
+     "deflated_sharpe": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     },
+     "family_id": "FAM-1b859060b496",
+     "family_trials": 1,
+     "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+     "psr_vs_zero": {
+      "reason": "sample below the Sharpe minimums",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "open_position_at_end": null,
+    "parameters": {
+     "fast": 5,
+     "slow": 20
+    },
+    "rejections": 0,
+    "sample": {
+     "effective_net_pnl": 740.1676752000001,
+     "invalidated_abs_pnl_share": 0.0,
+     "invalidated_fraction": 0.0,
+     "invalidated_net_pnl_for_reference": 0,
+     "invalidated_trades": 0,
+     "reasons": [
+      {
+       "code": "Q5-1",
+       "message": "valid trades 4 < 30 after invalidation"
+      }
+     ],
+     "status": "INSUFFICIENT",
+     "valid_trades": 4
+    },
+    "sessions": 30,
+    "sharpe_ratio": {
+     "reason": "needs >= 20 sessions and >= 10 valid trades (have 30, 4)",
+     "status": "NOT_EVALUABLE"
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+     "bar_return": {
+      "cvar_95": -0.0003466272646600742,
+      "excess_kurtosis": 11.380703308405007,
+      "skew": 0.7227533945614534,
+      "var_95": -0.00017926202095379764,
+      "worst": -0.0009401046734684786
+     },
+     "trades": {
+      "best_trade": 809.2620616,
+      "extreme_losses_below_mean_minus_3sd": 0,
+      "max_consecutive_losses": 1,
+      "worst_trade": -129.7314888
+     },
+     "worst_session_return": -0.0018077514066255108
+    },
+    "total_return": 0.007401676752000058,
+    "trades": {
+     "average_loss": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "average_win": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "expectancy": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "net_pnl": 740.1676752000001,
+     "payoff_ratio": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "profit_factor": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     },
+     "trade_count": 4,
+     "win_rate": {
+      "reason": "4 valid round trips < 10",
+      "status": "NOT_EVALUABLE"
+     }
+    },
+    "turnover_annualised": 3.5157009183687626
+   }
+  }
+ }
+}

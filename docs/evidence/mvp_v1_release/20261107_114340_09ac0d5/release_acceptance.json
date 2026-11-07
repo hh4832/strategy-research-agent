@@ -1,0 +1,33 @@
+{
+  "evidence_sufficiency": "UNDETERMINED",
+  "formal_market_status": "NO_GO",
+  "kind": "MVP_V1_RELEASE_ACCEPTANCE",
+  "not_claimed": [
+    "strategy effectiveness",
+    "Formal Market Eligibility",
+    "out-of-sample robustness"
+  ],
+  "phase4c_checks": {
+    "C1_archive_identity": "PASS",
+    "C2_archive_integrity": "PASS",
+    "C3_trade_integrity": "PASS",
+    "C4_performance_consistency": "PASS",
+    "C5_temporal_safety": "PASS",
+    "C6_research_evaluation": "PASS",
+    "C7_reproducibility": "PASS",
+    "C8_governance_isolation": "PASS"
+  },
+  "rc_commit": "09ac0d5ac4315e56dcfae44f1deea810d1dc8910",
+  "results": {
+    "R1_repository_integrity": "PASS",
+    "R2_regression_tests": "PASS",
+    "R3_real_archive_evaluation_consistency": "PASS",
+    "R4_governance_isolation": "PASS",
+    "R5_archive_integrity": "PASS",
+    "R6_colab_portability": "PASS"
+  },
+  "started_at": "2026-11-07T11:43:40+08:00",
+  "strategy_verdict": "RETEST",
+  "verdict": "MVP_V1_ENGINEERING_GO",
+  "version": "1.0.0"
+}

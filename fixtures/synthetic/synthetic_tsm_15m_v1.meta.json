@@ -1,0 +1,45 @@
+{
+  "fixture_id": "synthetic_tsm_15m_v1",
+  "kind": "SYNTHETIC",
+  "not_market_data": true,
+  "symbol_label": "TSM",
+  "generator": "strategy_agent.research.fixtures.generate",
+  "seed": 20261104,
+  "timezone": "America/New_York",
+  "bar_minutes": 15,
+  "bars_per_day": 26,
+  "days": 80,
+  "first_day": "2025-01-06",
+  "last_day": "2025-04-25",
+  "bar_label": "START",
+  "available_at_rule": "bar_end (bar_start + 15 minutes)",
+  "session_rule": "synthetic RTH 09:30-16:00 America/New_York; US holidays not removed",
+  "deliberate_defects": {
+    "zero_volume_bars": [
+      [
+        7,
+        3
+      ],
+      [
+        21,
+        25
+      ],
+      [
+        44,
+        12
+      ]
+    ],
+    "missing_bars": [
+      [
+        15,
+        9
+      ],
+      [
+        58,
+        0
+      ]
+    ]
+  },
+  "csv_sha256": "f209b19b6e05e9090bde66522c6d395593ae0457927f79b44403acd5e295f289",
+  "rows": 2078
+}

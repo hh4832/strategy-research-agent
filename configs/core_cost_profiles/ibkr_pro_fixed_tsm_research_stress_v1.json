@@ -1,0 +1,177 @@
+{
+  "schema_version": "1.0.0",
+  "configuration_sha256": "d2a49ca88a107cd84240a4652219afab33624a81e9dbb8d486877aa5c7ecdf7f",
+  "profile": {
+    "profile_id": "ibkr_pro_fixed_tsm_research_stress",
+    "version": "1.0.0",
+    "instrument_type": "EQUITY",
+    "approval_status": "DRAFT",
+    "source_evidence": "research-lead assumption IBKR_PRO_FIXED (RESEARCH_ONLY, 2026-11-05); listed terms https://www.interactivebrokers.co.uk/en/index.php?f=39753; NOT an account-verified rate",
+    "basis": "ASSUMED",
+    "equity_commission_rate": 0,
+    "minimum_commission": 1,
+    "sell_tax_rate": 0,
+    "futures_fee_per_contract_per_side": 0,
+    "futures_transaction_tax_rate": 0,
+    "contract_multiplier": 1,
+    "tick_size": 0.01,
+    "slippage_ticks": 0,
+    "fee_rounding": "HALF_UP",
+    "tax_rounding": "HALF_UP",
+    "component_basis": {
+      "contract_multiplier": "ASSUMED",
+      "equity_commission_rate": "ASSUMED",
+      "fee_rounding": "ASSUMED",
+      "futures_fee_per_contract_per_side": "ASSUMED",
+      "futures_transaction_tax_rate": "ASSUMED",
+      "minimum_commission": "ASSUMED",
+      "sell_tax_rate": "ASSUMED",
+      "slippage_ticks": "ASSUMED",
+      "tax_rounding": "ASSUMED",
+      "tick_size": "ASSUMED",
+      "equity_commission_per_share": "ASSUMED",
+      "commission_cap_rate": "ASSUMED",
+      "equity_slippage_bps": "ASSUMED",
+      "half_spread_bps": "ASSUMED"
+    },
+    "component_evidence": {
+      "equity_commission_per_share": "IBKR Pro Fixed USD 0.005/share (https://www.interactivebrokers.co.uk/en/index.php?f=39753); research assumption",
+      "commission_cap_rate": "IBKR Pro Fixed maximum 1% of trade value (https://www.interactivebrokers.co.uk/en/index.php?f=39753); research assumption",
+      "equity_slippage_bps": "research-lead slippage scenario STRESS: 4 bps/side (assumption, not measured)",
+      "half_spread_bps": "0 by research-lead decision: slippage already models adverse execution; no double counting"
+    },
+    "component_approval_status": {
+      "equity_commission_per_share": "PENDING",
+      "commission_cap_rate": "PENDING",
+      "equity_slippage_bps": "PENDING",
+      "half_spread_bps": "PENDING"
+    },
+    "commission_scheme": "FIXED",
+    "fee_mode": "COMPONENTIZED",
+    "equity_commission_per_share": 0.005,
+    "commission_cap_rate": 0.01,
+    "equity_slippage_bps": 4,
+    "half_spread_bps": 0
+  },
+  "applicability": {
+    "symbols": [
+      "TSM"
+    ],
+    "market": "IBKR_EQUITY",
+    "currency": "USD",
+    "effective_from": "2016-10-19",
+    "effective_to": "2026-10-16",
+    "assumption_status": "ASSUMED",
+    "evidence_ref": "https://www.interactivebrokers.co.uk/en/index.php?f=39753",
+    "verification_status": "UNVERIFIED",
+    "stress_slippage": [
+      1,
+      2,
+      4
+    ],
+    "listed_commission_rate": null,
+    "qualified_daytrade_tax_rate": null,
+    "daytrade_conditions": []
+  },
+  "regulatory_schedule": [
+    {
+      "version": "SEC31-2016-10-19",
+      "effective_from": "2016-10-19",
+      "effective_to": "2017-07-03",
+      "rate": 2.18e-05,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/news/pressrelease/2016-206.html (FY2017 #2: current $21.80 continues) + https://www.sec.gov/newsroom/press-releases/2017-111 (prior $21.80 through 2017-07-03)",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2017-07-04",
+      "effective_from": "2017-07-04",
+      "effective_to": "2018-05-21",
+      "rate": 2.31e-05,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/newsroom/press-releases/2017-111 (FY2017 #3) + https://www.sec.gov/news/press-release/2018-67",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2018-05-22",
+      "effective_from": "2018-05-22",
+      "effective_to": "2019-04-15",
+      "rate": 1.3e-05,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/news/press-release/2018-67 (FY2018 #3) + https://www.sec.gov/news/press-release/2019-30",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2019-04-16",
+      "effective_from": "2019-04-16",
+      "effective_to": "2020-02-17",
+      "rate": 2.07e-05,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/news/press-release/2019-30 (FY2019 #2) + https://www.sec.gov/news/press-release/2020-7",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2020-02-18",
+      "effective_from": "2020-02-18",
+      "effective_to": "2021-02-24",
+      "rate": 2.21e-05,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/news/press-release/2020-7 (FY2020 #2), https://www.sec.gov/news/press-release/2020-49 (#3 unchanged) + https://www.sec.gov/news/press-release/2021-8",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2021-02-25",
+      "effective_from": "2021-02-25",
+      "effective_to": "2022-05-13",
+      "rate": 5.1e-06,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/news/press-release/2021-8 (FY2021 #2), https://www.sec.gov/news/press-release/2021-36 (#3 unchanged) + https://www.sec.gov/news/press-release/2022-60",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2022-05-14",
+      "effective_from": "2022-05-14",
+      "effective_to": "2023-02-26",
+      "rate": 2.29e-05,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/news/press-release/2022-60 (FY2022 #2) + https://www.sec.gov/newsroom/press-releases/2023-15",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2023-02-27",
+      "effective_from": "2023-02-27",
+      "effective_to": "2024-05-21",
+      "rate": 8e-06,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/newsroom/press-releases/2023-15 (FY2023 #2), https://www.sec.gov/newsroom/press-releases/2023-41 (#3 unchanged) + https://www.sec.gov/rules-regulations/fee-rate-advisories/2024-2",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2024-05-22",
+      "effective_from": "2024-05-22",
+      "effective_to": "2025-05-13",
+      "rate": 2.78e-05,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/rules-regulations/fee-rate-advisories/2024-2 (FY2024 #2) + https://www.sec.gov/rules-regulations/fee-rate-advisories/2025-2",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2025-05-14",
+      "effective_from": "2025-05-14",
+      "effective_to": "2026-04-03",
+      "rate": 0.0,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/rules-regulations/fee-rate-advisories/2025-2 (FY2025: $0.00 per million) + https://www.sec.gov/rules-regulations/fee-rate-advisories/2026-2",
+      "approval_status": "PENDING"
+    },
+    {
+      "version": "SEC31-2026-04-04",
+      "effective_from": "2026-04-04",
+      "effective_to": "2026-10-16",
+      "rate": 2.06e-05,
+      "basis": "OFFICIAL",
+      "evidence_ref": "https://www.sec.gov/rules-regulations/fee-rate-advisories/2026-2 (FY2026 #2: $20.60 from 2026-04-04); continues past 2026-09-30 by statute until a FY2027 advisory (none listed on https://sec.gov/rules-regulations/fee-rate-advisories at 2026-11-05); interval ends at the snapshot's last day",
+      "approval_status": "PENDING"
+    }
+  ]
+}

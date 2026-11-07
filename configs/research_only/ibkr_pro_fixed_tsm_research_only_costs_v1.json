@@ -1,0 +1,128 @@
+{
+  "schema_version": "1.0.0",
+  "cost_set_id": "ibkr_pro_fixed_tsm_research_only",
+  "version": "1.0.0",
+  "scope": "RESEARCH_ONLY",
+  "status": "ACCEPTED_RESEARCH_ONLY",
+  "rate_evidence": "LISTED_TERMS_NOT_ACCOUNT_VERIFIED",
+  "never": [
+    "ACCOUNT_VERIFIED",
+    "BROKER_ACTUAL",
+    "APPROVED (formal COST_APPROVAL)"
+  ],
+  "currency": "USD",
+  "coverage": {
+    "start": "2016-10-19",
+    "end": "2024-12-31",
+    "note": "development period only; no rate for the holdout period (2025-01-01 .. 2026-10-16) is recorded here"
+  },
+  "acceptance": {
+    "approved_by": "hh4832",
+    "basis": "USER_EXPLICIT_ACCEPTANCE",
+    "accepted": [
+      {
+        "what": "IBKR Pro Fixed 0.005/share, min 1, cap 1%, slippage 2/1/4 bps, half-spread 0",
+        "at": "2026-11-05T21:19:00+08:00"
+      },
+      {
+        "what": "FINRA TAF dated, both sides, uncapped (conservative overestimate); CAT 0.00005/share/side BASE and 0.00010 separate stress",
+        "at": "2026-11-06T08:55:00+08:00"
+      }
+    ],
+    "approval_channel": "research-lead Phase 4-A brief in Claude session; effective when the Phase 4-A PR is merged by the research lead",
+    "gate_effect": "none: COST_APPROVAL stays FAIL"
+  },
+  "commission": {
+    "model": "IBKR_PRO_FIXED",
+    "per_share": 0.005,
+    "minimum_per_order": 1.0,
+    "cap_rate_of_notional": 0.01,
+    "label": "RESEARCH_ONLY"
+  },
+  "half_spread_bps": 0,
+  "sec_section31": {
+    "side": "SELL",
+    "basis": "OFFICIAL_DATED",
+    "label": "RESEARCH_ONLY",
+    "schedule_source": {
+      "path": "configs/core_cost_profiles/ibkr_pro_fixed_tsm_research_base_v1.json",
+      "file_sha256": "af4a29c0d42b13c89d96b794a165cdf5e658e69759e4d705c000e4cc13c37eb1",
+      "field": "regulatory_schedule"
+    },
+    "charge_date": "trade date (settlement lag not modelled)"
+  },
+  "finra_taf": {
+    "sides": "BOTH",
+    "cap": "NONE",
+    "basis": "RESEARCH_CONSERVATIVE_OVERESTIMATE",
+    "label": "RESEARCH_ONLY",
+    "note": "official TAF is sell-only with a per-trade maximum; charging both sides without the cap can only overstate it",
+    "schedule": [
+      {
+        "effective_from": "2016-10-19",
+        "effective_to": "2021-12-31",
+        "per_share": 0.000119,
+        "source": "FINRA RN 12-31; SR-FINRA-2020-032"
+      },
+      {
+        "effective_from": "2022-01-01",
+        "effective_to": "2022-12-31",
+        "per_share": 0.00013,
+        "source": "SR-FINRA-2020-032"
+      },
+      {
+        "effective_from": "2023-01-01",
+        "effective_to": "2023-12-31",
+        "per_share": 0.000145,
+        "source": "SR-FINRA-2020-032"
+      },
+      {
+        "effective_from": "2024-01-01",
+        "effective_to": "2024-12-31",
+        "per_share": 0.000166,
+        "source": "SR-FINRA-2020-032; SR-FINRA-2024-019"
+      }
+    ]
+  },
+  "cat": {
+    "sides": "BOTH",
+    "basis": "RESEARCH_ASSUMPTION",
+    "label": "RESEARCH_ONLY",
+    "pass_through": "UNKNOWN (assumed charged)",
+    "per_share_base": 5e-05,
+    "per_share_stress": 0.0001
+  },
+  "scenarios": {
+    "BASE": {
+      "slippage_bps": 2,
+      "cat_per_share": 5e-05
+    },
+    "LOW": {
+      "slippage_bps": 1,
+      "cat_per_share": 5e-05
+    },
+    "STRESS": {
+      "slippage_bps": 4,
+      "cat_per_share": 5e-05
+    },
+    "CAT_STRESS": {
+      "slippage_bps": 2,
+      "cat_per_share": 0.0001
+    }
+  },
+  "scenario_rules": {
+    "LOW": [
+      "slippage_bps"
+    ],
+    "STRESS": [
+      "slippage_bps"
+    ],
+    "CAT_STRESS": [
+      "cat_per_share"
+    ]
+  },
+  "core_representation": {
+    "status": "PENDING_CORE_PHASE4A_CONTRACT",
+    "core_699e3ad_gap": "per-unit fees are undated and share one regulatory ledger line with SEC; SEC / TAF / CAT cannot be reported separately, and combining them changes HALF_UP per-line rounding (100 sh: TAF 0.02 + CAT 0.01 separately vs 0.02 combined). No mapping is guessed; the Core Phase 4-A delivery contract decides."
+  }
+}

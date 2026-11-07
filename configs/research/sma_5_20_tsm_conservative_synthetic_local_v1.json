@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0.0",
+  "config_id": "sma_5_20_tsm_conservative_synthetic_local",
+  "version": "1.0.0",
+  "kind": "SYNTHETIC",
+  "market": {
+    "market_id": "IBKR_TSM",
+    "gate_version": null
+  },
+  "instrument": {
+    "symbol": "TSM",
+    "venue": "IBKR",
+    "currency": "USD"
+  },
+  "dataset": {
+    "dataset_id": "synthetic_tsm_1m_native_v1",
+    "snapshot_id": "synthetic_tsm_1m_native_v1@a99170a9163b",
+    "producer_commit_sha": "a99170a9163bedb03d39e978f48fc1e737520fc2"
+  },
+  "timeframe": "15m",
+  "strategy": {
+    "spec_path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+    "spec_file_sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.0"
+  },
+  "parameters": {
+    "fast": 5,
+    "slow": 20
+  },
+  "temporal_policy": {
+    "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+    "version": "1.0.0",
+    "status": "RESEARCH_SIMULATION",
+    "source": "CORE_POLICY",
+    "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "evidence_ref": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/M3A4_TEMPORAL_COST_CONTRACT.md",
+    "approved_by": null
+  },
+  "costs": {
+    "profile_ref": {
+      "profile_id": "synthetic_equity_componentized_test",
+      "version": "1.0.0",
+      "sha256": "22a669083337149015c82fe5f415bc4c4704812cbce8c7df956ec8051fb2a66f"
+    },
+    "scenario_set": {
+      "path": "configs/cost_scenarios/synthetic_equity_componentized_test_v1.json",
+      "file_sha256": "e3a0fdea6c0319f7096c514520d52caa55cade3788a675559a1a839c6cbd4693"
+    }
+  },
+  "windows": {
+    "warmup_start": "2025-01-06T00:00:00-05:00",
+    "in_sample": {
+      "start": "2025-01-07T00:00:00-05:00",
+      "end": "2025-02-03T00:00:00-05:00"
+    },
+    "validation": {
+      "start": "2025-02-03T00:00:00-05:00",
+      "end": "2025-02-20T00:00:00-05:00"
+    }
+  },
+  "holdout": {
+    "holdout_id": "HOLDOUT-SYNTH-TSM-15M-TEST"
+  },
+  "capital": {
+    "initial_capital": 100000,
+    "currency": "USD"
+  },
+  "position_sizing": {
+    "method": "FIXED_UNITS",
+    "units": 100,
+    "max_units": 100
+  },
+  "risk_limits": {
+    "allowed_directions": [
+      "LONG"
+    ],
+    "max_position_units": 100
+  },
+  "output": {
+    "target": "LOCAL",
+    "path": null
+  },
+  "provenance": {
+    "created_by": "claude-m3c",
+    "created_at": "2026-11-05T14:00:00+08:00",
+    "notes": "M3-C Phase C bounded E2E on Core 699e3ad: SMA 5/20 on the native-1m TEST_ONLY fixture under Core CONSERVATIVE_LABEL_AGNOSTIC with TEST_ONLY componentized costs. SYNTHETIC engineering evidence only - not TSM, not IBKR, not a strategy result. Archived to a local directory given at run time (CI).",
+    "config_sha256": "4995e41438f17617607ff1037f0c6ceeec0f0acb4ac6bae07208b695656c32c1"
+  }
+}

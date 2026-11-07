@@ -1,0 +1,292 @@
+{
+ "schema": "m3c_final_acceptance/1",
+ "generated_at": "2026-11-05T21:00:00+08:00",
+ "phase": "M3-C FINAL (Phase A + Phase C)",
+ "agent": {
+  "repository": "hh4832/strategy-research-agent",
+  "pr": 4,
+  "branch": "feature/m3b-research-runner",
+  "phase_a_head": "54d48f7929627a3d7569e141d34661fb26c38eb8",
+  "integration_commit": "fd5a9cade361b323a9e28999ad48e0b8e3ec650c",
+  "notebook_pin_commit": "7447085207d4b710050e2a26a45eee79d9cc5e8e",
+  "note": "this document is committed after 7447085 and changes docs only; N2 test asserts fd5a9ca code == HEAD code",
+  "adapter_version": "m1.3-0.5.0",
+  "runner_version": "m3b-0.1.1",
+  "merged_to_main": false
+ },
+ "core": {
+  "repository": "hh4832/market-research-core",
+  "pr": 3,
+  "sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+  "pr_head_confirmed": true,
+  "merged": false,
+  "ci": "https://github.com/hh4832/market-research-core/actions/runs/41967704177",
+  "core_verdict": "Engineering GO (research model)",
+  "contract": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/M3A4_TEMPORAL_COST_CONTRACT.md",
+  "diagnostics": "https://github.com/hh4832/market-research-core/blob/699e3ad59951bbebb769bb69170be8d9a1a96c01/docs/diagnostics/m3a4_final.json",
+  "modified_by_agent": false,
+  "benchmark": {
+   "B01_B12": "PASS",
+   "G16": "PASS",
+   "G17": "PASS",
+   "G14b": "PASS",
+   "tolerance": 0,
+   "status": "BENCHMARK_PASS (derived)",
+   "evidence": "benchmark/results/mrc_699e3ad59951/crosscheck.json"
+  }
+ },
+ "ci": {
+  "run": "https://github.com/hh4832/strategy-research-agent/actions/runs/42006606267",
+  "head": "7447085207d4b710050e2a26a45eee79d9cc5e8e",
+  "jobs": {
+   "test (3.11)": "success",
+   "test (3.12)": "success",
+   "core-compat": "success",
+   "research-synthetic": "success",
+   "append-only": "success"
+  },
+  "local": {
+   "core_699e3ad": "304 passed",
+   "core_2c6ba9a": "282 passed, 22 skipped (M3-A.4 tests skip)",
+   "no_core": "234 passed, 27 skipped (Core tests skip)"
+  },
+  "ci_metrics_sha256_vs_reference": "IDENTICAL (6/6)"
+ },
+ "verdicts": {
+  "adapter_compatibility": "PASS",
+  "temporal_safety_engineering": "PASS (research model; label UNKNOWN)",
+  "cost_correctness": "PASS (TEST_ONLY profile; not approved rates)",
+  "colab_drive": "PASS",
+  "engineering_verdict": "GO",
+  "formal_market_eligibility": "NO-GO"
+ },
+ "temporal": {
+  "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+  "version": "1.0.0",
+  "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+  "source_timestamp_label": "UNKNOWN",
+  "modeled_available_at_rule": "LATEST_START_END_COMPLETION",
+  "scope": "RESEARCH_ONLY",
+  "checks": [
+   "START/END envelope: bar_start = t0-1m, possible_open_latest = t0, modeled_available_at = tn+1m (every bucket)",
+   "RTH only: opening bucket OUTSIDE_CONSERVATIVE_RTH, last bucket CLOSING_AUCTION_EXCLUDED, ETH labels never eligible",
+   "missing label -> INCOMPLETE_SOURCE_BUCKET, zero-volume label -> ZERO_VOLUME_BAR: ineligible, never filled",
+   "decision at modeled_available_at; every fill's earliest possible open strictly later (T01)",
+   "temporal policy sha pinned in config (RC06) and compared with Core provenance + every ledger row (CC05, P04)"
+  ],
+  "fixture_eligibility": {
+   "buckets": 468,
+   "signal_eligible": 412,
+   "buy_execution_eligible": 430,
+   "rejection_reasons": {
+    "OUTSIDE_CONSERVATIVE_RTH": 18,
+    "CLOSING_AUCTION_EXCLUDED": 18,
+    "INCOMPLETE_SOURCE_BUCKET": 1,
+    "ZERO_VOLUME_BAR": 1
+   },
+   "window": "TRAIN incl. warm-up"
+  }
+ },
+ "costs": {
+  "profile": "synthetic_equity_componentized_test@1.0.0 (TEST_ONLY; approved only inside the isolated synthetic environment)",
+  "agent_profile_sha256": "22a669083337149015c82fe5f415bc4c4704812cbce8c7df956ec8051fb2a66f",
+  "core_profile_sha256": "1c27d9d2e87f21b3ea9fef5d829da899c353d740d36a1eab1318be0e7f146cee",
+  "fee_mode": "COMPONENTIZED",
+  "components": {
+   "commission": "0.005/share, minimum 1.00",
+   "exchange_fee": "0.0003/share",
+   "regulatory_fee": "SELL 0.0000278 x notional",
+   "slippage": "2 bps adverse"
+  },
+  "checks": [
+   "known-answer per fill: commission, exchange fee, regulatory fee, slippage band (test_05)",
+   "ledger identities: fee = commission+exchange+clearing; explicit = fee+tax+regulatory; price adj = slippage+spread+rounding (K02)",
+   "round-trip allocated costs == ledger explicit costs when flat (K03)",
+   "metrics.costs == ledger sums incl. regulatory_fees (Agent gap fixed)",
+   "BASE/LOW/STRESS: same orders; LOW zero cost; STRESS commission/exchange exactly 2x",
+   "futures per-contract commission + BOTH tax known answer (mapped Agent profile -> Core)",
+   "legacy profiles keep their Core hash; unmappable components K18 before any Core import"
+  ]
+ },
+ "synthetic_execution": {
+  "config": "configs/research/sma_5_20_tsm_conservative_synthetic_v1.json (DRIVE) / _local_v1.json (CI)",
+  "config_sha256_drive": "934ce4c136b444d0512a72d42a54a7ce727855fbceaf8b932e01e82f47dd908b",
+  "dataset": "synthetic_tsm_1m_native_v1@a99170a9163b (native 1m, TEST_ONLY, not market data)",
+  "strategy": "SMA 5/20 fixed (R02 enforced, one family trial)",
+  "runs": [
+   {
+    "role": "TRAIN",
+    "scenario": "BASE",
+    "core_multiplier": 1.0,
+    "status": "COMPLETED",
+    "round_trips": 7,
+    "net_pnl": -178.44762079999998,
+    "explicit_costs": 17.4776208,
+    "fees": 15.450000000000001,
+    "regulatory_fees": 2.0276208000000002,
+    "open_position_at_end": true,
+    "metrics_sha256": "3ac6f0d1b01bf8cdcbbc7a2f70f0bb65361632599da5bcafbe8b3f12f72e0a22"
+   },
+   {
+    "role": "VALIDATION",
+    "scenario": "BASE",
+    "core_multiplier": 1.0,
+    "status": "COMPLETED",
+    "round_trips": 4,
+    "net_pnl": 765.5836151999999,
+    "explicit_costs": 9.4163848,
+    "fees": 8.24,
+    "regulatory_fees": 1.1763848000000001,
+    "open_position_at_end": false,
+    "metrics_sha256": "6a602c3f18b200876d359239fb6f00e8de437906376d2bff8460929c21714c4b"
+   },
+   {
+    "role": "TRAIN",
+    "scenario": "LOW_FRICTIONLESS",
+    "core_multiplier": 0.0,
+    "status": "COMPLETED",
+    "round_trips": 7,
+    "net_pnl": -120.0,
+    "explicit_costs": 0.0,
+    "fees": 0.0,
+    "regulatory_fees": 0.0,
+    "open_position_at_end": true,
+    "metrics_sha256": "562eab679eee6496f918e09d32c25c41b6f9677dc5ed56d68319ea8528f79c75"
+   },
+   {
+    "role": "VALIDATION",
+    "scenario": "LOW_FRICTIONLESS",
+    "core_multiplier": 0.0,
+    "status": "COMPLETED",
+    "round_trips": 4,
+    "net_pnl": 799.0,
+    "explicit_costs": 0.0,
+    "fees": 0.0,
+    "regulatory_fees": 0.0,
+    "open_position_at_end": false,
+    "metrics_sha256": "32243abdc0c5e6bb39fc16b507420bcb164857d55b840aca9ecec87655fd76c5"
+   },
+   {
+    "role": "TRAIN",
+    "scenario": "STRESS_2X",
+    "core_multiplier": 2.0,
+    "status": "COMPLETED",
+    "round_trips": 7,
+    "net_pnl": -222.89446320000002,
+    "explicit_costs": 34.9544632,
+    "fees": 30.900000000000002,
+    "regulatory_fees": 4.0544632,
+    "open_position_at_end": true,
+    "metrics_sha256": "cb68ec6ddf0efd4b0e17994ae7eb5ebb3db2b956970a08f8ce3f989b279d6136"
+   },
+   {
+    "role": "VALIDATION",
+    "scenario": "STRESS_2X",
+    "core_multiplier": 2.0,
+    "status": "COMPLETED",
+    "round_trips": 4,
+    "net_pnl": 740.1676752000001,
+    "explicit_costs": 18.832324800000002,
+    "fees": 16.48,
+    "regulatory_fees": 2.3523248,
+    "open_position_at_end": false,
+    "metrics_sha256": "10762efea2ad474607efac36aa7d191e8a6dfa69e742630e4302164d5f60f294"
+   }
+  ],
+  "batch_2x_check": {
+   "TRAIN": {
+    "evaluable": true,
+    "net_1x": -178.44762079999998,
+    "net_2x": -222.89446320000002,
+    "survives_2x": false
+   },
+   "VALIDATION": {
+    "evaluable": true,
+    "net_1x": 765.5836151999999,
+    "net_2x": 740.1676752000001,
+    "survives_2x": true
+   }
+  },
+  "note": "synthetic engineering evidence only; samples are far below Q5; says nothing about TSM or SMA"
+ },
+ "provenance": {
+  "engine_git_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+  "engine_version": "2.2.0",
+  "contract_checks": "CC01-CC08 PASS",
+  "m3a4_checks": "P01-P11, K00-K03, T01, R01 PASS (K03 N/A when a position is open at the end)",
+  "tamper_tests": [
+   "regulatory_fee",
+   "source_timestamp_label",
+   "temporal_policy_sha256",
+   "cost_profile_sha256",
+   "exec_ts",
+   "engine_version"
+  ]
+ },
+ "archive": {
+  "colab_acceptance": "MyDrive/Quant_Research/strategy-research-agent/_acceptance/m3c_colab_20261105_204152_fd5a9ca.json",
+  "colab_acceptance_file_id": "16G-iElnoykgZeQyJwGGlJsBudCiDXBHz",
+  "colab_checks": "16/16 true",
+  "colab_python": "3.13.18",
+  "run_dirs": [
+   "20261105_204037_fd5a9ca",
+   "20261105_204052_fd5a9ca",
+   "20261105_204102_fd5a9ca",
+   "20261105_204117_fd5a9ca",
+   "20261105_204127_fd5a9ca",
+   "20261105_204142_fd5a9ca"
+  ],
+  "resume": "6/6 SKIPPED_RESUME",
+  "bitwise_vs_reference": "IDENTICAL 6/6 (Colab 3.13 = CI 3.11 = local)",
+  "incidental": "16 duplicate M3-B.2 folders *_8f6f798 + m3b2_colab_20261105_202431_8f6f798.json from an older cached notebook (append-only; not M3-C evidence)"
+ },
+ "reproducibility_n1": {
+  "tolerance": {
+   "rel_tol": 1e-09,
+   "abs_tol": 1e-09
+  },
+  "numeric": "PASS everywhere",
+  "archive_integrity": "PASS (exact, per archive)",
+  "bitwise_cross_environment": "NOT_GUARANTEED as a policy; observed IDENTICAL for M3-C (6/6) and NOT IDENTICAL for M3-B.2 TRAIN BASE (1 ULP in sample.effective_net_pnl)",
+  "evidence": "docs/evidence/m3c_n1_reproducibility.json"
+ },
+ "notebook_n2": {
+  "agent_commit": "fd5a9cade361b323a9e28999ad48e0b8e3ec650c",
+  "core_sha": "699e3ad59951bbebb769bb69170be8d9a1a96c01",
+  "rule": "pin an already-committed integration commit; test asserts ancestor + identical code paths"
+ },
+ "market_gates": {
+  "IBKR_TSM": {
+   "status": "NO_GO",
+   "gate_version": "2026-11-05.2",
+   "DATA_QUALITY": "PASS",
+   "TEMPORAL_SAFETY": "UNKNOWN",
+   "COST_MODEL_COMPATIBILITY": "PASS (representability only)",
+   "COST_APPROVAL": "FAIL",
+   "HOLDOUT_APPROVAL": "FAIL",
+   "FORMAL_EXECUTION_ELIGIBILITY": "FAIL"
+  },
+  "real_tsm_backtest_run": false
+ },
+ "remaining_blockers": [
+  "TEMPORAL_SAFETY: research-owner acceptance of CONSERVATIVE_LABEL_AGNOSTIC; formal use needs an attributed timestamp label / closing auction (outside Phase 3)",
+  "COST_APPROVAL: IBKR profile DRAFT/ASSUMED; no account pricing evidence; regulatory schedule PENDING; Fixed cap not verified",
+  "HOLDOUT_APPROVAL: HOLDOUT-TSM-15M-v1 not approved",
+  "FORMAL_EXECUTION_ELIGIBILITY: Core formal_market NO_GO; conservative mode can never be FORMAL_ELIGIBLE",
+  "Core PR #3 and Agent PR #4 unmerged (owner review)"
+ ],
+ "non_blocking_recorded": [
+  "N1 (Phase A) resolved by policy: numeric/archive/bitwise separated; no metrics rewritten",
+  "N2 (Phase A) resolved: notebook pinned to fd5a9ca + 699e3ad",
+  "N3 a resume pass with the same batch id overwrites _batches/summary_<batch>.json and cost_sensitivity_<batch>.md (run archives and batch ledger intact)",
+  "N4 report sections 5 and 10 keep legacy START-label wording in conservative mode (PIT line and provenance are correct)",
+  "N5 report section 10 data-quality counts are bucket-level; Core source-level defects appear only in dataset metadata eligibility_counts"
+ ],
+ "not_done_by_design": [
+  "no new strategy, no tuning, no market-data FINAL GATE rerun",
+  "no Core change",
+  "no real TSM run",
+  "no M3-D",
+  "no merge to main"
+ ]
+}
