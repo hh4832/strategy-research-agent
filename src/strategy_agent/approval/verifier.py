@@ -30,12 +30,16 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from . import tokens as T
-from .sources import NotFound, SourceUnavailable
+from .revocations import LedgerInvalid, RevocationLedger
+from .sources import GitHubCommentSource, NotFound, SourceUnavailable
 
 ROOT = Path(__file__).resolve().parents[3]
 SCHEMA_PATH = ROOT / "schemas/RESEARCH_APPROVAL_EVIDENCE_SCHEMA.json"
 VERSION = "1.0.0"
 NAME = "strategy_agent.approval.verifier"
+DEFAULT_LEDGER = ROOT / "registry/approval_revocations.jsonl"
+CLOCK_SKEW = timedelta(minutes=5)
+_PRODUCTION_CAPABILITY = object()      # S3: only for_production() holds it; no attribute or string can stand in
 
 
 class ApprovalRejected(RuntimeError):
@@ -79,33 +83,73 @@ def _iso(d: datetime) -> str:
 
 
 class ApprovalEvidenceVerifier:
+    """Construct with ``ApprovalEvidenceVerifier(source, ...)`` for ISOLATED tests only (trust ISOLATED_TEST, whatever
+    the source claims to be). The ONLY way to obtain PRODUCTION trust is ``for_production()``, which builds its own
+    live GitHubCommentSource and holds a module-private capability; ``production=True`` is refused."""
+
     def __init__(self, source, *, identities_path: Path | None = None, approvers_path: Path | None = None,
-                 production: bool = True, clock=None):
+                 production: bool = False, clock=None, revocation_ledger: Path | None = None, _capability=None):
         gov = ROOT / "governance"
         self.identities = json.loads(Path(identities_path or gov / "approval_identities.json").read_text(encoding="utf-8"))
         self.leads = set(json.loads(Path(approvers_path or gov / "approvers.json").read_text(encoding="utf-8"))
                          .get("research_leads", []))
-        self.source, self.production = source, production
+        if production and _capability is not _PRODUCTION_CAPABILITY:
+            raise ApprovalRejected("V09_PRODUCTION_SOURCE", "PRODUCTION trust is only available through "
+                                   "ApprovalEvidenceVerifier.for_production(); a caller-supplied source never gets it")
+        self.source = source
+        self._prod = bool(production)
+        self._prod_source = source if self._prod else None
         self.clock = clock or (lambda: datetime.now(timezone.utc))
+        if revocation_ledger is None and self._prod:
+            revocation_ledger = DEFAULT_LEDGER
+        if revocation_ledger is None:
+            raise ValueError("an isolated verifier needs an explicit revocation_ledger path (never the production one)")
+        if not self._prod and Path(revocation_ledger).resolve() == DEFAULT_LEDGER.resolve():
+            raise ValueError("an isolated verifier must not write the production revocation ledger")
+        self.ledger = RevocationLedger(revocation_ledger)
         repo = self.identities["repository"]["full_name"]
         self.url_re = re.compile(r"^https://github\.com/" + re.escape(repo) +
                                  r"/(?P<kind>pull|issues)/(?P<issue>[0-9]{1,10})#issuecomment-(?P<comment>[0-9]{1,20})$")
-        if production and (getattr(source, "kind", None) != "GITHUB_REST_API" or
-                           getattr(source, "transport_kind", None) != "LIVE"):
-            raise ApprovalRejected("V09_PRODUCTION_SOURCE", "production verification requires the live GitHub REST API "
-                                   f"source (got {getattr(source, 'kind', None)}/{getattr(source, 'transport_kind', None)})")
+
+    @classmethod
+    def for_production(cls, repo: str = "hh4832/strategy-research-agent", *, clock=None,
+                       revocation_ledger: Path | None = None, **kw) -> "ApprovalEvidenceVerifier":
+        return cls(GitHubCommentSource(repo), production=True, clock=clock, revocation_ledger=revocation_ledger,
+                   _capability=_PRODUCTION_CAPABILITY, **kw)
+
+    @property
+    def production(self) -> bool:
+        """Re-derived on every use: the capability-built live source must still be the very same, unmodified object."""
+        s = self._prod_source
+        return bool(self._prod and s is not None and self.source is s and type(s) is GitHubCommentSource
+                    and s.live_untampered())
 
     @property
     def trust(self) -> str:
         return "PRODUCTION" if self.production else "ISOLATED_TEST"
 
+    def _source_label(self) -> dict:
+        """Derived from the object's real type, never from attributes the object reports about itself."""
+        from .sources import TestApprovalSource  # noqa: PLC0415
+        if self.production:
+            return {"kind": "GITHUB_REST_API", "transport": "LIVE", "trust": "PRODUCTION"}
+        if type(self.source) is GitHubCommentSource:
+            return {"kind": "GITHUB_REST_API", "transport": "INJECTED", "trust": "ISOLATED_TEST"}
+        if type(self.source) is TestApprovalSource:
+            return {"kind": "TEST_FIXTURE", "transport": "TEST_FIXTURE", "trust": "ISOLATED_TEST"}
+        return {"kind": "UNTRUSTED_SOURCE", "transport": "UNKNOWN", "trust": "ISOLATED_TEST"}   # fails the schema
+
     # --------------------------------------------------------------------------------------------- verify
     def verify(self, url: str, expect: Expectation, *, check_expiry: bool = True) -> dict:
         now = self.clock()
         checks: dict = {}
+        if self._prod and not self.production:
+            raise ApprovalRejected("V09_PRODUCTION_SOURCE_TAMPERED", "the production source was replaced or modified")
+        if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
+            raise ApprovalRejected("V07_CLOCK_NOT_TIMEZONE_AWARE", "verifier clock must return an aware datetime")
+        now = now.astimezone(timezone.utc)
         rec = {"evidence_version": VERSION, "evidence_id": None,
-               "approval_source": {"kind": getattr(self.source, "kind", "UNKNOWN"),
-                                   "transport": getattr(self.source, "transport_kind", "UNKNOWN"), "trust": self.trust},
+               "approval_source": self._source_label(),
                "repository": dict(self.identities["repository"]), "author": None,
                "comment": {"url": url if isinstance(url, str) else None},
                "intent": expect.intent,
@@ -128,6 +172,14 @@ class ApprovalEvidenceVerifier:
             checks["V01"] = "PASS"
             cid, issue = int(m["comment"]), int(m["issue"])
             rec["evidence_id"] = f"AE-GH-{cid}"
+            try:
+                prior = self.ledger.revoked(cid)
+            except LedgerInvalid as e:
+                fail("V08_REVOCATION_LEDGER_INVALID", str(e))
+            if prior:
+                rec["revocation"] = {"status": "REVOKED", "revoked_by_comments": [prior["revoking_comment_id"]],
+                                     "observed_at": prior["observed_at"]}
+                fail("V08_REVOKED_PERMANENT", f"revocation observed at {prior['observed_at']} is permanent")
             repo = self.source.get_repo()
             pin = self.identities["repository"]
             if not isinstance(repo, dict) or repo.get("full_name") != pin["full_name"] or repo.get("id") != pin["id"]:
@@ -180,26 +232,41 @@ class ApprovalEvidenceVerifier:
                 fail("V06_SUBJECT_MISMATCH", f"approval does not match the current request on {diff}")
             checks["V06"] = "PASS"
             maxh = int(self.identities.get("max_approval_validity_hours", 336))
+            if created.tzinfo is None or tok.expires.tzinfo is None:
+                fail("V07_TIMEZONE", "timestamps must carry an explicit UTC offset")
             if not created < tok.expires <= created + timedelta(hours=maxh):
                 fail("V07_VALIDITY_WINDOW", f"expires must be after creation and within {maxh} h")
-            if check_expiry and now >= tok.expires:
+            if created > now + CLOCK_SKEW:
+                fail("V07_CREATED_IN_FUTURE", "comment creation time is later than the verifier clock")
+            if check_expiry and not now < tok.expires:          # valid iff now is strictly before expires (UTC)
                 fail("V07_EXPIRED", f"approval expired at {_iso(tok.expires)}")
             checks["V07"] = "PASS"
             revoked = []
-            for o in self.source.list_issue_comments(issue):
+            for o in self.source.list_issue_comments(issue):          # complete scan or SourceUnavailable
                 ou = (o or {}).get("user") or {}
                 if ou.get("type") == "User" and known.get(ou.get("login")) == ou.get("id") and \
                         ou.get("login") in self.leads and cid in T.revocations((o or {}).get("body")):
-                    revoked.append(o.get("id"))
-            rec["revocation"] = {"status": "REVOKED" if revoked else "NOT_REVOKED", "revoked_by_comments": revoked}
+                    revoked.append(o)
+            rec["revocation"] = {"status": "REVOKED" if revoked else "NOT_REVOKED",
+                                 "revoked_by_comments": [o.get("id") for o in revoked]}
             if revoked:
-                fail("V08_REVOKED", f"revoked by comment(s) {revoked}")
+                o = revoked[0]
+                try:
+                    self.ledger.record(approval_comment_id=cid, revoking_comment_id=o.get("id"),
+                                       revoker_login=o["user"]["login"], revoker_id=o["user"]["id"],
+                                       revoke_body_sha256=hashlib.sha256((o.get("body") or "").encode()).hexdigest(),
+                                       observed_at=_iso(now), source=rec["approval_source"]["kind"], trust=self.trust)
+                except LedgerInvalid as e:
+                    fail("V08_REVOCATION_LEDGER_INVALID", str(e))
+                fail("V08_REVOKED", f"revoked by comment(s) {rec['revocation']['revoked_by_comments']}")
             checks["V08"] = "PASS"
             checks["V09"] = "PASS" if self.production else "NOT_APPLICABLE"
         except SourceUnavailable as e:
             if isinstance(e, NotFound):
                 fail("V03_EVIDENCE_NOT_FOUND", str(e))
             fail("V00_APPROVAL_SOURCE_UNAVAILABLE", f"{e.code}: fail closed")
+        except LedgerInvalid as e:
+            fail("V08_REVOCATION_LEDGER_INVALID", str(e))
         except (ValueError, TypeError, KeyError, AttributeError) as e:
             fail("V00_UNTRUSTED_PAYLOAD", f"{type(e).__name__}: {e}")
         rec["verification"] = {"result": "PASS", "code": None, "checks": checks}

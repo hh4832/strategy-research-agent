@@ -40,7 +40,9 @@ from .store import BindingStore, write_immutable
 ROOT = Q.ROOT
 TPE = ZoneInfo("Asia/Taipei")
 OUTPUT_FILES = ("approval_verification.json", "authorization_binding.json", "governance_checks.json",
-                "security_negative_tests.json", "integration_acceptance.json", "run_info.txt")
+                "security_negative_tests.json", "integration_acceptance.json", "notebook_context.json", "run_info.txt",
+                "ARCHIVE_INDEX.json")
+INDEX = "ARCHIVE_INDEX.json"
 PROBE_REQUEST = ROOT / "docs/examples/phase5b1/PROBE_PENDING_tsm_sma520_research_only_real.json"
 REAL_AUTH = "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e"
 
@@ -262,7 +264,8 @@ def isolated(work: Path) -> dict:
     off = FixtureApprovals()
     u12 = off.comment(good_line)
     off.source.available = False
-    no_token = ApprovalEvidenceVerifier(GitHubCommentSource("hh4832/strategy-research-agent", token=""), production=True)
+    no_token = ApprovalEvidenceVerifier.for_production(revocation_ledger=work / "t12_prod_ledger.jsonl")
+    no_token.source._token = ""                      # simulate: no GH_TOKEN available (still the live source)
     T.add(12, "GitHub API unavailable", [
         ("source offline", _codes(lambda: off.verifier.verify(u12, ex_task)), "V00_APPROVAL_SOURCE_UNAVAILABLE"),
         ("production verifier without a token", _codes(lambda: no_token.verify(
@@ -421,7 +424,7 @@ def _bind_synthetic(work, fa):
 
 # ------------------------------------------------------------------------------------------------------ real
 def real(*, evidence_url: str | None, request_path: Path | None = None, intent: str = "BIND_AUTHORIZATION",
-         authorization_id: str = REAL_AUTH, revocation_url: str | None = None) -> dict:
+         authorization_id: str = REAL_AUTH) -> dict:
     """Read-only. Live GitHub verification of the lead's own comment + a DRY-RUN binding on the real books."""
     from strategy_agent.approval import production_verifier  # noqa: PLC0415
     if not evidence_url:
@@ -447,12 +450,6 @@ def real(*, evidence_url: str | None, request_path: Path | None = None, intent: 
                            authorization_id=authorization_id, evidence_url=evidence_url)
         out["dry_run_binding_on_real_books"] = {"ok": plan["ok"], "failure_codes": sorted({f["code"] for f in plan["failures"]}),
                                                 "governance": plan["governance"]["checks"], "written": False}
-    if revocation_url and v is not None:
-        try:
-            v.verify(evidence_url, exp)
-            out["after_revocation"] = {"result": "STILL_VALID"}
-        except ApprovalRejected as e:
-            out["after_revocation"] = {"result": "REJECTED", "code": e.code}
     out["repo_unchanged"] = A5.tree_fingerprint(ROOT) == before
     out["status"] = "VERIFIED" if out["verification"]["result"] == "PASS" else "REJECTED"
     return out
@@ -463,7 +460,25 @@ def _g(ok, ev):
     return {"status": "PASS" if ok else "FAIL", "evidence": ev}
 
 
-def gates(I: dict, Rl: dict | None, *, fresh_process: bool, tests: dict | None, cloud: bool) -> dict:
+def remediation_status(rem: dict | None) -> dict:
+    """Security remediation gate: every reproduced exploit of the PR #12 review must be BLOCKED."""
+    if not rem:
+        return {"status": "FAIL", "why": "remediation reproductions not supplied"}
+    flat = {}
+    for k, v in rem.items():
+        if k.startswith(("S", "M")) and not k.endswith(("_note", "_executions")):
+            if isinstance(v, dict):
+                flat.update({f"{k}.{kk}": (vv[0] if isinstance(vv, list) else vv) for kk, vv in v.items()
+                             if kk != "first_check"})
+            else:
+                flat[k] = v[0] if isinstance(v, list) else v
+    bad = sorted(k for k, v in flat.items() if v != "BLOCKED")
+    return {"status": "PASS" if flat and not bad else "FAIL", "cases": flat, "not_blocked": bad,
+            "api": rem.get("api"), "original_codex_reproduce_py": "NOT_AVAILABLE_TO_THIS_SESSION"}
+
+
+def gates(I: dict, Rl: dict | None, *, fresh_process: bool, tests: dict | None, cloud: bool,
+          remediation: dict | None = None) -> dict:
     p, th = I["positive"], {t["threat"]: t for t in I["threats"]}
 
     def tp(*ns):
@@ -505,21 +520,65 @@ def gates(I: dict, Rl: dict | None, *, fresh_process: bool, tests: dict | None, 
         "B1-10": _g(bool(tests) and tests.get("returncode") == 0,
                     {"tests": tests, "cloud": cloud, "python": platform.python_version()}),
     }
+    rs = remediation_status(remediation)
+    g["B1-SEC"] = {"status": rs["status"], "evidence": rs}
     return g
 
 
 def verdict(g: dict, Rl: dict | None, *, cloud: bool) -> dict:
     bad = sorted(k for k, v in g.items() if v["status"] != "PASS")
     if bad:
-        return {"verdict": "NO_GO" if set(bad) & {"B1-03", "B1-07", "B1-09"} else "NOT_ACCEPTED", "why": bad}
+        return {"verdict": "NO_GO" if set(bad) & {"B1-03", "B1-07", "B1-09", "B1-SEC"} else "NOT_ACCEPTED", "why": bad}
     if Rl and Rl.get("status") == "VERIFIED" and cloud:
-        return {"verdict": "GO", "why": "B1-01..B1-10 PASS; real GitHub identity verified via the live API; cloud archive"}
+        return {"verdict": "GO", "why": "B1-01..B1-10 + B1-SEC PASS; real GitHub identity verified via the live API; "
+                                        "cloud archive (Security GO additionally requires Codex re-review)"}
     miss = ([] if Rl and Rl.get("status") == "VERIFIED" else ["real GitHub approval evidence verified via the live API"]) + \
         ([] if cloud else ["Drive cloud archive"])
     return {"verdict": "SCOPED_GO", "why": "B1-01..B1-10 PASS on isolated evidence; missing: " + ", ".join(miss)}
 
 
-def write_outputs(out_dir: Path, rep: dict) -> dict:
+def _tree_sha(d: Path) -> dict:
+    files = sorted(p for p in Path(d).rglob("*") if p.is_file()) if Path(d).exists() else []
+    lines = [f"{p.relative_to(d).as_posix()}:{hashlib.sha256(p.read_bytes()).hexdigest()}" for p in files]
+    return {"files": len(lines), "sha256": hashlib.sha256("\n".join(lines).encode()).hexdigest()}
+
+
+def write_index(out_dir: Path) -> dict:
+    """M5: the LAST file written. Lists every top-level file (sha256 + size) and the work/ tree hash; nothing is
+    written to the archive afterwards."""
+    out_dir = Path(out_dir)
+    entries = {p.name: {"sha256": hashlib.sha256(p.read_bytes()).hexdigest(), "bytes": p.stat().st_size}
+               for p in sorted(out_dir.iterdir()) if p.is_file() and p.name != INDEX}
+    idx = {"kind": "PHASE5B1_ARCHIVE_INDEX", "files": entries, "work_tree": _tree_sha(out_dir / "work"),
+           "rule": "every top-level file is listed; any extra, missing or altered file fails verify_archive"}
+    with open(out_dir / INDEX, "x", encoding="utf-8") as fh:
+        json.dump(idx, fh, indent=2, sort_keys=True)
+        fh.write("\n")
+    return idx
+
+
+def verify_archive(out_dir: Path) -> dict:
+    out_dir = Path(out_dir)
+    problems = []
+    try:
+        idx = json.loads((out_dir / INDEX).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return {"status": "FAIL", "problems": [f"index unreadable: {e}"]}
+    present = {p.name for p in out_dir.iterdir() if p.is_file() and p.name != INDEX}
+    listed = set(idx.get("files", {}))
+    problems += [f"unlisted file: {n}" for n in sorted(present - listed)]
+    problems += [f"missing file: {n}" for n in sorted(listed - present)]
+    for n in sorted(present & listed):
+        if hashlib.sha256((out_dir / n).read_bytes()).hexdigest() != idx["files"][n]["sha256"]:
+            problems.append(f"altered file: {n}")
+    if _tree_sha(out_dir / "work") != idx.get("work_tree"):
+        problems.append("work/ tree differs from the index")
+    missing_required = [n for n in OUTPUT_FILES if n != INDEX and n not in present]
+    problems += [f"required output missing: {n}" for n in missing_required]
+    return {"status": "PASS" if not problems else "FAIL", "problems": problems, "files": len(present)}
+
+
+def write_outputs(out_dir: Path, rep: dict, context: dict | None = None) -> dict:
     out_dir = Path(out_dir)
     if any((out_dir / n).exists() for n in OUTPUT_FILES):
         raise FileExistsError(f"approval acceptance already exists in {out_dir}")
@@ -537,6 +596,7 @@ def write_outputs(out_dir: Path, rep: dict) -> dict:
              "security_negative_tests.json": {"threats": I["threats"], "concurrency": I["concurrency"]},
              "integration_acceptance.json": {k: rep[k] for k in ("verdict", "gates", "code", "generated_at", "cloud",
                                                                   "fresh_process", "scope")}}
+    files["notebook_context.json"] = context or {"note": "no notebook context supplied (CLI / CI run)"}
     out_dir.mkdir(parents=True, exist_ok=True)
     hashes = {}
     for n, obj in files.items():
@@ -553,22 +613,26 @@ def write_outputs(out_dir: Path, rep: dict) -> dict:
     with open(out_dir / "run_info.txt", "xb") as fh:
         fh.write(b)
     hashes["run_info.txt"] = hashlib.sha256(b).hexdigest()
-    return hashes
+    idx = write_index(out_dir)
+    hashes[INDEX] = hashlib.sha256((out_dir / INDEX).read_bytes()).hexdigest()
+    if verify_archive(out_dir)["status"] != "PASS":
+        raise RuntimeError("archive index self-check failed")
+    return {**hashes, "indexed_files": len(idx["files"])}
 
 
 def run(out_dir: Path, *, real_kwargs: dict | None = None, cloud: bool = False, fresh_process: bool = True,
-        tests: dict | None = None) -> dict:
+        tests: dict | None = None, context: dict | None = None, remediation: dict | None = None) -> dict:
     out_dir = Path(out_dir)
     if any((out_dir / n).exists() for n in OUTPUT_FILES) or (out_dir / "work").exists():
         raise FileExistsError(f"approval acceptance already exists in {out_dir}")
     I = isolated(out_dir / "work")
     Rl = real(**real_kwargs) if real_kwargs else None
-    g = gates(I, Rl, fresh_process=fresh_process, tests=tests, cloud=cloud)
+    g = gates(I, Rl, fresh_process=fresh_process, tests=tests, cloud=cloud, remediation=remediation)
     rep = {"generated_at": datetime.now(TPE).isoformat(timespec="seconds"), "code": A5.code_identity(), "isolated": I,
            "real": Rl, "gates": g, "verdict": verdict(g, Rl, cloud=cloud), "cloud": cloud, "fresh_process": fresh_process,
            "scope": "Phase 5-B1 approval + binding engineering acceptance. No backtest, no batch, no Holdout, no broker. "
                     "Isolated evidence is TEST_FIXTURE; only the real part touches the live GitHub API (read only)."}
-    rep["files_sha256"] = write_outputs(out_dir, rep)
+    rep["files_sha256"] = write_outputs(out_dir, rep, context)
     return rep
 
 
@@ -579,12 +643,20 @@ def main(argv=None) -> int:
     ap.add_argument("--cloud", action="store_true")
     ap.add_argument("--tests-json", help="pytest summary {returncode, summary} produced by the caller")
     ap.add_argument("--evidence-ref", help="the research lead's own GitHub comment URL (read-only live verification)")
-    ap.add_argument("--revocation-posted", action="store_true", help="re-verify after the lead posted a REVOKE line")
+    ap.add_argument("--context-json", help="notebook context written INTO the archive before the index")
+    ap.add_argument("--remediation-json", help="output of docs/evidence/phase5b1_remediation/reproduce.py")
+    ap.add_argument("--verify-archive", action="store_true", help="only verify ARCHIVE_INDEX.json of --out-dir")
     a = ap.parse_args(argv)
+    if a.verify_archive:
+        v = verify_archive(Path(a.out_dir))
+        print(json.dumps(v, indent=2))
+        return 0 if v["status"] == "PASS" else 1
     tests = json.loads(Path(a.tests_json).read_text()) if a.tests_json else None
-    rk = {"evidence_url": a.evidence_ref, "revocation_url": "posted" if a.revocation_posted else None} \
-        if a.evidence_ref is not None else {"evidence_url": None}
-    r = run(Path(a.out_dir), real_kwargs=rk, cloud=a.cloud, fresh_process=True, tests=tests)
+    ctx = json.loads(Path(a.context_json).read_text()) if a.context_json else None
+    rk = {"evidence_url": a.evidence_ref} if a.evidence_ref is not None else {"evidence_url": None}
+    rem = json.loads(Path(a.remediation_json).read_text()) if a.remediation_json else None
+    r = run(Path(a.out_dir), real_kwargs=rk, cloud=a.cloud, fresh_process=True, tests=tests, context=ctx,
+            remediation=rem)
     print(json.dumps({"verdict": r["verdict"], "gates": {k: v["status"] for k, v in r["gates"].items()},
                       "real": (r["real"] or {}).get("status"), "files_sha256": r["files_sha256"], "out_dir": a.out_dir},
                      indent=2))

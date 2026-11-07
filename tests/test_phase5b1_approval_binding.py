@@ -133,12 +133,15 @@ def test_injected_github_transport_parses_real_shaped_payloads():
             return 200, fa.source.comments[cid]
         if "/issues/900/comments" in u:
             return 200, list(fa.source.comments.values())
+        if u.endswith("/issues/900"):
+            return 200, {"number": 900, "comments": len(fa.source.comments)}
         return 404, None
-    v = ApprovalEvidenceVerifier(GitHubCommentSource("hh4832/strategy-research-agent", transport=transport), production=False)
+    v = ApprovalEvidenceVerifier(GitHubCommentSource("hh4832/strategy-research-agent", transport=transport),
+                                 revocation_ledger=fa.ledger_path.parent / "inj.jsonl")
     ev = v.verify(url, Expectation("BIND_AUTHORIZATION", "a" * 64, "RA-A-B-0001", "b" * 64))
     assert ev["approval_source"] == {"kind": "GITHUB_REST_API", "transport": "INJECTED", "trust": "ISOLATED_TEST"}
     v403 = ApprovalEvidenceVerifier(GitHubCommentSource("hh4832/strategy-research-agent", transport=lambda u: (403, None)),
-                                    production=False)
+                                    revocation_ledger=fa.ledger_path.parent / "inj403.jsonl")
     with pytest.raises(ApprovalRejected, match="V00"):
         v403.verify(url, Expectation("BIND_AUTHORIZATION", "a" * 64, "RA-A-B-0001", "b" * 64))
 
@@ -233,8 +236,11 @@ def test_task_approval_is_one_time_and_rechecked_before_running(tmp_path):
     # the same comment cannot approve a different task
     rr2 = dict(rr, request_id="RR-SECOND-TASK-B1")
     t2 = o.submit(rr2, actor="x")["task_id"]
-    with pytest.raises(Exception, match="V06_SUBJECT_MISMATCH"):
+    with pytest.raises(Exception, match="V08_REVOKED_PERMANENT"):      # a revoked comment is dead for everything
         o.approve(t2, evidence_ref=url)
+    live = fa.comment(fa.line(rr, intent="APPROVE_TASK", task_id=tid))   # valid, unrevoked, but names task 1
+    with pytest.raises(Exception, match="V06_SUBJECT_MISMATCH"):
+        o.approve(t2, evidence_ref=live)
 
 
 def test_g5_semantics_for_synthetic_are_machine_readable():
@@ -267,11 +273,12 @@ def test_isolated_run_leaves_repository_books_unchanged(iso):
     assert r["repo_unchanged"] and A5.tree_fingerprint(ROOT) == before
 
 
-def test_fresh_process_acceptance_is_scoped_go_without_real_evidence_and_never_overwrites(tmp_path):
+def test_fresh_process_acceptance_is_scoped_go_without_real_evidence_and_never_overwrites(tmp_path, remediation_json):
     tj = tmp_path / "t.json"
     tj.write_text(json.dumps({"returncode": 0, "summary": "pytest (caller)"}))
     out = tmp_path / "approvals/20261107_160000_test000"
-    cmd = [sys.executable, "-m", "strategy_agent.binding.acceptance", "--out-dir", str(out), "--tests-json", str(tj)]
+    cmd = [sys.executable, "-m", "strategy_agent.binding.acceptance", "--out-dir", str(out), "--tests-json", str(tj),
+           "--remediation-json", str(remediation_json)]
     env = {k: v for k, v in __import__("os").environ.items() if k not in ("GH_TOKEN", "GITHUB_TOKEN")}
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, timeout=900, env=env)
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]

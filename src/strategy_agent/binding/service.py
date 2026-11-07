@@ -176,6 +176,29 @@ class AuthorizationBindingService:
         plan = self.prepare(**kw)
         if not plan["ok"]:
             raise BindingRejected(plan["failures"], plan)
+        return self._commit(plan, dry_run=dry_run)
+
+    def _authoritative_budget(self, authorization_id: str, recs: list[dict]) -> str | None:
+        """M2: re-read the AUTHORITATIVE books (authorization book + uses log + binding log) at commit time,
+        under the binding-log lock. The prepare()-time snapshot is never trusted for the budget decision."""
+        from strategy_agent.governance.research_authorization import ResearchAuthorizationBook  # noqa: PLC0415
+        try:
+            auth = ResearchAuthorizationBook(self.gov.paths["auth"], self.gov.paths["approvers"]).get(authorization_id)
+            uses = len(self.gov.uses(authorization_id))
+        except Exception as e:  # noqa: BLE001 - unreadable books => fail closed
+            return f"B06_AUTHORITATIVE_STATE_UNAVAILABLE: {e}"
+        if auth is None:
+            return "B06_AUTHORIZATION_MISSING"
+        exp = auth.get("expires_at")
+        if exp and datetime.fromisoformat(exp) <= self.clock():
+            return "B06_AUTHORIZATION_EXPIRED"
+        if uses >= auth["max_batches"]:
+            return "B06_BUDGET_EXHAUSTED"
+        if sum(1 for r in recs if r["authorization_id"] == authorization_id) >= auth["max_batches"] - uses:
+            return "B06_AUTHORIZATION_FULLY_BOUND"
+        return None
+
+    def _commit(self, plan: dict, *, dry_run: bool) -> dict:
         ev, bound = plan["approval_evidence"], plan["bound_request"]
         bound_bytes, ev_bytes = dumps(bound), dumps(ev)
         rec = {"schema_version": "1.0.0", "binding_id": binding_id(plan["source_request_sha256"], plan["authorization_id"]),
@@ -207,7 +230,6 @@ class AuthorizationBindingService:
         write_immutable(self.governance_root / rec["approval_evidence_path"], ev_bytes)
         write_immutable(self.governance_root / rec["bound_request_path"], bound_bytes)
         key = (rec["source_request_sha256"], rec["authorization_id"], rec["approval_evidence_id"])
-        max_free = plan["authorization_state"]["max_batches"] - plan["authorization_state"]["uses_at_binding"]
 
         def refuse(recs):
             for r in recs:
@@ -217,9 +239,13 @@ class AuthorizationBindingService:
                     return "B09_REQUEST_ALREADY_BOUND"
                 if r["approval_evidence_id"] == rec["approval_evidence_id"]:
                     return "B09_EVIDENCE_REUSED"
-            if sum(1 for r in recs if r["authorization_id"] == rec["authorization_id"]) >= max_free:
-                return "B06_AUTHORIZATION_FULLY_BOUND"
-            return None
+            return self._authoritative_budget(rec["authorization_id"], recs)
+        # the evidence is re-verified live right before the record is appended (revocation since prepare())
+        try:
+            self.verifier.verify(plan["evidence_url"], Expectation("BIND_AUTHORIZATION", plan["source_request_sha256"],
+                                                                   plan["authorization_id"], plan["scope_sha256"]))
+        except ApprovalRejected as e:
+            raise BindingRejected([{"code": "B07_APPROVAL_" + e.code, "detail": str(e)}], plan) from None
         try:
             stored = self.store.log.append_if(rec, refuse)
             created = True

@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+# M4: every run step uses bash with -e -o pipefail, so `cmd | tee` can never hide a failing cmd.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -240,16 +245,28 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e '.[test]'
-      - run: pytest -q tests/test_phase5b1_approval_binding.py tests/test_orchestrator_lifecycle.py tests/test_phase5a3_integration.py | tee "$RUNNER_TEMP/b1_pytest.txt"
+      - name: Phase 5-B1 tests (real exit code recorded; a failure fails the step)
+        run: |
+          set -o pipefail
+          rc=0
+          pytest -q tests/test_phase5b1_approval_binding.py tests/test_phase5b1_security_remediation.py \
+            tests/test_orchestrator_lifecycle.py tests/test_phase5a3_integration.py | tee "$RUNNER_TEMP/b1_pytest.txt" || rc=$?
+          echo "$rc" > "$RUNNER_TEMP/b1_rc"
+          exit "$rc"
       - name: B1-01..B1-10 acceptance in a fresh process (expected SCOPED_GO without real evidence / Drive)
         run: |
           python - <<'PY'
           import json, os
-          tail = open(os.path.join(os.environ["RUNNER_TEMP"], "b1_pytest.txt")).read().strip().splitlines()[-1]
-          json.dump({"returncode": 0, "summary": tail, "where": "GitHub Actions"}, open(os.path.join(os.environ["RUNNER_TEMP"], "b1_tests.json"), "w"))
+          t = os.environ["RUNNER_TEMP"]
+          rc = int(open(os.path.join(t, "b1_rc")).read().strip())
+          tail = open(os.path.join(t, "b1_pytest.txt")).read().strip().splitlines()[-1]
+          json.dump({"returncode": rc, "summary": tail, "where": "GitHub Actions"}, open(os.path.join(t, "b1_tests.json"), "w"))
           PY
+          python docs/evidence/phase5b1_remediation/reproduce.py "$PWD" "$RUNNER_TEMP/b1_remediation.json"
           python -m strategy_agent.binding.acceptance --out-dir "$RUNNER_TEMP/approvals/ci_${GITHUB_SHA::7}" \
-            --tests-json "$RUNNER_TEMP/b1_tests.json" | tee "$RUNNER_TEMP/b1.json"
+            --tests-json "$RUNNER_TEMP/b1_tests.json" --remediation-json "$RUNNER_TEMP/b1_remediation.json" \
+            | tee "$RUNNER_TEMP/b1.json"
+          python -m strategy_agent.binding.acceptance --out-dir "$RUNNER_TEMP/approvals/ci_${GITHUB_SHA::7}" --verify-archive
           python - <<'PY'
           import json, os
           r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "b1.json")))
@@ -277,4 +294,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e .
-      - run: python -m strategy_agent.governance.append_only --base origin/${{ github.base_ref }}
+      - run: python -m strategy_agent.governance.append_only_guard --base origin/${{ github.base_ref }}

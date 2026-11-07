@@ -1,0 +1,26 @@
+{
+  "checkout": "/home/claude/strategy-research-agent",
+  "api": "remediated",
+  "imported_from": "/home/claude/strategy-research-agent",
+  "S1_revocation_deleted": {
+    "first_check": "BLOCKED",
+    "after_deletion": [
+      "BLOCKED",
+      "ApprovalRejected: V08_REVOKED_PERMANENT V08_REVOKED_PERMANENT: revocation observed at 2026-11-07T11:36:58Z is permanent"
+    ]
+  },
+  "S2_revocation_on_page_51": "BLOCKED",
+  "S3_fake_source_gets_production": [
+    "BLOCKED",
+    "ApprovalRejected: V09_PRODUCTION_SOURCE V09_PRODUCTION_SOURCE: PRODUCTION trust is only available through ApprovalEvidenceVerifier.for_production(); a caller-supplied source never gets it"
+  ],
+  "S3_test_verifier_on_copied_real_books": "BLOCKED",
+  "M1_comment_created_in_future": "BLOCKED",
+  "M2_budget_used_during_binding": "BLOCKED",
+  "M3_executions": 1,
+  "M3_double_execution": "BLOCKED",
+  "M4_ci_pipe_masking": "BLOCKED",
+  "M4_hardcoded_returncode": "BLOCKED",
+  "M4_append_only_missing_base": "BLOCKED",
+  "M5_index_covers_all_files": "BLOCKED"
+}

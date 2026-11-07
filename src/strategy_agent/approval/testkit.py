@@ -7,6 +7,7 @@ ISOLATED_TEST approvals. It exists so tests exercise the real verifier logic on 
 from __future__ import annotations
 
 import itertools
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 from .sources import TestApprovalSource
@@ -28,7 +29,9 @@ class FixtureApprovals:
     def __init__(self, *, issue: int = 900, clock=None):
         self.source = TestApprovalSource(dict(REPO))
         self.clock = clock or (lambda: datetime.now(timezone.utc))
-        self.verifier = ApprovalEvidenceVerifier(self.source, production=False, clock=self.clock)
+        import tempfile  # noqa: PLC0415
+        self.ledger_path = Path(tempfile.mkdtemp(prefix="isolated_revocations_")) / "approval_revocations.jsonl"
+        self.verifier = ApprovalEvidenceVerifier(self.source, clock=self.clock, revocation_ledger=self.ledger_path)
         self.issue, self._ids = issue, itertools.count(9_000_000_001)
 
     def comment(self, body: str, *, issue: int | None = None, login: str = LEAD[0], uid: int = LEAD[1],

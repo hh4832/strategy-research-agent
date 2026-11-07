@@ -6,4 +6,4 @@ from .verifier import ApprovalEvidenceVerifier, ApprovalRejected, Expectation, e
 
 def production_verifier(repo: str = "hh4832/strategy-research-agent", **kw) -> ApprovalEvidenceVerifier:
     """The only verifier a production path may use: live GitHub REST API, token from the environment."""
-    return ApprovalEvidenceVerifier(GitHubCommentSource(repo), production=True, **kw)
+    return ApprovalEvidenceVerifier.for_production(repo, **kw)

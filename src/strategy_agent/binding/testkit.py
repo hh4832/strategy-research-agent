@@ -67,6 +67,7 @@ def build_world(work: Path, *, agent_commit_sha: str = "a" * 40, created_at: str
     req = json.loads((exp / "request.json").read_text(encoding="utf-8"))
     # governance root
     (gov / "governance").mkdir(parents=True)
+    shutil.copy(FIX_GOV / "ISOLATED_TEST_GOVERNANCE_ROOT.json", gov / "ISOLATED_TEST_GOVERNANCE_ROOT.json")
     (gov / "registry").mkdir()
     shutil.copy(ROOT / "governance/approvers.json", gov / "governance/approvers.json")
     shutil.copy(FIX_GOV / "governance/market_readiness.json", gov / "governance/market_readiness.json")

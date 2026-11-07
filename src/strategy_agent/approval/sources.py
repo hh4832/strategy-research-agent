@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import ssl
 import urllib.error
 import urllib.request
@@ -30,7 +31,7 @@ class NotFound(SourceUnavailable):
         super().__init__("EVIDENCE_NOT_FOUND", what)
 
 
-def _live_transport(url: str, token: str) -> tuple[int, object]:
+def _live_transport(url: str, token: str) -> tuple[int, object, dict]:
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}",
                                                "X-GitHub-Api-Version": "2022-11-28",
                                                "User-Agent": "strategy-research-agent-approval-verifier"})
@@ -38,11 +39,22 @@ def _live_transport(url: str, token: str) -> tuple[int, object]:
     ctx = ssl.create_default_context(cafile=cafile) if cafile else ssl.create_default_context()
     try:
         with urllib.request.urlopen(req, timeout=30, context=ctx) as r:      # noqa: S310 - fixed https host
-            return r.status, json.loads(r.read().decode("utf-8"))
+            return r.status, json.loads(r.read().decode("utf-8")), {k.lower(): v for k, v in r.headers.items()}
     except urllib.error.HTTPError as e:
-        return e.code, None
+        return e.code, None, {}
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
         raise SourceUnavailable("GITHUB_API_UNAVAILABLE", type(e).__name__) from None
+
+
+_LIVE_TRANSPORT = _live_transport
+_NEXT = re.compile(r'<([^>]+)>\s*;\s*rel="next"')
+MAX_PAGES = 1000                       # safety stop: reaching it is INCOMPLETE (fail closed), never a pass
+
+
+def next_link(headers: dict) -> str | None:
+    """GitHub's own pagination end condition: the Link header has (or lacks) rel="next"."""
+    m = _NEXT.search((headers or {}).get("link", ""))
+    return m.group(1) if m else None
 
 
 class GitHubCommentSource:
@@ -54,21 +66,31 @@ class GitHubCommentSource:
         self._transport = transport
         self.transport_kind = "INJECTED" if transport is not None else "LIVE"
 
+    def live_untampered(self) -> bool:
+        """True only for an unmodified live source: no injected transport, the module's own live transport."""
+        return (self._transport is None and self.transport_kind == "LIVE" and type(self) is GitHubCommentSource
+                and globals().get("_live_transport") is _LIVE_TRANSPORT)
+
     def __repr__(self):                       # never expose the token
         return f"GitHubCommentSource(repo={self.repo!r}, transport={self.transport_kind})"
 
-    def _get(self, path: str):
+    def _fetch(self, url: str):
         if self._transport is None and not self._token:
             raise SourceUnavailable("GITHUB_TOKEN_MISSING", "set GH_TOKEN/GITHUB_TOKEN (e.g. Colab Secret); fail closed")
-        url = API + path
-        status, body = (self._transport(url) if self._transport is not None else _live_transport(url, self._token))
+        if not url.startswith(API + "/"):
+            raise SourceUnavailable("GITHUB_API_ERROR", "refusing to follow a non-api.github.com URL")
+        res = self._transport(url) if self._transport is not None else _live_transport(url, self._token)
+        status, body, headers = (res + ({},))[:3] if len(res) == 2 else res
         if status == 404:
-            raise NotFound(path)
+            raise NotFound(url[len(API):])
         if status in (401, 403):
             raise SourceUnavailable("GITHUB_API_FORBIDDEN", f"HTTP {status}")
         if status != 200 or body is None:
             raise SourceUnavailable("GITHUB_API_ERROR", f"HTTP {status}")
-        return body
+        return body, headers or {}
+
+    def _get(self, path: str):
+        return self._fetch(API + path)[0]
 
     def get_repo(self) -> dict:
         return self._get(f"/repos/{self.repo}")
@@ -77,15 +99,32 @@ class GitHubCommentSource:
         return self._get(f"/repos/{self.repo}/issues/comments/{int(comment_id)}")
 
     def list_issue_comments(self, issue_number: int) -> list[dict]:
-        out, page = [], 1
-        while True:
-            batch = self._get(f"/repos/{self.repo}/issues/{int(issue_number)}/comments?per_page=100&page={page}")
+        """ALL comments of the thread, or SourceUnavailable("REVOCATION_SCAN_INCOMPLETE"). Completion is decided
+        only by GitHub's Link header (no rel="next"); the result is cross-checked against the issue's comment
+        count read BEFORE the scan, ids must be unique, and every page must be a list. Never a partial result."""
+        issue = self._get(f"/repos/{self.repo}/issues/{int(issue_number)}")
+        expected = issue.get("comments") if isinstance(issue, dict) else None
+        if not isinstance(expected, int) or expected < 0:
+            raise SourceUnavailable("REVOCATION_SCAN_INCOMPLETE", "issue comment count unavailable")
+        url = f"{API}/repos/{self.repo}/issues/{int(issue_number)}/comments?per_page=100&page=1"
+        out, seen = [], set()
+        for _ in range(MAX_PAGES):
+            batch, headers = self._fetch(url)
             if not isinstance(batch, list):
-                raise SourceUnavailable("GITHUB_API_ERROR", "comment list is not a list")
-            out += batch
-            if len(batch) < 100 or page >= 50:
+                raise SourceUnavailable("REVOCATION_SCAN_INCOMPLETE", "comment page is not a list")
+            for c in batch:
+                cid = c.get("id") if isinstance(c, dict) else None
+                if not isinstance(cid, int) or cid in seen:
+                    raise SourceUnavailable("REVOCATION_SCAN_INCOMPLETE", "malformed or duplicated comment id")
+                seen.add(cid)
+                out.append(c)
+            url = next_link(headers)
+            if url is None:
+                if len(out) < expected:
+                    raise SourceUnavailable("REVOCATION_SCAN_INCOMPLETE",
+                                            f"scanned {len(out)} comments, thread reports {expected}")
                 return out
-            page += 1
+        raise SourceUnavailable("REVOCATION_SCAN_INCOMPLETE", f"more than {MAX_PAGES} pages")
 
 
 class TestApprovalSource:

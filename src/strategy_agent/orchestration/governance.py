@@ -79,7 +79,7 @@ class Governance:
         self.clock = clock
         self.benchmark = benchmark or (lambda sha: core_benchmark_status(sha, self.root))
         self.governance_root = g
-        self.production_books = g.resolve() == Q.ROOT.resolve()     # the repository's own governed books
+        self.production_books = not is_isolated_test_root(g)         # S3: content-marked isolation, never a path test
 
     def approvers(self) -> set[str]:
         return set(json.loads(self.paths["approvers"].read_text(encoding="utf-8")).get("research_leads", []))
@@ -220,3 +220,22 @@ class Governance:
             return
         ok, detail = store.verify_bound(doc, require_production=self.production_books)
         add("G11_AUTHORIZATION_BINDING", ok, detail)
+
+
+ISOLATION_MARKER = "ISOLATED_TEST_GOVERNANCE_ROOT.json"
+
+
+def is_isolated_test_root(governance_root) -> bool:
+    """S3. Books are PRODUCTION unless the root carries the isolation marker AND is not the repository root (after
+    resolving symlinks / relative paths). Any copy, alias, relative path or other checkout of real books without the
+    marker is therefore production and refuses test verifiers. A marked root only ever yields ISOLATED_TEST trust,
+    which production books, bindings and budget-consuming adapters reject."""
+    g = Path(governance_root).resolve()
+    if g == Q.ROOT.resolve():
+        return False
+    m = g / ISOLATION_MARKER
+    try:
+        doc = json.loads(m.read_text(encoding="utf-8")) if m.is_file() and not m.is_symlink() else None
+    except (OSError, ValueError):
+        return False
+    return isinstance(doc, dict) and doc.get("kind") == "ISOLATED_TEST_GOVERNANCE_ROOT"

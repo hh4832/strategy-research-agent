@@ -1,0 +1,1 @@
+{"kind": "ISOLATED_TEST_GOVERNANCE_ROOT", "note": "SYNTHETIC_FIXTURE governance books. Approvals verified against a root carrying this marker are ISOLATED_TEST and can never be used with production governance, bindings or budget-consuming adapters."}

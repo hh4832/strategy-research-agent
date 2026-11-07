@@ -240,7 +240,25 @@ class Orchestrator:
                                    data={"retry_of_attempt": st.attempt}, idempotency_key=f"{task_id}:RETRY:{st.attempt}")
 
     def dispatch(self, task_id: str) -> dict:
-        """APPROVED -> QUEUED -> RUNNING -> EVALUATING -> EVALUATED -> ARCHIVED (or FAILED / BLOCKED)."""
+        """APPROVED -> QUEUED -> RUNNING -> EVALUATING -> EVALUATED -> ARCHIVED (or FAILED / BLOCKED).
+
+        M3: one dispatcher per task at a time (non-blocking exclusive file lock across threads and processes); a
+        second dispatcher returns the current status without touching the task. The RUNNING claim also carries a
+        nonce, so even without the lock a worker that did not create the RUNNING event never executes."""
+        import fcntl  # noqa: PLC0415
+        lock_dir = self.state_dir / "locks"
+        lock_dir.mkdir(parents=True, exist_ok=True)
+        fh = open(lock_dir / f"{task_id}.dispatch.lock", "a+")  # noqa: SIM115
+        try:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return {**self.status(task_id), "dispatch": "IN_PROGRESS_ELSEWHERE"}
+            return self._dispatch_locked(task_id)
+        finally:
+            fh.close()
+
+    def _dispatch_locked(self, task_id: str) -> dict:
         st = self.log.get(task_id)
         if st is None:
             raise IllegalTransition("UNKNOWN_TASK", task_id)
@@ -264,11 +282,21 @@ class Orchestrator:
                 self._sys(task_id, "BLOCKED", reason=why, data={"governance": dec.as_dict()},
                           idempotency_key=f"{task_id}:BLOCKED:approval:{st.attempt}")
                 return self.status(task_id)
+            if adapter.consumes_budget:
+                # M2: no authorization use may be consumed until a reservation exists that is taken atomically
+                # under the uses-log lock right before RUNNING. Not implemented in 5-B1 => fail closed.
+                self._sys(task_id, "BLOCKED", reason="BUDGET_RESERVATION_NOT_IMPLEMENTED",
+                          data={"adapter": adapter.kind}, idempotency_key=f"{task_id}:BLOCKED:reservation:{st.attempt}")
+                return self.status(task_id)
             attempt = st.attempt + 1
-            self.log.transition(task_id, "RUNNING", actor="orchestrator", actor_kind="SYSTEM", worker=self.worker,
-                                lease_seconds=self.lease_seconds, expect_from="QUEUED",
-                                data={"attempt": attempt, "adapter": adapter.kind, "governance": dec.as_dict()},
-                                idempotency_key=f"{task_id}:RUNNING:{attempt}")
+            claim = __import__("uuid").uuid4().hex
+            ev = self.log.transition(task_id, "RUNNING", actor="orchestrator", actor_kind="SYSTEM", worker=self.worker,
+                                     lease_seconds=self.lease_seconds, expect_from="QUEUED",
+                                     data={"attempt": attempt, "adapter": adapter.kind, "governance": dec.as_dict(),
+                                           "claim": claim},
+                                     idempotency_key=f"{task_id}:RUNNING:{attempt}")
+            if ev.get("data", {}).get("claim") != claim:          # replayed someone else's RUNNING: never execute
+                return {**self.status(task_id), "dispatch": "CLAIMED_BY_ANOTHER_WORKER"}
             exec_dir = self.state_dir / "executions" / task_id / f"attempt_{attempt}"
             try:
                 ref = adapter.execute(doc, exec_dir)
