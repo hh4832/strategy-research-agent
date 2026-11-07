@@ -14,7 +14,9 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from strategy_agent.approval import ApprovalRejected, Expectation, evidence_sha256
 from strategy_agent.evaluation import phase4c as C
+from strategy_agent.registry.chain import ChainedLog, ConditionFailed
 
 from . import request as Q
 from .adapters import (AdapterDisabled, ArchiveReplayAdapter, ExecutionFailed, ResearchOnlyRunnerAdapter,
@@ -30,8 +32,10 @@ ARCHIVE_FILES = ("research_request.json", "task_events.jsonl", "governance_decis
 
 def code_identity(root: Path = ROOT) -> dict:
     try:
-        sha = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
-        dirty = bool(subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True).strip())
+        sha = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
+                                      stderr=subprocess.DEVNULL).strip()
+        dirty = bool(subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True,
+                                             stderr=subprocess.DEVNULL).strip())
     except (OSError, subprocess.CalledProcessError):
         sha, dirty = "0" * 40, True
     return {"git_sha": sha, "dirty": dirty}
@@ -51,7 +55,7 @@ def _dumps(obj) -> bytes:
 class Orchestrator:
     def __init__(self, state_dir, archive_root, *, source_archive_root=None, root: Path = ROOT, governance_root=None,
                  clock=None, test_mode: bool = False, synthetic_fixture=None, benchmark=None, worker: str = "worker-1",
-                 lease_seconds: int = 900):
+                 lease_seconds: int = 900, approval_verifier=None):
         self.state_dir, self.archive_root = Path(state_dir).resolve(), Path(archive_root).resolve()
         self.root = Path(root).resolve()
         if test_mode and (self.root in self.state_dir.parents or self.root in self.archive_root.parents):
@@ -68,6 +72,9 @@ class Orchestrator:
                          "SYNTHETIC_TEST": SyntheticExecutionAdapter(synthetic_fixture if test_mode else None),
                          "RESEARCH_ONLY_REAL": ResearchOnlyRunnerAdapter()}
         self.code = code_identity(self.root)
+        self.verifier = approval_verifier
+        if self.gov.production_books and approval_verifier is not None and not approval_verifier.production:
+            raise ValueError("the repository's governance books accept only the production (live GitHub) verifier")
 
     # ------------------------------------------------------------------------------------------------ helpers
     def _sys(self, task_id, to, **kw):
@@ -123,25 +130,98 @@ class Orchestrator:
         self._sys(tid, "PENDING_APPROVAL", data={"governance": dec.as_dict()}, idempotency_key=f"{tid}:PENDING_APPROVAL")
         return {"task_id": tid, "state": "PENDING_APPROVAL", "governance": dec.as_dict()}
 
-    def approve(self, task_id: str, *, approver: str, approval_ref: str) -> dict:
-        """A human research lead approves. Never called by the orchestrator itself."""
+    def approve(self, task_id: str, *, approver: str | None = None, approval_ref: str | None = None,
+                evidence_ref: str | None = None) -> dict:
+        """A human research lead approves. Never called by the orchestrator itself.
+
+        Test mode: only the TEST_FIXTURE approver (synthetic tasks only). Production (5-B1): ``evidence_ref`` (or
+        ``approval_ref``) must be a GitHub comment that the ApprovalEvidenceVerifier accepts for THIS task, request,
+        authorization and scope; the approver identity is the verified GitHub author, never a caller string."""
         doc = self.request_of(task_id)
+        data: dict = {}
+        dec = self.gov.check(doc, test_mode=self.test_mode)              # re-checked at approval time (no network)
+        if dec.status not in ("PASS", "TEST_MODE_ONLY"):
+            raise IllegalTransition("GOVERNANCE_BLOCKED", json.dumps(dec.blockers, default=str))
         if self.test_mode:
             if approver != "TEST_FIXTURE":
                 raise IllegalTransition("APPROVER", "a test orchestrator accepts only the TEST_FIXTURE approver")
-            kind = "TEST_FIXTURE"
+            kind, actor = "TEST_FIXTURE", "TEST_FIXTURE"
+            data["approval_ref"] = approval_ref
         else:
-            if approver not in self.gov.approvers():
-                raise IllegalTransition("APPROVER", f"{approver} is not an allow-listed research lead")
-            if not str(approval_ref).startswith("https://"):
-                raise IllegalTransition("APPROVAL_REF", "approval_ref must be an https URL")
+            ev = self._verify_task_approval(task_id, doc, evidence_ref or approval_ref)
+            actor = ev["author"]["login"]
+            if approver is not None and approver != actor:
+                raise IllegalTransition("APPROVER_MISMATCH", f"declared approver {approver!r} != verified author {actor!r}")
+            self._claim_evidence(ev, task_id)
             kind = "HUMAN"
-        dec = self.gov.check(doc, test_mode=self.test_mode)              # re-checked at approval time
-        if dec.status not in ("PASS", "TEST_MODE_ONLY"):
-            raise IllegalTransition("GOVERNANCE_BLOCKED", json.dumps(dec.blockers, default=str))
-        return self.log.transition(task_id, "APPROVED", actor=approver, actor_kind=kind, expect_from="PENDING_APPROVAL",
-                                   data={"approval_ref": approval_ref, "governance": dec.as_dict()},
-                                   idempotency_key=f"{task_id}:APPROVED")
+            data.update(approval_ref=ev["comment"]["url"], approval_evidence=ev,
+                        approval_evidence_sha256=evidence_sha256(ev), approval_trust=ev["approval_source"]["trust"])
+        data["governance"] = dec.as_dict()
+        return self.log.transition(task_id, "APPROVED", actor=actor, actor_kind=kind, expect_from="PENDING_APPROVAL",
+                                   data=data, idempotency_key=f"{task_id}:APPROVED")
+
+    # ------------------------------------------------------------------------------- 5-B1 approval evidence
+    def _verify_task_approval(self, task_id, doc, url) -> dict:
+        if self.verifier is None:
+            raise IllegalTransition("APPROVAL_VERIFIER_REQUIRED", "production approval needs an ApprovalEvidenceVerifier "
+                                    "(GitHub comment evidence); a caller-declared approver is not accepted")
+        if not url:
+            raise IllegalTransition("APPROVAL_EVIDENCE_REQUIRED", "evidence_ref (GitHub comment URL) is required")
+        try:
+            return self.verifier.verify(url, Expectation.for_request(doc, intent="APPROVE_TASK", task_id=task_id))
+        except ApprovalRejected as e:
+            raise IllegalTransition("APPROVAL_" + e.code, str(e)) from None
+
+    def _claim_evidence(self, ev: dict, task_id: str) -> None:
+        """One comment approves one task (defence in depth: the token already names the task and request hash)."""
+        log = ChainedLog(self.state_dir / "approval_evidence_uses.jsonl")
+        cid = ev["comment"]["id"]
+
+        def refuse(recs):
+            for r in recs:
+                if r["comment_id"] == cid:
+                    return None if r["task_id"] == task_id else "EVIDENCE_REUSED"
+            return None
+        try:
+            if any(r["comment_id"] == cid and r["task_id"] == task_id for r in (log.verify() if log.path.exists() else [])):
+                return
+            log.append_if({"comment_id": cid, "evidence_id": ev["evidence_id"], "task_id": task_id,
+                           "request_sha256": ev["subject"]["request_sha256"], "intent": ev["intent"]}, refuse)
+        except ConditionFailed as e:
+            raise IllegalTransition("APPROVAL_EVIDENCE_REUSED", str(e)) from None
+
+    def _recheck_approval(self, task_id, doc, st) -> str | None:
+        """Right before running: the task approval and any binding approval must still verify (not deleted, edited,
+        revoked; the task approval also not expired). Returns a blocking reason or None."""
+        if self.test_mode:
+            return None
+        appr = next((e for e in reversed(st.events) if e["to"] == "APPROVED"), None)
+        ev = (appr or {}).get("data", {}).get("approval_evidence")
+        if not ev:
+            return "APPROVAL_EVIDENCE_MISSING"
+        if self.verifier is None:
+            return "APPROVAL_VERIFIER_REQUIRED"
+        try:
+            self.verifier.verify(ev["comment"]["url"], Expectation.for_request(doc, intent="APPROVE_TASK", task_id=task_id))
+        except ApprovalRejected as e:
+            return "APPROVAL_" + e.code
+        adapter = self.adapters[doc["execution_mode"]]
+        if adapter.consumes_budget and ev["approval_source"]["trust"] != "PRODUCTION":
+            return "APPROVAL_TRUST_NOT_PRODUCTION"
+        from strategy_agent.binding.store import BindingStore  # noqa: PLC0415
+        rec = BindingStore(self.governance_root).for_bound(Q.request_hash(doc))
+        if rec is not None:
+            bev = json.loads((self.governance_root / rec["approval_evidence_path"]).read_text(encoding="utf-8"))
+            try:
+                src = dict(doc, authorization_ref="PENDING")
+                self.verifier.verify(bev["comment"]["url"], Expectation("BIND_AUTHORIZATION", rec["source_request_sha256"],
+                                                                        rec["authorization_id"], rec["scope_sha256"]),
+                                     check_expiry=False)
+                if Q.request_hash(src) != rec["source_request_sha256"]:
+                    return "BINDING_PARENT_MISMATCH"
+            except ApprovalRejected as e:
+                return "BINDING_APPROVAL_" + e.code
+        return None
 
     def cancel(self, task_id: str, *, actor: str, reason: str) -> dict:
         return self.log.transition(task_id, "CANCELLED", actor=actor, actor_kind="HUMAN", reason=reason,
@@ -178,6 +258,11 @@ class Orchestrator:
             if dec.status not in ("PASS", "TEST_MODE_ONLY") or not adapter.enabled:
                 self._sys(task_id, "BLOCKED", reason="GOVERNANCE_RECHECK_BLOCKED" if adapter.enabled else "ADAPTER_DISABLED",
                           data={"governance": dec.as_dict()}, idempotency_key=f"{task_id}:BLOCKED:recheck:{st.attempt}")
+                return self.status(task_id)
+            why = self._recheck_approval(task_id, doc, st)
+            if why:
+                self._sys(task_id, "BLOCKED", reason=why, data={"governance": dec.as_dict()},
+                          idempotency_key=f"{task_id}:BLOCKED:approval:{st.attempt}")
                 return self.status(task_id)
             attempt = st.attempt + 1
             self.log.transition(task_id, "RUNNING", actor="orchestrator", actor_kind="SYSTEM", worker=self.worker,

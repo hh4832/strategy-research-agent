@@ -228,6 +228,43 @@ jobs:
             ${{ runner.temp }}/integrations/*/run_info.txt
           retention-days: 30
 
+  phase5b1-approval:
+    # Phase 5-B1: trusted approval evidence + governed authorization binding (isolated TEST_FIXTURE evidence,
+    # SYNTHETIC_FIXTURE binding world, 18 threats). No token is given: the live part stays PENDING (fail closed).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e '.[test]'
+      - run: pytest -q tests/test_phase5b1_approval_binding.py tests/test_orchestrator_lifecycle.py tests/test_phase5a3_integration.py | tee "$RUNNER_TEMP/b1_pytest.txt"
+      - name: B1-01..B1-10 acceptance in a fresh process (expected SCOPED_GO without real evidence / Drive)
+        run: |
+          python - <<'PY'
+          import json, os
+          tail = open(os.path.join(os.environ["RUNNER_TEMP"], "b1_pytest.txt")).read().strip().splitlines()[-1]
+          json.dump({"returncode": 0, "summary": tail, "where": "GitHub Actions"}, open(os.path.join(os.environ["RUNNER_TEMP"], "b1_tests.json"), "w"))
+          PY
+          python -m strategy_agent.binding.acceptance --out-dir "$RUNNER_TEMP/approvals/ci_${GITHUB_SHA::7}" \
+            --tests-json "$RUNNER_TEMP/b1_tests.json" | tee "$RUNNER_TEMP/b1.json"
+          python - <<'PY'
+          import json, os
+          r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "b1.json")))
+          assert set(r["gates"].values()) == {"PASS"}, r["gates"]
+          assert r["verdict"]["verdict"] == "SCOPED_GO", r["verdict"]
+          PY
+          git diff --exit-code -- registry governance schemas
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase5b1-approval-acceptance
+          path: |
+            ${{ runner.temp }}/approvals/*/*.json
+            ${{ runner.temp }}/approvals/*/run_info.txt
+          retention-days: 30
+
   append-only:
     # Governed logs (registry/, governance/) may only grow relative to the PR base.
     if: github.event_name == 'pull_request'

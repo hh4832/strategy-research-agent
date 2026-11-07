@@ -90,7 +90,8 @@ Synthetic 範例僅證明工程行為，不是真實策略研究結論。
 | MVP v1 | Research-only 工程版本（Phase 4-A smoke + 4-C 評估 + 發行驗收） | `MVP_V1_ENGINEERING_GO`（已併入 main） |
 | 5-A1 | Research Orchestrator：狀態機、治理 G1–G10、Archive Replay／Synthetic adapter、評估、封存、CLI（[文件](docs/PHASE5A1_ORCHESTRATOR.md)） | PR #9（Draft，SCOPED_GO） |
 | 5-A2 | Research Proposal Agent：自然語言 → Proposal → 共用 Request 匯出（[文件](docs/PHASE5A2_PROPOSAL_AGENT.md)） | PR #10（Draft，Codex） |
-| 5-A3 | Proposal × Orchestrator 端到端整合 A3-01..A3-10（[文件](docs/PHASE5A3_INTEGRATION_ACCEPTANCE.md)） | `feature/phase5a3-integration`（Draft PR） |
+| 5-A3 | Proposal × Orchestrator 端到端整合 A3-01..A3-10（[文件](docs/PHASE5A3_INTEGRATION_ACCEPTANCE.md)） | GO，已併入 main（PR #11） |
+| 5-B1 | 可信人工核准（GitHub 留言證據）× 受治理授權綁定 B1-01..B1-10（[驗收](docs/PHASE5B1_ACCEPTANCE.md)、[威脅模型](docs/PHASE5B1_APPROVAL_THREAT_MODEL.md)） | `feature/phase5b1-trusted-approval`（Draft PR） |
 
 共用契約：[`schemas/RESEARCH_REQUEST_SCHEMA.json`](schemas/RESEARCH_REQUEST_SCHEMA.json) v1.0.0（commit `5d088c4`，sha256 `1b0530f3…`）。
 
@@ -103,5 +104,7 @@ python -m strategy_agent.phase5a replay          --task-id T --state-dir D --arc
 python -m strategy_agent.phase5a acceptance      --out-dir OUT                     # A3-01..A3-10（SYNTHETIC_FIXTURE）
 ```
 
-核准仍只能透過 `python -m strategy_agent.orchestration approve`（allow-list 研究負責人 + https 參考 + 治理重驗）；
+5-B1 起，正式核准只能透過 `python -m strategy_agent.orchestration approve --evidence-ref <GitHub 留言 URL>`：
+身分取自 GitHub API 的作者（login + 數字 id），經 GitHub App（AI agent）發出的留言一律拒絕。
+授權綁定：`python -m strategy_agent.binding approval-line | verify-approval | bind-authorization（預設 dry-run）| validate-bound-request | inspect-binding`。
 真實 Research-only Runner 維持 DISABLED，不讀 Holdout，不含任何券商 API。

@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from strategy_agent.approval.testkit import FixtureApprovals
 from strategy_agent.evaluation import phase4c as C
 from strategy_agent.orchestration import adapters as AD
 from strategy_agent.orchestration import request as Q
@@ -51,7 +52,8 @@ def env(tmp_path):
     shutil.copytree(FIX / "governance_root", gov)
     src = tmp_path / "archives"
     shutil.copytree(FIX / RUN, src / RUN)
-    return {"tmp": tmp_path, "gov": gov, "src": src, "clock": Clock(), "before": repo_fingerprint()}
+    return {"tmp": tmp_path, "gov": gov, "src": src, "clock": Clock(), "before": repo_fingerprint(),
+            "fa": FixtureApprovals()}          # 5-B1: isolated TEST_FIXTURE approval evidence (never production)
 
 
 def replay_request(src: Path) -> dict:
@@ -66,6 +68,8 @@ def replay_request(src: Path) -> dict:
 
 def orch(env, **kw):
     kw.setdefault("governance_root", env["gov"])
+    if not kw.get("test_mode"):
+        kw.setdefault("approval_verifier", env["fa"].verifier)
     kw.setdefault("source_archive_root", env["src"])
     return Orchestrator(env["tmp"] / kw.pop("state", "state"), env["tmp"] / "out", clock=env["clock"], **kw)
 
@@ -178,8 +182,8 @@ def test_09_illegal_transitions_fail_closed(env):
         o.approve(tid, approver="hh4832", approval_ref="http://insecure")
     with pytest.raises(IllegalTransition):
         o.log.transition(tid, "BLOCKED", actor="x", actor_kind="SYSTEM")                   # reason required
-    o.approve(tid, approver="hh4832", approval_ref=URL)
-    o.approve(tid, approver="hh4832", approval_ref=URL)                                    # idempotent, not twice
+    env["fa"].approve_task(o, tid)
+    env["fa"].approve_task(o, tid)                                    # idempotent, not twice
     assert sum(e["to"] == "APPROVED" for e in o.log.get(tid).events) == 1
 
 
@@ -194,7 +198,7 @@ def test_10_duplicate_request_returns_the_same_task(env):
 def test_11_retries_never_reconsume_and_dispatch_is_idempotent(env):
     o = orch(env)
     tid = o.submit(replay_request(env["src"]), actor="hh4832")["task_id"]
-    o.approve(tid, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o, tid)
     uses_before = (env["gov"] / "registry/research_authorization_uses.jsonl").read_bytes()
     assert o.dispatch(tid)["state"] == "ARCHIVED"
     assert o.dispatch(tid)["state"] == "ARCHIVED"                       # second dispatch is a no-op
@@ -208,7 +212,7 @@ def test_11_retries_never_reconsume_and_dispatch_is_idempotent(env):
     empty.mkdir()
     o2 = orch(env, state="s2", source_archive_root=empty)              # archive not on disk -> FAILED
     t2 = o2.submit(d, actor="hh4832")["task_id"]
-    o2.approve(t2, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o2, t2)
     st = o2.dispatch(t2)
     assert st["state"] == "FAILED" and st["last_data"]["consumed_batches"] == 0
     assert o2.dispatch(t2)["state"] == "FAILED"                         # no silent retry
@@ -224,7 +228,7 @@ def test_11_retries_never_reconsume_and_dispatch_is_idempotent(env):
 def test_12_crash_during_running_is_failed_not_reexecuted_and_evaluating_resumes(env):
     o = orch(env, worker="A", lease_seconds=60)
     tid = o.submit(replay_request(env["src"]), actor="hh4832")["task_id"]
-    o.approve(tid, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o, tid)
     o.log.transition(tid, "QUEUED", actor="orchestrator", actor_kind="SYSTEM", expect_from="APPROVED")
     o.log.transition(tid, "RUNNING", actor="orchestrator", actor_kind="SYSTEM", worker="A", lease_seconds=60,
                      data={"attempt": 1, "governance": {"status": "PASS"}})            # ...then worker A crashes
@@ -238,7 +242,7 @@ def test_12_crash_during_running_is_failed_not_reexecuted_and_evaluating_resumes
 
     o3 = orch(env, state="s3", worker="A", lease_seconds=60)
     t3 = o3.submit(replay_request(env["src"]), actor="hh4832")["task_id"]
-    o3.approve(t3, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o3, t3)
     o3.log.transition(t3, "QUEUED", actor="orchestrator", actor_kind="SYSTEM")
     o3.log.transition(t3, "RUNNING", actor="orchestrator", actor_kind="SYSTEM", worker="A", lease_seconds=60,
                       data={"attempt": 1, "governance": {"status": "PASS", "formal_market_status": "NO_GO"}})
@@ -259,7 +263,7 @@ def test_13_replay_of_an_archived_result_is_read_only_and_archived(env, monkeypa
     monkeypatch.setattr(C, "EXECUTOR_MODULES", ())
     o = orch(env)
     tid = o.submit(replay_request(env["src"]), actor="hh4832")["task_id"]
-    o.approve(tid, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o, tid)
     src_before = C.fingerprint(env["src"] / RUN)
     st = o.dispatch(tid)
     assert st["state"] == "ARCHIVED"
@@ -287,7 +291,7 @@ def test_14_missing_evaluator_evidence_gives_blocked_or_retest_never_keep(env):
     o = orch(env)
     d = replay_request(env["src"])
     tid = o.submit(d, actor="hh4832")["task_id"]
-    o.approve(tid, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o, tid)
     assert o.dispatch(tid)["state"] == "ARCHIVED"
     dec = next(e for e in o.log.get(tid).events if e["to"] == "EVALUATED")["data"]["research_decision"]
     assert dec["acceptance_status"] != "PASS" and dec["strategy_verdict"] != "KEEP"
@@ -297,7 +301,7 @@ def test_14_missing_evaluator_evidence_gives_blocked_or_retest_never_keep(env):
     d2 = replay_request(env["src"])
     d2["replay_source"]["archive_manifest_sha256"] = "0" * 64
     t2 = o2.submit(d2, actor="hh4832")["task_id"]
-    o2.approve(t2, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o2, t2)
     st = o2.dispatch(t2)
     assert st["state"] == "FAILED" and st["history"][-1]["reason"] == "ARCHIVE_MANIFEST_SHA"
 
@@ -305,7 +309,7 @@ def test_14_missing_evaluator_evidence_gives_blocked_or_retest_never_keep(env):
 def test_15_registry_and_archives_are_never_overwritten(env):
     o = orch(env)
     tid = o.submit(replay_request(env["src"]), actor="hh4832")["task_id"]
-    o.approve(tid, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o, tid)
     o.dispatch(tid)
     arch = Path(next(e for e in o.log.get(tid).events if e["to"] == "ARCHIVED")["data"]["task_archive"])
     with pytest.raises(IllegalTransition):
@@ -321,10 +325,11 @@ def test_15_registry_and_archives_are_never_overwritten(env):
             return self.t
     fz = Frozen()
     o2 = Orchestrator(env["tmp"] / "s2", env["tmp"] / "out", clock=fz, governance_root=env["gov"],
+                      approval_verifier=env["fa"].verifier,
                       source_archive_root=env["src"])
     d = replay_request(env["src"]); d["request_id"] = "RR-COLLISION-TEST"
     t2 = o2.submit(d, actor="hh4832")["task_id"]
-    o2.approve(t2, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o2, t2)
     taken = env["tmp"] / "out/tasks" / f"{fz.t:%Y%m%d_%H%M%S}_{o2.code['git_sha'][:7]}_{t2}"
     taken.mkdir(parents=True)
     with pytest.raises(FileExistsError):
@@ -352,13 +357,14 @@ def test_15b_two_distinct_tasks_archived_same_second_have_distinct_paths(env):
 
     clock = Frozen()
     o = Orchestrator(env["tmp"] / "same_second", env["tmp"] / "same_second_outputs",
-                     clock=clock, governance_root=env["gov"], source_archive_root=env["src"])
+                     clock=clock, governance_root=env["gov"], source_archive_root=env["src"],
+                     approval_verifier=env["fa"].verifier)
     paths = []
     for i in range(2):
         doc = replay_request(env["src"])
         doc["request_id"] = f"RR-SAME-SECOND-{i}"
         tid = o.submit(doc, actor="hh4832")["task_id"]
-        o.approve(tid, approver="hh4832", approval_ref=URL)
+        env["fa"].approve_task(o, tid)
         assert o.dispatch(tid)["state"] == "ARCHIVED"
         record = next(e for e in o.log.get(tid).events if e["to"] == "ARCHIVED")
         archive_dir = Path(record["data"]["task_archive"])
@@ -378,11 +384,11 @@ import json,sys,shutil
 sys.path.insert(0,{str(ROOT / 'tests')!r})
 import test_orchestrator_lifecycle as T
 from pathlib import Path
-env={{'tmp':Path({str(env['tmp'] / 'sub')!r}),'gov':Path({str(env['gov'])!r}),'src':Path({str(env['src'])!r}),'clock':T.Clock()}}
+env={{'tmp':Path({str(env['tmp'] / 'sub')!r}),'gov':Path({str(env['gov'])!r}),'src':Path({str(env['src'])!r}),'clock':T.Clock(),'fa':T.FixtureApprovals()}}
 env['tmp'].mkdir()
 o=T.orch(env)
 tid=o.submit(T.replay_request(env['src']),actor='hh4832')['task_id']
-o.approve(tid,approver='hh4832',approval_ref=T.URL)
+env['fa'].approve_task(o,tid)
 st=o.dispatch(tid)
 bad=[m for m in sys.modules if m.startswith(('strategy_agent.research_only.runner','strategy_agent.research_only.development_run',
   'strategy_agent.research_only.core_phase4a','strategy_agent.adapters','market_research_core','ib_insync','ibapi','requests','urllib3'))]
@@ -430,7 +436,7 @@ def test_18_synthetic_task_completes_the_full_lifecycle_in_an_isolated_test_orch
 def test_concurrent_workers_claim_a_task_once(env):
     o = orch(env)
     tid = o.submit(replay_request(env["src"]), actor="hh4832")["task_id"]
-    o.approve(tid, approver="hh4832", approval_ref=URL)
+    env["fa"].approve_task(o, tid)
     o.log.transition(tid, "QUEUED", actor="orchestrator", actor_kind="SYSTEM")
     wins, errors = [], []
 
