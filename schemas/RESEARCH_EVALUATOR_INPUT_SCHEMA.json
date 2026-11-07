@@ -1,0 +1,1163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hh4832/strategy-research-agent/schemas/RESEARCH_EVALUATOR_INPUT_SCHEMA.json",
+  "title": "Research Evaluator input v1.0 \u2014 explicit evidence states",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "kind": {
+      "enum": [
+        "SYNTHETIC_FIXTURE",
+        "RESEARCH_RESULT"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "archive_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "core_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "dataset_snapshot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "strategy_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameter_family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeframe": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_period": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "end": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "timezone": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "start",
+            "end",
+            "timezone"
+          ],
+          "additionalProperties": false
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "run_id",
+        "archive_path",
+        "commit_sha",
+        "core_sha",
+        "dataset_snapshot",
+        "manifest_sha256",
+        "strategy_id",
+        "parameter_family",
+        "timeframe",
+        "sample_period",
+        "currency"
+      ],
+      "additionalProperties": false
+    },
+    "initial_capital": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "equity_sampling": {
+      "enum": [
+        "REGULAR",
+        "IRREGULAR",
+        "UNKNOWN"
+      ]
+    },
+    "sample_role": {
+      "enum": [
+        "IN_SAMPLE",
+        "OUT_OF_SAMPLE",
+        "UNKNOWN"
+      ]
+    },
+    "holdout": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "enum": [
+                    "NOT_ACCESSED",
+                    "UNKNOWN",
+                    "ACCESSED"
+                  ]
+                },
+                "lock_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "status",
+                "lock_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "trades": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "trade_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "entry_ts": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "exit_ts": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "net_pnl": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "enum": [
+                      "VALID",
+                      "INVALIDATED"
+                    ]
+                  },
+                  "gross_pnl": {
+                    "type": "number"
+                  },
+                  "regime": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "parameter_region": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fold_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "trade_id",
+                  "symbol",
+                  "entry_ts",
+                  "exit_ts",
+                  "net_pnl",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "fills": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fill_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "exec_ts": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "qty": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill_price": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "signal_available_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "notional": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "fill_id",
+                  "symbol",
+                  "exec_ts",
+                  "qty",
+                  "fill_price"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "equity_curve": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "equity": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "timestamp",
+                  "equity"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "cost_breakdown": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "explicit_total": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "components": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "slippage_accounting": {
+                  "enum": [
+                    "EMBEDDED_IN_PRICES",
+                    "SEPARATE_DEBIT",
+                    "UNKNOWN"
+                  ]
+                },
+                "slippage_cost": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "explicit_total",
+                "components",
+                "slippage_accounting"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "rejections": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "order_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "execution_diagnostics": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "enum": [
+                    "PASS",
+                    "FAIL",
+                    "UNKNOWN"
+                  ]
+                },
+                "orders_submitted": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "lookahead_checked": {
+                  "type": "boolean"
+                },
+                "lookahead_violations": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "fill_diagnostics": {
+                  "type": "object"
+                },
+                "exposure": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "data_quality": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "enum": [
+                    "PASS",
+                    "FAIL",
+                    "UNKNOWN"
+                  ]
+                },
+                "evidence_ref": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "status",
+                "evidence_ref"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "metrics": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "budget_consumption": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "batches_consumed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "authorization_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "batches_consumed",
+                "authorization_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "statistical_evidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "protocol": {
+                  "const": "QUANT_EVALUATION_PROTOCOL v1.0"
+                },
+                "source_run_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "core_sha": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$"
+                },
+                "manifest_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "evidence_ref": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "spec_status": {
+                  "enum": [
+                    "DRAFT",
+                    "REGISTERED",
+                    "FROZEN"
+                  ]
+                },
+                "validator_errors": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "benchmark_core_sha": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$"
+                },
+                "data_pins_verified": {
+                  "type": "boolean"
+                },
+                "oos_sharpe": {
+                  "type": "number"
+                },
+                "psr": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "dsr": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "holm_adjusted_p": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "family_trials": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "break_even_multiplier": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "search_mode": {
+                  "enum": [
+                    "FIXED",
+                    "GRID"
+                  ]
+                },
+                "neighbor_sharpe_ratio": {
+                  "type": "number"
+                },
+                "parameter_settings": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "pbo": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "max_drawdown_halt": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "selection_bias_checked": {
+                  "type": "boolean"
+                },
+                "survivorship_bias_checked": {
+                  "type": "boolean"
+                },
+                "mintrl_satisfied": {
+                  "type": "boolean"
+                },
+                "folds": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "fold_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "start": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "end": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "net_pnl": {
+                        "type": "number"
+                      },
+                      "is_score": {
+                        "type": "number"
+                      },
+                      "oos_score": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "fold_id",
+                      "start",
+                      "end",
+                      "net_pnl"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "spec_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "spec_hash_verified": {
+                  "type": "boolean"
+                },
+                "benchmark_status": {
+                  "enum": [
+                    "BENCHMARK_PASS",
+                    "NOT_VERIFIED"
+                  ]
+                },
+                "family_trial_count_complete": {
+                  "type": "boolean"
+                },
+                "return_basis": {
+                  "const": "OOS_DAILY_NET"
+                }
+              },
+              "required": [
+                "protocol",
+                "source_run_id",
+                "core_sha",
+                "manifest_sha256",
+                "evidence_ref"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "cost_scenarios": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "AVAILABLE"
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "scenario_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_run_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "core_sha": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{40}$"
+                  },
+                  "dataset_snapshot": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sample_period": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "end": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "timezone": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end",
+                      "timezone"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strategy_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "parameter_family": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "timeframe": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "currency": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cost_multiplier": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "net_pnl": {
+                    "type": "number"
+                  },
+                  "comparison_basis": {
+                    "const": "SAME_SIGNALS_AND_POSITIONS"
+                  },
+                  "evidence_ref": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "scenario_id",
+                  "source_run_id",
+                  "core_sha",
+                  "dataset_snapshot",
+                  "sample_period",
+                  "strategy_id",
+                  "parameter_family",
+                  "timeframe",
+                  "currency",
+                  "cost_multiplier",
+                  "net_pnl",
+                  "comparison_basis",
+                  "evidence_ref"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "MISSING",
+                "UNTRUSTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "source",
+    "holdout",
+    "trades",
+    "fills",
+    "equity_curve",
+    "cost_breakdown",
+    "rejections",
+    "execution_diagnostics",
+    "data_quality",
+    "metrics",
+    "budget_consumption"
+  ],
+  "additionalProperties": false,
+  "description": "No OHLCV. Required evidence may explicitly be MISSING/UNTRUSTED, causing BLOCKED, RETEST, UNDETERMINED. See docs/RESEARCH_EVALUATOR_CONTRACT.md for metric formulas, units and authority. A complete JSON shape is not proof of evidence sufficiency.",
+  "$defs": {
+    "metric_definitions": {
+      "total_return": {
+        "description": "Core equity final / declared initial capital - 1; net mark-to-market, includes open positions; not gross return."
+      },
+      "net_return": {
+        "description": "Sum VALID closed Core trade net_pnl / initial capital; excludes open and invalidated trades."
+      },
+      "annualized_return": {
+        "description": "Geometric ACT/365.2425 CAGR only when actual equity observations span >=365.2425 days, first equity equals initial capital, and upstream declares zero external_cash_flows. Uses actual first/last timestamps, never declared sample length or a universal bars/year factor."
+      },
+      "trade_statistics": {
+        "description": "Existing evaluation.research.trade_stats: n>=10 for ratios. Wins net_pnl>0, losses<0, zeros count in n. Average loss negative, expectancy sum/n. PF=sum wins/abs(sum losses), undefined with no losses."
+      },
+      "max_drawdown": {
+        "description": "Existing evaluation.metrics.max_drawdown on Core archived equity (negative fraction); does not alter the authoritative curve by adding observations. Duration is elapsed seconds below a previous observed high watermark, unrecovered through final observation."
+      },
+      "volatility": {
+        "description": "Unannualized sample std (ddof=1) adjacent Core equity simple returns. Only >=2 returns and explicitly REGULAR, actually equal timestamp spacing. No daily assumption."
+      },
+      "tail_loss": {
+        "description": "Existing research.MIN_RETURNS_FOR_TAIL=100; empirical 5% quantile and mean returns <=quantile, observation interval recorded; no annualization."
+      },
+      "exposure": {
+        "description": "Upstream Core/diagnostic held-bar fraction [0,1], never inferred from wall-clock overnight holding spans."
+      },
+      "turnover": {
+        "description": "Sum explicit upstream fill.notional /2 / arithmetic mean Core equity. Nonannualized; no price*qty fallback for derivatives, FX or multipliers."
+      },
+      "cost_to_gross_profit": {
+        "description": "Explicit debited costs / sum positive VALID closed gross_pnl; NOT net gross PnL. Embedded slippage never deducted again."
+      },
+      "rejection_rate": {
+        "description": "Rejected orders / declared orders_submitted; only available for one rejection record per rejected order and count<=submitted. Fill count is not order count."
+      },
+      "holding_period": {
+        "description": "Elapsed wall-clock seconds exit-entry; no assumed bar/calendar count. Closed VALID trades only."
+      }
+    }
+  }
+}
