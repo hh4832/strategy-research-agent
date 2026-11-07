@@ -58,6 +58,10 @@ A2 Proposal → PENDING Request (authorization_ref=PENDING)
   - 該留言沒有 token，因此在 V06 被拒（`V06_NO_APPROVAL_TOKEN`），符合預期。
   - 不存在的留言 → `V03_EVIDENCE_NOT_FOUND`；沒有 token → `V00`。
 - **AI agent 發文判別**：同一個 GitHub 帳號經 Claude App（id 1236702）或 Codex Connector（id 1144995）發出的 issue／PR，API 會顯示 `performed_via_github_app`；研究負責人本人的留言則為 `null`。
+- **真實環境負面測試（威脅 16，live API）**：
+  - Claude 經 GitHub App 在 PR #12 貼了一則格式完全正確的 PROBE 核准行：[`issuecomment-6704318568`](https://github.com/hh4832/strategy-research-agent/pull/12#issuecomment-6704318568)。
+  - GitHub 把作者顯示為 `hh4832`／`269247281`／OWNER，和本人留言完全一樣，但 `performed_via_github_app = claude`。
+  - Verifier 結果：V01–V03 PASS，**V04 FAIL `V04_POSTED_VIA_APP`** → REJECTED。這是 AI agent 不能自行核准的真實證據。
 - **正向真實核對**：要你本人在 5-B1 PR 貼上 notebook 第 5 格產生的 PROBE 核准行，再於 Colab 執行。目前 **PENDING**。
 
 ## 6. 測試
