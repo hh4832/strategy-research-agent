@@ -1,5 +1,9 @@
 # Phase 5-B1：Trusted Human Approval & Governed Authorization Binding — 驗收
 
+> **安全審核更新（2026-11-07）**：Codex 對 PR #12 @ `cf15654` 做獨立安全審核，判定 **NO_GO**（HIGH：S1、S2、S3；另有 MEDIUM）。
+> 下方第 9 節的「Colab GO」（`approvals/20261107_173254_a3251d3`）是**修復前**的版本，**它的安全判定已被推翻**。該證據保留不動，不覆寫。
+> 修復見 §10 與 [威脅模型 §6](PHASE5B1_APPROVAL_THREAT_MODEL.md)；修復後的程式 pin 為 `eb72cd0`，notebook `PHASE5B1-APPROVAL-v2`。
+
 > 範圍：只做 Human Approval 與 Authorization Binding。不跑回測、不耗額度、不讀 Holdout、不呼叫券商 API、不啟用真實 Runner、不改 Formal Gate；Phase 5-B2／5-B3 未開始。
 > 本次完成後，交由 Codex 做獨立安全審核。
 
@@ -112,3 +116,18 @@ A2 Proposal → PENDING Request (authorization_ref=PENDING)
 - GO 的範圍只限 5-B1 的核准與綁定工程。它不代表真實執行或額度消耗已啟用，也不代表 Formal Market GO，更不涵蓋 §8 的殘餘風險（PAT 代發無法區分）。
 - 合併前仍須完成 Codex 的獨立安全審核。
 - 依 brief：「若真實 GitHub 核准者身分無法完成獨立驗證，應標示 SCOPED_GO／PENDING，不得宣告正式 Approval Security GO。」
+
+## 10. Security Remediation（`cf15654` → `eb72cd0`）
+
+| | |
+|---|---|
+| 修復前 commit | `cf1565495a687a6214d427e79b31af79bc23a23b`（Codex reviewed HEAD，NO_GO） |
+| 修復 commit（pin） | `eb72cd02770793a168b704af94824a7300e2010d` |
+| 重現案例 | `docs/evidence/phase5b1_remediation/reproduce.py`：修復前 11／11 EXPLOITABLE，修復後 11／11 BLOCKED（結果 JSON 在同一目錄） |
+| 新增測試 | `tests/test_phase5b1_security_remediation.py`（29 項）；沒有放寬任何既有預期，也沒有跳過測試 |
+| 本地測試 | 無 Core 538 passed／54 skipped；Core 699e3ad 632 passed；Core b16179a 642 passed + 已知 `test_15` |
+| 新 gate | B1-SEC：Colab 驗收時重跑重現案例，必須全部 BLOCKED |
+| Codex 原始檔案 | `SECURITY_REVIEW.md`／`reproduce.py`／`reproduction_results.json` **未取得**；第 9 項 Finding = **PENDING** |
+| Colab | 待執行 `PHASE5B1-APPROVAL-v2`，輸出到新的 `approvals/<ts>_eb72cd0/` |
+
+**判定：在 Codex 複驗前，Security Verdict = SCOPED_GO（工程修復完成，等待獨立複驗）。** 任何 HIGH Finding 若無法複驗，都不得宣告 Security GO。
