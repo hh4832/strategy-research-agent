@@ -62,7 +62,16 @@ A2 Proposal → PENDING Request (authorization_ref=PENDING)
   - Claude 經 GitHub App 在 PR #12 貼了一則格式完全正確的 PROBE 核准行：[`issuecomment-6704318568`](https://github.com/hh4832/strategy-research-agent/pull/12#issuecomment-6704318568)。
   - GitHub 把作者顯示為 `hh4832`／`269247281`／OWNER，和本人留言完全一樣，但 `performed_via_github_app = claude`。
   - Verifier 結果：V01–V03 PASS，**V04 FAIL `V04_POSTED_VIA_APP`** → REJECTED。這是 AI agent 不能自行核准的真實證據。
-- **正向真實核對**：要你本人在 5-B1 PR 貼上 notebook 第 5 格產生的 PROBE 核准行，再於 Colab 執行。目前 **PENDING**。
+- **研究負責人本人留言（live API，唯讀，本 session 驗證）**：
+  - 留言：[`issuecomment-6704937578`](https://github.com/hh4832/strategy-research-agent/pull/12#issuecomment-6704937578)
+  - V01–V09 全 PASS：作者 `hh4832`／`269247281`／OWNER，`performed_via_github_app = null`，未編輯、未撤銷，到期時間 `2026-11-09T08:52:11Z`。
+  - 對真實帳本做 dry-run 綁定，**被拒**：`B02_PROVENANCE`、`B03_PROPOSAL_INVALID`、`B05_GOVERNANCE`（G7 FAIL）、`B06_BUDGET_EXHAUSTED`。repo 未被寫入。
+  - 證據：`docs/evidence/phase5b1/session_live_verification_6704937578.json`
+- **Colab 雲端驗收 `approvals/20261107_171621_a3251d3`**：
+  - 全新 runtime，Version Sync PASS，Colab 回歸測試 509 passed，B1-01..B1-10 全 PASS，cloud=true，SCOPED_GO。
+  - 該次執行**沒有讀到 `GH_TOKEN`**，所以真實核對寫成 `PENDING_USER_EVIDENCE`。
+  - 副本：`docs/evidence/phase5b1/20261107_171621_a3251d3/`
+- **正向真實核對（舊說明）**：要你本人在 5-B1 PR 貼上 notebook 第 5 格產生的 PROBE 核准行，再於 Colab 執行。目前 **PENDING**。
 
 ## 6. 測試
 
