@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hh4832/strategy-research-agent/schemas/AUTHORIZATION_BINDING_SCHEMA.json",
+  "title": "Authorization Binding Record v1.0.0 (Phase 5-B1)",
+  "description": "Append-only, hash-chained record (registry/authorization_bindings.jsonl) that a VERIFIED research lead bound one EXISTING Research Authorization to one PENDING A2 Research Request. The bound request is a NEW immutable request (derived), differing from its parent only in authorization_ref. Binding is not execution approval and consumes no budget: Approval, Binding and Authorization Consumption are three different events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "binding_id", "relationship", "source_proposal_id", "source_proposal_sha256",
+               "source_provenance_sha256", "source_request_id", "source_request_sha256", "source_request_file_sha256",
+               "bound_request_sha256", "bound_request_file_sha256", "bound_request_path", "authorization_id",
+               "authorization_state", "scope_sha256", "approval_evidence_id", "approval_evidence_sha256",
+               "approval_evidence_path", "approval_trust", "binding_actor", "binding_timestamp", "governance",
+               "consumes_budget", "approves_execution", "tool"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "binding_id": {"type": "string", "pattern": "^AB-[0-9a-f]{24}$"},
+    "relationship": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "parent_request_sha256", "derived_request_sha256", "changed_fields"],
+      "properties": {
+        "kind": {"const": "AUTHORIZATION_BINDING"},
+        "parent_request_sha256": {"$ref": "#/$defs/sha256"},
+        "derived_request_sha256": {"$ref": "#/$defs/sha256"},
+        "changed_fields": {"const": ["authorization_ref"]}
+      }
+    },
+    "source_proposal_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "source_proposal_sha256": {"$ref": "#/$defs/sha256"},
+    "source_provenance_sha256": {"$ref": "#/$defs/sha256"},
+    "source_request_id": {"type": "string", "pattern": "^RR-[A-Z0-9][A-Z0-9_-]{2,79}$"},
+    "source_request_sha256": {"$ref": "#/$defs/sha256"},
+    "source_request_file_sha256": {"$ref": "#/$defs/sha256"},
+    "bound_request_sha256": {"$ref": "#/$defs/sha256"},
+    "bound_request_file_sha256": {"$ref": "#/$defs/sha256"},
+    "bound_request_path": {"type": "string", "pattern": "^registry/bound_requests/[0-9a-f]{64}\\.json$"},
+    "authorization_id": {"type": "string", "pattern": "^RA-[A-Za-z0-9_.-]{3,120}$"},
+    "authorization_state": {
+      "type": "object", "additionalProperties": false, "required": ["max_batches", "uses_at_binding", "bindings_before", "record_sha256"],
+      "properties": {
+        "max_batches": {"type": "integer", "minimum": 1},
+        "uses_at_binding": {"type": "integer", "minimum": 0},
+        "bindings_before": {"type": "integer", "minimum": 0},
+        "record_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "scope_sha256": {"$ref": "#/$defs/sha256"},
+    "approval_evidence_id": {"type": "string", "pattern": "^AE-GH-[0-9]{1,20}$"},
+    "approval_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "approval_evidence_path": {"type": "string", "pattern": "^registry/approval_evidence/[0-9a-f]{64}\\.json$"},
+    "approval_trust": {"enum": ["PRODUCTION", "ISOLATED_TEST"]},
+    "binding_actor": {
+      "type": "object", "additionalProperties": false, "required": ["github_login", "github_id", "source"],
+      "properties": {"github_login": {"type": "string"}, "github_id": {"type": "integer", "minimum": 1},
+                     "source": {"const": "VERIFIED_APPROVAL_EVIDENCE_AUTHOR"}}
+    },
+    "binding_timestamp": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([+-]\\d{2}:\\d{2}|Z)$"},
+    "governance": {
+      "type": "object", "additionalProperties": false, "required": ["checks", "execution_mode_enabled"],
+      "properties": {
+        "checks": {"type": "object", "additionalProperties": {"enum": ["PASS", "FAIL", "NOT_APPLICABLE", "NOT_EVALUATED"]}},
+        "execution_mode_enabled": {"type": "boolean"}
+      }
+    },
+    "consumes_budget": {"const": false},
+    "approves_execution": {"const": false},
+    "tool": {"const": "strategy_agent.binding"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

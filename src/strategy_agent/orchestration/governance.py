@@ -10,6 +10,11 @@ G2 strategy spec file, hash, validity    G7 research budget (real: slot free; re
 G3 dataset snapshot / manifest explicit  G8 holdout lock exists, matches, no access
 G4 Core SHA benchmark + cost set valid   G9 formal gate recorded; NO_GO is never a trading permission
 G5 authorization exists (not PENDING)    G10 execution mode enabled (RESEARCH_ONLY_REAL is DISABLED in 5-A1)
+G11 (5-B1) authorization binding: a RESEARCH_ONLY_REAL request must be a registered bound request
+    (binding.store); an ARCHIVE_REPLAY request is NOT_APPLICABLE unless it is itself a bound request.
+
+Check status is PASS | FAIL | NOT_APPLICABLE | NOT_EVALUATED. A decision is PASS only if no check is FAIL or
+NOT_EVALUATED; a SYNTHETIC_TEST never evaluates G5 (NOT_EVALUATED) and is at most TEST_MODE_ONLY.
 """
 from __future__ import annotations
 
@@ -73,6 +78,8 @@ class Governance:
                       "readiness": g / "governance/market_readiness.json"}
         self.clock = clock
         self.benchmark = benchmark or (lambda sha: core_benchmark_status(sha, self.root))
+        self.governance_root = g
+        self.production_books = not is_isolated_test_root(g)         # S3: content-marked isolation, never a path test
 
     def approvers(self) -> set[str]:
         return set(json.loads(self.paths["approvers"].read_text(encoding="utf-8")).get("research_leads", []))
@@ -82,12 +89,12 @@ class Governance:
         p = self.paths["uses"]
         return [u for u in ChainedLog(p).verify() if u.get("authorization_id") == authorization_id] if p.exists() else []
 
-    def check(self, doc: dict, *, test_mode: bool = False) -> GovernanceDecision:
+    def check(self, doc: dict, *, test_mode: bool = False, binding_check: bool = True) -> GovernanceDecision:
         mode = doc.get("execution_mode") if isinstance(doc, dict) else None
         out: list = []
 
-        def add(cid, ok, detail):
-            out.append({"id": cid, "status": "PASS" if ok else "FAIL", "detail": detail})
+        def add(cid, ok, detail, status=None):
+            out.append({"id": cid, "status": status or ("PASS" if ok else "FAIL"), "detail": detail})
 
         errs = Q.validate(doc)
         add("G1_REQUEST_SCHEMA", not errs, errs or "valid")
@@ -96,8 +103,9 @@ class Governance:
         if mode == "SYNTHETIC_TEST":
             add("G0_TEST_MODE", test_mode, "SYNTHETIC_TEST is accepted only by an isolated test orchestrator" if not test_mode
                 else "isolated test orchestrator")
-            add("G5_AUTHORIZATION", True, "NOT_EVALUATED: a synthetic test is never authorized research")
-            return GovernanceDecision("TEST_MODE_ONLY" if test_mode else "BLOCKED", mode, out)
+            add("G5_AUTHORIZATION", False, "a synthetic test is never authorized research", status="NOT_EVALUATED")
+            ok = test_mode and not [c for c in out if c["status"] == "FAIL"]
+            return GovernanceDecision("TEST_MODE_ONLY" if ok else "BLOCKED", mode, out)
         if test_mode:
             add("G0_TEST_MODE", False, "an isolated test orchestrator accepts SYNTHETIC_TEST requests only")
             return GovernanceDecision("BLOCKED", mode, out)
@@ -193,6 +201,41 @@ class Governance:
         enabled = mode == "ARCHIVE_REPLAY" or (mode == "RESEARCH_ONLY_REAL" and REAL_EXECUTION_ENABLED)
         add("G10_EXECUTION_MODE", enabled, "ARCHIVE_REPLAY (read-only, 0 batches)" if mode == "ARCHIVE_REPLAY"
             else "RESEARCH_ONLY_REAL is DISABLED in Phase 5-A1 (needs a separate user authorization and acceptance)")
-        status = "PASS" if all(c["status"] == "PASS" for c in out) else "BLOCKED"
+        if binding_check:
+            self._g11(doc, mode, add)
+        status = "PASS" if all(c["status"] in ("PASS", "NOT_APPLICABLE") for c in out) else "BLOCKED"
         return GovernanceDecision(status, mode, out, consumes_budget=mode == "RESEARCH_ONLY_REAL",
                                   formal_market_status=formal)
+
+    def _g11(self, doc: dict, mode, add) -> None:
+        from strategy_agent.binding.store import BindingStore  # noqa: PLC0415 - read-only
+        store = BindingStore(self.governance_root)
+        if mode == "ARCHIVE_REPLAY":
+            ok, detail = store.verify_bound(doc, require_production=self.production_books)
+            if detail.get("binding_id") is None and "no binding record" in str(detail.get("error", "")):
+                add("G11_AUTHORIZATION_BINDING", True, "read-only replay of a run made under its authorization; "
+                    "no new authorization is bound", status="NOT_APPLICABLE")
+            else:
+                add("G11_AUTHORIZATION_BINDING", ok, detail)
+            return
+        ok, detail = store.verify_bound(doc, require_production=self.production_books)
+        add("G11_AUTHORIZATION_BINDING", ok, detail)
+
+
+ISOLATION_MARKER = "ISOLATED_TEST_GOVERNANCE_ROOT.json"
+
+
+def is_isolated_test_root(governance_root) -> bool:
+    """S3. Books are PRODUCTION unless the root carries the isolation marker AND is not the repository root (after
+    resolving symlinks / relative paths). Any copy, alias, relative path or other checkout of real books without the
+    marker is therefore production and refuses test verifiers. A marked root only ever yields ISOLATED_TEST trust,
+    which production books, bindings and budget-consuming adapters reject."""
+    g = Path(governance_root).resolve()
+    if g == Q.ROOT.resolve():
+        return False
+    m = g / ISOLATION_MARKER
+    try:
+        doc = json.loads(m.read_text(encoding="utf-8")) if m.is_file() and not m.is_symlink() else None
+    except (OSError, ValueError):
+        return False
+    return isinstance(doc, dict) and doc.get("kind") == "ISOLATED_TEST_GOVERNANCE_ROOT"

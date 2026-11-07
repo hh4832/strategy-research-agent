@@ -1,0 +1,14 @@
+kind=PHASE5B1_APPROVAL_BINDING_ACCEPTANCE
+verdict=GO
+git_sha=a3251d3786ffa52551d82989410faf4061519bb9
+dirty=false
+python=3.13.18
+generated_at=2026-11-07T17:33:41+08:00
+cloud=true
+real_github_evidence=VERIFIED
+consumed_batches=0
+real_backtest_executed=false
+holdout_read=false
+broker_api_called=false
+github_token_written=false
+files_sha256={"approval_verification.json": "efa8840c0d2d17e615dda2239624bf0e99b41d2ed9c5b90a9c177e52e0847727", "authorization_binding.json": "13756905594abf6fdb505fdb3f6ef4b2341462cb7a3a3f737c1e58598afd0968", "governance_checks.json": "658b2b20e93623062c8302b1a11879d5d60299536717323f5d1ab5fcbfd32d40", "integration_acceptance.json": "9e213c693d536bfde7a1e1b00cc68bd26edc47a249ef3795d6d71397288d2bb0", "security_negative_tests.json": "2f7fb92ceb96143c1799af43e67f281a2990c1bccf3d6384d39f310e75d354fd"}

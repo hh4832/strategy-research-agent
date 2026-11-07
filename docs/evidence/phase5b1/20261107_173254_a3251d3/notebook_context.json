@@ -1,0 +1,35 @@
+{
+  "notebook": "PHASE5B1-APPROVAL-v1",
+  "version_sync": {
+    "notebook_version": "PHASE5B1-APPROVAL-v1",
+    "notebook_version_on_github_head": "PHASE5B1-APPROVAL-v1",
+    "github_remote_head": "2706c29c6c7df3fa8b0a952a7bbbc9eaba71dc35",
+    "checkout_head": "a3251d3786ffa52551d82989410faf4061519bb9",
+    "pinned_sha": "a3251d3786ffa52551d82989410faf4061519bb9",
+    "pin_on_branch": true,
+    "working_tree_clean": true,
+    "files_changed_after_pin": [
+      "docs/PHASE5B1_ACCEPTANCE.md",
+      "docs/evidence/phase5b1/20261107_171621_a3251d3/approval_verification.json",
+      "docs/evidence/phase5b1/20261107_171621_a3251d3/authorization_binding.json",
+      "docs/evidence/phase5b1/20261107_171621_a3251d3/governance_checks.json",
+      "docs/evidence/phase5b1/20261107_171621_a3251d3/integration_acceptance.json",
+      "docs/evidence/phase5b1/20261107_171621_a3251d3/notebook_context.json",
+      "docs/evidence/phase5b1/20261107_171621_a3251d3/run_info.txt",
+      "docs/evidence/phase5b1/20261107_171621_a3251d3/security_negative_tests.json",
+      "docs/evidence/phase5b1/session_live_verification_6704937578.json",
+      "notebooks/Phase5B1_Approval_Binding_Acceptance.ipynb"
+    ]
+  },
+  "clean_colab_runtime": true,
+  "cloud": true,
+  "real_check_requested": true,
+  "evidence_ref": "https://github.com/hh4832/strategy-research-agent/pull/12#issuecomment-6704937578",
+  "python": "3.13.18",
+  "tests": {
+    "returncode": 0,
+    "summary": "508 passed, 55 skipped in 235.36s (0:03:55)",
+    "python": "3.13.18",
+    "where": "Colab"
+  }
+}

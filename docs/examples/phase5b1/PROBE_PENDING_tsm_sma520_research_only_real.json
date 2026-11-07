@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0.0",
+  "hypothesis": "PHASE 5-B1 PROBE ONLY — used to verify a real GitHub approval comment read-only; never executable. A 5/20 SMA crossover on conservative 15m TSM bars captures short-term momentum net of IBKR Pro Fixed costs.",
+  "market_mechanism": "Short-horizon trend persistence from staggered information diffusion in a liquid ADR during US hours.",
+  "strategy_family": {
+    "family_id": "sma_crossover_15m",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.0",
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    }
+  },
+  "strategy_spec_ref": "specs/research/sma_crossover_tsm_15m_5_20.json",
+  "strategy_spec_sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+  "market": {
+    "market_id": "IBKR_TSM",
+    "symbol": "TSM"
+  },
+  "dataset_ref": {
+    "dataset_id": "ibkr_tsm_1m_normalized",
+    "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae"
+  },
+  "dataset_snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+  "dataset_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+  "core_commit": "b16179a7cc077c36046574769a32c367fa476cae",
+  "signal_time_rule": {
+    "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+    "policy_version": "1.0.0",
+    "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "signal_time": "CORE_MODELED_AVAILABLE_AT"
+  },
+  "execution_time_rule": {
+    "rule": "NEXT_ELIGIBLE_BAR_OPEN"
+  },
+  "cost_profile_ref": {
+    "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+    "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+    "scenarios": [
+      "BASE",
+      "LOW",
+      "STRESS",
+      "CAT_STRESS"
+    ]
+  },
+  "research_window": {
+    "warmup_start": "2024-05-29T00:00:00-04:00",
+    "start": "2024-06-03T00:00:00-04:00",
+    "end": "2024-06-29T00:00:00-04:00"
+  },
+  "authorization_ref": "PENDING",
+  "holdout_policy": {
+    "access": "NO_ACCESS",
+    "lock_id": "HOLDOUT-TSM-15M-v1"
+  },
+  "requested_outputs": [
+    "RESEARCH_EVALUATION",
+    "RESEARCH_DECISION",
+    "RISK_FLAGS",
+    "ROBUSTNESS_MATRIX",
+    "ACCEPTANCE_CHECKS"
+  ],
+  "request_id": "RR-PHASE5B1-PROBE-PENDING",
+  "execution_mode": "RESEARCH_ONLY_REAL",
+  "requested_change": {
+    "kind": "NEW_HYPOTHESIS",
+    "description": "Example only: RESEARCH_ONLY_REAL is DISABLED in Phase 5-A1 and is always BLOCKED."
+  },
+  "research_budget": {
+    "batches_requested": 1
+  }
+}

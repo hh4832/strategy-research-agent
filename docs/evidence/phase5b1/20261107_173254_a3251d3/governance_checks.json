@@ -1,0 +1,67 @@
+{
+  "bound_submit": {
+    "checks": {
+      "G10_EXECUTION_MODE": "FAIL",
+      "G11_AUTHORIZATION_BINDING": "PASS",
+      "G1_REQUEST_SCHEMA": "PASS",
+      "G2_STRATEGY_SPEC": "PASS",
+      "G3_DATASET": "PASS",
+      "G4_CORE_COST": "PASS",
+      "G5_AUTHORIZATION": "PASS",
+      "G6_AUTHORIZATION_SCOPE": "PASS",
+      "G7_BUDGET": "PASS",
+      "G8_HOLDOUT": "PASS",
+      "G9_FORMAL_GATE": "PASS"
+    },
+    "eligibility": "ELIGIBLE_PENDING_EXECUTION_ENABLEMENT",
+    "failing": [
+      "G10_EXECUTION_MODE"
+    ],
+    "state": "BLOCKED"
+  },
+  "g5": {
+    "production": {
+      "G5": "NOT_EVALUATED",
+      "status": "BLOCKED"
+    },
+    "test_mode": {
+      "G5": "NOT_EVALUATED",
+      "status": "TEST_MODE_ONLY"
+    }
+  },
+  "real_dry_run": {
+    "failure_codes": [
+      "B02_PROVENANCE",
+      "B03_PROPOSAL_INVALID",
+      "B05_GOVERNANCE",
+      "B06_BUDGET_EXHAUSTED"
+    ],
+    "governance": {
+      "G10_EXECUTION_MODE": "FAIL",
+      "G1_REQUEST_SCHEMA": "PASS",
+      "G2_STRATEGY_SPEC": "PASS",
+      "G3_DATASET": "PASS",
+      "G4_CORE_COST": "PASS",
+      "G5_AUTHORIZATION": "PASS",
+      "G6_AUTHORIZATION_SCOPE": "PASS",
+      "G7_BUDGET": "FAIL",
+      "G8_HOLDOUT": "PASS",
+      "G9_FORMAL_GATE": "PASS"
+    },
+    "ok": false,
+    "written": false
+  },
+  "unbound_submit": {
+    "checks": {
+      "G10_EXECUTION_MODE": "FAIL",
+      "G11_AUTHORIZATION_BINDING": "FAIL",
+      "G1_REQUEST_SCHEMA": "PASS",
+      "G2_STRATEGY_SPEC": "PASS",
+      "G3_DATASET": "PASS",
+      "G4_CORE_COST": "PASS",
+      "G5_AUTHORIZATION": "FAIL",
+      "G9_FORMAL_GATE": "PASS"
+    },
+    "state": "BLOCKED"
+  }
+}

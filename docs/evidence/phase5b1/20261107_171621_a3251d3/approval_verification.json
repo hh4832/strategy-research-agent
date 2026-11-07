@@ -1,0 +1,91 @@
+{
+  "isolated_evidence": {
+    "approval_source": {
+      "kind": "TEST_FIXTURE",
+      "transport": "TEST_FIXTURE",
+      "trust": "ISOLATED_TEST"
+    },
+    "author": {
+      "author_association": "OWNER",
+      "id": 269247281,
+      "login": "hh4832",
+      "performed_via_github_app": null,
+      "type": "User"
+    },
+    "comment": {
+      "body_sha256": "3a4cd4dc88bc612f5facda8d188d8020852f2b0b4fd1e02382c77ea45973ddc5",
+      "created_at": "2026-11-07T09:15:24Z",
+      "edited": false,
+      "id": 9000000001,
+      "issue_number": 900,
+      "token_line": "RESEARCH-APPROVAL v1 decision=APPROVE intent=BIND_AUTHORIZATION request=36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98 authorization=RA-SYNTHETIC_FIXTURE-B1-0001 scope=be7c899beaf2fb68844961a739576402c29b01889a32769cab0f7a234541fe4b expires=2026-11-09T09:16:24Z",
+      "updated_at": "2026-11-07T09:15:24Z",
+      "url": "https://github.com/hh4832/strategy-research-agent/pull/900#issuecomment-9000000001"
+    },
+    "decision": "APPROVE",
+    "evidence_id": "AE-GH-9000000001",
+    "evidence_version": "1.0.0",
+    "expires_at": "2026-11-09T09:16:24Z",
+    "intent": "BIND_AUTHORIZATION",
+    "repository": {
+      "full_name": "hh4832/strategy-research-agent",
+      "id": 1443253343
+    },
+    "revocation": {
+      "revoked_by_comments": [],
+      "status": "NOT_REVOKED"
+    },
+    "subject": {
+      "authorization_id": "RA-SYNTHETIC_FIXTURE-B1-0001",
+      "request_sha256": "36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98",
+      "scope_sha256": "be7c899beaf2fb68844961a739576402c29b01889a32769cab0f7a234541fe4b",
+      "task_id": null
+    },
+    "verification": {
+      "checks": {
+        "V01": "PASS",
+        "V02": "PASS",
+        "V03": "PASS",
+        "V04": "PASS",
+        "V05": "PASS",
+        "V06": "PASS",
+        "V07": "PASS",
+        "V08": "PASS",
+        "V09": "NOT_APPLICABLE"
+      },
+      "code": null,
+      "result": "PASS"
+    },
+    "verified_at": "2026-11-07T09:16:24Z",
+    "verifier": {
+      "name": "strategy_agent.approval.verifier",
+      "version": "1.0.0"
+    }
+  },
+  "real": {
+    "how": "post the line from `python -m strategy_agent.binding approval-line --request docs/examples/phase5b1/PROBE_PENDING_tsm_sma520_research_only_real.json --intent BIND_AUTHORIZATION --authorization RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e` in your own comment on the 5-B1 PR, then pass its URL",
+    "status": "PENDING_USER_EVIDENCE"
+  },
+  "task_approval_replay": {
+    "actor": "hh4832",
+    "approval": {
+      "approval_evidence_sha256": "f5dbf8651ebe5f7e310c78ad83e05e7c0e5e096aa1ad3f977761239dcbb7c8d8",
+      "approval_ref": "https://github.com/hh4832/strategy-research-agent/pull/900#issuecomment-9000000001",
+      "approval_trust": "ISOLATED_TEST"
+    },
+    "states": [
+      "PROPOSED",
+      "VALIDATED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "QUEUED",
+      "RUNNING",
+      "EVALUATING",
+      "EVALUATED",
+      "ARCHIVED"
+    ],
+    "status": "ARCHIVED",
+    "uses_after": 1,
+    "uses_before": 1
+  }
+}
