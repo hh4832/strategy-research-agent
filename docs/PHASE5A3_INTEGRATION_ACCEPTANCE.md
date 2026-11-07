@@ -81,7 +81,7 @@ A2 draft_proposal(FakeLLMAdapter/FileDraftAdapter)          Proposal (PROPOSED |
 | A3-04 `authorization_ref=PENDING` | A2（`FileDraftAdapter`，USER_HYPOTHESIS）匯出 → production orchestrator `PROPOSED→VALIDATED→BLOCKED`，G5 FAIL；approve → `GOVERNANCE_BLOCKED`；不曾 APPROVED/QUEUED/RUNNING；測試 orchestrator 亦 BLOCKED（G0）；偽造 RA binding → A2 拒絕、無檔 | PASS |
 | A3-05 未授權正式研究 | `RESEARCH_ONLY_REAL`：G2/G4/G5/G9/G10 FAIL → BLOCKED；dispatch 仍 BLOCKED；synthetic request 送 production → G0 FAIL BLOCKED | PASS |
 | A3-06 synthetic 生命週期 | 9 狀態完整；approver 僅 TEST_FIXTURE（真實 lead 在 test mode 被拒）；未核准 dispatch 不動；archive 在 `test_tasks/`；decision 標記 SYNTHETIC_TEST | PASS |
-| A3-07 Existing Archive Replay + Evaluator | 本地 fixture：ARCHIVED、C1–C8 PASS、uses 1→1、consumed 0、governance 指紋不變；**真實 archive：PENDING（Colab）** | PASS（本地）／PENDING（真實） |
+| A3-07 Existing Archive Replay + Evaluator | 本地 fixture：ARCHIVED、C1–C8 PASS、uses 1→1、consumed 0、governance 指紋不變；**真實 archive（Colab）：ARCHIVED、G1–G10 PASS、C1–C8 PASS、uses 1→1、0 batch** | PASS |
 | A3-08 重複／重啟／並發 | 重複提交 → 同 task、0 新 event、1 link；同路徑重匯出冪等；重啟 recover = []、redispatch 不動、ARCHIVED 不可 retry、archive 目錄數不變；4 執行緒並發 → 1 task / 1 PROPOSED / 1 link；RUNNING 中 crash → lease 到期 `FAILED_NOT_REEXECUTED`、無 execution 目錄 | PASS |
 | A3-09 Registry／Archive／Governance 完整性 | 6 個 state 的 task/link 鏈驗證 OK；link ↔ task request_hash 一致；archive 7 檔 hash 吻合、O_EXCL 覆寫被拒；repo governance/registry 指紋不變；缺檔 archive → FAILED（未 ARCHIVED）；Evaluator 失敗 → acceptance≠PASS、verdict≠KEEP；錯 SHA → REJECTED 無檔 | PASS |
 | A3-10 Runner disabled／Holdout 隔離 | `REAL_EXECUTION_ENABLED=False`；`ResearchOnlyRunnerAdapter.enabled=False`；fresh process 無 executor module；A2 套件無 orchestration/runner/adapters/Core import；無券商 import；所有 request `holdout_policy.access=NO_ACCESS` | PASS |
@@ -131,9 +131,21 @@ A2 draft_proposal(FakeLLMAdapter/FileDraftAdapter)          Proposal (PROPOSED |
 - 「並發測試在單一 process 的執行緒上，跨 process 呢？」——底層是 `ChainedLog.append_if`（fcntl 鎖），A1 已有跨 worker claim 測試。這裡沒有另做多 process 壓測。
 - 「SCOPED_GO 會不會被讀成可以正式研究？」——不會：IBKR_TSM 仍 NO_GO、真實 runner DISABLED、A2 request 必 BLOCKED。
 
-## 10. 判定與建議
+## 10. Colab 雲端驗收（2026-11-07 14:30，pin `dae1257`）
 
-- 本地：**SCOPED_GO**。A3-01..A3-10 全 PASS；缺真實 archive replay（Colab）與 Drive 雲端證據。
+- Drive：`MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/`（7 檔 + notebook_context.json；hash 與 run_info 一致）；副本：[`docs/evidence/phase5a3/20261107_143007_dae1257/`](evidence/phase5a3/20261107_143007_dae1257/)。
+- Version Sync PASS（clean runtime；pin 之後只有 docs/notebooks 變更）；Python 3.13.18；fresh process；executor modules 未載入。
+- Route B 真實重播 `20261107_081300_9439f8c`：
+  - 狀態 `PROPOSED → … → ARCHIVED`，G1–G10 PASS，C1–C8 PASS。
+  - 13 檔驗證，MANIFEST 等於 `328f2cf9…`。
+  - consumed_batches 0，授權用量 1→1，governance 不變。
+  - Decision `RETEST / UNDETERMINED`（不是新的研究結論）。
+- 核准：`hh4832`，PR #11 留言 `issuecomment-6703348066`（由研究負責人本人發出）。核准事件寫在 Drive task archive 的 `task_events.jsonl`，不在 7 檔 zip 內。
+- **Verdict：GO**（A3-01..A3-10 PASS；實際 A2→A1 synthetic E2E；真實 archive replay PASS；雲端封存）。
+
+## 11. 判定與建議
+
+- 本地：SCOPED_GO → Colab 雲端驗收後：**GO**（§10）。
 - 跑 `notebooks/Phase5A3_Integration_Acceptance.ipynb`（pin `dae1257`）並由研究負責人填入核准後，若 Route B 真實重播 ARCHIVED、C1–C8 PASS、uses 1→1，且 7 檔寫入 Drive `integrations/`，即可升為 GO。
 - Phase 5-A 建議：合併前先決定 PR #9／#10／本 PR 的合併順序（建議以本整合分支一次合併，#9、#10 關閉並指向本 PR）。
 - Phase 5-B 前置工作：可信身分驗證、受治理的「人類綁定授權到 request」流程、synthetic adapter 的 request↔archive 身分比對。

@@ -1,0 +1,307 @@
+{
+  "isolation": {
+    "broker_api_references": [],
+    "executor_modules_loaded": [],
+    "proposal_agent_forbidden_imports": [],
+    "real_execution_enabled": false,
+    "research_only_runner_adapter_enabled": false
+  },
+  "pending_authorization": {
+    "approve_attempt": {
+      "error": "GOVERNANCE_BLOCKED",
+      "message": "GOVERNANCE_BLOCKED: [{\"id\": \"G2_STRATEGY_SPEC\", \"status\": \"FAIL\", \"detail\": \"spec not found: specs/synthetic_fixture_spec.json\"}, {\"id\": \"G4_CORE_COST\", \"status\": \"FAIL\", \"detail\": \"core_commit PENDING\"}, {\"id\": \"G5_AUTHORIZATION\", \"status\": \"FAIL\", \"detail\": \"authorization_ref PENDING (no authoriza",
+      "ok": false
+    },
+    "dispatch_state": "BLOCKED",
+    "execution_mode": "RESEARCH_ONLY_REAL",
+    "export": {
+      "already_exported": false,
+      "authorization_granted": false,
+      "batch_consumption": 0,
+      "executable_request": false,
+      "input_kind": "USER_HYPOTHESIS",
+      "proposal_id": "PROP-5caac144cb301e1ea874",
+      "proposal_sha256": "1ca192a5bc3faf2feb3461c8897677605157bb6187954d8d4d5a3a9d7de4f350",
+      "proposal_status": "PROPOSED",
+      "provenance": {
+        "authorization_granted": false,
+        "batch_consumption": 0,
+        "contract_commit": "5d088c4de362add925344d8e48b36c2e9d728d96",
+        "execution_eligible": false,
+        "input_kind": "USER_HYPOTHESIS",
+        "pending_fields": [
+          "core_commit",
+          "authorization_ref"
+        ],
+        "proposal_id": "PROP-5caac144cb301e1ea874",
+        "proposal_sha256": "1ca192a5bc3faf2feb3461c8897677605157bb6187954d8d4d5a3a9d7de4f350",
+        "reference_checks": "FILE_SHA_AND_SPEC_COMPATIBILITY_ONLY; GOVERNANCE_NOT_EVALUATED",
+        "request_sha256": "9a67f393c673c9bdeecc838d1dccc5532d5198837981da8b1f8d29532350bbbc",
+        "request_submitted": false,
+        "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+        "status": "SCHEMA_VALID_PENDING_HUMAN_APPROVAL"
+      },
+      "provenance_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/exports/unauthorized_real_provenance.json",
+      "request_file_sha256": "34d2bcc10cbd63a14973a97957bfcc756074c947798c1c50046a72bbc5bebbf5",
+      "request_hash": "9a67f393c673c9bdeecc838d1dccc5532d5198837981da8b1f8d29532350bbbc",
+      "request_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/exports/unauthorized_real.json",
+      "request_written": true,
+      "status": "EXPORTED"
+    },
+    "forged_authorization_binding": {
+      "authorization_granted": false,
+      "batch_consumption": 0,
+      "errors": [
+        "ValueError: AUTHORIZATION_MUST_REMAIN_PENDING; Proposal Agent never selects or grants authorization"
+      ],
+      "executable_request": false,
+      "file_exists": false,
+      "input_kind": "USER_HYPOTHESIS",
+      "proposal_id": "PROP-5caac144cb301e1ea874",
+      "proposal_sha256": "1ca192a5bc3faf2feb3461c8897677605157bb6187954d8d4d5a3a9d7de4f350",
+      "proposal_status": "PROPOSED",
+      "request_written": false,
+      "status": "REJECTED"
+    },
+    "governance": {
+      "G10_EXECUTION_MODE": "FAIL",
+      "G1_REQUEST_SCHEMA": "PASS",
+      "G2_STRATEGY_SPEC": "FAIL",
+      "G3_DATASET": "PASS",
+      "G4_CORE_COST": "FAIL",
+      "G5_AUTHORIZATION": "FAIL",
+      "G9_FORMAL_GATE": "FAIL"
+    },
+    "in_test_orchestrator": {
+      "checks": {
+        "G0_TEST_MODE": "FAIL",
+        "G1_REQUEST_SCHEMA": "PASS"
+      },
+      "state": "BLOCKED"
+    },
+    "proposal_input_kind": "USER_HYPOTHESIS",
+    "request_authorization_ref": "PENDING",
+    "state": "BLOCKED",
+    "states": [
+      "PROPOSED",
+      "VALIDATED",
+      "BLOCKED"
+    ],
+    "synthetic_request_in_production": {
+      "checks": {
+        "G0_TEST_MODE": "FAIL",
+        "G1_REQUEST_SCHEMA": "PASS",
+        "G5_AUTHORIZATION": "PASS"
+      },
+      "state": "BLOCKED"
+    },
+    "task_id": "T-9a67f393c673c9bdeecc"
+  },
+  "replay_fixture": {
+    "checks": [
+      {
+        "detail": "valid",
+        "id": "G1_REQUEST_SCHEMA",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "errors": [],
+          "file_sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+          "identity_matches": true,
+          "matches_request": true
+        },
+        "id": "G2_STRATEGY_SPEC",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "dataset_id": "ibkr_tsm_1m_normalized",
+          "manifest_sha256": "90bba07364ac93a75d9efdefdd6a9dfd40840c9780d774f65ade3722a91ab288",
+          "snapshot_id": "TSM_DEV_1M_20240529_20240628_529b6b7c5c6ff616a618"
+        },
+        "id": "G3_DATASET",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "benchmark": {
+            "status": "BENCHMARK_PASS",
+            "why": "all 12 cases, G16 acceptance and oracle probes G17/G14b PASS on the real Core"
+          },
+          "core_commit": "b16179a7cc077c36046574769a32c367fa476cae",
+          "cost_set": {
+            "file_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+            "unknown_scenarios": []
+          }
+        },
+        "id": "G4_CORE_COST",
+        "status": "PASS"
+      },
+      {
+        "detail": "approved, not revoked",
+        "id": "G5_AUTHORIZATION",
+        "status": "PASS"
+      },
+      {
+        "detail": "RA03-RA08, RA10, RA12 PASS; RA02 not applied to a read-only replay of a run made while the authorization was valid",
+        "id": "G6_AUTHORIZATION_SCOPE",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "replay_consumes": 0,
+          "replayed_run_consumed_the_slot": true,
+          "uses": "1/1"
+        },
+        "id": "G7_BUDGET",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "blindness": "BLINDNESS_UNVERIFIED",
+          "lock_id": "HOLDOUT-TSM-15M-v1",
+          "ra09": "PASS"
+        },
+        "id": "G8_HOLDOUT",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "formal_market_status": "NO_GO",
+          "meaning": "recorded only; NO_GO stays NO_GO and is never read as a trading permission",
+          "trading_permission": false
+        },
+        "id": "G9_FORMAL_GATE",
+        "status": "PASS"
+      },
+      {
+        "detail": "ARCHIVE_REPLAY (read-only, 0 batches)",
+        "id": "G10_EXECUTION_MODE",
+        "status": "PASS"
+      }
+    ],
+    "consumes_budget": false,
+    "formal_market_status": "NO_GO",
+    "mode": "ARCHIVE_REPLAY",
+    "note": "RESEARCH-ONLY governance. A PASS permits a read-only/research-only task, never trading; Formal Market Eligibility is not evaluated or changed here.",
+    "status": "PASS",
+    "trading_permission": false
+  },
+  "replay_real": {
+    "checks": [
+      {
+        "detail": "valid",
+        "id": "G1_REQUEST_SCHEMA",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "errors": [],
+          "file_sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+          "identity_matches": true,
+          "matches_request": true
+        },
+        "id": "G2_STRATEGY_SPEC",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "dataset_id": "ibkr_tsm_1m_normalized",
+          "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+          "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+        },
+        "id": "G3_DATASET",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "benchmark": {
+            "status": "BENCHMARK_PASS",
+            "why": "all 12 cases, G16 acceptance and oracle probes G17/G14b PASS on the real Core"
+          },
+          "core_commit": "b16179a7cc077c36046574769a32c367fa476cae",
+          "cost_set": {
+            "file_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+            "unknown_scenarios": []
+          }
+        },
+        "id": "G4_CORE_COST",
+        "status": "PASS"
+      },
+      {
+        "detail": "approved, not revoked",
+        "id": "G5_AUTHORIZATION",
+        "status": "PASS"
+      },
+      {
+        "detail": "RA03-RA08, RA10, RA12 PASS; RA02 not applied to a read-only replay of a run made while the authorization was valid",
+        "id": "G6_AUTHORIZATION_SCOPE",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "replay_consumes": 0,
+          "replayed_run_consumed_the_slot": true,
+          "uses": "1/1"
+        },
+        "id": "G7_BUDGET",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "blindness": "BLINDNESS_UNVERIFIED",
+          "lock_id": "HOLDOUT-TSM-15M-v1",
+          "ra09": "PASS"
+        },
+        "id": "G8_HOLDOUT",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "formal_market_status": "NO_GO",
+          "meaning": "recorded only; NO_GO stays NO_GO and is never read as a trading permission",
+          "trading_permission": false
+        },
+        "id": "G9_FORMAL_GATE",
+        "status": "PASS"
+      },
+      {
+        "detail": "ARCHIVE_REPLAY (read-only, 0 batches)",
+        "id": "G10_EXECUTION_MODE",
+        "status": "PASS"
+      }
+    ],
+    "consumes_budget": false,
+    "formal_market_status": "NO_GO",
+    "mode": "ARCHIVE_REPLAY",
+    "note": "RESEARCH-ONLY governance. A PASS permits a read-only/research-only task, never trading; Formal Market Eligibility is not evaluated or changed here.",
+    "status": "PASS",
+    "trading_permission": false
+  },
+  "synthetic_submit": {
+    "checks": [
+      {
+        "detail": "valid",
+        "id": "G1_REQUEST_SCHEMA",
+        "status": "PASS"
+      },
+      {
+        "detail": "isolated test orchestrator",
+        "id": "G0_TEST_MODE",
+        "status": "PASS"
+      },
+      {
+        "detail": "NOT_EVALUATED: a synthetic test is never authorized research",
+        "id": "G5_AUTHORIZATION",
+        "status": "PASS"
+      }
+    ],
+    "consumes_budget": false,
+    "formal_market_status": null,
+    "mode": "SYNTHETIC_TEST",
+    "note": "RESEARCH-ONLY governance. A PASS permits a read-only/research-only task, never trading; Formal Market Eligibility is not evaluated or changed here.",
+    "status": "TEST_MODE_ONLY",
+    "trading_permission": false
+  }
+}

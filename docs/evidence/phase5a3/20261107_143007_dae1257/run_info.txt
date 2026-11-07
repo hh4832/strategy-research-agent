@@ -1,0 +1,15 @@
+kind=PHASE5A3_INTEGRATION_ACCEPTANCE
+verdict=GO
+git_sha=dae12575769ec247c9e0ce96dae59af376ebace9
+dirty=false
+python=3.13.18
+contract_commit=5d088c4de362add925344d8e48b36c2e9d728d96
+schema_sha256=1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb
+generated_at=2026-11-07T14:30:46+08:00
+cloud=true
+real_archive_replay=ARCHIVED
+consumed_batches=0
+real_backtest_executed=false
+holdout_read=false
+broker_api_called=false
+files_sha256={"archive_integrity.json": "afb108d3d95c2093f341b96a1980582640c6ba27b4c60f11371277ca8bc5bd9a", "evaluation_reference.json": "dc7295bfa05e27bb015e2e38dc5044e45cae3f5d8e59626f86b728117066b52b", "governance_checks.json": "d3e739c3f9c8f64d15281673964e801cb378bddae74681100be86a7b12f3bb7e", "integration_acceptance.json": "2a4ba6cdbf205ff36806fbaccdf8986f50050bb23dd5189cb13a0e4aa5f2ee68", "proposal_to_request.json": "e3fc43305c1f322cffc15f8e3cf75e011840bed0d8c44e93441f37e2deebc0c4", "task_lifecycle.json": "18f6f22b3f84948157ea22b510e679ae1b2228f014482ccf42bec3327bb68397"}

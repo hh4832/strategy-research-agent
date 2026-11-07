@@ -1,0 +1,20 @@
+{
+  "notebook": "PHASE5A3-INTEGRATION-v1",
+  "version_sync": {
+    "notebook_version": "PHASE5A3-INTEGRATION-v1",
+    "notebook_version_on_github_head": "PHASE5A3-INTEGRATION-v1",
+    "github_remote_head": "a9b8b583a6f68e12ab4ab2fce0e5bc61438e8d62",
+    "checkout_head": "dae12575769ec247c9e0ce96dae59af376ebace9",
+    "pinned_sha": "dae12575769ec247c9e0ce96dae59af376ebace9",
+    "pin_on_branch": true,
+    "working_tree_clean": true,
+    "files_changed_after_pin": [
+      "docs/PHASE5A3_INTEGRATION_ACCEPTANCE.md",
+      "notebooks/Phase5A3_Integration_Acceptance.ipynb"
+    ]
+  },
+  "clean_colab_runtime": true,
+  "cloud": true,
+  "real_replay_requested": true,
+  "python": "3.13.18"
+}

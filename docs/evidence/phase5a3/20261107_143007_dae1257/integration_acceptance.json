@@ -1,0 +1,279 @@
+{
+  "cloud": true,
+  "code": {
+    "dirty": false,
+    "git_sha": "dae12575769ec247c9e0ce96dae59af376ebace9",
+    "python": "3.13.18"
+  },
+  "contract": {
+    "a2_error": null,
+    "checks": {
+      "a1_a2_parse_identical": true,
+      "a2_contract_commit_pin": true,
+      "authorization_ref_pending_allowed": true,
+      "closed_top_level_object": true,
+      "core_commit_pending_allowed": true,
+      "git_blob_matches_pin": true,
+      "holdout_access_no_access_only": true,
+      "same_schema_file": true,
+      "schema_version_1_0_0": true,
+      "sha256_matches_pin": true
+    },
+    "observed": {
+      "bytes": 9324,
+      "git_blob": "4836b8f5738d26a95d1fe6c6a0d55c683a810a93",
+      "sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb"
+    },
+    "pin": {
+      "commit": "5d088c4de362add925344d8e48b36c2e9d728d96",
+      "git_blob": "4836b8f5738d26a95d1fe6c6a0d55c683a810a93",
+      "schema_path": "schemas/RESEARCH_REQUEST_SCHEMA.json",
+      "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+      "schema_version": "1.0.0"
+    },
+    "schema_modified_by_phase5a3": false,
+    "status": "PASS"
+  },
+  "fresh_process": true,
+  "gates": {
+    "A3-01": {
+      "evidence": {
+        "a1_validate_errors_on_a2_output": [],
+        "contract": "PASS"
+      },
+      "status": "PASS"
+    },
+    "A3-02": {
+      "evidence": {
+        "actual_proposal_to_request_export": "PASS",
+        "contract_compatibility": "PASS",
+        "full_e2e_execution": "PASS",
+        "orchestrator_acceptance": "PASS"
+      },
+      "status": "PASS"
+    },
+    "A3-03": {
+      "evidence": {
+        "blockers": [
+          "ADDITIONAL_FEATURE_PIT_PENDING",
+          "CHANGE_RECORD_INCOMPLETE",
+          "DATA_COVERAGE_UNKNOWN",
+          "DATA_SOURCE_UNRESOLVED",
+          "EXECUTION_TIME",
+          "MISSING_RULE",
+          "PIT_UNKNOWN",
+          "PRICE_FIELDS",
+          "RULE_AST_PENDING",
+          "SEARCH_BUDGET_UNKNOWN",
+          "SIGNAL_TIME",
+          "UNIVERSE_MISMATCH",
+          "UNIVERSE_UNKNOWN"
+        ],
+        "events_added": 0,
+        "status": "PENDING_INFORMATION"
+      },
+      "status": "PASS"
+    },
+    "A3-04": {
+      "evidence": {
+        "G5": "FAIL",
+        "approve": "GOVERNANCE_BLOCKED",
+        "forged_binding": [
+          "ValueError: AUTHORIZATION_MUST_REMAIN_PENDING; Proposal Agent never selects or grants authorization"
+        ],
+        "state": "BLOCKED",
+        "states": [
+          "PROPOSED",
+          "VALIDATED",
+          "BLOCKED"
+        ]
+      },
+      "status": "PASS"
+    },
+    "A3-05": {
+      "evidence": {
+        "failed_checks": [
+          "G10_EXECUTION_MODE",
+          "G2_STRATEGY_SPEC",
+          "G4_CORE_COST",
+          "G5_AUTHORIZATION",
+          "G9_FORMAL_GATE"
+        ],
+        "mode": "RESEARCH_ONLY_REAL",
+        "synthetic_in_production": {
+          "checks": {
+            "G0_TEST_MODE": "FAIL",
+            "G1_REQUEST_SCHEMA": "PASS",
+            "G5_AUTHORIZATION": "PASS"
+          },
+          "state": "BLOCKED"
+        }
+      },
+      "status": "PASS"
+    },
+    "A3-06": {
+      "evidence": {
+        "decision": {
+          "acceptance_checks": {
+            "C1_archive_identity": "PASS",
+            "C2_archive_integrity": "PASS",
+            "C3_trade_integrity": "PASS",
+            "C4_performance_consistency": "PASS",
+            "C5_temporal_safety": "PASS",
+            "C6_research_evaluation": "PASS",
+            "C7_reproducibility": "PASS",
+            "C8_governance_isolation": "PASS"
+          },
+          "acceptance_status": "PASS",
+          "blocked_reason": null,
+          "engineering_status": "PASS",
+          "evidence": "SYNTHETIC_FIXTURE",
+          "evidence_sufficiency": "UNDETERMINED",
+          "label": "SYNTHETIC_TEST — engineering evidence only, not a research decision",
+          "risk_flags": [
+            "BLINDNESS_UNVERIFIED",
+            "INSUFFICIENT_SAMPLE",
+            "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+            "LESS_THAN_ONE_YEAR_OBSERVED",
+            "LOOK_AHEAD_NOT_TESTED",
+            "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+            "MULTIPLE_TESTING_NOT_TESTED",
+            "NON_POSITIVE_CLOSED_NET_PNL",
+            "PARAMETER_STABILITY_NOT_TESTED",
+            "SELECTION_BIAS_NOT_TESTED",
+            "SURVIVORSHIP_BIAS_NOT_TESTED",
+            "TAIL_RISK_NOT_ESTABLISHED",
+            "TEMPORAL_STABILITY_NOT_TESTED"
+          ],
+          "strategy_verdict": "RETEST",
+          "test_mode": true
+        },
+        "states": [
+          "PROPOSED",
+          "VALIDATED",
+          "PENDING_APPROVAL",
+          "APPROVED",
+          "QUEUED",
+          "RUNNING",
+          "EVALUATING",
+          "EVALUATED",
+          "ARCHIVED"
+        ]
+      },
+      "status": "PASS"
+    },
+    "A3-07": {
+      "evidence": {
+        "acceptance": "PASS",
+        "real_archive_replay": "ARCHIVED",
+        "route": "SYNTHETIC_FIXTURE",
+        "status": "ARCHIVED",
+        "uses": "1->1"
+      },
+      "status": "PASS"
+    },
+    "A3-08": {
+      "evidence": {
+        "concurrency": {
+          "errors": [],
+          "links": 1,
+          "proposed_events": 1,
+          "submitters": 4,
+          "task_ids": [
+            "T-77ba053191ac999191e5"
+          ]
+        },
+        "crash": {
+          "executions_dir_exists": false,
+          "recover_actions": [
+            {
+              "action": "FAILED_NOT_REEXECUTED",
+              "task_id": "T-3d4f531717a5ec42b184"
+            }
+          ],
+          "second_recover": [],
+          "state": "FAILED",
+          "task_id": "T-3d4f531717a5ec42b184"
+        },
+        "duplicate": {
+          "duplicate_flag": true,
+          "duplicate_task_id": "T-77ba053191ac999191e5",
+          "events_after": 9,
+          "events_before": 9,
+          "links": 1,
+          "recover_actions": [],
+          "redispatch_state": "ARCHIVED",
+          "retry_archived": {
+            "error": "ILLEGAL_TRANSITION",
+            "message": "ILLEGAL_TRANSITION: retry only from FAILED (is ARCHIVED)",
+            "ok": false
+          },
+          "same_path_reexport": true,
+          "same_path_task_id": "T-77ba053191ac999191e5",
+          "task_archive_dirs_after": 1,
+          "task_archive_dirs_before": 1
+        }
+      },
+      "status": "PASS"
+    },
+    "A3-09": {
+      "evidence": {
+        "evaluator_failure": {
+          "acceptance_status": "FAIL",
+          "evidence_sufficiency": "UNDETERMINED",
+          "state": "ARCHIVED",
+          "strategy_verdict": "RETEST"
+        },
+        "integrity": {
+          "archive_hashes_match": true,
+          "archive_overwrite_attempt": "REFUSED",
+          "chains": {
+            "state": "CHAIN_OK",
+            "state_concurrent": "CHAIN_OK",
+            "state_crash": "CHAIN_OK",
+            "state_evalfail": "CHAIN_OK",
+            "state_missing": "CHAIN_OK",
+            "state_prod": "CHAIN_OK"
+          },
+          "links_resolve_to_tasks": true,
+          "repo_governance_registry_unchanged": true
+        },
+        "missing_file": {
+          "reason": "UNSAFE_ARCHIVE_PATH",
+          "removed": "config.json",
+          "state": "FAILED",
+          "states": [
+            "PROPOSED",
+            "VALIDATED",
+            "PENDING_APPROVAL",
+            "APPROVED",
+            "QUEUED",
+            "RUNNING",
+            "FAILED"
+          ]
+        },
+        "wrong_sha": [
+          "ValueError: REFERENCE_SHA_MISMATCH:specs/synthetic_fixture_spec.json"
+        ]
+      },
+      "status": "PASS"
+    },
+    "A3-10": {
+      "evidence": {
+        "broker_api_references": [],
+        "executor_modules_loaded": [],
+        "fresh_process": true,
+        "proposal_agent_forbidden_imports": [],
+        "real_execution_enabled": false,
+        "research_only_runner_adapter_enabled": false
+      },
+      "status": "PASS"
+    }
+  },
+  "generated_at": "2026-11-07T14:30:46+08:00",
+  "scope": "Phase 5-A3 integration acceptance. Route A is SYNTHETIC_FIXTURE engineering evidence; Route B replays an existing archive read-only (0 batches). Neither is new strategy research.",
+  "verdict": {
+    "verdict": "GO",
+    "why": "A3-01..A3-10 PASS; actual A2->A1 synthetic E2E; real archive replay PASS; cloud archive"
+  }
+}
