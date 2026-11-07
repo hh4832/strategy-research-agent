@@ -1,0 +1,26 @@
+{
+  "additional_features": [],
+  "availability": "DECLARED_AVAILABLE_NOT_VERIFIED",
+  "coverage": {
+    "end": "2024-12-31",
+    "start": "2024-01-01"
+  },
+  "market": "TW",
+  "pit_requirements": [
+    "Use only fully completed bars and original timestamps.",
+    "Never access Holdout; research design is Development-only."
+  ],
+  "pit_timing": "Signal at completed-bar available_at; fill strictly later on an eligible bar; source latency is NOT_VERIFIED.",
+  "price_fields": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ],
+  "source_ref": "SYNTHETIC_FIXTURE_catalog_NOT_VERIFIED",
+  "symbols": [
+    "2330"
+  ],
+  "timeframe": "5m"
+}

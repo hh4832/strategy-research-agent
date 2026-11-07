@@ -201,3 +201,10 @@ Remaining integrations: production LLM provider; human validation of textual rul
 meaning/causal/data claims; verified data/cost/strategy references and full spec
 materialization; Orchestrator governance/E2E and personal research authorization.
 None is bypassed. This phase stops at design/pending review, not a backtest stage.
+
+Generated examples: `docs/examples/phase5a2/SYNTHETIC_FIXTURE_complete/` contains
+six files from the actual clean-checkout CLI (implementation48771ff); the other
+three SYNTHETIC_FIXTURE folders contain generated proposal.json for the required
+ideas, using an explicitly fixed synthetic replay clock. These are not real
+research results. `PHASE5A2_NOTION_UPDATE.md` is a prepared, NOT_PUBLISHED handoff;
+Notion HTTP403/missing connector prevents claiming an actual page update.

@@ -1,0 +1,295 @@
+{
+  "bias_risk_checklist": [
+    {
+      "required_check": "Review LOOK_AHEAD_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "LOOK_AHEAD_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SURVIVORSHIP_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SURVIVORSHIP_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SELECTION_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SELECTION_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review DATA_SNOOPING under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "DATA_SNOOPING",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review TRANSACTION_COSTS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "TRANSACTION_COSTS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SLIPPAGE under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SLIPPAGE",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review LIQUIDITY under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "LIQUIDITY",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SAMPLE_SIZE under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SAMPLE_SIZE",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review CONCENTRATED_PROFIT under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "CONCENTRATED_PROFIT",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review HOLDOUT_CONTAMINATION under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "HOLDOUT_CONTAMINATION",
+      "status": "NOT_VERIFIED"
+    }
+  ],
+  "draft": {
+    "challenger_view": {
+      "failure_reason": "Could information shocks or trading frictions invalidate the proposed mechanism?",
+      "falsification": "Would net results indistinguishable from the unchanged baseline refute this hypothesis?",
+      "market_beta": "Would a matched market-beta exposure explain all apparent improvement?",
+      "regime_dependence": "Would the result disappear outside the pre-registered regime?",
+      "trade_concentration": "Would removing the largest-contributing trades eliminate the apparent effect?"
+    },
+    "hypothesis": {
+      "expected_direction": "CONDITIONAL",
+      "null_hypothesis": "The proposed condition produces no improvement over the unchanged baseline after costs.",
+      "purpose": "Exploratory design only; NOT_VERIFIED",
+      "question": "當大盤趨勢較強時，個股動能策略是否有較高的報酬？",
+      "testable_claim": "Test the user hypothesis against a preregistered unchanged baseline after costs; the exact rule and horizon remain UNKNOWN."
+    },
+    "market_mechanism": {
+      "category": "MOMENTUM",
+      "causal_logic": "Institutional order splitting and delayed information incorporation may sustain trends; whether a broad-market trend condition changes this effect is an unverified hypothesis.",
+      "failure_modes": [
+        "Information-driven moves may persist rather than reverse.",
+        "Costs and publication lag may eliminate any apparent effect."
+      ]
+    },
+    "required_data": {
+      "additional_features": [
+        "benchmark_trend",
+        "point_in_time_universe"
+      ],
+      "availability": "UNKNOWN",
+      "coverage": {
+        "end": "UNKNOWN",
+        "start": "UNKNOWN"
+      },
+      "market": "UNKNOWN",
+      "pit_requirements": [],
+      "pit_timing": "UNKNOWN",
+      "price_fields": [],
+      "source_ref": "UNKNOWN",
+      "symbols": [],
+      "timeframe": "UNKNOWN"
+    },
+    "research_variables": {
+      "changes": [
+        {
+          "baseline": "UNKNOWN",
+          "core_variable": "UNKNOWN",
+          "expected_improvement": "A falsifiable improvement relative to a preregistered unchanged baseline, NOT_VERIFIED.",
+          "potential_side_effects": "Reduced sample, concentration and additional transaction costs.",
+          "proposed_change": "當大盤趨勢較強時，個股動能策略是否有較高的報酬？"
+        }
+      ],
+      "parameter_search": {
+        "max_trials": null,
+        "mode": "UNKNOWN"
+      },
+      "prior_experiment_refs": [],
+      "selection_basis": "UNKNOWN"
+    },
+    "strategy_rules": {
+      "entry_condition": "UNKNOWN",
+      "execution_time": "UNKNOWN",
+      "exit_condition": "UNKNOWN",
+      "exit_policy": "UNKNOWN",
+      "holding_horizon": "UNKNOWN",
+      "position_sizing": "UNKNOWN",
+      "signal_time": "UNKNOWN",
+      "universe": {
+        "market": "UNKNOWN",
+        "symbols": [],
+        "timeframe": "UNKNOWN"
+      }
+    },
+    "strategy_spec_fragment": null,
+    "title": "SYNTHETIC_FIXTURE momentum"
+  },
+  "evaluation_plan": {
+    "metrics": [
+      "Trade Count",
+      "Win Rate",
+      "Payoff Ratio",
+      "Expectancy",
+      "Profit Factor",
+      "Maximum Drawdown",
+      "Tail Risk",
+      "Cost Sensitivity",
+      "Market Regime",
+      "Annual Performance",
+      "Symbol Concentration",
+      "Holding Duration",
+      "Parameter Robustness"
+    ],
+    "protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
+    "threshold_policy": "USE_EXISTING_PROTOCOL_ONLY; NO_NEW_THRESHOLDS"
+  },
+  "execution_policy": "PENDING_HUMAN_REVIEW; NEVER_EXECUTE_OR_AUTHORIZE",
+  "fingerprints": {
+    "hypothesis": "a7c92e33cfcabaf6037a753d42b0b55bb61377c2f6aca24915b0438567d08e80",
+    "method": "INCOMPLETE_DRAFT_FALLBACK_NOT_SEMANTIC_PROOF",
+    "parameter_values": "312215d7a051150397d422569a72f70717d9a963b9781854b877827e36af7dde",
+    "strategy_family": "772c61b560e1ab4c1abe990f7abcbca322e70033589b4996304c030d612fa3a5"
+  },
+  "holdout_policy": "NO_ACCESS; PROPOSAL_ONLY; NO_AUTHORIZATION",
+  "origin": {
+    "adapter_id": "FAKE_LLM_FIXTURE_V1",
+    "agent_commit_sha": "48771ff0202be05a1be39e680a9e9985bff84dd1",
+    "created_at": "2026-11-07T12:00:00+08:00",
+    "draft_sha256": "bf541f805492b8c5559d77ab8214fa5f9aad1be5ecb018b67b215f222818c287",
+    "input_kind": "SYNTHETIC_FIXTURE",
+    "user_hypothesis": "當大盤趨勢較強時，個股動能策略是否有較高的報酬？"
+  },
+  "prior_proposal_refs": [],
+  "proposal_id": "PROP-ff9d89e7e12b1bfba9f8",
+  "proposal_sha256": "bc3666cf4edbdf7a25b714b494404f3afc29ac27cf13e285a9cf51b5034eb50e",
+  "request_contract": "PINNED_SHARED_SCHEMA; BINDINGS_AND_HUMAN_APPROVAL_REQUIRED",
+  "request_contract_pin": {
+    "commit_sha": "5d088c4de362add925344d8e48b36c2e9d728d96",
+    "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+    "status": "PINNED_SCHEMA_ONLY; NOT_AUTHORIZATION"
+  },
+  "research_change_record": [
+    {
+      "baseline": "UNKNOWN",
+      "core_variable": "UNKNOWN",
+      "expected_improvement": "A falsifiable improvement relative to a preregistered unchanged baseline, NOT_VERIFIED.",
+      "potential_side_effects": "Reduced sample, concentration and additional transaction costs.",
+      "proposed_change": "當大盤趨勢較強時，個股動能策略是否有較高的報酬？"
+    }
+  ],
+  "review_status": "NEEDS_REVIEW",
+  "schema_version": "1.0.0",
+  "status": "PENDING_INFORMATION",
+  "validation": {
+    "blockers": [
+      {
+        "code": "MISSING_RULE",
+        "message": "User/model must specify entry_condition; no invented fallback.",
+        "path": "strategy_rules/entry_condition"
+      },
+      {
+        "code": "MISSING_RULE",
+        "message": "User/model must specify exit_condition; no invented fallback.",
+        "path": "strategy_rules/exit_condition"
+      },
+      {
+        "code": "MISSING_RULE",
+        "message": "User/model must specify position_sizing; no invented fallback.",
+        "path": "strategy_rules/position_sizing"
+      },
+      {
+        "code": "MISSING_RULE",
+        "message": "User/model must specify exit_policy; no invented fallback.",
+        "path": "strategy_rules/exit_policy"
+      },
+      {
+        "code": "MISSING_RULE",
+        "message": "User/model must specify holding_horizon; no invented fallback.",
+        "path": "strategy_rules/holding_horizon"
+      },
+      {
+        "code": "SIGNAL_TIME",
+        "message": "Require explicit completed-data availability.",
+        "path": "strategy_rules/signal_time"
+      },
+      {
+        "code": "EXECUTION_TIME",
+        "message": "Require strictly later eligible execution.",
+        "path": "strategy_rules/execution_time"
+      },
+      {
+        "code": "UNIVERSE_UNKNOWN",
+        "message": "Explicit universe required.",
+        "path": "strategy_rules/universe/market"
+      },
+      {
+        "code": "UNIVERSE_UNKNOWN",
+        "message": "Explicit universe required.",
+        "path": "strategy_rules/universe/timeframe"
+      },
+      {
+        "code": "UNIVERSE_MISMATCH",
+        "message": "Explicit identical symbols/universe required.",
+        "path": "required_data/symbols"
+      },
+      {
+        "code": "PRICE_FIELDS",
+        "message": "Specify required native OHLCV; no source is assumed.",
+        "path": "required_data/price_fields"
+      },
+      {
+        "code": "DATA_SOURCE_UNRESOLVED",
+        "message": "Identify a planned source; no dataset GO inferred from existence.",
+        "path": "required_data"
+      },
+      {
+        "code": "PIT_UNKNOWN",
+        "message": "Publication/available_at rules must be explicitly planned.",
+        "path": "required_data/pit_timing"
+      },
+      {
+        "code": "ADDITIONAL_FEATURE_PIT_PENDING",
+        "message": "Each extra feature needs its own planned publication/available_at rule, never a same-date join.",
+        "path": "required_data/benchmark_trend"
+      },
+      {
+        "code": "ADDITIONAL_FEATURE_PIT_PENDING",
+        "message": "Each extra feature needs its own planned publication/available_at rule, never a same-date join.",
+        "path": "required_data/point_in_time_universe"
+      },
+      {
+        "code": "DATA_COVERAGE_UNKNOWN",
+        "message": "Explicit ordered ISO dates required.",
+        "path": "required_data/coverage"
+      },
+      {
+        "code": "CHANGE_RECORD_INCOMPLETE",
+        "message": "Baseline/change/effect/side effect must be explicit.",
+        "path": "research_variables/changes/0"
+      },
+      {
+        "code": "SEARCH_BUDGET_UNKNOWN",
+        "message": "Proposed budget metadata required; this grants no budget.",
+        "path": "research_variables/parameter_search"
+      },
+      {
+        "code": "RULE_AST_PENDING",
+        "message": "Typed Strategy Spec rule fragment is not supplied; no executable spec invented.",
+        "path": "strategy_spec_fragment"
+      }
+    ],
+    "risk_flags": [
+      {
+        "code": "DATA_AND_CAUSAL_MECHANISM_NOT_VERIFIED",
+        "message": "Design assertions are not data approval or evidence of strategy effect."
+      },
+      {
+        "code": "PRIOR_EXPERIMENT_COVERAGE_NOT_VERIFIED",
+        "message": "No prior experiment refs provided; absence is not evidence of novelty."
+      }
+    ],
+    "schema_valid": true
+  }
+}
