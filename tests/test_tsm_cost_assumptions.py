@@ -135,4 +135,12 @@ def test_research_acceptance_never_upgrades_formal_gates():
     assert g["COST_APPROVAL"]["status"] == "FAIL" and g["COST_APPROVAL"]["approved_by"] is None
     assert g["TEMPORAL_SAFETY"]["status"] == "UNKNOWN" and g["HOLDOUT_APPROVAL"]["status"] == "FAIL"
     assert g["FORMAL_EXECUTION_ELIGIBILITY"]["status"] == "FAIL" and e["status"] == "NO_GO"
-    assert (ROOT / "governance" / "holdout_locks.jsonl").read_text() == ""   # no lock created by the Agent
+    # No lock created by the Agent: the book is empty, or holds only the research-lead-signed Phase 4-A lock
+    # (HoldoutBook refuses any entry whose approver is not allow-listed or lacks an https approval_ref).
+    from strategy_agent.governance.holdout import HoldoutBook
+    from strategy_agent.registry.chain import ChainedLog
+    locks = ChainedLog(ROOT / "governance" / "holdout_locks.jsonl").verify()
+    if locks:
+        book = HoldoutBook(ROOT / "governance" / "holdout_locks.jsonl", ROOT / "governance" / "approvers.json")
+        assert [(r["action"], r["lock_id"]) for r in locks] == [("APPROVE", "HOLDOUT-TSM-15M-v1")]
+        assert book.for_dataset("ibkr_tsm_1m_normalized").approved_by == "hh4832"
