@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hh4832/strategy-research-agent/schemas/RESEARCH_REQUEST_SCHEMA.json",
+  "title": "Research Request (Phase 5 shared contract)",
+  "description": "A request to run one research task through the orchestrator. It REFERENCES existing governed artefacts (strategy spec, dataset snapshot, Core commit, cost scenario set, research authorization, holdout lock) by id and full hash; it never carries their content and never asserts their status. Nothing in a request can grant authorization, mark a gate as passed, unlock a holdout or change a budget: those facts are read by the orchestrator from the governed records. Free-text fields (hypothesis, market_mechanism, requested_change.description) are recorded verbatim and never interpreted. Only core_commit and authorization_ref may be PENDING; a PENDING request can be validated and recorded but is always BLOCKED by governance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "hypothesis", "market_mechanism", "strategy_family", "strategy_spec_ref",
+               "strategy_spec_sha256", "market", "dataset_ref", "dataset_snapshot_id", "dataset_manifest_sha256",
+               "core_commit", "signal_time_rule", "execution_time_rule", "cost_profile_ref", "research_window",
+               "requested_change", "execution_mode", "research_budget", "authorization_ref", "holdout_policy",
+               "requested_outputs"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "request_id": {"type": "string", "pattern": "^RR-[A-Z0-9][A-Z0-9_-]{2,79}$"},
+    "hypothesis": {"type": "string", "minLength": 20, "maxLength": 4000,
+                   "description": "What is being tested and what result would refute it. Recorded, never interpreted."},
+    "market_mechanism": {"type": "string", "minLength": 20, "maxLength": 4000,
+                         "description": "Why the effect should exist. Recorded, never interpreted."},
+    "strategy_family": {
+      "type": "object", "additionalProperties": false,
+      "required": ["family_id", "strategy_id", "version", "parameters"],
+      "properties": {
+        "family_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.-]{2,79}$"},
+        "strategy_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.-]{2,79}$"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "parameters": {"type": "object", "minProperties": 1,
+                       "additionalProperties": {"type": ["number", "integer", "string", "boolean"]}}
+      }
+    },
+    "strategy_spec_ref": {"$ref": "#/$defs/repo_path", "description": "Repository-relative path of the strategy spec (validated by strategy_agent.spec.validate)."},
+    "strategy_spec_sha256": {"$ref": "#/$defs/sha256", "description": "sha256 of the spec FILE bytes."},
+    "market": {
+      "type": "object", "additionalProperties": false, "required": ["market_id", "symbol"],
+      "properties": {"market_id": {"type": "string", "pattern": "^[A-Z0-9_]{2,40}$"},
+                     "symbol": {"type": "string", "pattern": "^[A-Z0-9.]{1,20}$"}}
+    },
+    "dataset_ref": {
+      "type": "object", "additionalProperties": false, "required": ["dataset_id", "producer_commit_sha"],
+      "properties": {"dataset_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.-]{2,79}$"},
+                     "producer_commit_sha": {"$ref": "#/$defs/git_sha"}}
+    },
+    "dataset_snapshot_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{5,127}$"},
+    "dataset_manifest_sha256": {"$ref": "#/$defs/sha256", "description": "sha256 of the DATASET snapshot manifest (not of any research archive)."},
+    "core_commit": {"oneOf": [{"$ref": "#/$defs/git_sha"}, {"const": "PENDING"}],
+                    "description": "Full 40-hex market-research-core commit; abbreviated SHAs are rejected. PENDING blocks execution."},
+    "signal_time_rule": {
+      "type": "object", "additionalProperties": false, "required": ["policy_id", "policy_version", "policy_sha256", "signal_time"],
+      "properties": {"policy_id": {"enum": ["CONSERVATIVE_LABEL_AGNOSTIC"]},
+                     "policy_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+                     "policy_sha256": {"$ref": "#/$defs/sha256"},
+                     "signal_time": {"const": "CORE_MODELED_AVAILABLE_AT"}}
+    },
+    "execution_time_rule": {
+      "type": "object", "additionalProperties": false, "required": ["rule"],
+      "properties": {"rule": {"const": "NEXT_ELIGIBLE_BAR_OPEN"}}
+    },
+    "cost_profile_ref": {
+      "type": "object", "additionalProperties": false, "required": ["scenario_set_path", "scenario_set_sha256", "scenarios"],
+      "properties": {"scenario_set_path": {"$ref": "#/$defs/repo_path"},
+                     "scenario_set_sha256": {"$ref": "#/$defs/sha256"},
+                     "scenarios": {"type": "array", "minItems": 1, "uniqueItems": true,
+                                   "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,31}$"}}}
+    },
+    "research_window": {
+      "type": "object", "additionalProperties": false, "required": ["warmup_start", "start", "end"],
+      "description": "Half-open [start, end) in explicit-offset ISO-8601; warm-up starts at or before start.",
+      "properties": {"warmup_start": {"$ref": "#/$defs/ts"}, "start": {"$ref": "#/$defs/ts"}, "end": {"$ref": "#/$defs/ts"}}
+    },
+    "requested_change": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "description"],
+      "properties": {"kind": {"enum": ["REPLAY_EXISTING", "NEW_HYPOTHESIS", "PARAMETER_CHANGE", "DATA_WINDOW_CHANGE",
+                                       "COST_SCENARIO_CHANGE", "SYNTHETIC_TEST"]},
+                     "description": {"type": "string", "minLength": 1, "maxLength": 2000},
+                     "baseline_request_id": {"type": "string", "pattern": "^RR-[A-Z0-9][A-Z0-9_-]{2,79}$"}}
+    },
+    "execution_mode": {
+      "enum": ["SYNTHETIC_TEST", "ARCHIVE_REPLAY", "RESEARCH_ONLY_REAL"],
+      "description": "SYNTHETIC_TEST runs only in an isolated test orchestrator and is never research evidence. ARCHIVE_REPLAY re-evaluates an existing archive read-only (0 batches). RESEARCH_ONLY_REAL would consume an authorization batch and is DISABLED in Phase 5-A1."
+    },
+    "replay_source": {
+      "type": "object", "additionalProperties": false, "required": ["run_id", "archive_manifest_sha256"],
+      "properties": {"run_id": {"type": "string", "pattern": "^[0-9]{8}_[0-9]{6}_[0-9a-f]{7,40}$"},
+                     "archive_manifest_sha256": {"$ref": "#/$defs/sha256",
+                                                 "description": "sha256 of the research archive MANIFEST.json, from an independent record."}}
+    },
+    "research_budget": {
+      "type": "object", "additionalProperties": false, "required": ["batches_requested"],
+      "properties": {"batches_requested": {"type": "integer", "minimum": 0, "maximum": 1}}
+    },
+    "authorization_ref": {
+      "oneOf": [{"type": "object", "additionalProperties": false, "required": ["authorization_id"],
+                 "properties": {"authorization_id": {"type": "string", "pattern": "^RA-[A-Z0-9][A-Za-z0-9_-]{2,120}$"}}},
+                {"const": "PENDING"}],
+      "description": "A reference only. Validity, scope and remaining budget are read from governance/research_authorizations.jsonl and registry/research_authorization_uses.jsonl."
+    },
+    "holdout_policy": {
+      "type": "object", "additionalProperties": false, "required": ["access", "lock_id"],
+      "properties": {"access": {"const": "NO_ACCESS"},
+                     "lock_id": {"type": "string", "pattern": "^HOLDOUT-[A-Za-z0-9_.-]{2,80}$"}}
+    },
+    "requested_outputs": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"enum": ["RESEARCH_EVALUATION", "RESEARCH_DECISION", "RISK_FLAGS", "ROBUSTNESS_MATRIX", "ACCEPTANCE_CHECKS"]},
+      "contains": {"const": "RESEARCH_DECISION"}
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"execution_mode": {"const": "ARCHIVE_REPLAY"}}},
+     "then": {"required": ["replay_source"],
+              "properties": {"research_budget": {"properties": {"batches_requested": {"const": 0}}},
+                             "requested_change": {"properties": {"kind": {"const": "REPLAY_EXISTING"}}}}}},
+    {"if": {"properties": {"execution_mode": {"const": "SYNTHETIC_TEST"}}},
+     "then": {"properties": {"research_budget": {"properties": {"batches_requested": {"const": 0}}},
+                             "requested_change": {"properties": {"kind": {"const": "SYNTHETIC_TEST"}}}}}},
+    {"if": {"properties": {"execution_mode": {"const": "RESEARCH_ONLY_REAL"}}},
+     "then": {"properties": {"research_budget": {"properties": {"batches_requested": {"const": 1}}}},
+              "not": {"required": ["replay_source"]}}}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "repo_path": {"type": "string", "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9_.\\-/]{3,200}$"},
+    "ts": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?([+-][0-9]{2}:[0-9]{2}|Z)$"}
+  }
+}
