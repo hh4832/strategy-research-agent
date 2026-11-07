@@ -64,3 +64,15 @@ https://app.notion.com/p/2ceb65aa15fa80e9a322eea10bd87e4f?v=2ceb65aa15fa80b38478
 環境 ID（非憑證）：ccarenv_b64_Y2NhcmVudl81ODhkZjg4MzE3MWM4MTkxYTlmNmNhOWRmZGI5Y2IwYQ。
 
 沒有繞過 proxy、尋找憑證、要求在聊天貼 API Key，或虛報 Notion 寫入成功。
+
+## GitHub 交付觀測（已驗證）
+
+- 程式＋範例 candidate commit：4f712acc2f95c11aa377cd3ff63a6ae72a44c17b。
+- GitHub CI：PASS，https://github.com/hh4832/strategy-research-agent/actions/runs/42338597512 。
+  包含 Python3.11/3.12、core-compat、research-synthetic、phase4a-core、development-snapshot-preflight、phase4a-dev-smoke。
+  append-only 在 push workflow 依既有設定 skip；本機 append-only PASS。
+- Draft PR：**NOT_CREATED**。已實際 POST 標題「Phase 5-A2: Research Proposal Agent MVP」、
+  base=main、head=feature/phase5a2-proposal-agent、draft=true；GitHub API 回覆 Forbidden。
+- 比較／建立頁：https://github.com/hh4832/strategy-research-agent/compare/main...feature/phase5a2-proposal-agent?expand=1
+- 這次後續提交只補交班文件；最新文件 HEAD 以分支與最終交付 SHA 為準。
+- Notion：**NOT_PUBLISHED**，原因仍為指定 URL HTTP403 且缺少可用連接／控制工具。
