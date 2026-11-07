@@ -149,3 +149,13 @@ A2 draft_proposal(FakeLLMAdapter/FileDraftAdapter)          Proposal (PROPOSED |
 - 跑 `notebooks/Phase5A3_Integration_Acceptance.ipynb`（pin `dae1257`）並由研究負責人填入核准後，若 Route B 真實重播 ARCHIVED、C1–C8 PASS、uses 1→1，且 7 檔寫入 Drive `integrations/`，即可升為 GO。
 - Phase 5-A 建議：合併前先決定 PR #9／#10／本 PR 的合併順序（建議以本整合分支一次合併，#9、#10 關閉並指向本 PR）。
 - Phase 5-B 前置工作：可信身分驗證、受治理的「人類綁定授權到 request」流程、synthetic adapter 的 request↔archive 身分比對。
+
+
+## 12. Post-Acceptance Independent Code Review — Archive Naming Reliability
+
+- Review after Colab acceptance (acceptance run remains pinned at `dae12575769ec247c9e0ce96dae59af376ebace9`); this fix **does not retroactively change** its run identity, outputs or source Archive. Acceptance R1/A3-01..10 evidence and the immutable 7-file ZIP remain unchanged.
+- **Finding (fixed):** `Orchestrator._archive()` previously named task archives only `YYYYMMDD_HHMMSS_<commit7>`. Two different tasks archived within the same second could collide, leaving one at `EVALUATED`; retry/recovery in the same second would collide again.
+- **Minimal fix:** add deterministic `task_id` suffix to the archive directory name. This preserves timestamp and Git pin, prevents cross-task same-second collisions, and does not change execution, authorization checks, evaluator metrics or the source market Archive. Existing archives retain their original names; none are rewritten.
+- **Regression:** `test_15b_two_distinct_tasks_archived_same_second_have_distinct_paths`; existing forced collision and recovery test updated to target the new naming convention. Final CI result must be verified at the resulting PR HEAD before merge. The post-review code has not been re-run against the original real TSM Archive; release statements must retain the distinction between the pinned Colab acceptance and the later narrowly scoped archive-naming correction.
+- **Nonblocking under Phase 5-A test/replay-only scope, but blocking Phase 5-B real autonomy:** approver/submitter identity is caller-provided (no trustworthy identity proof); Proposal Agent cannot bind a real authorization to its request; synthetic adapter evaluates a fixture that is not request-identity-matched; SYNTHETIC_TEST G5 detail is `NOT_EVALUATED` while the check status is displayed as `PASS` (potentially misleading). The real runner stays `DISABLED`, no consumption, no trading API, no Holdout access.
+- **Scope:** Phase 5-A3 engineering integration; not approval for autonomous real-data research, not a strategy KEEP finding, and not Formal Market GO.
