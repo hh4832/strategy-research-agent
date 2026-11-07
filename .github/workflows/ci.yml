@@ -203,6 +203,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                  # schema is diffed against the 5d088c4 contract commit
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
