@@ -12,7 +12,8 @@
 feature/phase5a3-integration
  2cc03bc  merge --no-ff A1 (cc22d68)
  ba68306  merge --no-ff A2 (3e813d8)          schema 為 add/add 相同 blob，無衝突
- 3e7aa3f  integration layer + A3 acceptance + CLI + CI   ← code pin（notebook 釘選）
+ 3e7aa3f  integration layer + A3 acceptance + CLI + CI
+ dae1257  CI: full-history checkout for the schema diff   ← code pin（notebook 釘選）
  (next)   notebook + 本文件 + 範例（只動 docs/ notebooks/）
 ```
 
@@ -133,6 +134,6 @@ A2 draft_proposal(FakeLLMAdapter/FileDraftAdapter)          Proposal (PROPOSED |
 ## 10. 判定與建議
 
 - 本地：**SCOPED_GO**。A3-01..A3-10 全 PASS；缺真實 archive replay（Colab）與 Drive 雲端證據。
-- 跑 `notebooks/Phase5A3_Integration_Acceptance.ipynb`（pin `3e7aa3f`）並由研究負責人填入核准後，若 Route B 真實重播 ARCHIVED、C1–C8 PASS、uses 1→1，且 7 檔寫入 Drive `integrations/`，即可升為 GO。
+- 跑 `notebooks/Phase5A3_Integration_Acceptance.ipynb`（pin `dae1257`）並由研究負責人填入核准後，若 Route B 真實重播 ARCHIVED、C1–C8 PASS、uses 1→1，且 7 檔寫入 Drive `integrations/`，即可升為 GO。
 - Phase 5-A 建議：合併前先決定 PR #9／#10／本 PR 的合併順序（建議以本整合分支一次合併，#9、#10 關閉並指向本 PR）。
 - Phase 5-B 前置工作：可信身分驗證、受治理的「人類綁定授權到 request」流程、synthetic adapter 的 request↔archive 身分比對。
