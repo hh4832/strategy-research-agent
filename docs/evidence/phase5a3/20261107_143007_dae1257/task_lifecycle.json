@@ -1,0 +1,167 @@
+{
+  "concurrency": {
+    "errors": [],
+    "links": 1,
+    "proposed_events": 1,
+    "submitters": 4,
+    "task_ids": [
+      "T-77ba053191ac999191e5"
+    ]
+  },
+  "crash": {
+    "executions_dir_exists": false,
+    "recover_actions": [
+      {
+        "action": "FAILED_NOT_REEXECUTED",
+        "task_id": "T-3d4f531717a5ec42b184"
+      }
+    ],
+    "second_recover": [],
+    "state": "FAILED",
+    "task_id": "T-3d4f531717a5ec42b184"
+  },
+  "duplicate_restart": {
+    "duplicate_flag": true,
+    "duplicate_task_id": "T-77ba053191ac999191e5",
+    "events_after": 9,
+    "events_before": 9,
+    "links": 1,
+    "recover_actions": [],
+    "redispatch_state": "ARCHIVED",
+    "retry_archived": {
+      "error": "ILLEGAL_TRANSITION",
+      "message": "ILLEGAL_TRANSITION: retry only from FAILED (is ARCHIVED)",
+      "ok": false
+    },
+    "same_path_reexport": true,
+    "same_path_task_id": "T-77ba053191ac999191e5",
+    "task_archive_dirs_after": 1,
+    "task_archive_dirs_before": 1
+  },
+  "replay_fixture_states": [
+    "PROPOSED",
+    "VALIDATED",
+    "PENDING_APPROVAL",
+    "APPROVED",
+    "QUEUED",
+    "RUNNING",
+    "EVALUATING",
+    "EVALUATED",
+    "ARCHIVED"
+  ],
+  "replay_real_states": [
+    "PROPOSED",
+    "VALIDATED",
+    "PENDING_APPROVAL",
+    "APPROVED",
+    "QUEUED",
+    "RUNNING",
+    "EVALUATING",
+    "EVALUATED",
+    "ARCHIVED"
+  ],
+  "synthetic_positive": {
+    "states": [
+      "PROPOSED",
+      "VALIDATED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "QUEUED",
+      "RUNNING",
+      "EVALUATING",
+      "EVALUATED",
+      "ARCHIVED"
+    ],
+    "task_id": "T-77ba053191ac999191e5",
+    "trace": {
+      "evaluation_reference": {
+        "dir": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/out/test_evaluations/20261107_143018_dae1257_999191e5_a1",
+        "evaluated_at": "2026-11-07T14:30:18+08:00",
+        "evaluator_commit": "dae12575769ec247c9e0ce96dae59af376ebace9",
+        "files_sha256": {
+          "acceptance_checks.json": "766f92d07cf92889b506d9bc8fba979565aff6365816bfac1958021724ab1427",
+          "archive_contract_mapping.md": "7bc049d46fac17a80bbfce1428bde149acd6f7fe24626eed74720e479bed0b62",
+          "evaluation.json": "91b9a511b5607280100b678beb2bb68a1d82a0e7e79f275a63685bce9869f86d",
+          "evaluation_report.md": "fe77219e69152d8a846d071a5c8ffe8f1d3cc6168f379fc6fbe1509d9f335ccc",
+          "research_decision.json": "bdb95cb6ea70be2e487efeaeddede3b742be59976e6eaa9ede3ee72c5656a02d",
+          "risk_flags.json": "06fe46324570eb4846099b258679a70d6b12b133ac7ebcd9c7d70fcc11d9a102",
+          "robustness_matrix.csv": "8a7233d3f15037aaf091e513dca5558a6673984252d808ab31224c522a540433",
+          "run_info.txt": "8ca62f3565fccb0d852dfb158574979cf8d2b7f0f7becbf030d722227befb1cf"
+        },
+        "input_sha256": "e7ec8d3949633beadbd7f725a01edc9db4d98896cb86b5ddf303eb794d51e06e"
+      },
+      "links": [
+        {
+          "input_kind": "SYNTHETIC_FIXTURE",
+          "kind": "PHASE5A3_PROPOSAL_REQUEST_TASK_LINK",
+          "note": "submitted_by is caller-declared; it is not an authenticated identity (Phase 5-B prerequisite)",
+          "prev_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "proposal_id": "PROP-ad6e32820a9cc287dd4f",
+          "proposal_sha256": "1613dec5604be678a1d02d6726b37a2fb1df3b863511193e66518bca19596a8a",
+          "provenance_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/exports/complete_provenance.json",
+          "record_sha256": "04354e019355f0935dbd619be1544c01bec4195bc508396cd2d5b364b232dcea",
+          "request_file_sha256": "499cd47c9db233694d3c02eca75e0cb75444b66e93ae0aceee95982a37016867",
+          "request_hash": "77ba053191ac999191e5be32cc4ba7d77f77c09ce69200e43fd8e255cc72a2c7",
+          "request_id": "RR-PROP-AD6E32820A9CC287DD4F",
+          "request_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/exports/complete.json",
+          "seq": 0,
+          "state_after_submit": "PENDING_APPROVAL",
+          "submitted_by": "TEST_FIXTURE",
+          "submitted_by_kind": "TEST_FIXTURE",
+          "task_id": "T-77ba053191ac999191e5",
+          "test_mode": true
+        }
+      ],
+      "request_hash": "77ba053191ac999191e5be32cc4ba7d77f77c09ce69200e43fd8e255cc72a2c7",
+      "research_decision": {
+        "acceptance_checks": {
+          "C1_archive_identity": "PASS",
+          "C2_archive_integrity": "PASS",
+          "C3_trade_integrity": "PASS",
+          "C4_performance_consistency": "PASS",
+          "C5_temporal_safety": "PASS",
+          "C6_research_evaluation": "PASS",
+          "C7_reproducibility": "PASS",
+          "C8_governance_isolation": "PASS"
+        },
+        "acceptance_status": "PASS",
+        "blocked_reason": null,
+        "engineering_status": "PASS",
+        "evidence": "SYNTHETIC_FIXTURE",
+        "evidence_sufficiency": "UNDETERMINED",
+        "label": "SYNTHETIC_TEST — engineering evidence only, not a research decision",
+        "risk_flags": [
+          "BLINDNESS_UNVERIFIED",
+          "INSUFFICIENT_SAMPLE",
+          "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+          "LESS_THAN_ONE_YEAR_OBSERVED",
+          "LOOK_AHEAD_NOT_TESTED",
+          "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+          "MULTIPLE_TESTING_NOT_TESTED",
+          "NON_POSITIVE_CLOSED_NET_PNL",
+          "PARAMETER_STABILITY_NOT_TESTED",
+          "SELECTION_BIAS_NOT_TESTED",
+          "SURVIVORSHIP_BIAS_NOT_TESTED",
+          "TAIL_RISK_NOT_ESTABLISHED",
+          "TEMPORAL_STABILITY_NOT_TESTED"
+        ],
+        "strategy_verdict": "RETEST",
+        "test_mode": true
+      },
+      "state": "ARCHIVED",
+      "states": [
+        "PROPOSED",
+        "VALIDATED",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "QUEUED",
+        "RUNNING",
+        "EVALUATING",
+        "EVALUATED",
+        "ARCHIVED"
+      ],
+      "task_archive": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/out/test_tasks/20261107_143020_dae1257",
+      "task_id": "T-77ba053191ac999191e5"
+    }
+  }
+}

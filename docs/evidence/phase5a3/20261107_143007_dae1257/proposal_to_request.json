@@ -1,0 +1,222 @@
+{
+  "incomplete": {
+    "complete_proposal_without_bindings": {
+      "authorization_granted": false,
+      "batch_consumption": 0,
+      "errors": [
+        "explicit existing-artefact bindings are missing; no references guessed"
+      ],
+      "executable_request": false,
+      "input_kind": "SYNTHETIC_FIXTURE",
+      "proposal_id": "PROP-ad6e32820a9cc287dd4f",
+      "proposal_sha256": "1613dec5604be678a1d02d6726b37a2fb1df3b863511193e66518bca19596a8a",
+      "proposal_status": "PROPOSED",
+      "request_written": false,
+      "status": "PENDING_INFORMATION"
+    },
+    "events_added": 0,
+    "no_bindings_file_exists": false,
+    "proposal_status": "PENDING_INFORMATION",
+    "request_file_exists": false,
+    "result": {
+      "authorization_granted": false,
+      "batch_consumption": 0,
+      "blockers": [
+        "ADDITIONAL_FEATURE_PIT_PENDING",
+        "CHANGE_RECORD_INCOMPLETE",
+        "DATA_COVERAGE_UNKNOWN",
+        "DATA_SOURCE_UNRESOLVED",
+        "EXECUTION_TIME",
+        "MISSING_RULE",
+        "PIT_UNKNOWN",
+        "PRICE_FIELDS",
+        "RULE_AST_PENDING",
+        "SEARCH_BUDGET_UNKNOWN",
+        "SIGNAL_TIME",
+        "UNIVERSE_MISMATCH",
+        "UNIVERSE_UNKNOWN"
+      ],
+      "executable_request": false,
+      "input_kind": "SYNTHETIC_FIXTURE",
+      "proposal_id": "PROP-37c093c1a3e64dcd765b",
+      "proposal_sha256": "f909b767167c08b2fb34d902dc1ce61c5e6715f674325998013acc3c531b29da",
+      "proposal_status": "PENDING_INFORMATION",
+      "request_written": false,
+      "status": "PENDING_INFORMATION"
+    },
+    "submitted": false
+  },
+  "label": "SYNTHETIC_FIXTURE",
+  "pending_authorization_export": {
+    "already_exported": false,
+    "authorization_granted": false,
+    "batch_consumption": 0,
+    "executable_request": false,
+    "input_kind": "USER_HYPOTHESIS",
+    "proposal_id": "PROP-5caac144cb301e1ea874",
+    "proposal_sha256": "1ca192a5bc3faf2feb3461c8897677605157bb6187954d8d4d5a3a9d7de4f350",
+    "proposal_status": "PROPOSED",
+    "provenance": {
+      "authorization_granted": false,
+      "batch_consumption": 0,
+      "contract_commit": "5d088c4de362add925344d8e48b36c2e9d728d96",
+      "execution_eligible": false,
+      "input_kind": "USER_HYPOTHESIS",
+      "pending_fields": [
+        "core_commit",
+        "authorization_ref"
+      ],
+      "proposal_id": "PROP-5caac144cb301e1ea874",
+      "proposal_sha256": "1ca192a5bc3faf2feb3461c8897677605157bb6187954d8d4d5a3a9d7de4f350",
+      "reference_checks": "FILE_SHA_AND_SPEC_COMPATIBILITY_ONLY; GOVERNANCE_NOT_EVALUATED",
+      "request_sha256": "9a67f393c673c9bdeecc838d1dccc5532d5198837981da8b1f8d29532350bbbc",
+      "request_submitted": false,
+      "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+      "status": "SCHEMA_VALID_PENDING_HUMAN_APPROVAL"
+    },
+    "provenance_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/exports/unauthorized_real_provenance.json",
+    "request_file_sha256": "34d2bcc10cbd63a14973a97957bfcc756074c947798c1c50046a72bbc5bebbf5",
+    "request_hash": "9a67f393c673c9bdeecc838d1dccc5532d5198837981da8b1f8d29532350bbbc",
+    "request_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/exports/unauthorized_real.json",
+    "request_written": true,
+    "status": "EXPORTED"
+  },
+  "positive": {
+    "a1_pending_fields": [
+      "core_commit",
+      "authorization_ref"
+    ],
+    "a1_validate_errors": [],
+    "export": {
+      "already_exported": false,
+      "authorization_granted": false,
+      "batch_consumption": 0,
+      "executable_request": false,
+      "input_kind": "SYNTHETIC_FIXTURE",
+      "proposal_id": "PROP-ad6e32820a9cc287dd4f",
+      "proposal_sha256": "1613dec5604be678a1d02d6726b37a2fb1df3b863511193e66518bca19596a8a",
+      "proposal_status": "PROPOSED",
+      "provenance": {
+        "authorization_granted": false,
+        "batch_consumption": 0,
+        "contract_commit": "5d088c4de362add925344d8e48b36c2e9d728d96",
+        "execution_eligible": false,
+        "input_kind": "SYNTHETIC_FIXTURE",
+        "pending_fields": [
+          "core_commit",
+          "authorization_ref"
+        ],
+        "proposal_id": "PROP-ad6e32820a9cc287dd4f",
+        "proposal_sha256": "1613dec5604be678a1d02d6726b37a2fb1df3b863511193e66518bca19596a8a",
+        "reference_checks": "FILE_SHA_AND_SPEC_COMPATIBILITY_ONLY; GOVERNANCE_NOT_EVALUATED",
+        "request_sha256": "77ba053191ac999191e5be32cc4ba7d77f77c09ce69200e43fd8e255cc72a2c7",
+        "request_submitted": false,
+        "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+        "status": "SCHEMA_VALID_PENDING_HUMAN_APPROVAL"
+      },
+      "provenance_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/exports/complete_provenance.json",
+      "request_file_sha256": "499cd47c9db233694d3c02eca75e0cb75444b66e93ae0aceee95982a37016867",
+      "request_hash": "77ba053191ac999191e5be32cc4ba7d77f77c09ce69200e43fd8e255cc72a2c7",
+      "request_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/integrations/20261107_143007_dae1257/work/route_a/exports/complete.json",
+      "request_written": true,
+      "status": "EXPORTED"
+    },
+    "proposal": {
+      "input_kind": "SYNTHETIC_FIXTURE",
+      "proposal_id": "PROP-ad6e32820a9cc287dd4f",
+      "proposal_sha256": "1613dec5604be678a1d02d6726b37a2fb1df3b863511193e66518bca19596a8a",
+      "request_contract_pin": {
+        "commit_sha": "5d088c4de362add925344d8e48b36c2e9d728d96",
+        "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+        "status": "PINNED_SCHEMA_ONLY; NOT_AUTHORIZATION"
+      },
+      "status": "PROPOSED"
+    },
+    "request": {
+      "authorization_ref": "PENDING",
+      "core_commit": "PENDING",
+      "cost_profile_ref": {
+        "scenario_set_path": "configs/synthetic_fixture_scenarios.json",
+        "scenario_set_sha256": "1d3a005daa12f5f93c69a192552392711700375cb881d6fce18c6c50bd3259e5",
+        "scenarios": [
+          "BASE",
+          "STRESS"
+        ]
+      },
+      "dataset_manifest_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "dataset_ref": {
+        "dataset_id": "synthetic_fixture_dataset",
+        "producer_commit_sha": "1111111111111111111111111111111111111111"
+      },
+      "dataset_snapshot_id": "SYNTHETIC_FIXTURE_snapshot",
+      "execution_mode": "SYNTHETIC_TEST",
+      "execution_time_rule": {
+        "rule": "NEXT_ELIGIBLE_BAR_OPEN"
+      },
+      "holdout_policy": {
+        "access": "NO_ACCESS",
+        "lock_id": "HOLDOUT-SYNTHETIC-FIXTURE"
+      },
+      "hypothesis": "SYNTHETIC_FIXTURE — Does changing only fast SMA10 to SMA5 improve the unchanged SMA10/20 baseline?\nHypothesis: Faster trend detection may improve net expectancy relative to the unchanged baseline; no performance has been measured.\nNull: Changing fast length produces no improvement in net expectancy relative to the unchanged baseline.",
+      "market": {
+        "market_id": "TW_EQUITY",
+        "symbol": "2330"
+      },
+      "market_mechanism": "Institutional order splitting may sustain short trends; reacting earlier could capture a different portion of those trends, but whipsaw and costs can offset it.",
+      "request_id": "RR-PROP-AD6E32820A9CC287DD4F",
+      "requested_change": {
+        "description": "SMA10/20 → SMA5/20",
+        "kind": "SYNTHETIC_TEST"
+      },
+      "requested_outputs": [
+        "RESEARCH_EVALUATION",
+        "RESEARCH_DECISION",
+        "RISK_FLAGS",
+        "ROBUSTNESS_MATRIX"
+      ],
+      "research_budget": {
+        "batches_requested": 0
+      },
+      "research_window": {
+        "end": "2024-06-29T00:00:00+08:00",
+        "start": "2024-06-03T00:00:00+08:00",
+        "warmup_start": "2024-05-29T00:00:00+08:00"
+      },
+      "schema_version": "1.0.0",
+      "signal_time_rule": {
+        "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+        "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+        "policy_version": "1.0.0",
+        "signal_time": "CORE_MODELED_AVAILABLE_AT"
+      },
+      "strategy_family": {
+        "family_id": "synthetic-fixture-family",
+        "parameters": {
+          "fast": 5,
+          "slow": 20
+        },
+        "strategy_id": "synthetic_fixture_sma",
+        "version": "0.1.0"
+      },
+      "strategy_spec_ref": "specs/synthetic_fixture_spec.json",
+      "strategy_spec_sha256": "1056cb3df7ba28dc4b6f104b0c4a99bfd56f8568e48bd9bbbcb3b0e15f06e155"
+    }
+  },
+  "wrong_sha": {
+    "file_exists": false,
+    "result": {
+      "authorization_granted": false,
+      "batch_consumption": 0,
+      "errors": [
+        "ValueError: REFERENCE_SHA_MISMATCH:specs/synthetic_fixture_spec.json"
+      ],
+      "executable_request": false,
+      "input_kind": "SYNTHETIC_FIXTURE",
+      "proposal_id": "PROP-ad6e32820a9cc287dd4f",
+      "proposal_sha256": "1613dec5604be678a1d02d6726b37a2fb1df3b863511193e66518bca19596a8a",
+      "proposal_status": "PROPOSED",
+      "request_written": false,
+      "status": "REJECTED"
+    }
+  }
+}

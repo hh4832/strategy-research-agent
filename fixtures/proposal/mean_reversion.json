@@ -1,0 +1,76 @@
+{
+  "kind": "SYNTHETIC_FIXTURE",
+  "user_hypothesis": "短期急跌後，是否存在可交易的均值回歸？",
+  "llm_draft": {
+    "title": "SYNTHETIC_FIXTURE mean_reversion",
+    "hypothesis": {
+      "question": "短期急跌後，是否存在可交易的均值回歸？",
+      "testable_claim": "Test the user hypothesis against a preregistered unchanged baseline after costs; the exact rule and horizon remain UNKNOWN.",
+      "null_hypothesis": "The proposed condition produces no improvement over the unchanged baseline after costs.",
+      "expected_direction": "CONDITIONAL",
+      "purpose": "Exploratory design only; NOT_VERIFIED"
+    },
+    "market_mechanism": {
+      "category": "MEAN_REVERSION",
+      "causal_logic": "Temporary liquidity demand may dislocate prices from short-horizon fundamentals; replenishing liquidity could reverse the move, while information shocks could invalidate that mechanism.",
+      "failure_modes": [
+        "Information-driven moves may persist rather than reverse.",
+        "Costs and publication lag may eliminate any apparent effect."
+      ]
+    },
+    "strategy_rules": {
+      "entry_condition": "UNKNOWN",
+      "exit_condition": "UNKNOWN",
+      "position_sizing": "UNKNOWN",
+      "exit_policy": "UNKNOWN",
+      "holding_horizon": "UNKNOWN",
+      "signal_time": "UNKNOWN",
+      "execution_time": "UNKNOWN",
+      "universe": {
+        "market": "UNKNOWN",
+        "symbols": [],
+        "timeframe": "UNKNOWN"
+      }
+    },
+    "required_data": {
+      "market": "UNKNOWN",
+      "symbols": [],
+      "timeframe": "UNKNOWN",
+      "price_fields": [],
+      "additional_features": [],
+      "coverage": {
+        "start": "UNKNOWN",
+        "end": "UNKNOWN"
+      },
+      "pit_requirements": [],
+      "pit_timing": "UNKNOWN",
+      "source_ref": "UNKNOWN",
+      "availability": "UNKNOWN"
+    },
+    "research_variables": {
+      "changes": [
+        {
+          "core_variable": "UNKNOWN",
+          "baseline": "UNKNOWN",
+          "proposed_change": "短期急跌後，是否存在可交易的均值回歸？",
+          "expected_improvement": "A falsifiable improvement relative to a preregistered unchanged baseline, NOT_VERIFIED.",
+          "potential_side_effects": "Reduced sample, concentration and additional transaction costs."
+        }
+      ],
+      "parameter_search": {
+        "mode": "UNKNOWN",
+        "max_trials": null
+      },
+      "selection_basis": "UNKNOWN",
+      "prior_experiment_refs": []
+    },
+    "challenger_view": {
+      "failure_reason": "Could information shocks or trading frictions invalidate the proposed mechanism?",
+      "falsification": "Would net results indistinguishable from the unchanged baseline refute this hypothesis?",
+      "market_beta": "Would a matched market-beta exposure explain all apparent improvement?",
+      "regime_dependence": "Would the result disappear outside the pre-registered regime?",
+      "trade_concentration": "Would removing the largest-contributing trades eliminate the apparent effect?"
+    },
+    "strategy_spec_fragment": null
+  }
+}

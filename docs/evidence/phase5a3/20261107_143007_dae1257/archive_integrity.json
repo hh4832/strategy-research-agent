@@ -1,0 +1,41 @@
+{
+  "evaluator_failure": {
+    "acceptance_status": "FAIL",
+    "evidence_sufficiency": "UNDETERMINED",
+    "state": "ARCHIVED",
+    "strategy_verdict": "RETEST"
+  },
+  "integrity": {
+    "archive_hashes_match": true,
+    "archive_overwrite_attempt": "REFUSED",
+    "chains": {
+      "state": "CHAIN_OK",
+      "state_concurrent": "CHAIN_OK",
+      "state_crash": "CHAIN_OK",
+      "state_evalfail": "CHAIN_OK",
+      "state_missing": "CHAIN_OK",
+      "state_prod": "CHAIN_OK"
+    },
+    "links_resolve_to_tasks": true,
+    "repo_governance_registry_unchanged": true
+  },
+  "missing_file": {
+    "reason": "UNSAFE_ARCHIVE_PATH",
+    "removed": "config.json",
+    "state": "FAILED",
+    "states": [
+      "PROPOSED",
+      "VALIDATED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "QUEUED",
+      "RUNNING",
+      "FAILED"
+    ]
+  },
+  "replay_real_uses": {
+    "governance_unchanged": true,
+    "uses_after": 1,
+    "uses_before": 1
+  }
+}

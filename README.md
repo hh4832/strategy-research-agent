@@ -82,3 +82,26 @@ Synthetic 範例僅證明工程行為，不是真實策略研究結論。
 已執行的工程範例：[`SYNTHETIC_FIXTURE evaluation_report.md`](docs/examples/phase4b/SYNTHETIC_FIXTURE_example/evaluation_report.md)；
 輸出 Schema：[`RESEARCH_EVALUATION_SCHEMA.json`](schemas/RESEARCH_EVALUATION_SCHEMA.json)；
 驗收範圍：[`PHASE4B_ACCEPTANCE.md`](docs/PHASE4B_ACCEPTANCE.md)。
+
+## 開發狀態（Phase 5-A）
+
+| 階段 | 內容 | 狀態 |
+|---|---|---|
+| MVP v1 | Research-only 工程版本（Phase 4-A smoke + 4-C 評估 + 發行驗收） | `MVP_V1_ENGINEERING_GO`（已併入 main） |
+| 5-A1 | Research Orchestrator：狀態機、治理 G1–G10、Archive Replay／Synthetic adapter、評估、封存、CLI（[文件](docs/PHASE5A1_ORCHESTRATOR.md)） | PR #9（Draft，SCOPED_GO） |
+| 5-A2 | Research Proposal Agent：自然語言 → Proposal → 共用 Request 匯出（[文件](docs/PHASE5A2_PROPOSAL_AGENT.md)） | PR #10（Draft，Codex） |
+| 5-A3 | Proposal × Orchestrator 端到端整合 A3-01..A3-10（[文件](docs/PHASE5A3_INTEGRATION_ACCEPTANCE.md)） | `feature/phase5a3-integration`（Draft PR） |
+
+共用契約：[`schemas/RESEARCH_REQUEST_SCHEMA.json`](schemas/RESEARCH_REQUEST_SCHEMA.json) v1.0.0（commit `5d088c4`，sha256 `1b0530f3…`）。
+
+```bash
+python -m strategy_agent.phase5a validate        --proposal P.json
+python -m strategy_agent.phase5a submit-proposal --proposal P.json --bindings B.json --export R.json \
+    --artifact-root DIR --state-dir D --archive-root A --actor ID   # A2 request 一律 authorization_ref=PENDING → BLOCKED
+python -m strategy_agent.phase5a status          --task-id T --state-dir D --archive-root A
+python -m strategy_agent.phase5a replay          --task-id T --state-dir D --archive-root A --source-archive-root S
+python -m strategy_agent.phase5a acceptance      --out-dir OUT                     # A3-01..A3-10（SYNTHETIC_FIXTURE）
+```
+
+核准仍只能透過 `python -m strategy_agent.orchestration approve`（allow-list 研究負責人 + https 參考 + 治理重驗）；
+真實 Research-only Runner 維持 DISABLED，不讀 Holdout，不含任何券商 API。

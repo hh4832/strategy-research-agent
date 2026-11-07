@@ -1,0 +1,61 @@
+{
+  "items": [
+    {
+      "required_check": "Review LOOK_AHEAD_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "LOOK_AHEAD_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SURVIVORSHIP_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SURVIVORSHIP_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SELECTION_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SELECTION_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review DATA_SNOOPING under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "DATA_SNOOPING",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review TRANSACTION_COSTS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "TRANSACTION_COSTS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SLIPPAGE under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SLIPPAGE",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review LIQUIDITY under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "LIQUIDITY",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SAMPLE_SIZE under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SAMPLE_SIZE",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review CONCENTRATED_PROFIT under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "CONCENTRATED_PROFIT",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review HOLDOUT_CONTAMINATION under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "HOLDOUT_CONTAMINATION",
+      "status": "NOT_VERIFIED"
+    }
+  ],
+  "proposal_id": "PROP-a976b02d8853385eaa2f",
+  "risk_flags": [
+    {
+      "code": "DATA_AND_CAUSAL_MECHANISM_NOT_VERIFIED",
+      "message": "Design assertions are not data approval or evidence of strategy effect."
+    }
+  ]
+}

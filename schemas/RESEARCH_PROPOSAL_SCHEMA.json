@@ -1,0 +1,1543 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research Proposal v1.0 — design only",
+  "$defs": {
+    "dataset_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_id",
+        "snapshot_id",
+        "producer_commit_sha",
+        "verdict",
+        "usage_scope"
+      ],
+      "properties": {
+        "dataset_id": {
+          "type": "string"
+        },
+        "snapshot_id": {
+          "type": "string",
+          "minLength": 3
+        },
+        "producer_commit_sha": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{7,40}|UNRESOLVED)$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{64}|UNRESOLVED)$"
+        },
+        "verdict": {
+          "enum": [
+            "GO",
+            "SCOPED_GO",
+            "PASS_WITH_CAVEATS"
+          ]
+        },
+        "usage_scope": {
+          "enum": [
+            "RESEARCH_ONLY",
+            "BACKTEST",
+            "ROBUSTNESS_ONLY"
+          ]
+        },
+        "mandatory_exclusions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "access_contract": {
+          "type": "string",
+          "description": "Data Access Contract version the snapshot is read through."
+        }
+      }
+    },
+    "parameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "default",
+        "min",
+        "max"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "integer",
+            "number"
+          ]
+        },
+        "default": {
+          "type": "number"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "step": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "operand": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ref"
+          ],
+          "properties": {
+            "ref": {
+              "type": "string"
+            },
+            "lag": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Bars back. Negative lags (future bars) are structurally impossible."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "const"
+          ],
+          "properties": {
+            "const": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "param"
+          ],
+          "properties": {
+            "param": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "args"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "add",
+                "sub",
+                "mul"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "$ref": "#/$defs/operand"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op"
+      ],
+      "properties": {
+        "op": {
+          "enum": [
+            "gt",
+            "ge",
+            "lt",
+            "le",
+            "cross_above",
+            "cross_below",
+            "and",
+            "or",
+            "not",
+            "time_ge",
+            "time_lt",
+            "after_range_complete",
+            "is_flat",
+            "is_long",
+            "is_short"
+          ]
+        },
+        "left": {
+          "$ref": "#/$defs/operand"
+        },
+        "right": {
+          "$ref": "#/$defs/operand"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "time_local": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}$"
+        },
+        "indicator": {
+          "type": "string"
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "action",
+        "when"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "ENTER_LONG",
+            "ENTER_SHORT",
+            "EXIT_LONG",
+            "EXIT_SHORT",
+            "EXIT_ALL"
+          ]
+        },
+        "when": {
+          "$ref": "#/$defs/condition"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "indicator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "input",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "type": {
+          "enum": [
+            "SMA",
+            "EMA",
+            "ATR_WILDER",
+            "TRUE_RANGE",
+            "OPENING_RANGE_HIGH",
+            "OPENING_RANGE_LOW",
+            "ROLLING_MAX",
+            "ROLLING_MIN",
+            "PRICE"
+          ]
+        },
+        "input": {
+          "enum": [
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "hlc"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "param"
+                ],
+                "properties": {
+                  "param": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "lag": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "series_scope": {
+          "enum": [
+            "PER_CONTRACT",
+            "PER_SESSION",
+            "CONTINUOUS_ELIGIBLE_BARS"
+          ],
+          "description": "PER_SESSION resets at each session (e.g. opening range). Indicators never span an exclusion window or a contract change."
+        }
+      }
+    },
+    "exit_level": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "NONE",
+            "FIXED_POINTS",
+            "PERCENT",
+            "ATR_MULTIPLE",
+            "RANGE_OPPOSITE_SIDE"
+          ]
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "object",
+              "required": [
+                "param"
+              ],
+              "properties": {
+                "param": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "atr_indicator": {
+          "type": "string"
+        },
+        "reference": {
+          "enum": [
+            "ENTRY_FILL_PRICE",
+            "SIGNAL_BAR_CLOSE"
+          ]
+        },
+        "evaluation": {
+          "const": "BAR_CLOSE",
+          "description": "v1 evaluates stops on bar close and exits next bar open; intrabar stop simulation is deliberately excluded (same-bar ordering is unknown)."
+        }
+      }
+    },
+    "draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hypothesis": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "testable_claim": {
+              "type": "string",
+              "minLength": 1
+            },
+            "null_hypothesis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_direction": {
+              "type": "string",
+              "minLength": 1
+            },
+            "purpose": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "question",
+            "testable_claim",
+            "null_hypothesis",
+            "expected_direction",
+            "purpose"
+          ]
+        },
+        "market_mechanism": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "category": {
+              "enum": [
+                "MOMENTUM",
+                "MEAN_REVERSION",
+                "LIQUIDITY_IMBALANCE",
+                "VOLATILITY_REGIME",
+                "BEHAVIORAL_BIAS",
+                "POSITIONING_LEVERAGE",
+                "OTHER",
+                "UNKNOWN"
+              ]
+            },
+            "causal_logic": {
+              "type": "string",
+              "minLength": 1
+            },
+            "failure_modes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "category",
+            "causal_logic",
+            "failure_modes"
+          ]
+        },
+        "strategy_rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "entry_condition": {
+              "type": "string",
+              "minLength": 1
+            },
+            "exit_condition": {
+              "type": "string",
+              "minLength": 1
+            },
+            "position_sizing": {
+              "type": "string",
+              "minLength": 1
+            },
+            "exit_policy": {
+              "type": "string",
+              "minLength": 1
+            },
+            "holding_horizon": {
+              "type": "string",
+              "minLength": 1
+            },
+            "signal_time": {
+              "type": "string",
+              "minLength": 1
+            },
+            "execution_time": {
+              "type": "string",
+              "minLength": 1
+            },
+            "universe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "market": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "symbols": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "timeframe": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "market",
+                "symbols",
+                "timeframe"
+              ]
+            }
+          },
+          "required": [
+            "entry_condition",
+            "exit_condition",
+            "position_sizing",
+            "exit_policy",
+            "holding_horizon",
+            "signal_time",
+            "execution_time",
+            "universe"
+          ]
+        },
+        "required_data": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "market": {
+              "type": "string",
+              "minLength": 1
+            },
+            "symbols": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "timeframe": {
+              "type": "string",
+              "minLength": 1
+            },
+            "price_fields": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additional_features": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "coverage": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "end": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ]
+            },
+            "pit_requirements": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "pit_timing": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "availability": {
+              "enum": [
+                "UNKNOWN",
+                "NOT_VERIFIED",
+                "UNAVAILABLE",
+                "DECLARED_AVAILABLE_NOT_VERIFIED"
+              ]
+            },
+            "feature_availability_rules": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "market",
+            "symbols",
+            "timeframe",
+            "price_fields",
+            "additional_features",
+            "coverage",
+            "pit_requirements",
+            "pit_timing",
+            "source_ref",
+            "availability"
+          ]
+        },
+        "research_variables": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "changes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "core_variable": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "baseline": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "proposed_change": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expected_improvement": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "potential_side_effects": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "parameter_name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "baseline_value": {
+                    "type": "number"
+                  },
+                  "proposed_value": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "core_variable",
+                  "baseline",
+                  "proposed_change",
+                  "expected_improvement",
+                  "potential_side_effects"
+                ]
+              }
+            },
+            "parameter_search": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "FIXED",
+                    "PREREGISTERED_GRID",
+                    "UNKNOWN"
+                  ]
+                },
+                "max_trials": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "mode",
+                "max_trials"
+              ]
+            },
+            "selection_basis": {
+              "enum": [
+                "HYPOTHESIS_DRIVEN",
+                "RECENT_BEST_RETURN",
+                "UNKNOWN"
+              ]
+            },
+            "prior_experiment_refs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "changes",
+            "parameter_search",
+            "selection_basis",
+            "prior_experiment_refs"
+          ]
+        },
+        "challenger_view": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "failure_reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "falsification": {
+              "type": "string",
+              "minLength": 1
+            },
+            "market_beta": {
+              "type": "string",
+              "minLength": 1
+            },
+            "regime_dependence": {
+              "type": "string",
+              "minLength": 1
+            },
+            "trade_concentration": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "failure_reason",
+            "falsification",
+            "market_beta",
+            "regime_dependence",
+            "trade_concentration"
+          ]
+        },
+        "strategy_spec_fragment": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "universe": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "market",
+                    "symbols",
+                    "timeframe",
+                    "timezone",
+                    "contract_policy",
+                    "sessions"
+                  ],
+                  "properties": {
+                    "market": {
+                      "enum": [
+                        "IBKR",
+                        "TXF",
+                        "TW"
+                      ]
+                    },
+                    "symbols": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "timeframe": {
+                      "enum": [
+                        "1m",
+                        "5m",
+                        "15m",
+                        "30m",
+                        "60m",
+                        "1d"
+                      ]
+                    },
+                    "source_timeframe": {
+                      "enum": [
+                        "1m",
+                        "5m"
+                      ],
+                      "description": "Native snapshot timeframe if bars are aggregated."
+                    },
+                    "aggregation": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "label",
+                        "closed",
+                        "require_complete"
+                      ],
+                      "properties": {
+                        "label": {
+                          "const": "start"
+                        },
+                        "closed": {
+                          "const": "left"
+                        },
+                        "require_complete": {
+                          "type": "boolean",
+                          "description": "true: an aggregated bar is formed only if every constituent source bar exists and is eligible."
+                        },
+                        "session_anchored": {
+                          "type": "boolean",
+                          "default": true
+                        }
+                      }
+                    },
+                    "timezone": {
+                      "enum": [
+                        "UTC",
+                        "Asia/Taipei",
+                        "America/New_York"
+                      ]
+                    },
+                    "contract_policy": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "type",
+                        "continuous_inferred"
+                      ],
+                      "properties": {
+                        "type": {
+                          "enum": [
+                            "NOT_APPLICABLE",
+                            "EXPLICIT_CONTRACTS",
+                            "SCHEDULED_ROLL",
+                            "PRODUCER_CONTINUOUS_WITH_ACTUAL_MONTH"
+                          ]
+                        },
+                        "contracts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "roll_schedule": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "at",
+                              "from_contract",
+                              "to_contract"
+                            ],
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "from_contract": {
+                                "type": "string"
+                              },
+                              "to_contract": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "continuous_inferred": {
+                          "const": false,
+                          "description": "Roll-rule inference and engine-built continuous series are forbidden (Phase-1/2 contract)."
+                        },
+                        "no_position_across_contract_change": {
+                          "type": "boolean"
+                        },
+                        "indicator_series": {
+                          "enum": [
+                            "PER_CONTRACT",
+                            "NOT_APPLICABLE"
+                          ]
+                        }
+                      }
+                    },
+                    "sessions": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "allowed",
+                        "calendar_ref"
+                      ],
+                      "properties": {
+                        "allowed": {
+                          "type": "array",
+                          "minItems": 1,
+                          "items": {
+                            "enum": [
+                              "REGULAR",
+                              "AFTERHOURS",
+                              "RTH",
+                              "ETH"
+                            ]
+                          }
+                        },
+                        "calendar_ref": {
+                          "type": "string"
+                        },
+                        "exclude_closing_auction": {
+                          "type": "boolean",
+                          "default": true
+                        },
+                        "no_overnight": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "values",
+                    "constraints",
+                    "search"
+                  ],
+                  "properties": {
+                    "values": {
+                      "type": "object",
+                      "minProperties": 0,
+                      "additionalProperties": {
+                        "$ref": "#/$defs/parameter"
+                      }
+                    },
+                    "constraints": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "left",
+                          "op",
+                          "right"
+                        ],
+                        "properties": {
+                          "left": {
+                            "type": "string"
+                          },
+                          "op": {
+                            "enum": [
+                              "<",
+                              "<=",
+                              ">",
+                              ">=",
+                              "!="
+                            ]
+                          },
+                          "right": {
+                            "type": [
+                              "string",
+                              "number"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "search": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "mode"
+                      ],
+                      "properties": {
+                        "mode": {
+                          "enum": [
+                            "FIXED",
+                            "PREREGISTERED_GRID"
+                          ],
+                          "description": "Phase-3 preparation: FIXED only for registration. PREREGISTERED_GRID must be run under QUANT_EVALUATION_PROTOCOL walk-forward and counts every point as a trial."
+                        },
+                        "max_trials": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "signal": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "evaluation_time",
+                    "indicators",
+                    "entry_rules",
+                    "exit_rules"
+                  ],
+                  "properties": {
+                    "evaluation_time": {
+                      "const": "BAR_CLOSE",
+                      "description": "Decisions are made only at bar available_at (bar end). Intrabar decisions are out of scope for v1."
+                    },
+                    "indicators": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/indicator"
+                      }
+                    },
+                    "entry_rules": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "$ref": "#/$defs/rule"
+                      }
+                    },
+                    "exit_rules": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/rule"
+                      }
+                    },
+                    "max_entries_per_session": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                },
+                "position_sizing": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "method"
+                  ],
+                  "properties": {
+                    "method": {
+                      "enum": [
+                        "FIXED_UNITS",
+                        "FIXED_NOTIONAL",
+                        "VOLATILITY_TARGET"
+                      ]
+                    },
+                    "units": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "notional": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "target_annual_vol": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "vol_lookback_bars": {
+                      "type": "integer",
+                      "minimum": 2
+                    },
+                    "lot_size": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "contract_multiplier": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "max_units": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "initial_capital": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "risk_exits": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "stop_loss",
+                    "take_profit",
+                    "time_exit"
+                  ],
+                  "properties": {
+                    "stop_loss": {
+                      "$ref": "#/$defs/exit_level"
+                    },
+                    "take_profit": {
+                      "$ref": "#/$defs/exit_level"
+                    },
+                    "time_exit": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "flatten_decision_time_local": {
+                          "type": "string",
+                          "pattern": "^\\d{2}:\\d{2}$"
+                        },
+                        "max_holding_bars": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "flatten_before_session_end": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                },
+                "risk_constraints": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "allowed_directions",
+                    "max_position_units"
+                  ],
+                  "properties": {
+                    "allowed_directions": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "items": {
+                        "enum": [
+                          "LONG",
+                          "SHORT"
+                        ]
+                      }
+                    },
+                    "max_position_units": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "max_gross_exposure": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "max_trades_per_session": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "max_daily_loss": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "max_drawdown_halt": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    }
+                  }
+                },
+                "execution": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "signal_time",
+                    "order_time",
+                    "fill_rule",
+                    "order_type",
+                    "time_in_force",
+                    "partial_fills",
+                    "convention"
+                  ],
+                  "properties": {
+                    "convention": {
+                      "const": "oracle-execution-convention-v1"
+                    },
+                    "signal_time": {
+                      "const": "BAR_AVAILABLE_AT"
+                    },
+                    "order_time": {
+                      "const": "SIGNAL_TIME"
+                    },
+                    "fill_rule": {
+                      "const": "NEXT_ELIGIBLE_BAR_OPEN",
+                      "description": "First bar with start >= order_time that exists, is in session, is not excluded, has volume > 0, and is not limit-locked against the order side."
+                    },
+                    "order_type": {
+                      "const": "MARKET"
+                    },
+                    "time_in_force": {
+                      "const": "UNTIL_END_OF_NEXT_SESSION_END",
+                      "description": "Live until the end of the first session whose end is after order_time."
+                    },
+                    "max_fill_delay_bars": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "partial_fills": {
+                      "const": false
+                    },
+                    "same_bar_reentry": {
+                      "const": false
+                    }
+                  }
+                }
+              },
+              "required": [
+                "universe",
+                "parameters",
+                "signal",
+                "position_sizing",
+                "risk_exits",
+                "risk_constraints",
+                "execution"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "hypothesis",
+        "market_mechanism",
+        "strategy_rules",
+        "required_data",
+        "research_variables",
+        "challenger_view",
+        "strategy_spec_fragment"
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^PROP-[0-9a-f]{20}$"
+    },
+    "status": {
+      "enum": [
+        "PROPOSED",
+        "PENDING_INFORMATION"
+      ]
+    },
+    "review_status": {
+      "const": "NEEDS_REVIEW"
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "user_hypothesis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "draft_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "agent_commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "input_kind": {
+          "enum": [
+            "USER_HYPOTHESIS",
+            "SYNTHETIC_FIXTURE"
+          ]
+        }
+      },
+      "required": [
+        "user_hypothesis",
+        "adapter_id",
+        "draft_sha256",
+        "agent_commit_sha",
+        "created_at",
+        "input_kind"
+      ]
+    },
+    "draft": {
+      "$ref": "#/$defs/draft"
+    },
+    "evaluation_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocol": {
+          "const": "QUANT_EVALUATION_PROTOCOL v1.0"
+        },
+        "metrics": {
+          "const": [
+            "Trade Count",
+            "Win Rate",
+            "Payoff Ratio",
+            "Expectancy",
+            "Profit Factor",
+            "Maximum Drawdown",
+            "Tail Risk",
+            "Cost Sensitivity",
+            "Market Regime",
+            "Annual Performance",
+            "Symbol Concentration",
+            "Holding Duration",
+            "Parameter Robustness"
+          ]
+        },
+        "threshold_policy": {
+          "const": "USE_EXISTING_PROTOCOL_ONLY; NO_NEW_THRESHOLDS"
+        }
+      },
+      "required": [
+        "protocol",
+        "metrics",
+        "threshold_policy"
+      ]
+    },
+    "bias_risk_checklist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "risk": {
+            "enum": [
+              "LOOK_AHEAD_BIAS",
+              "SURVIVORSHIP_BIAS",
+              "SELECTION_BIAS",
+              "DATA_SNOOPING",
+              "TRANSACTION_COSTS",
+              "SLIPPAGE",
+              "LIQUIDITY",
+              "SAMPLE_SIZE",
+              "CONCENTRATED_PROFIT",
+              "HOLDOUT_CONTAMINATION"
+            ]
+          },
+          "status": {
+            "const": "NOT_VERIFIED"
+          },
+          "required_check": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "risk",
+          "status",
+          "required_check"
+        ]
+      }
+    },
+    "fingerprints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hypothesis": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "strategy_family": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "parameter_values": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "method": {
+          "enum": [
+            "EXISTING_CANONICAL_STRUCTURE",
+            "INCOMPLETE_DRAFT_FALLBACK_NOT_SEMANTIC_PROOF"
+          ]
+        }
+      },
+      "required": [
+        "hypothesis",
+        "strategy_family",
+        "parameter_values",
+        "method"
+      ]
+    },
+    "research_change_record": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "core_variable": {
+            "type": "string",
+            "minLength": 1
+          },
+          "baseline": {
+            "type": "string",
+            "minLength": 1
+          },
+          "proposed_change": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_improvement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "potential_side_effects": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parameter_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "baseline_value": {
+            "type": "number"
+          },
+          "proposed_value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "core_variable",
+          "baseline",
+          "proposed_change",
+          "expected_improvement",
+          "potential_side_effects"
+        ]
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_valid": {
+          "type": "boolean"
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "path",
+              "message"
+            ]
+          }
+        },
+        "risk_flags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        }
+      },
+      "required": [
+        "schema_valid",
+        "blockers",
+        "risk_flags"
+      ]
+    },
+    "prior_proposal_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "proposal_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "proposal_sha256"
+        ]
+      }
+    },
+    "holdout_policy": {
+      "const": "NO_ACCESS; PROPOSAL_ONLY; NO_AUTHORIZATION"
+    },
+    "request_contract": {
+      "const": "PINNED_SHARED_SCHEMA; BINDINGS_AND_HUMAN_APPROVAL_REQUIRED"
+    },
+    "execution_policy": {
+      "const": "PENDING_HUMAN_REVIEW; NEVER_EXECUTE_OR_AUTHORIZE"
+    },
+    "proposal_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "request_contract_pin": {
+      "const": {
+        "commit_sha": "5d088c4de362add925344d8e48b36c2e9d728d96",
+        "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+        "status": "PINNED_SCHEMA_ONLY; NOT_AUTHORIZATION"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "status",
+    "review_status",
+    "origin",
+    "draft",
+    "evaluation_plan",
+    "bias_risk_checklist",
+    "fingerprints",
+    "research_change_record",
+    "validation",
+    "prior_proposal_refs",
+    "holdout_policy",
+    "request_contract",
+    "execution_policy",
+    "proposal_sha256",
+    "request_contract_pin"
+  ]
+}

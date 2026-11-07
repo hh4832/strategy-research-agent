@@ -1,0 +1,254 @@
+{
+  "a1_lifecycle": [
+    "PROPOSED",
+    "VALIDATED",
+    "PENDING_APPROVAL",
+    "APPROVED",
+    "QUEUED",
+    "RUNNING",
+    "EVALUATING",
+    "EVALUATED",
+    "ARCHIVED"
+  ],
+  "a1_submit": {
+    "governance": {
+      "checks": [
+        {
+          "detail": "valid",
+          "id": "G1_REQUEST_SCHEMA",
+          "status": "PASS"
+        },
+        {
+          "detail": "isolated test orchestrator",
+          "id": "G0_TEST_MODE",
+          "status": "PASS"
+        },
+        {
+          "detail": "NOT_EVALUATED: a synthetic test is never authorized research",
+          "id": "G5_AUTHORIZATION",
+          "status": "PASS"
+        }
+      ],
+      "consumes_budget": false,
+      "formal_market_status": null,
+      "mode": "SYNTHETIC_TEST",
+      "note": "RESEARCH-ONLY governance. A PASS permits a read-only/research-only task, never trading; Formal Market Eligibility is not evaluated or changed here.",
+      "status": "TEST_MODE_ONLY",
+      "trading_permission": false
+    },
+    "state": "PENDING_APPROVAL",
+    "task_id": "T-54f9380b7fc68ead012c"
+  },
+  "a2_exported_request": {
+    "authorization_ref": "PENDING",
+    "core_commit": "PENDING",
+    "cost_profile_ref": {
+      "scenario_set_path": "configs/synthetic_fixture_scenarios.json",
+      "scenario_set_sha256": "1d3a005daa12f5f93c69a192552392711700375cb881d6fce18c6c50bd3259e5",
+      "scenarios": [
+        "BASE",
+        "STRESS"
+      ]
+    },
+    "dataset_manifest_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "dataset_ref": {
+      "dataset_id": "synthetic_fixture_dataset",
+      "producer_commit_sha": "1111111111111111111111111111111111111111"
+    },
+    "dataset_snapshot_id": "SYNTHETIC_FIXTURE_snapshot",
+    "execution_mode": "SYNTHETIC_TEST",
+    "execution_time_rule": {
+      "rule": "NEXT_ELIGIBLE_BAR_OPEN"
+    },
+    "holdout_policy": {
+      "access": "NO_ACCESS",
+      "lock_id": "HOLDOUT-SYNTHETIC-FIXTURE"
+    },
+    "hypothesis": "SYNTHETIC_FIXTURE — Does changing only fast SMA10 to SMA5 improve the unchanged SMA10/20 baseline?\nHypothesis: Faster trend detection may improve net expectancy relative to the unchanged baseline; no performance has been measured.\nNull: Changing fast length produces no improvement in net expectancy relative to the unchanged baseline.",
+    "market": {
+      "market_id": "TW_EQUITY",
+      "symbol": "2330"
+    },
+    "market_mechanism": "Institutional order splitting may sustain short trends; reacting earlier could capture a different portion of those trends, but whipsaw and costs can offset it.",
+    "request_id": "RR-PROP-444A406B800F8632E634",
+    "requested_change": {
+      "description": "SMA10/20 → SMA5/20",
+      "kind": "SYNTHETIC_TEST"
+    },
+    "requested_outputs": [
+      "RESEARCH_EVALUATION",
+      "RESEARCH_DECISION",
+      "RISK_FLAGS",
+      "ROBUSTNESS_MATRIX"
+    ],
+    "research_budget": {
+      "batches_requested": 0
+    },
+    "research_window": {
+      "end": "2024-06-29T00:00:00+08:00",
+      "start": "2024-06-03T00:00:00+08:00",
+      "warmup_start": "2024-05-29T00:00:00+08:00"
+    },
+    "schema_version": "1.0.0",
+    "signal_time_rule": {
+      "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+      "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+      "policy_version": "1.0.0",
+      "signal_time": "CORE_MODELED_AVAILABLE_AT"
+    },
+    "strategy_family": {
+      "family_id": "synthetic-fixture-family",
+      "parameters": {
+        "fast": 5,
+        "slow": 20
+      },
+      "strategy_id": "synthetic_fixture_sma",
+      "version": "0.1.0"
+    },
+    "strategy_spec_ref": "specs/synthetic_fixture_spec.json",
+    "strategy_spec_sha256": "1056cb3df7ba28dc4b6f104b0c4a99bfd56f8568e48bd9bbbcb3b0e15f06e155"
+  },
+  "a2_provenance": {
+    "authorization_granted": false,
+    "batch_consumption": 0,
+    "contract_commit": "5d088c4de362add925344d8e48b36c2e9d728d96",
+    "execution_eligible": false,
+    "input_kind": "SYNTHETIC_FIXTURE",
+    "pending_fields": [
+      "core_commit",
+      "authorization_ref"
+    ],
+    "proposal_id": "PROP-444a406b800f8632e634",
+    "proposal_sha256": "4690f82b26f6ad414d4fed779c849e2d3686b6852c148bfa81c9136ff55d5b70",
+    "reference_checks": "FILE_SHA_AND_SPEC_COMPATIBILITY_ONLY; GOVERNANCE_NOT_EVALUATED",
+    "request_sha256": "54f9380b7fc68ead012c20a8c5fc088f56d2c822692c803a5eec1e51abec1c1a",
+    "request_submitted": false,
+    "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+    "status": "SCHEMA_VALID_PENDING_HUMAN_APPROVAL"
+  },
+  "bindings_supplied_by_caller": {
+    "cost_profile_ref": {
+      "scenario_set_path": "configs/synthetic_fixture_scenarios.json",
+      "scenario_set_sha256": "1d3a005daa12f5f93c69a192552392711700375cb881d6fce18c6c50bd3259e5",
+      "scenarios": [
+        "BASE",
+        "STRESS"
+      ]
+    },
+    "dataset_manifest_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "dataset_ref": {
+      "dataset_id": "synthetic_fixture_dataset",
+      "producer_commit_sha": "1111111111111111111111111111111111111111"
+    },
+    "dataset_snapshot_id": "SYNTHETIC_FIXTURE_snapshot",
+    "execution_mode": "SYNTHETIC_TEST",
+    "execution_time_rule": {
+      "rule": "NEXT_ELIGIBLE_BAR_OPEN"
+    },
+    "holdout_policy": {
+      "access": "NO_ACCESS",
+      "lock_id": "HOLDOUT-SYNTHETIC-FIXTURE"
+    },
+    "market": {
+      "market_id": "TW_EQUITY",
+      "symbol": "2330"
+    },
+    "requested_change": {
+      "kind": "SYNTHETIC_TEST"
+    },
+    "requested_outputs": [
+      "RESEARCH_EVALUATION",
+      "RESEARCH_DECISION",
+      "RISK_FLAGS",
+      "ROBUSTNESS_MATRIX"
+    ],
+    "research_budget": {
+      "batches_requested": 0
+    },
+    "research_window": {
+      "end": "2024-06-29T00:00:00+08:00",
+      "start": "2024-06-03T00:00:00+08:00",
+      "warmup_start": "2024-05-29T00:00:00+08:00"
+    },
+    "signal_time_rule": {
+      "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+      "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+      "policy_version": "1.0.0",
+      "signal_time": "CORE_MODELED_AVAILABLE_AT"
+    },
+    "strategy_family": {
+      "family_id": "synthetic-fixture-family",
+      "parameters": {
+        "fast": 5,
+        "slow": 20
+      },
+      "strategy_id": "synthetic_fixture_sma",
+      "version": "0.1.0"
+    },
+    "strategy_spec_ref": "specs/synthetic_fixture_spec.json",
+    "strategy_spec_sha256": "1056cb3df7ba28dc4b6f104b0c4a99bfd56f8568e48bd9bbbcb3b0e15f06e155"
+  },
+  "generated_by": "strategy_agent.phase5a (A2 draft_proposal + export_request -> A1 Orchestrator test mode)",
+  "label": "SYNTHETIC_FIXTURE — engineering example only; not research evidence",
+  "link": {
+    "input_kind": "SYNTHETIC_FIXTURE",
+    "kind": "PHASE5A3_PROPOSAL_REQUEST_TASK_LINK",
+    "note": "submitted_by is caller-declared; it is not an authenticated identity (Phase 5-B prerequisite)",
+    "prev_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "proposal_id": "PROP-444a406b800f8632e634",
+    "proposal_sha256": "4690f82b26f6ad414d4fed779c849e2d3686b6852c148bfa81c9136ff55d5b70",
+    "record_sha256": "4e9793fb86d927c552b3383d8e9cbe952a0633ca3b16d65871e8d6c214c5768f",
+    "request_file_sha256": "9332d0d701cecefd001aa5f6816d18f67aa73f2537fccba082e25bf48be69152",
+    "request_hash": "54f9380b7fc68ead012c20a8c5fc088f56d2c822692c803a5eec1e51abec1c1a",
+    "request_id": "RR-PROP-444A406B800F8632E634",
+    "seq": 0,
+    "state_after_submit": "PENDING_APPROVAL",
+    "submitted_by": "TEST_FIXTURE",
+    "submitted_by_kind": "TEST_FIXTURE",
+    "task_id": "T-54f9380b7fc68ead012c",
+    "test_mode": true
+  },
+  "proposal": {
+    "input_kind": "SYNTHETIC_FIXTURE",
+    "proposal_id": "PROP-444a406b800f8632e634",
+    "proposal_sha256": "4690f82b26f6ad414d4fed779c849e2d3686b6852c148bfa81c9136ff55d5b70",
+    "review_status": "NEEDS_REVIEW",
+    "status": "PROPOSED",
+    "user_hypothesis": "SYNTHETIC_FIXTURE：研究 TW 2330 的 5m 完成棒，SMA5 上穿 SMA20 進場做多1000股、下穿出場；不設額外停損停利，固定一組參數，下一根合格且嚴格晚於訊號可用時間才成交。持有數小時至數個交易日。比較原 SMA10/20，只改 fast 10→5。規劃 OHLCV 為 2024-01-01 至 2024-12-31，來源 SYNTHETIC_FIXTURE_catalog 僅為使用者宣告，資料尚未核對，不讀 Holdout。"
+  },
+  "research_decision": {
+    "acceptance_checks": {
+      "C1_archive_identity": "PASS",
+      "C2_archive_integrity": "PASS",
+      "C3_trade_integrity": "PASS",
+      "C4_performance_consistency": "PASS",
+      "C5_temporal_safety": "PASS",
+      "C6_research_evaluation": "PASS",
+      "C7_reproducibility": "PASS",
+      "C8_governance_isolation": "PASS"
+    },
+    "acceptance_status": "PASS",
+    "blocked_reason": null,
+    "engineering_status": "PASS",
+    "evidence": "SYNTHETIC_FIXTURE",
+    "evidence_sufficiency": "UNDETERMINED",
+    "label": "SYNTHETIC_TEST — engineering evidence only, not a research decision",
+    "risk_flags": [
+      "BLINDNESS_UNVERIFIED",
+      "INSUFFICIENT_SAMPLE",
+      "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+      "LESS_THAN_ONE_YEAR_OBSERVED",
+      "LOOK_AHEAD_NOT_TESTED",
+      "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+      "MULTIPLE_TESTING_NOT_TESTED",
+      "NON_POSITIVE_CLOSED_NET_PNL",
+      "PARAMETER_STABILITY_NOT_TESTED",
+      "SELECTION_BIAS_NOT_TESTED",
+      "SURVIVORSHIP_BIAS_NOT_TESTED",
+      "TAIL_RISK_NOT_ESTABLISHED",
+      "TEMPORAL_STABILITY_NOT_TESTED"
+    ],
+    "strategy_verdict": "RETEST",
+    "test_mode": true
+  }
+}

@@ -1,0 +1,366 @@
+{
+  "bias_risk_checklist": [
+    {
+      "required_check": "Review LOOK_AHEAD_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "LOOK_AHEAD_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SURVIVORSHIP_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SURVIVORSHIP_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SELECTION_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SELECTION_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review DATA_SNOOPING under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "DATA_SNOOPING",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review TRANSACTION_COSTS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "TRANSACTION_COSTS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SLIPPAGE under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SLIPPAGE",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review LIQUIDITY under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "LIQUIDITY",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SAMPLE_SIZE under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SAMPLE_SIZE",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review CONCENTRATED_PROFIT under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "CONCENTRATED_PROFIT",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review HOLDOUT_CONTAMINATION under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "HOLDOUT_CONTAMINATION",
+      "status": "NOT_VERIFIED"
+    }
+  ],
+  "draft": {
+    "challenger_view": {
+      "failure_reason": "Could information shocks or trading frictions invalidate the proposed mechanism?",
+      "falsification": "Would net results indistinguishable from the unchanged baseline refute this hypothesis?",
+      "market_beta": "Would a matched market-beta exposure explain all apparent improvement?",
+      "regime_dependence": "Would the result disappear outside the pre-registered regime?",
+      "trade_concentration": "Would removing the largest-contributing trades eliminate the apparent effect?"
+    },
+    "hypothesis": {
+      "expected_direction": "CONDITIONAL",
+      "null_hypothesis": "Changing fast length produces no improvement in net expectancy relative to the unchanged baseline.",
+      "purpose": "Unverified research design, not a performance or execution claim.",
+      "question": "Does changing only fast SMA10 to SMA5 improve the unchanged SMA10/20 baseline?",
+      "testable_claim": "Faster trend detection may improve net expectancy relative to the unchanged baseline; no performance has been measured."
+    },
+    "market_mechanism": {
+      "category": "MOMENTUM",
+      "causal_logic": "Institutional order splitting may sustain short trends; reacting earlier could capture a different portion of those trends, but whipsaw and costs can offset it.",
+      "failure_modes": [
+        "Range-bound markets and whipsaw.",
+        "Transaction costs and overnight gaps."
+      ]
+    },
+    "required_data": {
+      "additional_features": [],
+      "availability": "DECLARED_AVAILABLE_NOT_VERIFIED",
+      "coverage": {
+        "end": "2024-12-31",
+        "start": "2024-01-01"
+      },
+      "market": "TW",
+      "pit_requirements": [
+        "Use only fully completed bars and original timestamps.",
+        "Never access Holdout; research design is Development-only."
+      ],
+      "pit_timing": "Signal at completed-bar available_at; fill strictly later on an eligible bar; source latency is NOT_VERIFIED.",
+      "price_fields": [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "source_ref": "SYNTHETIC_FIXTURE_catalog_NOT_VERIFIED",
+      "symbols": [
+        "2330"
+      ],
+      "timeframe": "5m"
+    },
+    "research_variables": {
+      "changes": [
+        {
+          "baseline": "SMA10/20",
+          "baseline_value": 10,
+          "core_variable": "fast SMA length",
+          "expected_improvement": "Earlier response may change net expectancy, NOT_VERIFIED.",
+          "parameter_name": "fast",
+          "potential_side_effects": "More whipsaw, turnover and transaction cost.",
+          "proposed_change": "SMA5/20",
+          "proposed_value": 5
+        }
+      ],
+      "parameter_search": {
+        "max_trials": 1,
+        "mode": "FIXED"
+      },
+      "prior_experiment_refs": [
+        "SYNTHETIC_FIXTURE_baseline_no_real_experiment"
+      ],
+      "selection_basis": "HYPOTHESIS_DRIVEN"
+    },
+    "strategy_rules": {
+      "entry_condition": "Enter long when completed-bar SMA5 crosses above SMA20 while flat.",
+      "execution_time": "STRICTLY_AFTER_SIGNAL_AVAILABILITY",
+      "exit_condition": "Exit long when completed-bar SMA5 crosses below SMA20.",
+      "exit_policy": "No additional stop or take-profit; exit on opposite crossover. Overnight gap risk requires human review.",
+      "holding_horizon": "Hours to several sessions.",
+      "position_sizing": "FIXED_UNITS 1000 shares; initial capital 1000000 TWD.",
+      "signal_time": "BAR_AVAILABLE_AT",
+      "universe": {
+        "market": "TW",
+        "symbols": [
+          "2330"
+        ],
+        "timeframe": "5m"
+      }
+    },
+    "strategy_spec_fragment": {
+      "execution": {
+        "convention": "oracle-execution-convention-v1",
+        "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+        "max_fill_delay_bars": 54,
+        "order_time": "SIGNAL_TIME",
+        "order_type": "MARKET",
+        "partial_fills": false,
+        "same_bar_reentry": false,
+        "signal_time": "BAR_AVAILABLE_AT",
+        "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END"
+      },
+      "parameters": {
+        "constraints": [
+          {
+            "left": "fast",
+            "op": "<",
+            "right": "slow"
+          }
+        ],
+        "search": {
+          "max_trials": 1,
+          "mode": "FIXED"
+        },
+        "values": {
+          "fast": {
+            "default": 5,
+            "description": "fast SMA length (bars)",
+            "max": 5,
+            "min": 5,
+            "step": 1,
+            "type": "integer"
+          },
+          "slow": {
+            "default": 20,
+            "description": "slow SMA length (bars)",
+            "max": 20,
+            "min": 20,
+            "step": 1,
+            "type": "integer"
+          }
+        }
+      },
+      "position_sizing": {
+        "initial_capital": 1000000,
+        "lot_size": 1000,
+        "max_units": 1000,
+        "method": "FIXED_UNITS",
+        "units": 1000
+      },
+      "risk_constraints": {
+        "allowed_directions": [
+          "LONG"
+        ],
+        "max_drawdown_halt": 0.25,
+        "max_position_units": 1000,
+        "max_trades_per_session": 4
+      },
+      "risk_exits": {
+        "stop_loss": {
+          "type": "NONE"
+        },
+        "take_profit": {
+          "type": "NONE"
+        },
+        "time_exit": {}
+      },
+      "signal": {
+        "entry_rules": [
+          {
+            "action": "ENTER_LONG",
+            "id": "golden_cross",
+            "when": {
+              "args": [
+                {
+                  "left": {
+                    "ref": "sma_fast"
+                  },
+                  "op": "cross_above",
+                  "right": {
+                    "ref": "sma_slow"
+                  }
+                },
+                {
+                  "op": "is_flat"
+                }
+              ],
+              "op": "and"
+            }
+          }
+        ],
+        "evaluation_time": "BAR_CLOSE",
+        "exit_rules": [
+          {
+            "action": "EXIT_LONG",
+            "id": "death_cross",
+            "when": {
+              "left": {
+                "ref": "sma_fast"
+              },
+              "op": "cross_below",
+              "right": {
+                "ref": "sma_slow"
+              }
+            }
+          }
+        ],
+        "indicators": [
+          {
+            "id": "sma_fast",
+            "input": "close",
+            "params": {
+              "period": {
+                "param": "fast"
+              }
+            },
+            "series_scope": "CONTINUOUS_ELIGIBLE_BARS",
+            "type": "SMA"
+          },
+          {
+            "id": "sma_slow",
+            "input": "close",
+            "params": {
+              "period": {
+                "param": "slow"
+              }
+            },
+            "series_scope": "CONTINUOUS_ELIGIBLE_BARS",
+            "type": "SMA"
+          }
+        ]
+      },
+      "universe": {
+        "contract_policy": {
+          "continuous_inferred": false,
+          "indicator_series": "NOT_APPLICABLE",
+          "type": "NOT_APPLICABLE"
+        },
+        "market": "TW",
+        "sessions": {
+          "allowed": [
+            "REGULAR"
+          ],
+          "calendar_ref": "TWSE regular session 09:00-13:30 via pinned trading_rules",
+          "exclude_closing_auction": true,
+          "no_overnight": false
+        },
+        "symbols": [
+          "2330"
+        ],
+        "timeframe": "5m",
+        "timezone": "Asia/Taipei"
+      }
+    },
+    "title": "SYNTHETIC_FIXTURE complete structural momentum proposal"
+  },
+  "evaluation_plan": {
+    "metrics": [
+      "Trade Count",
+      "Win Rate",
+      "Payoff Ratio",
+      "Expectancy",
+      "Profit Factor",
+      "Maximum Drawdown",
+      "Tail Risk",
+      "Cost Sensitivity",
+      "Market Regime",
+      "Annual Performance",
+      "Symbol Concentration",
+      "Holding Duration",
+      "Parameter Robustness"
+    ],
+    "protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
+    "threshold_policy": "USE_EXISTING_PROTOCOL_ONLY; NO_NEW_THRESHOLDS"
+  },
+  "execution_policy": "PENDING_HUMAN_REVIEW; NEVER_EXECUTE_OR_AUTHORIZE",
+  "fingerprints": {
+    "hypothesis": "10042b51cbcb19d878123886f2e797e65622d5c5a086f0842831538830352752",
+    "method": "EXISTING_CANONICAL_STRUCTURE",
+    "parameter_values": "4f44729f89f04478e89259ad612ac1e2ae17bebb3479aae09710840f661a5b20",
+    "strategy_family": "a731433af2e0a7ac1ec42285b64144c7047d5c3e9207af08660358413031aaff"
+  },
+  "holdout_policy": "NO_ACCESS; PROPOSAL_ONLY; NO_AUTHORIZATION",
+  "origin": {
+    "adapter_id": "FAKE_LLM_FIXTURE_V1",
+    "agent_commit_sha": "48771ff0202be05a1be39e680a9e9985bff84dd1",
+    "created_at": "2026-11-07T12:26:46.389828+08:00",
+    "draft_sha256": "16a67916f41bbbada7bfa4daeea264f2fd58df3ce2af361cdc94b6888853bff9",
+    "input_kind": "SYNTHETIC_FIXTURE",
+    "user_hypothesis": "SYNTHETIC_FIXTURE：研究 TW 2330 的 5m 完成棒，SMA5 上穿 SMA20 進場做多1000股、下穿出場；不設額外停損停利，固定一組參數，下一根合格且嚴格晚於訊號可用時間才成交。持有數小時至數個交易日。比較原 SMA10/20，只改 fast 10→5。規劃 OHLCV 為 2024-01-01 至 2024-12-31，來源 SYNTHETIC_FIXTURE_catalog 僅為使用者宣告，資料尚未核對，不讀 Holdout。"
+  },
+  "prior_proposal_refs": [],
+  "proposal_id": "PROP-a976b02d8853385eaa2f",
+  "proposal_sha256": "6a958260722ce9a104ff3ac21e8807c3eeefb5dff16dcfb3ec8673a30c5435eb",
+  "request_contract": "PINNED_SHARED_SCHEMA; BINDINGS_AND_HUMAN_APPROVAL_REQUIRED",
+  "request_contract_pin": {
+    "commit_sha": "5d088c4de362add925344d8e48b36c2e9d728d96",
+    "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+    "status": "PINNED_SCHEMA_ONLY; NOT_AUTHORIZATION"
+  },
+  "research_change_record": [
+    {
+      "baseline": "SMA10/20",
+      "baseline_value": 10,
+      "core_variable": "fast SMA length",
+      "expected_improvement": "Earlier response may change net expectancy, NOT_VERIFIED.",
+      "parameter_name": "fast",
+      "potential_side_effects": "More whipsaw, turnover and transaction cost.",
+      "proposed_change": "SMA5/20",
+      "proposed_value": 5
+    }
+  ],
+  "review_status": "NEEDS_REVIEW",
+  "schema_version": "1.0.0",
+  "status": "PROPOSED",
+  "validation": {
+    "blockers": [],
+    "risk_flags": [
+      {
+        "code": "DATA_AND_CAUSAL_MECHANISM_NOT_VERIFIED",
+        "message": "Design assertions are not data approval or evidence of strategy effect."
+      }
+    ],
+    "schema_valid": true
+  }
+}
