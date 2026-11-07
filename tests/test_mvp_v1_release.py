@@ -19,6 +19,13 @@ GOV = FIX / "governance_root"
 AT = "2026-11-07T09:00:00+08:00"
 
 
+@pytest.fixture(autouse=True)
+def _process_level_executor_check_is_tested_elsewhere(monkeypatch):
+    # C8's "no executor module loaded in this PROCESS" is order-dependent inside a shared pytest process (other tests
+    # import the runner). It is asserted in a fresh subprocess by test_phase4c_acceptance; here only compare() is tested.
+    monkeypatch.setattr(C, "EXECUTOR_MODULES", ())
+
+
 def _acc():
     pin = hashlib.sha256((ARCH / "MANIFEST.json").read_bytes()).hexdigest()
     return C.accept(ARCH, expected_manifest_sha256=pin, evaluator_commit_sha="a" * 40, evaluated_at=AT, governance_root=GOV)

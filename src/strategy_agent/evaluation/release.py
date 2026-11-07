@@ -157,11 +157,9 @@ def run_pytest(root: Path = ROOT) -> dict:
                        cwd=root, text=True, capture_output=True)
     tail = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
     counts = {k: int(n) for n, k in __import__("re").findall(r"(\d+) (passed|failed|skipped|error|errors)", tail)}
-    try:
-        import market_research_core  # noqa: F401, PLC0415 - probe only, inside the pytest record
-        core = "installed"
-    except ImportError:
-        core = "absent (Core-dependent tests skip by design; covered by CI jobs pinned to 699e3ad/e31c57b/b16179a)"
+    import importlib.util  # noqa: PLC0415 - presence probe only; Core is never imported by the evaluator
+    core = "installed" if importlib.util.find_spec("market_research_core") else \
+        "absent (Core-dependent tests skip by design; covered by CI jobs pinned to 699e3ad/e31c57b/b16179a)"
     return {"python": sys.version.split()[0], "core": core, "summary": tail, "counts": counts,
             "returncode": r.returncode, "failures": [x for x in r.stdout.splitlines() if x.startswith("FAILED")],
             "status": "PASS" if r.returncode == 0 and counts.get("failed", 0) == 0 else "FAIL"}
