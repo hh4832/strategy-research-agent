@@ -1,0 +1,84 @@
+{
+  "archive_integrity": {
+    "archive_manifest_sha256": "328f2cf99c33b4d9d427327d092aaf31da619b5f5ad948c815e75b04b92345a9",
+    "dataset_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "files": 14,
+    "manifest_pin_matches": true,
+    "reference_evaluation_equals_committed_copy": {
+      "committed": {
+        "acceptance_checks.json": "cc7f6839267ba9155d555b096c1497ca406e03bfa11bfaadde7a707ae0620bff",
+        "archive_contract_mapping.md": "d7ef9ab2c737016a6088343de4dee80b104f9bd4350b6cb243819a0a97eaa927",
+        "evaluation.json": "78e2db7761a9288e8c249bba58cbaff7053af0e27139b04984f742ad2db79170",
+        "evaluation_report.md": "04ae918b4f97259faea80077d620ff937cd2628cdb16c54904c18e987f5b5d26",
+        "research_decision.json": "ee508e8bdea524133abf146c9ae20aa197f91421516b356a144539b35e183b94",
+        "risk_flags.json": "e66ed631ad2e74b0b97dacd6f708c52591eddf506f1e05a6a8688e544859544c",
+        "robustness_matrix.csv": "ab21a0fbe4f64ff1f3b2d3b0eee4093c81da74974106192841ab06deffc8734f",
+        "run_info.txt": "c4b9f6ae50a62adbdc468b167e9c0aa83a8c2e98bfa0b685210fc6a2b383a5b2"
+      },
+      "drive": {
+        "acceptance_checks.json": "cc7f6839267ba9155d555b096c1497ca406e03bfa11bfaadde7a707ae0620bff",
+        "archive_contract_mapping.md": "d7ef9ab2c737016a6088343de4dee80b104f9bd4350b6cb243819a0a97eaa927",
+        "evaluation.json": "78e2db7761a9288e8c249bba58cbaff7053af0e27139b04984f742ad2db79170",
+        "evaluation_report.md": "04ae918b4f97259faea80077d620ff937cd2628cdb16c54904c18e987f5b5d26",
+        "research_decision.json": "ee508e8bdea524133abf146c9ae20aa197f91421516b356a144539b35e183b94",
+        "risk_flags.json": "e66ed631ad2e74b0b97dacd6f708c52591eddf506f1e05a6a8688e544859544c",
+        "robustness_matrix.csv": "ab21a0fbe4f64ff1f3b2d3b0eee4093c81da74974106192841ab06deffc8734f",
+        "run_info.txt": "c4b9f6ae50a62adbdc468b167e9c0aa83a8c2e98bfa0b685210fc6a2b383a5b2"
+      },
+      "identical": true,
+      "status": "PASS"
+    },
+    "reference_evaluation_unchanged": true,
+    "source_archive": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/20261107_081300_9439f8c",
+    "source_fingerprint_before": {
+      "MANIFEST.json": "328f2cf99c33b4d9d427327d092aaf31da619b5f5ad948c815e75b04b92345a9",
+      "config.json": "7818d3a73183d5cca9f9d2c0233cc65936c715783c2243d8799b0a71f7ea7ecf",
+      "config_canonical.json": "43f7df1519ba29f1656bc08a0b37cba7b85a6fe6e2645fec6c1866a081fb6c5c",
+      "cost_breakdown.csv": "a394e28358e5a3365470cbcbf361d2fac78ae26c21a4948d5548a681a38c8986",
+      "dataset_manifest.json": "737f2c698629561a4124a47e0752cef8ae1545918d4311a4940ca905e034b0c2",
+      "decisions.csv": "3b9ed78347bc91a33722c4e3aff57ad15ee4a69725b0d13d44995eed1a822275",
+      "equity_curve.csv": "6ad77e145119ea07eced929ffdaf97737c2ded0d518be82c5104b7e02596d9a7",
+      "execution_diagnostics.json": "88cf605d711aa6f53d60cd19114026c272d9dc1e7c888b2b40c81aca479b3a4c",
+      "fills.csv": "370f0fc72cdb165e23d38a23031971a303a052365b49f5f0615392b57a84487b",
+      "metrics.json": "4655709b03b0f2b6f8ae7f82b3bfd6fdc8a73522667e3ca3be4b6ef12c2ddb7d",
+      "rejected_orders.csv": "938566d324a0a5d58559efb0f6a7bb06f27a60c62ab7c91caf59020bf27570ae",
+      "research_report.md": "7540e605eb73e4159c6cfc244804ebdf1b626f8735fd8b86eccef21c2680ddfc",
+      "run_info.txt": "35b94d5ee7f56d25b73e2bdee023e2688a03402fca7eb69a671fc50e3fde2e2f",
+      "trades.csv": "4b087e97988e6ce66e0cfe7eae9817daac35994d28f1c1752e0e8781c34852ce"
+    },
+    "source_unchanged": true,
+    "status": "PASS"
+  },
+  "authorization": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+  "authorization_uses": "1/1",
+  "c8": {
+    "authorization_spent": true,
+    "authorization_uses": "1/1",
+    "broker_api_called": false,
+    "evaluation_batch_consumption": 0,
+    "executor_modules_loaded": [],
+    "formal_gates_match_authorization_pin": true,
+    "formal_market_status": "NO_GO",
+    "governance_and_registry_unchanged": true,
+    "holdout_lock_present_unchanged": true,
+    "new_backtest_executed": false,
+    "status": "PASS",
+    "use_record_matches_run": true
+  },
+  "formal_gates": {
+    "COST_APPROVAL": "FAIL",
+    "COST_MODEL_COMPATIBILITY": "PASS",
+    "DATA_QUALITY": "PASS",
+    "FORMAL_EXECUTION_ELIGIBILITY": "FAIL",
+    "HOLDOUT_APPROVAL": "FAIL",
+    "TEMPORAL_SAFETY": "UNKNOWN"
+  },
+  "formal_market_status": "NO_GO",
+  "holdout_lock": [
+    "HOLDOUT-TSM-15M-v1"
+  ],
+  "new_batch_consumed": 0,
+  "research_only_runner_invoked": false,
+  "status": "PASS",
+  "use_records_total": 1
+}

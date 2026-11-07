@@ -71,17 +71,45 @@ About the `test_15` failure: it asserts that the Phase 3 committed reference was
 
 CI run on the pin: <https://github.com/hh4832/strategy-research-agent/actions/runs/42334448265>.
 
-## 4. Release acceptance (R1–R6)
+## 4. Release acceptance (R1–R6) — **MVP_V1_ENGINEERING_GO** (2026-11-07 11:43:40 Asia/Taipei)
 
-`notebooks/MVP_V1_Release_Acceptance.ipynb` performs `Existing Archive → Read-only Evaluator → Comparison → Release Report`. It does not call `ResearchOnlyRunner.run()`, does not re-run the backtest, does not install Core, does not read the Holdout, does not consume any batch, and does not write to the source archive.
+The research lead ran `notebooks/MVP_V1_Release_Acceptance.ipynb` (`MVP-V1-RELEASE-v1`) in a clean Colab runtime opened from GitHub.
 
-| Item | Checked by | Status |
+| Item | Value |
+|---|---|
+| Checkout | `09ac0d5`, clean |
+| GitHub HEAD at run time | `ba06619` (only docs/notebook changed after the pin) |
+| Core | not installed, not imported |
+| Release archive | `MyDrive/Quant_Research/strategy-research-agent/releases/20261107_114340_09ac0d5/` (7 files; mirrored in `docs/evidence/mvp_v1_release/20261107_114340_09ac0d5/`) |
+
+| Item | Result | Evidence |
 |---|---|---|
-| R1 Repository integrity | `integration_manifest()`: every source SHA is an ancestor of the RC; components present; clean checkout at pin; no code change after the pin | PASS (fresh clone at `09ac0d5`); re-verified in Colab |
-| R2 Regression tests | CI table above + `run_pytest()` in the Colab runtime | CI PASS; Colab pending |
-| R3 Real-archive evaluation = Phase 4-C | `compare()`. For all 4 scenarios: identical metrics, identical envelope `input_sha256`, identical verdicts and flags; C1–C8 identical; payload identical except metadata and the one presentation reason | **PENDING** (needs Drive) |
-| R4 Governance isolation | C8 + uses 1/1 + formal NO_GO + holdout lock + 0 batches | **PENDING** |
-| R5 Archive integrity | source archive 14 files, MANIFEST pin `328f2cf9…`, unchanged before/after; Drive Phase 4-C evaluation byte-identical to the committed copy and unchanged | **PENDING** |
-| R6 Colab portability | the whole notebook completes in a clean runtime opened from GitHub | **PENDING** |
+| R1 Repository integrity | PASS | all 7 source SHAs are ancestors of the RC; 6 components present; clean checkout at the pin; no code change after the pin |
+| R2 Regression tests | PASS | Colab (Python 3.13.18, no Core): 362 passed, 54 skipped, 0 failed; CI table in §3 |
+| R3 Real archive vs Phase 4-C `20261107_100344_883d14c` | PASS | details below |
+| R4 Governance isolation | PASS | authorization 1/1; formal NO_GO; holdout lock `HOLDOUT-TSM-15M-v1`; 0 new batches; `ResearchOnlyRunner.run()` not invoked |
+| R5 Archive integrity | PASS | details below |
+| R6 Colab portability | PASS | `clean_colab_runtime=true`; whole notebook completed |
 
-Verdict rule: `MVP_V1_ENGINEERING_GO` only if R1–R6 are all PASS; otherwise `PENDING`, `BLOCKED` or `NO_GO`.
+R3 detail:
+- **All 4 scenarios:** identical metrics, identical envelope `input_sha256`, identical verdicts and flags.
+- **C1–C8:** identical, all PASS.
+- **Payload:** identical apart from metadata and the single intended presentation change. The `cost_sensitivity` reason went from "required evidence absent" to "cost scenarios supplied on the same signals and positions".
+- **Results:**
+  - Net return: BASE 1.84435%, LOW 1.89635%, STRESS 1.76435%, CAT_STRESS 1.84409%.
+  - Total costs: 136.65 / 84.65 / 216.65 / 136.91.
+  - Strategy RETEST / UNDETERMINED.
+
+R5 detail:
+- The source archive has 14 files, `MANIFEST.json` matches the pin `328f2cf9…`, and the archive was unchanged before and after the run.
+- The Drive Phase 4-C evaluation is byte-identical to the committed copy and was unchanged.
+
+**Scope of the GO.** This is research-only engineering. It is not a strategy-effectiveness or market-eligibility claim:
+- Strategy: RETEST / UNDETERMINED.
+- Formal Market Eligibility: NO_GO.
+
+Evidence gaps carried forward (documented, not blockers for this engineering release):
+- No order ledger archived (1 of 28 orders has no outcome record).
+- No `trade_id` or `notional` exported by Core.
+- Signal-computation look-ahead is not independently re-verified.
+- The Phase 3 `test_15` pin fails under non-699e3ad Core.

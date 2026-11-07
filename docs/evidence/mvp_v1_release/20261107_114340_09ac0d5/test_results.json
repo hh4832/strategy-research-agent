@@ -1,0 +1,12 @@
+{
+  "core": "absent (Core-dependent tests skip by design; covered by CI jobs pinned to 699e3ad/e31c57b/b16179a)",
+  "counts": {
+    "passed": 362,
+    "skipped": 54
+  },
+  "failures": [],
+  "python": "3.13.18",
+  "returncode": 0,
+  "status": "PASS",
+  "summary": "362 passed, 54 skipped in 28.76s"
+}
