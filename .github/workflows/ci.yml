@@ -197,6 +197,35 @@ jobs:
       - run: pytest -q tests/test_phase4a_development_smoke.py tests/test_development_snapshot_preflight.py tests/test_phase4a_development_auth_contract.py tests/test_phase4a_research_only.py tests/test_phase4a_core_integration.py tests/test_m1_adapter.py tests/test_m1_core_compat.py
       - run: git diff --exit-code -- registry governance configs
 
+  phase5a3-integration:
+    # Phase 5-A3: actual A2 export -> actual A1 orchestrator (SYNTHETIC_FIXTURE Route A + fixture archive replay).
+    # No Core, no market data, no batch, no Holdout. Real archive replay runs only in Colab (notebook).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e '.[test]'
+      - run: pytest -q tests/test_phase5a3_integration.py tests/test_orchestrator_lifecycle.py tests/test_orchestrator_request_contract.py tests/test_proposal_agent.py tests/test_proposal_contract.py
+      - name: A3-01..A3-10 acceptance in a fresh process (expected SCOPED_GO without Colab/Drive)
+        run: |
+          python -m strategy_agent.phase5a acceptance --out-dir "$RUNNER_TEMP/integrations/ci_${GITHUB_SHA::7}" | tee "$RUNNER_TEMP/a3.json"
+          python - <<'PY'
+          import json, os
+          r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "a3.json")))
+          assert set(r["gates"].values()) == {"PASS"}, r["gates"]
+          assert r["verdict"]["verdict"] == "SCOPED_GO", r["verdict"]
+          PY
+          git diff --exit-code -- registry governance schemas
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase5a3-integration-acceptance
+          path: |
+            ${{ runner.temp }}/integrations/*/*.json
+            ${{ runner.temp }}/integrations/*/run_info.txt
+          retention-days: 30
+
   append-only:
     # Governed logs (registry/, governance/) may only grow relative to the PR base.
     if: github.event_name == 'pull_request'

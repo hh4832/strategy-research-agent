@@ -100,7 +100,10 @@ class SyntheticExecutionAdapter(ExecutionAdapter):
         dst = Path(out_dir) / self.fixture.name
         shutil.copytree(self.fixture, dst)                 # fails if it exists: never overwrites
         manifest_sha = C.sha256_bytes((dst / "MANIFEST.json").read_bytes())
-        archive = C.read_archive(dst, expected_manifest_sha256=manifest_sha)
+        try:                                               # 5-A3 fix: a broken fixture is FAILED, not left RUNNING
+            archive = C.read_archive(dst, expected_manifest_sha256=manifest_sha)
+        except C.ArchiveRejected as e:
+            raise ExecutionFailed(e.code, str(e)) from None
         return {"adapter": self.kind, "evidence": self.evidence, "consumed_batches": 0, "strategy_executed": False,
                 "label": "SYNTHETIC_FIXTURE — not research evidence", "archive_path": str(dst),
                 "run_id": archive["manifest"]["run_id"], "archive_manifest_sha256": manifest_sha,
