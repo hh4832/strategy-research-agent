@@ -1,0 +1,17 @@
+{
+  "engineering_status": "PASS",
+  "evidence_sufficiency": "DESCRIPTIVE_ONLY",
+  "metadata": {
+    "evaluation_timestamp": "2026-11-06T23:00:26.634111+08:00",
+    "evaluator_commit_sha": "9258a48f58a18a502e52a13b2bdf1137485bb0e2",
+    "evaluator_version": "1.0.0",
+    "schema_version": "1.0.0",
+    "source_archive_path": "SYNTHETIC_FIXTURE_NO_REAL_ARCHIVE",
+    "source_commit_sha": "1111111111111111111111111111111111111111",
+    "source_run_id": "SYNTHETIC_FIXTURE_positive_short_run"
+  },
+  "reasons": [
+    "positive PnL alone is insufficient; complete protocol evidence or independent validation absent"
+  ],
+  "verdict": "RETEST"
+}
