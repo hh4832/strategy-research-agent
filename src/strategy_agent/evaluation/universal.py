@@ -257,7 +257,8 @@ def _robustness(doc, strata):
         if all('is_score' in f and 'oos_score' in f for f in folds):
             comparison=M.oos_stability([f['is_score'] for f in folds],[f['oos_score'] for f in folds])
             by['in_sample_vs_out_of_sample'].update(status='AVAILABLE',evidence={k:v if math.isfinite(v) else absent('undefined IS/OOS degradation') for k,v in comparison.items()})
-    if val(doc,'cost_scenarios'): by['cost_sensitivity'].update(status='AVAILABLE',evidence=val(doc,'cost_scenarios'))
+    if val(doc,'cost_scenarios'): by['cost_sensitivity'].update(status='AVAILABLE',evidence=val(doc,'cost_scenarios'),
+                                                                reason='cost scenarios supplied on the same signals and positions')
     if any(r['dimension']=='parameter_region' and r['status']=='AVAILABLE' for r in strata):
         by['parameter_stability'].update(status='AVAILABLE',evidence=[r for r in strata if r['dimension']=='parameter_region'])
     if val(doc,'trades'): by['concentration'].update(status='AVAILABLE',reason='trade/year/symbol contribution flags; no new cutoff')
@@ -270,6 +271,8 @@ def _robustness(doc, strata):
         by['look_ahead'].update(status='AVAILABLE',reason='upstream check reported; fill times also verified where supplied')
     elif fills and all('signal_available_at' in f for f in fills):
         by['look_ahead'].update(status='NOT_TESTED',evidence={'observed_fill_timing':'PASS'},reason='observed fills strictly after signal availability; signal calculation itself not verified')
+    for r in rows:   # presentation only: an AVAILABLE row never keeps the NOT_TESTED default reason
+        if r['status']=='AVAILABLE' and r['reason']=='required evidence absent':r['reason']='evidence supplied'
     return rows
 
 

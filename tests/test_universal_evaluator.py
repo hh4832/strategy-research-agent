@@ -316,3 +316,25 @@ def test_observed_quality_fail_is_distinct_from_missing_evidence(section):
     d=fixture();d[section]['value']['status']='FAIL';r=run(d)
     assert r['engineering_status']=='FAIL' and r['strategy_verdict']=='RETEST'
     assert r['evidence_sufficiency']=='UNDETERMINED' and not r['metrics']
+
+
+def test_available_robustness_rows_never_say_required_evidence_absent():
+    """MVP v1: presentation fix only (status, metrics and verdict unchanged)."""
+    import csv as _csv
+    import io as _io
+    import json as _json
+    from pathlib import Path as _P
+
+    from strategy_agent.evaluation import phase4c as _C
+    fix = _P(__file__).resolve().parent / "fixtures/phase4c"
+    arch = fix / "20261106_224000_0123456"
+    import hashlib as _h
+    pin = _h.sha256((arch / "MANIFEST.json").read_bytes()).hexdigest()
+    acc = _C.accept(arch, expected_manifest_sha256=pin, evaluator_commit_sha="a" * 40,
+                    evaluated_at="2026-11-07T09:00:00+08:00", governance_root=fix / "governance_root")
+    rows = acc["evaluation"]["robustness_matrix"]
+    cost = next(r for r in rows if r["group"] == "cost_sensitivity")
+    assert cost["status"] == "AVAILABLE" and cost["reason"] == "cost scenarios supplied on the same signals and positions"
+    assert not [r for r in rows if r["status"] == "AVAILABLE" and r.get("reason") == "required evidence absent"]
+    assert [r for r in rows if r["status"] == "NOT_TESTED" and r.get("reason") == "required evidence absent"]
+    assert (acc["evaluation"]["strategy_verdict"], acc["evaluation"]["evidence_sufficiency"]) == ("RETEST", "UNDETERMINED")
