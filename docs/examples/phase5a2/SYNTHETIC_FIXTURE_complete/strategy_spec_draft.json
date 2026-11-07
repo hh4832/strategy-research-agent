@@ -1,0 +1,166 @@
+{
+  "execution_eligible": false,
+  "full_spec_validated": false,
+  "missing_materialization": [
+    "data_requirements with independently verified dataset refs",
+    "approved costs",
+    "experiment/governance bindings",
+    "full Strategy Spec metadata/provenance"
+  ],
+  "status": "PARTIAL_DRAFT_NOT_EXECUTABLE",
+  "strategy_spec_fragment": {
+    "execution": {
+      "convention": "oracle-execution-convention-v1",
+      "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+      "max_fill_delay_bars": 54,
+      "order_time": "SIGNAL_TIME",
+      "order_type": "MARKET",
+      "partial_fills": false,
+      "same_bar_reentry": false,
+      "signal_time": "BAR_AVAILABLE_AT",
+      "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END"
+    },
+    "parameters": {
+      "constraints": [
+        {
+          "left": "fast",
+          "op": "<",
+          "right": "slow"
+        }
+      ],
+      "search": {
+        "max_trials": 1,
+        "mode": "FIXED"
+      },
+      "values": {
+        "fast": {
+          "default": 5,
+          "description": "fast SMA length (bars)",
+          "max": 5,
+          "min": 5,
+          "step": 1,
+          "type": "integer"
+        },
+        "slow": {
+          "default": 20,
+          "description": "slow SMA length (bars)",
+          "max": 20,
+          "min": 20,
+          "step": 1,
+          "type": "integer"
+        }
+      }
+    },
+    "position_sizing": {
+      "initial_capital": 1000000,
+      "lot_size": 1000,
+      "max_units": 1000,
+      "method": "FIXED_UNITS",
+      "units": 1000
+    },
+    "risk_constraints": {
+      "allowed_directions": [
+        "LONG"
+      ],
+      "max_drawdown_halt": 0.25,
+      "max_position_units": 1000,
+      "max_trades_per_session": 4
+    },
+    "risk_exits": {
+      "stop_loss": {
+        "type": "NONE"
+      },
+      "take_profit": {
+        "type": "NONE"
+      },
+      "time_exit": {}
+    },
+    "signal": {
+      "entry_rules": [
+        {
+          "action": "ENTER_LONG",
+          "id": "golden_cross",
+          "when": {
+            "args": [
+              {
+                "left": {
+                  "ref": "sma_fast"
+                },
+                "op": "cross_above",
+                "right": {
+                  "ref": "sma_slow"
+                }
+              },
+              {
+                "op": "is_flat"
+              }
+            ],
+            "op": "and"
+          }
+        }
+      ],
+      "evaluation_time": "BAR_CLOSE",
+      "exit_rules": [
+        {
+          "action": "EXIT_LONG",
+          "id": "death_cross",
+          "when": {
+            "left": {
+              "ref": "sma_fast"
+            },
+            "op": "cross_below",
+            "right": {
+              "ref": "sma_slow"
+            }
+          }
+        }
+      ],
+      "indicators": [
+        {
+          "id": "sma_fast",
+          "input": "close",
+          "params": {
+            "period": {
+              "param": "fast"
+            }
+          },
+          "series_scope": "CONTINUOUS_ELIGIBLE_BARS",
+          "type": "SMA"
+        },
+        {
+          "id": "sma_slow",
+          "input": "close",
+          "params": {
+            "period": {
+              "param": "slow"
+            }
+          },
+          "series_scope": "CONTINUOUS_ELIGIBLE_BARS",
+          "type": "SMA"
+        }
+      ]
+    },
+    "universe": {
+      "contract_policy": {
+        "continuous_inferred": false,
+        "indicator_series": "NOT_APPLICABLE",
+        "type": "NOT_APPLICABLE"
+      },
+      "market": "TW",
+      "sessions": {
+        "allowed": [
+          "REGULAR"
+        ],
+        "calendar_ref": "TWSE regular session 09:00-13:30 via pinned trading_rules",
+        "exclude_closing_auction": true,
+        "no_overnight": false
+      },
+      "symbols": [
+        "2330"
+      ],
+      "timeframe": "5m",
+      "timezone": "Asia/Taipei"
+    }
+  },
+  "strategy_spec_schema": "STRATEGY_SPEC_SCHEMA.json"
+}
