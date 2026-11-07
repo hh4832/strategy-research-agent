@@ -299,6 +299,17 @@ def _flags(doc, metrics, sample, strata, robustness):
     days=(ts(doc['source']['sample_period']['end'])-ts(doc['source']['sample_period']['start'])).total_seconds()/86400
     if days<365.2425:add('LESS_THAN_ONE_YEAR_OBSERVED',{'elapsed_days':days})
     if val(doc,'holdout',{}).get('status')!='NOT_ACCESSED':add('HOLDOUT_STATUS_UNRESOLVED',val(doc,'holdout',{}))
+    # Phase 4-C additions: deterministic facts only, no new numerical cutoff.
+    if val(doc,'holdout',{}).get('blindness')=='BLINDNESS_UNVERIFIED':
+        add('BLINDNESS_UNVERIFIED',{'lock_id':val(doc,'holdout',{}).get('lock_id'),
+            'meaning':'holdout period was touched before the lock; any later holdout result is not a blind test'})
+    if p and net>0:
+        ranked=sorted(p,reverse=True);k=next(i for i in range(1,len(ranked)+1) if math.fsum(ranked[:i])>=net)
+        if k<len(p):add('NET_PROFIT_COVERED_BY_TOP_TRADES',{'top_k':k,'valid_trades':len(p),
+            'top_k_net_pnl':math.fsum(ranked[:k]),'remaining_net_pnl':math.fsum(ranked[k:]),'total_net_pnl':net,
+            'meaning':'smallest k whose combined net PnL is at least the total; descriptive, no threshold'})
+    if any(r['dimension']=='market_regime' and r['status']=='NOT_AVAILABLE' for r in strata):
+        add('MARKET_REGIME_COVERAGE_NOT_ESTABLISHED',{'reason':'no pre-registered regime labels; regime coverage cannot be assessed'})
     for r in robustness:
         if r['status']=='NOT_TESTED':add(r['group'].upper()+'_NOT_TESTED',r)
     if doc['kind']=='SYNTHETIC_FIXTURE':add('SYNTHETIC_FIXTURE',{'meaning':'engineering test only; no real strategy conclusion'})

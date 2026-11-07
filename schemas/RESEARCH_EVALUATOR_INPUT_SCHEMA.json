@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/hh4832/strategy-research-agent/schemas/RESEARCH_EVALUATOR_INPUT_SCHEMA.json",
-  "title": "Research Evaluator input v1.0 \u2014 explicit evidence states",
+  "title": "Research Evaluator input v1.0 — explicit evidence states",
   "type": "object",
   "properties": {
     "schema_version": {
@@ -134,6 +134,13 @@
                 "lock_id": {
                   "type": "string",
                   "minLength": 1
+                },
+                "blindness": {
+                  "enum": [
+                    "VERIFIED_BLIND",
+                    "BLINDNESS_UNVERIFIED"
+                  ],
+                  "description": "Optional governance attestation (Phase 4-C). BLINDNESS_UNVERIFIED emits a risk flag; absence asserts nothing."
                 }
               },
               "required": [

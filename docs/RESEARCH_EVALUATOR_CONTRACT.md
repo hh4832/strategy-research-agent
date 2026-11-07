@@ -247,3 +247,16 @@ annualized volatility/Sharpe from arbitrary bar frequency, raw market validation
 unknown derivative/FX multipliers, inferred regimes/parameter searches, market
 impact simulation, authenticated statistical evidence acquisition, final Holdout
 assessment, deployment decisions and automatic registry/Notion publication.
+
+## Phase 4-C additions (real-archive acceptance)
+
+Minimal, additive changes; no threshold, metric definition or decision rule changed:
+
+- Input schema: optional `holdout.value.blindness` (`VERIFIED_BLIND|BLINDNESS_UNVERIFIED`), copied from the signed
+  research authorization. `BLINDNESS_UNVERIFIED` emits risk flag `BLINDNESS_UNVERIFIED`; absence asserts nothing.
+- Risk flags (deterministic facts, severity REVIEW, no cutoff): `NET_PROFIT_COVERED_BY_TOP_TRADES` (smallest k whose
+  combined net PnL is at least the total, with the remaining trades' sum) and `MARKET_REGIME_COVERAGE_NOT_ESTABLISHED`
+  (no pre-registered regime labels).
+- `evaluation/phase4c.py`: read-only normalizer for the CURRENT Phase 4-A archive contract (top-level 14-file layout of
+  `research_only/archive_contract.py`), acceptance checks C1–C8 and the eight-file evaluation archive. The older
+  per-scenario normalizer `archive_input.phase4a_archive` is unchanged.
