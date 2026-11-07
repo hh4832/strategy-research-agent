@@ -71,6 +71,13 @@ A2 Proposal → PENDING Request (authorization_ref=PENDING)
   - 全新 runtime，Version Sync PASS，Colab 回歸測試 509 passed，B1-01..B1-10 全 PASS，cloud=true，SCOPED_GO。
   - 該次執行**沒有讀到 `GH_TOKEN`**，所以真實核對寫成 `PENDING_USER_EVIDENCE`。
   - 副本：`docs/evidence/phase5b1/20261107_171621_a3251d3/`
+- **Colab 雲端驗收（正式）`approvals/20261107_173254_a3251d3`：GO**
+  - 全新 runtime，Version Sync PASS，`GH_TOKEN` 取自 Colab Secret（未印出、未寫檔，掃描輸出中沒有 token）。
+  - Colab 回歸測試 508 passed／55 skipped。多出的 1 個 skip 是 `Drive is mounted here`，依設計跳過。
+  - 真實核對 `VERIFIED`：留言 `6704937578` 的 V01–V09 全 PASS，來源 `GITHUB_REST_API`／`LIVE`／`PRODUCTION`。
+  - 對真實帳本做 dry-run 綁定，**正確被拒**（B02／B03／B05／B06）；repo 未寫入。
+  - B1-01..B1-10 全 PASS，cloud=true。7 個檔的 hash 與 run_info 一致。
+  - 副本：`docs/evidence/phase5b1/20261107_173254_a3251d3/`
 - **正向真實核對（舊說明）**：要你本人在 5-B1 PR 貼上 notebook 第 5 格產生的 PROBE 核准行，再於 Colab 執行。目前 **PENDING**。
 
 ## 6. 測試
@@ -100,5 +107,8 @@ A2 Proposal → PENDING Request (authorization_ref=PENDING)
 
 ## 9. 判定
 
-- 本地：**SCOPED_GO**。B1-01..B1-10 以隔離證據全 PASS；尚缺你本人留言經 live GitHub API 驗證，以及 Drive 雲端封存。
+- 本地：SCOPED_GO → **Colab 雲端驗收後：GO**（`approvals/20261107_173254_a3251d3`，pin `a3251d3`）。
+  - B1-01..B1-10 全 PASS；研究負責人本人的留言已經由 live GitHub API 驗證；有雲端封存。
+- GO 的範圍只限 5-B1 的核准與綁定工程。它不代表真實執行或額度消耗已啟用，也不代表 Formal Market GO，更不涵蓋 §8 的殘餘風險（PAT 代發無法區分）。
+- 合併前仍須完成 Codex 的獨立安全審核。
 - 依 brief：「若真實 GitHub 核准者身分無法完成獨立驗證，應標示 SCOPED_GO／PENDING，不得宣告正式 Approval Security GO。」
