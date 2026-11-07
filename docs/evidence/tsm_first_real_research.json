@@ -3,12 +3,12 @@
   "record": "PHASE4A_TSM_FIRST_REAL_RESEARCH",
   "date": "2026-11-06",
   "timezone": "Asia/Taipei",
-  "status": "BLOCKED_BEFORE_CONSUMPTION",
+  "status": "DEV_SMOKE_COMPLETED",
   "verdicts": {
-    "engineering": "SCOPED_GO",
-    "research_only_eligibility": "NO-GO (real snapshot incompatible with Core Phase 4-A data contract; slot not consumed)",
-    "formal_market_eligibility": "NO-GO",
-    "strategy_effectiveness": "CANNOT_DETERMINE (no real price data read, no real run executed)"
+    "engineering": "GO (research-only smoke path, scoped)",
+    "strategy_effectiveness": "CANNOT_DETERMINE",
+    "formal_market_eligibility": "NO_GO",
+    "research_only_eligibility": "single authorized dev smoke COMPLETED; no further batch authorized"
   },
   "agent": {
     "repository": "hh4832/strategy-research-agent",
@@ -262,6 +262,11 @@
       "at": "2026-11-06T16:11:00+08:00",
       "status": "BLOCKED_BEFORE_CONSUMPTION",
       "note": "real-byte probe confirmed B1-B3; uses 0/1"
+    },
+    {
+      "at": "2026-11-07T08:14:07+08:00",
+      "status": "DEV_SMOKE_COMPLETED",
+      "note": "run 20261107_081300_9439f8c; RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e 1/1"
     }
   ],
   "integration": {
@@ -385,5 +390,65 @@
     ],
     "slot_consumed": false,
     "colab_path": "/content/drive/MyDrive/00Quant_Research/data/00_Quant_Research_Hub/20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
+  },
+  "dev_smoke": {
+    "run_id": "20261107_081300_9439f8c",
+    "agent_sha": "9439f8c6f53b9c6c7f2f49b5a543ffdbc84f2f2a",
+    "core_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+    "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "parquet_sha256": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452",
+    "canonical_config_sha256": "b6ac297faec9e289b422086b06eccd22d65afed5c38525a9c3eb6247e15bbfe9",
+    "session_config_sha256": "ca8bb1b13deecd326aeae342006bf6fe1133ccf8e66adbb08fb77fa9d1dc8586",
+    "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+    "authorization_uses": "1/1",
+    "use_record_sha256": "f0d064930531716bcacb7b4d2442a813e1ac2ff9e3ec1dc1dfc6d4bf52584212",
+    "use_commit": "d456fed8b78d26067ee734b06a6ac809e2cbd3b2",
+    "drive_archive": "MyDrive/Quant_Research/strategy-research-agent/20261107_081300_9439f8c/",
+    "evidence_dir": "docs/evidence/phase4a_dev_smoke/20261107_081300_9439f8c/",
+    "counts": {
+      "native_1m_rows": 21119,
+      "conservative_15m_bars": 1408,
+      "sessions": 22,
+      "signal_eligible": 506,
+      "decisions_in_window": 29,
+      "orders": 28,
+      "fills": 26,
+      "rejected_orders": 1,
+      "trades": 13
+    },
+    "temporal": "PASS all scenarios (NEXT_ELIGIBLE_BAR_OPEN, 14 min available->fill, 0 on/before signal bar)",
+    "results": {
+      "BASE": {
+        "net_return": 0.0184435,
+        "win_rate": 0.4615,
+        "payoff": 3.624,
+        "expectancy_usd": 141.87,
+        "profit_factor": 3.107,
+        "max_drawdown": -0.00783,
+        "total_cost_usd": 136.65
+      },
+      "LOW": {
+        "net_return": 0.018963,
+        "total_cost_usd": 84.65
+      },
+      "STRESS": {
+        "net_return": 0.017643,
+        "win_rate": 0.3846,
+        "total_cost_usd": 216.65
+      },
+      "CAT_STRESS": {
+        "net_return": 0.018443,
+        "total_cost_usd": 136.91,
+        "cat_rounding": "DIFFERENCE_VISIBLE"
+      }
+    },
+    "sample": "INSUFFICIENT_SAMPLE (13 < 30)",
+    "concentration": "top 3 trades +2504.45 > net +1844.35; remaining 10 trades -660.10",
+    "verdicts": {
+      "engineering": "GO (research-only smoke path, scoped)",
+      "strategy_effectiveness": "CANNOT_DETERMINE",
+      "formal_market_eligibility": "NO_GO"
+    }
   }
 }

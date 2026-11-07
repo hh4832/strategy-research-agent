@@ -457,7 +457,7 @@ approval exist. The original three blockers are never waived for the old file.
 
 ## 12. 正式 Research-only smoke 執行路徑（Core b16179a，2026-11-06）
 
-**狀態：程式與 CI 完成；等待研究負責人在 Colab 執行唯一一次批次。** 額度 `RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e` 目前 **0/1**。
+**狀態：已執行（2026-11-07 08:13 Asia/Taipei，run `20261107_081300_9439f8c`），COMPLETED。** 額度 `RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e` **1/1**（使用紀錄 `f0d06493…4212`，由 hh4832 於 `d456fed` 推送）；之後 preflight 為 RA11。結果見 §13。
 
 | 項目 | 值 |
 |---|---|
@@ -480,3 +480,36 @@ Archive（`MyDrive/Quant_Research/strategy-research-agent/<YYYYMMDD_HHMMSS>_<age
 時序檢查（對 Core 的 fill ledger 做檢查，不重算）：每筆成交嚴格晚於訊號 `modeled_available_at`、成交 bar 晚於訊號 bar、order time = signal time；最後一筆 1m 早於 Holdout 起點。
 
 Synthetic（TEST_ONLY，由 Core 自己的 development producer 產生）端到端：一次 COMPLETED、14 個檔案 hash 相符、四個情境時序 PASS、第二次被 Drive 先前紀錄擋下（PRIOR_ATTEMPT），直接呼叫 run 也被 RA11 擋下；probe 失敗不消耗；session config 若綁到其他 manifest 會停止。
+
+## 13. 第一次真實 Research-only 結果（run `20261107_081300_9439f8c`）
+
+> RESEARCH_ONLY_EXPLORATORY。單一 4 週開發窗口、單一固定參數。**不是 SMA 5/20 有效的證據**；無法評估跨年度、不同 regime 或 OOS 穩健性。Formal Market Eligibility 維持 **NO_GO**。未讀取 Holdout，未呼叫券商 API。
+
+Drive：`MyDrive/Quant_Research/strategy-research-agent/20261107_081300_9439f8c/`（14 個檔案；`MANIFEST.json` 的 hash 與 PR 中 `docs/evidence/phase4a_dev_smoke/20261107_081300_9439f8c/` 的 8 個摘要檔逐一相符）。
+
+| 追溯項目 | 值 |
+|---|---|
+| Agent / Core | `9439f8c6f53b9c6c7f2f49b5a543ffdbc84f2f2a` / `b16179a7cc077c36046574769a32c367fa476cae` |
+| Snapshot / manifest / parquet | `TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e` / `8b6fc838…cfc5` / `239d5741…8452` |
+| Config | canonical `b6ac297f…bfe9`；session `ca8bb1b1…8586`（只差 Core 更新的收據 `5fef4d60…238b`） |
+| 授權 | `RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e`，紀錄 `91785196…2f31` |
+| 執行時間 | 2026-11-07T08:13:00.80+08:00 → 08:14:07.64+08:00 |
+
+資料與時序：1m 21,119 列（2024-05-29 08:00Z … 2024-06-28 23:59Z）→ 保守 15m 1,408 根（22 個 session；signal-eligible 506；buy／sell 可成交 528／528；排除原因 OUTSIDE_CONSERVATIVE_RTH 857、CLOSING_AUCTION_EXCLUDED 22、INCOMPLETE_SOURCE_BUCKET 1）。窗口內決策 29（含 warm-up 32）→ 28 筆訂單 → 26 筆成交。四個情境時序檢查全部 PASS：成交均為 NEXT_ELIGIBLE_BAR_OPEN，訊號可用到成交固定 14 分鐘，0 筆在訊號 bar 或之前成交。被拒：每個情境同一筆 `0019-CROSS_ABOVE`（6/24 15:44 與 15:59 的 bar 不可成交 → 16:00 DAY order 到期）。
+
+| 情境 | 交易 | 樣本 | 淨報酬 | 毛報酬 | 勝率 | Payoff | Expectancy (USD) | PF | 最大回撤 |
+|---|---|---|---|---|---|---|---|---|---|
+| BASE | 13 | INSUFFICIENT_SAMPLE | +1.844% | +1.877% | 46.2% | 3.62 | 141.87 | 3.11 | −0.783% |
+| LOW | 13 | INSUFFICIENT_SAMPLE | +1.896% | +1.929% | 46.2% | 3.78 | 145.87 | 3.24 | −0.763% |
+| STRESS | 13 | INSUFFICIENT_SAMPLE | +1.764% | +1.797% | 38.5% | 4.67 | 135.72 | 2.92 | −0.815% |
+| CAT_STRESS | 13 | INSUFFICIENT_SAMPLE | +1.844% | +1.877% | 46.2% | 3.62 | 141.85 | 3.11 | −0.783% |
+
+（初始資金 100,000 USD，每筆 100 股；曝險 33.7%；結束時無持倉，總報酬 = 已平倉淨報酬。比率為未設門檻的描述統計：13 筆 < 評估器門檻，Q5-1。）
+
+成本（USD，Core ledger）：BASE 總成本 136.65 = 佣金 26.00 + 滑價 87.94 + tick 取整 16.06 + SEC 6.13 + TAF 0.40 + CAT 0.12；LOW 84.65；STRESS 216.65；CAT_STRESS 136.91（CAT 0.29、TAF 0.49，Core 合併取整後按比例分攤；`DIFFERENCE_VISIBLE`，監管扣款差 0.26）。STRESS 讓 1 筆小額獲利交易轉為虧損（勝率 46.2% → 38.5%），淨報酬差 −0.08 個百分點。
+
+持有期（BASE）：13 筆中 6 筆跨夜；以 Core 15m bar 計（含非 RTH 的不可成交 bar）中位數 17、最小 6、最大 127。
+
+集中度（由 trades.csv 計算）：獲利最大的 3 筆（+1,074.51、+771.46、+658.48，皆跨夜）合計 +2,504.45，大於全部淨損益 +1,844.35；扣除這 3 筆後其餘 10 筆合計 −660.10。對照：第一筆進場價 152.26（6/4）到最後一筆出場價 174.32（6/28），100 股不計成本的價差為 +2,206（不是完整窗口 buy-and-hold，只作量級參考）。
+
+判定：Engineering **GO（research-only smoke 路徑，SCOPED）**；Research-only smoke **COMPLETED**；Strategy Effectiveness **無法判定（INSUFFICIENT_SAMPLE）**；Formal Market Eligibility **NO_GO**。
