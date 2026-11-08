@@ -1,0 +1,248 @@
+{
+  "spec_version": "1.0.0",
+  "strategy_id": "sma_crossover_tsm_15m_5_20",
+  "name": "SMA crossover 5/20 — TSM ADR, 15-minute RTH bars, long only (M3-B fixed baseline)",
+  "version": "0.1.1",
+  "status": "DRAFT",
+  "hypothesis": {
+    "statement": "Short-horizon price trends in TSM persist long enough that a 5-bar SMA crossing above a 20-bar SMA on 15-minute RTH bars precedes positive returns net of costs.",
+    "mechanism": "Information is incorporated gradually (order splitting by large holders, ADR catching up with Taiwan-hours news), producing short-horizon serial correlation that a fast/slow moving-average crossing can detect. This is an untested hypothesis, not evidence that SMA is profitable.",
+    "falsifiable_prediction": "Mean net PnL per round trip > 0 at the 1x cost multiplier, profit factor > 1, and the result survives the 2x cost multiplier, over a sample of at least 30 valid round trips.",
+    "null_hypothesis": "Net returns of crossover trades are indistinguishable from zero or from random-entry trades with the same holding-time distribution.",
+    "rationale_category": "TREND_FOLLOWING",
+    "expected_holding_period": "several 15-minute bars to a few sessions",
+    "known_failure_modes": [
+      "range-bound regimes with frequent whipsaws",
+      "cost drag from frequent crossings",
+      "overnight gaps (positions may be held overnight)",
+      "ADR reaction to Taiwan-hours information outside RTH"
+    ],
+    "references": [
+      "M3-B task: SMA 5/20 is the fixed engineering baseline; no parameter search"
+    ]
+  },
+  "universe": {
+    "market": "IBKR",
+    "symbols": [
+      "TSM"
+    ],
+    "timeframe": "15m",
+    "source_timeframe": "1m",
+    "aggregation": {
+      "label": "start",
+      "closed": "left",
+      "require_complete": true,
+      "session_anchored": true
+    },
+    "timezone": "America/New_York",
+    "contract_policy": {
+      "type": "NOT_APPLICABLE",
+      "continuous_inferred": false,
+      "indicator_series": "NOT_APPLICABLE"
+    },
+    "sessions": {
+      "allowed": [
+        "RTH"
+      ],
+      "calendar_ref": "NYSE RTH 09:30-16:00 America/New_York (DST-aware; source timestamps are UTC)",
+      "exclude_closing_auction": true,
+      "no_overnight": false
+    }
+  },
+  "data_requirements": {
+    "datasets": [
+      {
+        "dataset_id": "ibkr_tsm_1m_normalized",
+        "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+        "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+        "verdict": "GO",
+        "usage_scope": "BACKTEST",
+        "access_contract": "TSM Development Snapshot Contract v1.1 (Core load_native_tsm @ b16179a7cc077c36046574769a32c367fa476cae)",
+        "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5"
+      }
+    ],
+    "warmup_bars": 60,
+    "fields": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume"
+    ]
+  },
+  "parameters": {
+    "values": {
+      "fast": {
+        "type": "integer",
+        "default": 5,
+        "min": 5,
+        "max": 5,
+        "step": 1,
+        "description": "fast SMA length (bars); fixed baseline"
+      },
+      "slow": {
+        "type": "integer",
+        "default": 20,
+        "min": 20,
+        "max": 20,
+        "step": 1,
+        "description": "slow SMA length (bars); fixed baseline"
+      }
+    },
+    "constraints": [
+      {
+        "left": "fast",
+        "op": "<",
+        "right": "slow"
+      }
+    ],
+    "search": {
+      "mode": "FIXED",
+      "max_trials": 1
+    }
+  },
+  "signal": {
+    "evaluation_time": "BAR_CLOSE",
+    "indicators": [
+      {
+        "id": "sma_fast",
+        "type": "SMA",
+        "input": "close",
+        "params": {
+          "period": {
+            "param": "fast"
+          }
+        },
+        "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+      },
+      {
+        "id": "sma_slow",
+        "type": "SMA",
+        "input": "close",
+        "params": {
+          "period": {
+            "param": "slow"
+          }
+        },
+        "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+      }
+    ],
+    "entry_rules": [
+      {
+        "id": "golden_cross",
+        "action": "ENTER_LONG",
+        "when": {
+          "op": "and",
+          "args": [
+            {
+              "op": "cross_above",
+              "left": {
+                "ref": "sma_fast"
+              },
+              "right": {
+                "ref": "sma_slow"
+              }
+            },
+            {
+              "op": "is_flat"
+            }
+          ]
+        }
+      }
+    ],
+    "exit_rules": [
+      {
+        "id": "death_cross",
+        "action": "EXIT_LONG",
+        "when": {
+          "op": "cross_below",
+          "left": {
+            "ref": "sma_fast"
+          },
+          "right": {
+            "ref": "sma_slow"
+          }
+        }
+      }
+    ]
+  },
+  "position_sizing": {
+    "method": "FIXED_UNITS",
+    "units": 100,
+    "max_units": 100,
+    "initial_capital": 100000
+  },
+  "risk_exits": {
+    "stop_loss": {
+      "type": "NONE"
+    },
+    "take_profit": {
+      "type": "NONE"
+    },
+    "time_exit": {}
+  },
+  "execution": {
+    "convention": "oracle-execution-convention-v1",
+    "signal_time": "BAR_AVAILABLE_AT",
+    "order_time": "SIGNAL_TIME",
+    "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+    "order_type": "MARKET",
+    "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END",
+    "max_fill_delay_bars": 2,
+    "partial_fills": false,
+    "same_bar_reentry": false
+  },
+  "costs": {
+    "currency": "USD",
+    "fee": {
+      "per_unit_side": 0.005,
+      "rate_side": 0,
+      "min_per_order": 1.0,
+      "rounding": "NONE"
+    },
+    "tax": {
+      "rate_side": 0,
+      "sell_rate": 0,
+      "rounding": "NONE"
+    },
+    "slippage": {
+      "model": "BPS",
+      "value": 2
+    },
+    "sensitivity_multipliers": [
+      0,
+      1,
+      2,
+      4
+    ],
+    "profile_ref": {
+      "profile_id": "ibkr_us_equity",
+      "version": "0.1.0",
+      "sha256": null
+    }
+  },
+  "risk_constraints": {
+    "allowed_directions": [
+      "LONG"
+    ],
+    "max_position_units": 100
+  },
+  "experiment": {
+    "seed": 20261104,
+    "evaluation_protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
+    "split_ref": "SPLIT-TSM-15M-v1 (to be registered after the M3-A market gate is GO)",
+    "holdout_lock_id": "HOLDOUT-TSM-15M-v1",
+    "trial_family_id": "FAM-SMA-TSM",
+    "compute_budget": {
+      "max_backtests": 1,
+      "max_wall_minutes": 30
+    }
+  },
+  "provenance": {
+    "created_at": "2026-11-08T23:55:00+08:00",
+    "created_by": "claude-phase5b3a",
+    "parent_spec_id": "sma_crossover_tsm_15m_5_20@0.1.0",
+    "spec_sha256": null,
+    "notes": "Phase 5-B3-A data-binding re-pin ONLY (research lead decision 2026-11-08 23:48 +08:00): data_requirements now pin the derived DEVELOPMENT snapshot TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e (producer b16179a, manifest 8b6fc838...cfc5) instead of the FINAL_GATE parent. Universe, signal, execution, sizing, risk, costs and parameters are byte-identical to the parent 0.1.0 (parent file sha256 b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123). Stays DRAFT; it is pinned by a NEW research-only authorization, never by the spent DEV authorization."
+  }
+}

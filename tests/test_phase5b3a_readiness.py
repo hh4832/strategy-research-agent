@@ -38,7 +38,9 @@ def test_manifest_covers_every_required_field_and_resolves_from_authoritative_re
     assert F["core_commit_sha"]["value"] == "b16179a7cc077c36046574769a32c367fa476cae"
     assert set(F["core_commit_sha"]["sources"]) == {"run_config", "dataset_producer_in_authorization",
                                                     "prior_real_run_core", "ci_pin"}
-    assert F["strategy_spec_sha256"]["value"] == "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
+    assert F["strategy_spec_sha256"]["value"] == "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34"
+    assert F["strategy_id_version"]["value"] == {"strategy_id": "sma_crossover_tsm_15m_5_20", "version": "0.1.1",
+                                                 "parameters": {"fast": 5, "slow": 20}}
     assert F["holdout_exclusion"]["value"]["window_end_before_holdout"] is True
     assert F["slippage_assumption"]["value"]["slippage_bps_per_side"] == {"BASE": 2, "LOW": 1, "STRESS": 4, "CAT_STRESS": 2}
 
@@ -51,11 +53,51 @@ def test_authorization_binding_budget_executor_are_human_decisions_never_default
     assert m["status"] == "BLOCKED" and m["real_runner"] == "DISABLED" and m["authorization_created"] is False
 
 
-def test_spec_dataset_contradiction_is_found_by_the_real_exporter(m):
+@pytest.fixture
+def parent_spec(monkeypatch):
+    """The state BEFORE the research lead's decision: the candidate points at the parent spec 0.1.0."""
+    from strategy_agent.readiness import candidate as C
+    cfg = json.loads((ROOT / CANDIDATE["run_config"]).read_text())
+    monkeypatch.setitem(C.CANDIDATE, "strategy_spec", cfg["strategy"]["spec_path"])
+    monkeypatch.setitem(C.CANDIDATE, "strategy_spec_sha256", cfg["strategy"]["spec_file_sha256"])
+
+
+def test_parent_spec_dataset_contradiction_is_found_by_the_real_exporter(parent_spec):
+    m = M.build(CODE)
     x = m["cross_checks"]["phase5_request_spec_dataset_binding"]
     assert x["status"] == "BLOCKED" and "SPEC_DATASET_REFERENCE_MISMATCH" in x["error"]
     assert x["spec_data_requirements"][0]["snapshot_id"] == "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
     assert m["ready_for_authorization_decision"] is False and "CONTRADICTION" in m["blocking_categories"]
+
+
+def test_repinned_spec_passes_the_exporter_and_changes_only_the_data_binding(m):
+    assert m["cross_checks"]["phase5_request_spec_dataset_binding"]["status"] == "PASS"
+    r = m["cross_checks"]["spec_rules_unchanged_vs_parent"]
+    assert r["status"] == "PASS" and r["changed_keys"] == ["data_requirements", "provenance", "version"]
+    assert r["parent"] == "sma_crossover_tsm_15m_5_20@0.1.0" and r["candidate"] == "sma_crossover_tsm_15m_5_20@0.1.1"
+    assert m["ready_for_authorization_decision"] is True and m["blocking_categories"] == ["HUMAN_DECISION"]
+    spec = json.loads((ROOT / CANDIDATE["strategy_spec"]).read_text())
+    ds = spec["data_requirements"]["datasets"][0]
+    assert ds["snapshot_id"] == m["fields"]["dataset_snapshot_id"]["value"]
+    assert ds["manifest_sha256"] == m["fields"]["dataset_manifest_sha256"]["value"] and spec["status"] == "DRAFT"
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda s: s["signal"].__setitem__("rules_changed", True),
+    lambda s: s["parameters"]["values"]["fast"].__setitem__("default", 6),
+    lambda s: s["data_requirements"].__setitem__("warmup_bars", 10),
+    lambda s: s["data_requirements"]["datasets"][0].__setitem__("usage_scope", "RESEARCH_ONLY"),
+    lambda s: s.__setitem__("version", "0.1.0"),
+])
+def test_a_spec_that_changes_more_than_the_data_binding_is_blocked(monkeypatch, mutate):
+    real = M._records
+
+    def records():
+        R = copy.deepcopy(real())
+        mutate(R["spec"])
+        return R
+    monkeypatch.setattr(M, "_records", records)
+    assert M.build(CODE)["cross_checks"]["spec_rules_unchanged_vs_parent"]["status"] == "BLOCKED"
 
 
 def test_a_spec_repinned_to_the_dev_snapshot_would_satisfy_the_exporter(tmp_path):
@@ -141,10 +183,14 @@ def test_authorization_draft_is_unapproved_and_never_written(m):
     assert d["status"] == "DRAFT_NOT_APPROVED" and "authorization_id" in d and d["authorization_id"]["decision"] == D.HDR
     for k in ("max_research_batches", "executor_identity"):
         assert d[k]["decision"] == D.HDR
-    assert d["validity_period"]["issued_at"] == D.HDR and d["strategy_specification"]["spec"] == D.HDR
+    assert d["validity_period"]["issued_at"] == D.HDR
+    sp = d["strategy_specification"]["spec"]
+    assert sp["path"] == CANDIDATE["strategy_spec"] and sp["sha256"] == CANDIDATE["strategy_spec_sha256"]
+    assert sp["parent"]["sha256"] == "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
+    assert d["proposal_fields"]["strategy"]["version"] == "0.1.1"
     assert d["holdout_policy"]["access"] == "NO_ACCESS"
     r = D.schema_dry_run(d)
-    assert r["status"] == "PASS" and r["written"] is False and r["placeholders_used_for"] == ["spec_file_sha256", "spec_path"]
+    assert r["status"] == "PASS" and r["written"] is False and r["placeholders_used_for"] == []
     assert A5.tree_fingerprint(ROOT) == before
 
 
@@ -165,7 +211,7 @@ def _junit(tmp_path, *, fail=None):
     return p
 
 
-def test_gates_verdict_no_go_while_spec_binding_is_blocked(tmp_path):
+def test_gates_verdict_no_go_while_spec_binding_is_blocked(tmp_path, parent_spec):
     r = RA.evaluate(code=CODE)
     tests = RA.junit([_junit(tmp_path)])
     g = RA.gates(r["manifest"], r["dataset"], r["controlled"], r["governance"], r["draft_check"], tests,
@@ -176,8 +222,7 @@ def test_gates_verdict_no_go_while_spec_binding_is_blocked(tmp_path):
 
 
 def test_gates_scoped_go_only_if_the_spec_binding_passes_and_cloud(tmp_path):
-    r = RA.evaluate(code=CODE)
-    r["manifest"]["cross_checks"]["phase5_request_spec_dataset_binding"] = {"status": "PASS"}
+    r = RA.evaluate(code=CODE)                                  # the real state after the re-pinned spec
     tests = RA.junit([_junit(tmp_path)])
     args = (r["manifest"], r["dataset"], r["controlled"], r["governance"], r["draft_check"], tests)
     assert RA.verdict(RA.gates(*args, tests_rc=0, cloud=True, code=CODE, drive={"status": "NOT_RUN"}))["verdict"] == "SCOPED_GO"

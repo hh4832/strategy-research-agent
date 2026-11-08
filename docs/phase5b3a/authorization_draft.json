@@ -139,10 +139,10 @@
         "fast": 5,
         "slow": 20
       },
-      "spec_file_sha256": "HUMAN_DECISION_REQUIRED",
-      "spec_path": "HUMAN_DECISION_REQUIRED",
+      "spec_file_sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34",
+      "spec_path": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
       "strategy_id": "sma_crossover_tsm_15m_5_20",
-      "version": "0.1.0"
+      "version": "0.1.1"
     },
     "symbol": "TSM",
     "temporal_policy": {
@@ -163,26 +163,19 @@
       "fast": 5,
       "slow": 20
     },
-    "spec": "HUMAN_DECISION_REQUIRED",
-    "spec_decision": {
-      "candidate_dataset": {
-        "dataset_id": "ibkr_tsm_1m_normalized",
-        "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
-        "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+    "spec": {
+      "change": "data_requirements re-pinned to the DEV snapshot only (research lead decision 2026-11-08); rules / parameters unchanged",
+      "parent": {
+        "path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+        "sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
       },
-      "detail": "the strategy spec pins the FINAL_GATE parent snapshot; the candidate DEV snapshot is a derived subset. The Phase 5 A2 exporter refuses the request, so a first Phase 5 run needs a NEW spec version re-pinned to the DEV snapshot (rules / parameters unchanged; new spec sha) approved by the research lead, and the new authorization must pin that spec sha",
-      "error": "ValueError: SPEC_DATASET_REFERENCE_MISMATCH",
-      "spec_data_requirements": [
-        {
-          "dataset_id": "ibkr_tsm_1m_normalized",
-          "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
-          "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
-        }
-      ],
-      "status": "BLOCKED"
+      "path": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
+      "rules_unchanged_check": "PASS",
+      "sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34"
     },
+    "spec_decision": "DECIDED (re-pinned spec)",
     "strategy_id": "sma_crossover_tsm_15m_5_20",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "validity_period": {
     "constraint": "must expire before any change of the pinned formal gates (RA10)",

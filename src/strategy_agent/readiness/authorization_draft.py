@@ -42,6 +42,9 @@ def build(m: dict) -> dict:
     if spec_blocked:
         proposal["strategy"]["spec_file_sha256"] = HDR
         proposal["strategy"]["spec_path"] = HDR
+    else:   # the research lead's re-pinned spec (data binding only); the spent authorization keeps its parent spec
+        proposal["strategy"].update(spec_path=CANDIDATE["strategy_spec"], spec_file_sha256=F["strategy_spec_sha256"]["value"],
+                                    version=F["strategy_id_version"]["value"]["version"])
     return {
         "kind": "PHASE5B3A_AUTHORIZATION_SPECIFICATION_DRAFT",
         "status": "DRAFT_NOT_APPROVED",
@@ -59,10 +62,15 @@ def build(m: dict) -> dict:
                                "research_window": t["research_window"], "trading_window": {
                                    k: F["research_window"]["value"].get(k) for k in ("start", "end")}},
         "strategy_specification": {
-            "strategy_id": t["strategy"]["strategy_id"], "version": t["strategy"]["version"],
-            "parameters": t["strategy"]["parameters"],
-            "spec": HDR if spec_blocked else {"path": t["strategy"]["spec_path"], "sha256": t["strategy"]["spec_file_sha256"]},
-            "spec_decision": X["phase5_request_spec_dataset_binding"] if spec_blocked else None},
+            "strategy_id": proposal["strategy"]["strategy_id"], "version": proposal["strategy"]["version"],
+            "parameters": proposal["strategy"]["parameters"],
+            "spec": HDR if spec_blocked else {"path": proposal["strategy"]["spec_path"],
+                                              "sha256": proposal["strategy"]["spec_file_sha256"],
+                                              "parent": {"path": t["strategy"]["spec_path"], "sha256": t["strategy"]["spec_file_sha256"]},
+                                              "change": "data_requirements re-pinned to the DEV snapshot only "
+                                                        "(research lead decision 2026-11-08); rules / parameters unchanged",
+                                              "rules_unchanged_check": X["spec_rules_unchanged_vs_parent"]["status"]},
+            "spec_decision": X["phase5_request_spec_dataset_binding"] if spec_blocked else "DECIDED (re-pinned spec)"},
         "cost_assumptions": {"scenario_set": t["costs"], "slippage_bps_per_side": F["slippage_assumption"]["value"]},
         "max_research_batches": {"proposed": 1, "decision": HDR},
         "validity_period": {"issued_at": HDR, "expires_at": HDR,

@@ -127,15 +127,17 @@ def gates(m: dict, ds: dict, cr: dict, gv: dict, draft_check: dict, tests: dict,
     put("B3A-01", "PASS" if s01 else "FAIL", [] if s01 else ["dataset identity / immutability not proven"],
         {"snapshot_id": F["dataset_snapshot_id"], "manifest": F["dataset_manifest_sha256"],
          "D1": ds["D1_snapshot_exists_and_immutable"], "D2": ds["D2_manifest_matches_dataset"], "drive_bytes": drive})
-    spec_bind = X["phase5_request_spec_dataset_binding"]
+    spec_bind, rules = X["phase5_request_spec_dataset_binding"], X["spec_rules_unchanged_vs_parent"]
     s02 = ok("core_commit_sha", "strategy_spec_sha256", "strategy_id_version") and st(ds["D9_core_benchmark_and_readiness_evidence"])
-    put("B3A-02", ("PASS" if spec_bind["status"] == "PASS" else "BLOCKED") if s02 else "FAIL",
-        ([] if s02 else ["core / spec identity not resolved"]) +
+    why02 = ([] if s02 else ["core / spec identity not resolved"]) + \
         ([] if spec_bind["status"] == "PASS" else ["SPEC_DATASET_REFERENCE_MISMATCH: the Phase 5 A2 exporter refuses a "
-                                                    "request for the DEV snapshot with the current spec (HUMAN DECISION: "
-                                                    "approve a re-pinned spec version)"]),
-        {"core": F["core_commit_sha"], "spec": F["strategy_spec_sha256"], "strategy": F["strategy_id_version"],
-         "benchmark": ds["D9_core_benchmark_and_readiness_evidence"], "phase5_request_spec_dataset_binding": spec_bind})
+                                                    "request for the DEV snapshot with this spec (HUMAN DECISION: approve "
+                                                    "a re-pinned spec version)"]) + \
+        ([] if rules["status"] == "PASS" else ["candidate spec changes more than the data binding of its parent"])
+    put("B3A-02", ("PASS" if spec_bind["status"] == "PASS" and rules["status"] == "PASS" else "BLOCKED") if s02 else "FAIL",
+        why02, {"core": F["core_commit_sha"], "spec": F["strategy_spec_sha256"], "strategy": F["strategy_id_version"],
+                "benchmark": ds["D9_core_benchmark_and_readiness_evidence"], "phase5_request_spec_dataset_binding": spec_bind,
+                "spec_rules_unchanged_vs_parent": rules})
     s03 = ok("temporal_rules") and all(st(ds[k]) for k in ("D3_timestamps_and_available_at_PIT",
                                                             "D4_signal_to_execution_conservative",
                                                             "D5_calendar_and_RTH_boundaries", "D6_missing_data_explicit_policy"))
@@ -144,7 +146,7 @@ def gates(m: dict, ds: dict, cr: dict, gv: dict, draft_check: dict, tests: dict,
                                                                        "D4_signal_to_execution_conservative",
                                                                        "D5_calendar_and_RTH_boundaries",
                                                                        "D6_missing_data_explicit_policy")}})
-    spec = json.loads((ROOT / json.loads((ROOT / CANDIDATE["run_config"]).read_text())["strategy"]["spec_path"]).read_text())
+    spec = json.loads((ROOT / CANDIDATE["strategy_spec"]).read_text())
     sizing = spec.get("position_sizing") or {}
     liq = {"position_sizing": sizing, "status": "PINNED" if sizing.get("method") == "FIXED_UNITS" and sizing.get("units") else "MISSING",
            "limitation": "no volume-participation / market-impact model: fixed units only (documented risk)"}

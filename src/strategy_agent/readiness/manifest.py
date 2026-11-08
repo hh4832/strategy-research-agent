@@ -89,14 +89,17 @@ def _records() -> dict:
     ev = path("prior_real_run_evidence")
     info = raw_run_info((ev / "run_info.txt").read_bytes()) if (ev / "run_info.txt").is_file() else {}
     diag = _json(ev / "execution_diagnostics.json") or {}
-    spec_path = ROOT / ((cfg.get("strategy") or {}).get("spec_path") or "__missing__")
+    spec_path = path("strategy_spec")                                   # the candidate (re-pinned) spec
     spec = _json(spec_path) if spec_path.is_file() else None
+    parent_path = ROOT / ((cfg.get("strategy") or {}).get("spec_path") or "__missing__")   # the run config's spec
+    parent = _json(parent_path) if parent_path.is_file() else None
     cost_path = ROOT / ((cfg.get("costs") or {}).get("scenario_set_path") or "__missing__")
     cost = _json(cost_path) if cost_path.is_file() else None
     mr = (_json(path("market_readiness")) or {}).get("markets", {}).get("IBKR_TSM")
     ci = _ci_core_pin(path("ci_workflow"), CANDIDATE["ci_core_job"])
     return {"cfg": cfg, "auth": auth, "uses": uses, "locks": locks, "info": info, "diag": diag, "spec": spec,
-            "spec_file_sha": _sha_file(spec_path), "cost": cost, "cost_file_sha": _sha_file(cost_path), "mr": mr,
+            "spec_file_sha": _sha_file(spec_path), "parent_spec": parent, "parent_spec_file_sha": _sha_file(parent_path),
+            "cost": cost, "cost_file_sha": _sha_file(cost_path), "mr": mr,
             "ci_core": ci}
 
 
@@ -115,15 +118,20 @@ def build(code_identity: dict | None = None) -> dict:
         "authorization": a.get("market_id") and {"market_id": a["market_id"], "symbol": a.get("symbol")},
         "strategy_spec_universe": spec.get("universe") and {"market_id": "IBKR_TSM" if spec["universe"].get("market") == "IBKR" else spec["universe"].get("market"),
                                                             "symbol": (spec["universe"].get("symbols") or [None])[0]}})
-    f["strategy_id_version"] = field(None, {
-        "run_config": cs.get("strategy_id") and {"strategy_id": cs["strategy_id"], "version": cs.get("version"), "parameters": cs.get("parameters")},
-        "authorization": ast.get("strategy_id") and {"strategy_id": ast["strategy_id"], "version": ast.get("version"), "parameters": ast.get("parameters")},
-        "strategy_spec_file": spec.get("strategy_id") and {"strategy_id": spec["strategy_id"], "version": spec.get("version"),
-                                                           "parameters": {k: p["default"] for k, p in (spec.get("parameters", {}).get("values") or {}).items()}},
-        "prior_real_run": info.get("strategy") and {"strategy_id": info["strategy"].split()[0], "version": info["strategy"].split()[1],
-                                                    "parameters": {"fast": 5, "slow": 20} if "'fast': 5, 'slow': 20" in info["strategy"] else None}})
-    f["strategy_spec_sha256"] = field(None, {"spec_file_on_disk": R["spec_file_sha"], "run_config": cs.get("spec_file_sha256"),
-                                             "authorization": ast.get("spec_file_sha256")})
+    ident = lambda d: d and {"strategy_id": d.get("strategy_id"), "parameters": d.get("parameters")}  # noqa: E731
+    spec_params = {k: p["default"] for k, p in (spec.get("parameters", {}).get("values") or {}).items()} if spec else None
+    f["strategy_id_version"] = field(
+        spec.get("strategy_id") and {"strategy_id": spec["strategy_id"], "version": spec.get("version"), "parameters": spec_params}, {
+            "candidate_spec_file": spec.get("strategy_id") and {"strategy_id": spec["strategy_id"], "parameters": spec_params},
+            "run_config": ident(cs.get("strategy_id") and cs), "authorization": ident(ast.get("strategy_id") and ast),
+            "prior_real_run": info.get("strategy") and {"strategy_id": info["strategy"].split()[0],
+                                                        "parameters": {"fast": 5, "slow": 20} if "'fast': 5, 'slow': 20" in info["strategy"] else None}},
+        reason="strategy identity (id + parameters) agrees everywhere; the candidate spec VERSION is "
+               f"{spec.get('version')} (data-binding re-pin of {(R['parent_spec'] or {}).get('version')}); the new "
+               "authorization and the B3-B run config must pin it")
+    f["strategy_spec_sha256"] = field(None, {"candidate_spec_file_on_disk": R["spec_file_sha"],
+                                             "candidate_pin": CANDIDATE["strategy_spec_sha256"]},
+                                      reason=f"parent spec sha (run config / spent authorization) = {R['parent_spec_file_sha']}")
     f["dataset_snapshot_id"] = field(None, {"run_config": ds.get("snapshot_id"), "authorization": (a.get("dataset") or {}).get("snapshot_id"),
                                             "snapshot_pin": (sb.get("snapshot_pin") or {}).get("snapshot_id"),
                                             "prior_real_run": info.get("snapshot_id")})
@@ -222,10 +230,9 @@ def cross_checks(R: dict) -> dict:
     # the Phase 5 A2 exporter is the authority for spec <-> dataset binding of a request
     try:
         from strategy_agent.proposal import exporter as E  # noqa: PLC0415
-        req = {"strategy_spec_ref": (cfg.get("strategy") or {}).get("spec_path"),
-               "strategy_spec_sha256": (cfg.get("strategy") or {}).get("spec_file_sha256"),
-               "strategy_family": {"strategy_id": (cfg.get("strategy") or {}).get("strategy_id"),
-                                   "version": (cfg.get("strategy") or {}).get("version"),
+        req = {"strategy_spec_ref": CANDIDATE["strategy_spec"],
+               "strategy_spec_sha256": CANDIDATE["strategy_spec_sha256"],
+               "strategy_family": {"strategy_id": spec.get("strategy_id"), "version": spec.get("version"),
                                    "parameters": (cfg.get("strategy") or {}).get("parameters")},
                "market": {"symbol": (cfg.get("market") or {}).get("symbol")},
                "dataset_ref": {"dataset_id": ds.get("dataset_id"), "producer_commit_sha": ds.get("producer_commit_sha")},
@@ -248,6 +255,19 @@ def cross_checks(R: dict) -> dict:
                       "subset. The Phase 5 A2 exporter refuses the request, so a first Phase 5 run needs a NEW spec "
                       "version re-pinned to the DEV snapshot (rules / parameters unchanged; new spec sha) approved by "
                       "the research lead, and the new authorization must pin that spec sha"}
+    par = R.get("parent_spec") or {}
+    changed = sorted(k for k in set(par) | set(spec) if par.get(k) != spec.get(k))
+    allowed = set(CANDIDATE["spec_rebind_fields"])
+    pds, cds = ((par.get("data_requirements") or {}), (spec.get("data_requirements") or {}))
+    rebind = {"snapshot_id", "producer_commit_sha", "manifest_sha256", "access_contract"}
+    strip = lambda ds: [{k: v for k, v in d.items() if k not in rebind} for d in ds or []]  # noqa: E731
+    dr_ok = ({k: v for k, v in pds.items() if k != "datasets"} == {k: v for k, v in cds.items() if k != "datasets"}
+             and strip(pds.get("datasets")) == strip(cds.get("datasets")))
+    out["spec_rules_unchanged_vs_parent"] = {
+        "status": "PASS" if par and spec and set(changed) <= allowed and dr_ok and spec.get("version") != par.get("version")
+        and (spec.get("provenance") or {}).get("parent_spec_id") == f"{par.get('strategy_id')}@{par.get('version')}" else "BLOCKED",
+        "changed_keys": changed, "allowed": sorted(allowed), "data_requirements_non_dataset_keys_identical": dr_ok,
+        "parent": f"{par.get('strategy_id')}@{par.get('version')}", "candidate": f"{spec.get('strategy_id')}@{spec.get('version')}"}
     rcpt = (cfg.get("snapshot_binding") or {}).get("integrity_receipt") or {}
     out["snapshot_integrity_receipt"] = {
         "status": "PASS" if rcpt.get("parquet_sha256") and rcpt.get("manifest_sha256") and rcpt.get("verification_ref") else "BLOCKED",
