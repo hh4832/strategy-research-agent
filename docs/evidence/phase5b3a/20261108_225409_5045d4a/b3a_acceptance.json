@@ -1,0 +1,583 @@
+{
+  "authorization_created": false,
+  "cloud": true,
+  "code": {
+    "dirty": false,
+    "git_sha": "5045d4af4130ae5dfd40be40643740d19acbf6bd",
+    "python": "3.13.18"
+  },
+  "gates": {
+    "B3A-01": {
+      "evidence": {
+        "D1": {
+          "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+          "detail": {
+            "integrity_method": "REUSED_TRUSTED_SHA256_RECEIPT_WITH_STAT_GUARD",
+            "lineage_sha256": "3455f2b3d39f4fd05dda7ca9fed472c9ff0bcbf345f89f177e78eccbe5fd92a4",
+            "note": "immutability attested by the Core development-snapshot contract receipt of the prior real run; bytes are re-hashed only by the optional Colab Drive check",
+            "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+          },
+          "status": "PASS"
+        },
+        "D2": {
+          "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+          "detail": {
+            "loader_provenance_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+            "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5"
+          },
+          "status": "PASS"
+        },
+        "drive_bytes": {
+          "detail": "SHA-256 of whole files only; no decoding, no Holdout bytes (development subset)",
+          "expected": {
+            "manifest.json": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+            "tsm_development_1m.parquet": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452"
+          },
+          "observed": {
+            "manifest.json": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+            "tsm_development_1m.parquet": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452"
+          },
+          "status": "PASS"
+        },
+        "manifest": {
+          "category": null,
+          "reason": "bytes on Drive are re-hashed only by the Colab acceptance (optional, non-consuming)",
+          "sources": {
+            "integrity_receipt": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+            "prior_real_run": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+            "run_config": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5"
+          },
+          "status": "RESOLVED",
+          "value": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5"
+        },
+        "snapshot_id": {
+          "category": null,
+          "reason": null,
+          "sources": {
+            "authorization": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+            "prior_real_run": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+            "run_config": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+            "snapshot_pin": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+          },
+          "status": "RESOLVED",
+          "value": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+        }
+      },
+      "requirement": "Dataset and snapshot identity",
+      "status": "PASS",
+      "why": []
+    },
+    "B3A-02": {
+      "evidence": {
+        "benchmark": {
+          "basis": "RECORD_OR_CODE_CHECK",
+          "detail": {
+            "DATA_QUALITY_gate": "PASS",
+            "core_benchmark": {
+              "status": "BENCHMARK_PASS",
+              "why": "all 12 cases, G16 acceptance and oracle probes G17/G14b PASS on the real Core"
+            },
+            "market_status": "NO_GO",
+            "note": "market status NO_GO is the FORMAL gate (unchanged); research-only eligibility rests on the authorization"
+          },
+          "status": "PASS"
+        },
+        "core": {
+          "category": null,
+          "reason": null,
+          "sources": {
+            "ci_pin": "b16179a7cc077c36046574769a32c367fa476cae",
+            "dataset_producer_in_authorization": "b16179a7cc077c36046574769a32c367fa476cae",
+            "prior_real_run_core": "b16179a7cc077c36046574769a32c367fa476cae",
+            "run_config": "b16179a7cc077c36046574769a32c367fa476cae"
+          },
+          "status": "RESOLVED",
+          "value": "b16179a7cc077c36046574769a32c367fa476cae"
+        },
+        "phase5_request_spec_dataset_binding": {
+          "candidate_dataset": {
+            "dataset_id": "ibkr_tsm_1m_normalized",
+            "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+            "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+          },
+          "detail": "the strategy spec pins the FINAL_GATE parent snapshot; the candidate DEV snapshot is a derived subset. The Phase 5 A2 exporter refuses the request, so a first Phase 5 run needs a NEW spec version re-pinned to the DEV snapshot (rules / parameters unchanged; new spec sha) approved by the research lead, and the new authorization must pin that spec sha",
+          "error": "ValueError: SPEC_DATASET_REFERENCE_MISMATCH",
+          "spec_data_requirements": [
+            {
+              "dataset_id": "ibkr_tsm_1m_normalized",
+              "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
+              "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
+            }
+          ],
+          "status": "BLOCKED"
+        },
+        "spec": {
+          "category": null,
+          "reason": null,
+          "sources": {
+            "authorization": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+            "run_config": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+            "spec_file_on_disk": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
+          },
+          "status": "RESOLVED",
+          "value": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
+        },
+        "strategy": {
+          "category": null,
+          "reason": null,
+          "sources": {
+            "authorization": {
+              "parameters": {
+                "fast": 5,
+                "slow": 20
+              },
+              "strategy_id": "sma_crossover_tsm_15m_5_20",
+              "version": "0.1.0"
+            },
+            "prior_real_run": {
+              "parameters": {
+                "fast": 5,
+                "slow": 20
+              },
+              "strategy_id": "sma_crossover_tsm_15m_5_20",
+              "version": "0.1.0"
+            },
+            "run_config": {
+              "parameters": {
+                "fast": 5,
+                "slow": 20
+              },
+              "strategy_id": "sma_crossover_tsm_15m_5_20",
+              "version": "0.1.0"
+            },
+            "strategy_spec_file": {
+              "parameters": {
+                "fast": 5,
+                "slow": 20
+              },
+              "strategy_id": "sma_crossover_tsm_15m_5_20",
+              "version": "0.1.0"
+            }
+          },
+          "status": "RESOLVED",
+          "value": {
+            "parameters": {
+              "fast": 5,
+              "slow": 20
+            },
+            "strategy_id": "sma_crossover_tsm_15m_5_20",
+            "version": "0.1.0"
+          }
+        }
+      },
+      "requirement": "Core and strategy specification identity",
+      "status": "BLOCKED",
+      "why": [
+        "SPEC_DATASET_REFERENCE_MISMATCH: the Phase 5 A2 exporter refuses a request for the DEV snapshot with the current spec (HUMAN DECISION: approve a re-pinned spec version)"
+      ]
+    },
+    "B3A-03": {
+      "evidence": {
+        "D3_timestamps_and_available_at_PIT": {
+          "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+          "detail": {
+            "arrow_schema_timestamp": "timestamp[us, tz=UTC]",
+            "m3a4": {
+              "BASE": {
+                "P03_available_at_policy": "PASS",
+                "P04_temporal_policy_sha256": "PASS",
+                "P07_modeled_rule": "PASS",
+                "T01_no_lookahead": "PASS"
+              },
+              "CAT_STRESS": {
+                "P03_available_at_policy": "PASS",
+                "P04_temporal_policy_sha256": "PASS",
+                "P07_modeled_rule": "PASS",
+                "T01_no_lookahead": "PASS"
+              },
+              "LOW": {
+                "P03_available_at_policy": "PASS",
+                "P04_temporal_policy_sha256": "PASS",
+                "P07_modeled_rule": "PASS",
+                "T01_no_lookahead": "PASS"
+              },
+              "STRESS": {
+                "P03_available_at_policy": "PASS",
+                "P04_temporal_policy_sha256": "PASS",
+                "P07_modeled_rule": "PASS",
+                "T01_no_lookahead": "PASS"
+              }
+            },
+            "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4"
+          },
+          "status": "PASS"
+        },
+        "D4_signal_to_execution_conservative": {
+          "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+          "detail": {
+            "BASE": {
+              "fills_not_strictly_after_signal_available_at": 0,
+              "min_minutes_signal_available_to_fill": 14.0
+            },
+            "CAT_STRESS": {
+              "fills_not_strictly_after_signal_available_at": 0,
+              "min_minutes_signal_available_to_fill": 14.0
+            },
+            "LOW": {
+              "fills_not_strictly_after_signal_available_at": 0,
+              "min_minutes_signal_available_to_fill": 14.0
+            },
+            "STRESS": {
+              "fills_not_strictly_after_signal_available_at": 0,
+              "min_minutes_signal_available_to_fill": 14.0
+            }
+          },
+          "status": "PASS"
+        },
+        "D5_calendar_and_RTH_boundaries": {
+          "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+          "detail": {
+            "rejections": {
+              "CLOSING_AUCTION_EXCLUDED": 22,
+              "INCOMPLETE_SOURCE_BUCKET": 1,
+              "OUTSIDE_CONSERVATIVE_RTH": 857
+            },
+            "sessions": 22
+          },
+          "status": "PASS"
+        },
+        "D6_missing_data_explicit_policy": {
+          "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+          "detail": {
+            "observed": {
+              "INCOMPLETE_SOURCE_BUCKET": 1
+            },
+            "policy": "Core conservative aggregation: an incomplete source bucket is never executable (INCOMPLETE_SOURCE_BUCKET); orders not filled within max_fill_delay_bars expire (ORDER_EXPIRED); no forward fill"
+          },
+          "status": "PASS"
+        },
+        "temporal_rules": {
+          "category": null,
+          "reason": "signal_time=BAR_AVAILABLE_AT fill_rule=NEXT_ELIGIBLE_BAR_OPEN order_type=MARKET; Core conservative 15m aggregation: RTH only, closing auction excluded, fills strictly after modeled availability",
+          "sources": {
+            "authorization": {
+              "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+              "scope": "RESEARCH_ONLY"
+            },
+            "market_readiness_research_approval": {
+              "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+              "scope": "RESEARCH_ONLY"
+            },
+            "prior_real_run": {
+              "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+              "scope": "RESEARCH_ONLY"
+            },
+            "run_config": {
+              "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+              "scope": "RESEARCH_ONLY"
+            }
+          },
+          "status": "RESOLVED",
+          "value": {
+            "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+            "scope": "RESEARCH_ONLY"
+          }
+        }
+      },
+      "requirement": "PIT and temporal execution rules",
+      "status": "PASS",
+      "why": []
+    },
+    "B3A-04": {
+      "evidence": {
+        "D7": {
+          "basis": "RECORD_OR_CODE_CHECK",
+          "detail": {
+            "core_profile_sha256_per_scenario_prior_run": {
+              "BASE": "ea2cb1932ba83eadcdc12720a56d7404d30686a03c6fe6ce10482cceca63c529",
+              "CAT_STRESS": "bd42c2661b3bf6dcf1b7d9f68b51762af2682ff13035384a49a340b1d574cbfc",
+              "LOW": "4111a7d0798162ff2c0cb6a8fd7f4e15f59d8f830e70f04da7b41e660efb101b",
+              "STRESS": "80c00d97c8dc333ba7d39e54782e3af123cc09a46ca5703331faef82e105c401"
+            },
+            "note": "Core profile shas depend on the trade date (dated SEC interval); re-derived (CO07) by the B3-B run",
+            "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3"
+          },
+          "status": "PASS"
+        },
+        "costs": {
+          "category": null,
+          "reason": null,
+          "sources": {
+            "authorization": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+            "cost_file_on_disk": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+            "run_config": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3"
+          },
+          "status": "RESOLVED",
+          "value": {
+            "coverage": {
+              "end": "2024-12-31",
+              "note": "development period only; no rate for the holdout period (2025-01-01 .. 2026-10-16) is recorded here",
+              "start": "2016-10-19"
+            },
+            "model": "IBKR_PRO_FIXED",
+            "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+            "scenarios": [
+              "BASE",
+              "LOW",
+              "STRESS",
+              "CAT_STRESS"
+            ],
+            "scope": "RESEARCH_ONLY"
+          }
+        },
+        "liquidity": {
+          "limitation": "no volume-participation / market-impact model: fixed units only (documented risk)",
+          "position_sizing": {
+            "initial_capital": 100000,
+            "max_units": 100,
+            "method": "FIXED_UNITS",
+            "units": 100
+          },
+          "status": "PINNED"
+        },
+        "slippage": {
+          "category": null,
+          "reason": "RESEARCH_ONLY assumption, not account-verified",
+          "sources": {
+            "cost_set": {
+              "BASE": 2,
+              "CAT_STRESS": 2,
+              "LOW": 1,
+              "STRESS": 4
+            }
+          },
+          "status": "RESOLVED",
+          "value": {
+            "half_spread_bps": 0,
+            "slippage_bps_per_side": {
+              "BASE": 2,
+              "CAT_STRESS": 2,
+              "LOW": 1,
+              "STRESS": 4
+            }
+          }
+        }
+      },
+      "requirement": "Costs / slippage / liquidity requirements",
+      "status": "PASS",
+      "why": []
+    },
+    "B3A-05": {
+      "evidence": {
+        "D8": {
+          "basis": "RECORD_OR_CODE_CHECK",
+          "detail": {
+            "holdout": [
+              "2025-01-01T00:00:00-05:00",
+              "2026-10-17T00:00:00-04:00"
+            ],
+            "native_last_utc": "2024-06-28T23:59:00+00:00"
+          },
+          "status": "PASS"
+        },
+        "holdout": {
+          "category": null,
+          "reason": null,
+          "sources": {
+            "authorization": "HOLDOUT-TSM-15M-v1",
+            "exclusion_proven": "HOLDOUT-TSM-15M-v1",
+            "holdout_book": "HOLDOUT-TSM-15M-v1"
+          },
+          "status": "RESOLVED",
+          "value": {
+            "blindness": "BLINDNESS_UNVERIFIED",
+            "holdout": [
+              "2025-01-01T00:00:00-05:00",
+              "2026-10-17T00:00:00-04:00"
+            ],
+            "lock_id": "HOLDOUT-TSM-15M-v1",
+            "window_end_before_holdout": true
+          }
+        },
+        "window": {
+          "category": null,
+          "reason": null,
+          "sources": {
+            "authorization_research_window": {
+              "end": "2024-06-29T00:00:00-04:00",
+              "start": "2024-05-29T00:00:00-04:00"
+            },
+            "prior_real_run_window": {
+              "end": "2024-06-29T00:00:00-04:00",
+              "start": "2024-05-29T00:00:00-04:00"
+            },
+            "run_config_warmup_to_end": {
+              "end": "2024-06-29T00:00:00-04:00",
+              "start": "2024-05-29T00:00:00-04:00"
+            }
+          },
+          "status": "RESOLVED",
+          "value": {
+            "end": "2024-06-29T00:00:00-04:00",
+            "interval": "[start,end)",
+            "start": "2024-06-03T00:00:00-04:00",
+            "warmup_start": "2024-05-29T00:00:00-04:00"
+          }
+        }
+      },
+      "requirement": "Holdout exclusion",
+      "status": "PASS",
+      "why": []
+    },
+    "B3A-06": {
+      "evidence": {
+        "authorization_draft_schema_dry_run": {
+          "placeholders_used_for": [
+            "spec_file_sha256",
+            "spec_path"
+          ],
+          "status": "PASS",
+          "written": false
+        },
+        "governance": {
+          "G1_books_valid": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "authorization_book": true
+            },
+            "status": "PASS"
+          },
+          "G2_template_authorization_spent_not_reusable": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+              "max_batches": 1,
+              "used": 1
+            },
+            "status": "PASS"
+          },
+          "G3_no_new_authorization_created": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "book": [
+                "RA-IBKR_TSM-SMA520_SMOKE-0001",
+                "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e"
+              ]
+            },
+            "status": "PASS"
+          },
+          "G4_new_authorization_is_a_human_decision": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "authorization_id": "BLOCKED",
+              "bound_request_hash": "BLOCKED",
+              "budget_batch_limit": "BLOCKED",
+              "executor_identity": "BLOCKED"
+            },
+            "status": "PASS"
+          }
+        },
+        "tests": {
+          "failed": [],
+          "passed": 109
+        }
+      },
+      "requirement": "Authorization and budget governance",
+      "status": "PASS",
+      "why": []
+    },
+    "B3A-07": {
+      "evidence": {
+        "controlled": {
+          "C1_real_runner_disabled": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "REAL_EXECUTION_ENABLED": false,
+              "ResearchOnlyRunnerAdapter.execute": "AdapterDisabled"
+            },
+            "status": "PASS"
+          },
+          "C2_controlled_adapter_refuses_production_books": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "enabled": false,
+              "isolated": false
+            },
+            "status": "PASS"
+          },
+          "C3_orchestrator_refuses_controlled_execution_on_production_books": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "refused": true
+            },
+            "status": "PASS"
+          },
+          "C4_no_environment_variable_enable_path": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "allowed": [
+                "GH_TOKEN",
+                "GITHUB_TOKEN",
+                "REQUESTS_CA_BUNDLE",
+                "SSL_CERT_FILE"
+              ],
+              "unexpected_env_reads": []
+            },
+            "status": "PASS"
+          },
+          "C5_single_executor_only": {
+            "basis": "RECORD_OR_CODE_CHECK",
+            "detail": {
+              "consistency": "SINGLE_EXECUTOR_ONLY",
+              "exactly_once": "NOT_CLAIMED"
+            },
+            "status": "PASS"
+          }
+        },
+        "real_runner": "DISABLED (verified by C1-C3)",
+        "tests": {
+          "failed": [],
+          "multi_process": [
+            "tests.test_phase5b2_security_remediation::test_P0_1_same_reservation_from_several_processes_runs_at_most_once[2]",
+            "tests.test_phase5b2_security_remediation::test_P0_1_same_reservation_from_several_processes_runs_at_most_once[6]"
+          ],
+          "passed": 74
+        }
+      },
+      "requirement": "Single-executor controlled Runner readiness",
+      "status": "PASS",
+      "why": []
+    },
+    "B3A-08": {
+      "evidence": {
+        "cloud": true,
+        "code": {
+          "dirty": false,
+          "git_sha": "5045d4af4130ae5dfd40be40643740d19acbf6bd",
+          "python": "3.13.18"
+        },
+        "tests_failed": [],
+        "tests_returncode": 0,
+        "tests_total": 170
+      },
+      "requirement": "CI / Colab / Drive archive reproducibility",
+      "status": "PASS",
+      "why": []
+    }
+  },
+  "generated_at": "2026-11-08T22:54:17+08:00",
+  "holdout_read": false,
+  "market_data_read": false,
+  "new_backtest_executed": false,
+  "real_runner": "DISABLED",
+  "repository_books_unchanged": true,
+  "verdict": {
+    "blockers": {
+      "B3A-02": [
+        "SPEC_DATASET_REFERENCE_MISMATCH: the Phase 5 A2 exporter refuses a request for the DEV snapshot with the current spec (HUMAN DECISION: approve a re-pinned spec version)"
+      ]
+    },
+    "meaning": "specific blockers prevent a first real research run; GO never enables the Runner",
+    "verdict": "NO_GO"
+  }
+}

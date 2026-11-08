@@ -12,7 +12,7 @@
 
 ## 0. 結論（工程判定）
 
-**`NO_GO`：有一個具體的阻擋，必須由人做決定。** B3A-01、03、04、05、06、07 全部 PASS；B3A-08 需要 Colab + Drive 證據（見驗收文件）。
+**`NO_GO`：有一個具體的阻擋，必須由人做決定。** B3A-01、03、04、05、06、07、08 全部 PASS。B3A-08 由 Colab＋Drive 證明（`readiness/20261108_225409_5045d4a`），同一次執行也對 DEV snapshot 做了整檔 hash，結果 PASS，見驗收文件。
 
 **唯一的工程阻擋（B3A-02）：** 策略規格 `specs/research/sma_crossover_tsm_15m_5_20.json` 的 `data_requirements` 綁定的是 **FINAL_GATE 母快照**（`20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL`，producer `06359faf…`）。候選資料集是由它衍生的 **DEV 子快照**（`TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e`，producer `b16179a…`）。
 

@@ -1,0 +1,43 @@
+{
+  "clean_colab_runtime": true,
+  "cloud": true,
+  "dependency_pins": [
+    "jsonschema==4.26.0",
+    "jsonschema-specifications==2025.9.1",
+    "market-research-core @ git+https://github.com/hh4832/market-research-core@b16179a7cc077c36046574769a32c367fa476cae",
+    "numpy==2.4.6",
+    "pandas==2.2.3",
+    "pandas-datareader==0.11.1",
+    "pandas-gbq==0.30.0",
+    "pandas-stubs==2.2.3.250527",
+    "pyarrow==23.0.1",
+    "pytest==8.4.2"
+  ],
+  "executor": "this Colab runtime (readiness only; no execution)",
+  "governance_suites": {
+    "core": "b16179a7cc077c36046574769a32c367fa476cae",
+    "returncode": 0,
+    "summary": "170 passed in 580.48s (0:09:40)"
+  },
+  "notebook": "PHASE5B3A-READINESS-v1",
+  "python": "3.13.18",
+  "regression": {
+    "core": "absent",
+    "returncode": 0,
+    "summary": "634 passed, 65 skipped in 520.13s (0:08:40)"
+  },
+  "snapshot_dir": "/content/drive/MyDrive/00Quant_Research/data/development_snapshots/TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+  "version_sync": {
+    "checkout_head": "5045d4af4130ae5dfd40be40643740d19acbf6bd",
+    "files_changed_after_pin": [
+      "docs/PHASE5B3A_ACCEPTANCE.md",
+      "notebooks/Phase5B3A_Readiness_Acceptance.ipynb"
+    ],
+    "github_remote_head": "56d1057c9399288ffaa4a60896917d7e41e117cd",
+    "notebook_version": "PHASE5B3A-READINESS-v1",
+    "notebook_version_on_github_head": "PHASE5B3A-READINESS-v1",
+    "pin_on_branch": true,
+    "pinned_sha": "5045d4af4130ae5dfd40be40643740d19acbf6bd",
+    "working_tree_clean": true
+  }
+}

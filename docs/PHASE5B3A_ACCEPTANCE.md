@@ -63,4 +63,17 @@ GO／SCOPED_GO 都**不**授權 Runner。
 
 ## Colab／Drive
 
-（待執行：由研究負責人在全新 runtime 執行 notebook。結果記錄於此節與 `docs/evidence/phase5b3a/<ts>_<pin7>/`。）
+**`readiness/20261108_225409_5045d4a`**（notebook v1，全新 runtime，Python 3.13.18，`cloud=true`）。
+
+- **程式版本：** pin `5045d4a`，checkout 乾淨；pin 之後只有 docs 與 notebook 變更。
+- **回歸：** 無 Core 634 passed / 65 skipped（比本機多 1 個 skipped，是環境條件造成的 skip，0 failed）。5-B1＋5-B2＋5-B3-A suites 在 Core `b16179a` 下 170 passed。
+- **Gates：** B3A-01、03、04、05、06、07、**08** 皆 PASS；**B3A-02 BLOCKED**（`SPEC_DATASET_REFERENCE_MISMATCH`）。
+- **判定：NO_GO**，唯一阻擋是 B3A-02，需要人做決定（核准重新綁定資料集的 spec 版本）。
+- **DEV snapshot 整檔位元組檢查：PASS。** `manifest.json` = `8b6fc838…cfc5`、`tsm_development_1m.parquet` = `239d5741…0a8452`，與 pin 完全相同。只做 SHA-256，不解碼，不含 Holdout。
+- **其他確認：** repo 帳本前後不變；`real_runner=DISABLED`、`authorization_created=false`、`market_data_read=false`、`holdout_read=false`、`new_backtest_executed=false`。
+- **相依套件 pin：** market-research-core @ `b16179a`、pandas 2.2.3、pyarrow 23.0.1、numpy 2.4.6、jsonschema 4.26.0、pytest 8.4.2（完整清單見 `notebook_context.json`）。
+- **封存：** Colab 端 `--verify-archive --zip` PASS。Claude 對上傳的 ZIP 重新核對，`ARCHIVE_INDEX.json` 列出的 6 個檔案 SHA 全部吻合，沒有額外檔案。ZIP sha256 為 `10ec42e702f51306b289ea2d078455684d41bf5716c81a22f3f0a19cba07e966`。
+- **證據的形式：**
+  - ZIP：7 個頂層檔案（含索引）。
+  - GitHub 副本：`docs/evidence/phase5b3a/20261108_225409_5045d4a/`，內容與 ZIP 相同。
+  - 本階段**沒有** `work/` tree，所以沒有未提交的 supporting artifacts。
