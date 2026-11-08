@@ -8,6 +8,7 @@ acceptance (``evaluation.phase4c``) over the Phase 4-B evaluator; no PnL is reco
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 from datetime import datetime
@@ -16,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 from strategy_agent.approval import ApprovalRejected, Expectation, evidence_sha256
 from strategy_agent.evaluation import phase4c as C
+from strategy_agent.execution import identity as I
 from strategy_agent.registry.chain import ChainedLog, ConditionFailed
 
 from . import request as Q
@@ -55,7 +57,7 @@ def _dumps(obj) -> bytes:
 class Orchestrator:
     def __init__(self, state_dir, archive_root, *, source_archive_root=None, root: Path = ROOT, governance_root=None,
                  clock=None, test_mode: bool = False, synthetic_fixture=None, benchmark=None, worker: str = "worker-1",
-                 lease_seconds: int = 900, approval_verifier=None):
+                 lease_seconds: int = 900, approval_verifier=None, controlled_adapter=None):
         self.state_dir, self.archive_root = Path(state_dir).resolve(), Path(archive_root).resolve()
         self.root = Path(root).resolve()
         if test_mode and (self.root in self.state_dir.parents or self.root in self.archive_root.parents):
@@ -75,6 +77,23 @@ class Orchestrator:
         self.verifier = approval_verifier
         if self.gov.production_books and approval_verifier is not None and not approval_verifier.production:
             raise ValueError("the repository's governance books accept only the production (live GitHub) verifier")
+        self.budget = None
+        if controlled_adapter is not None:                    # 5-B2: the only budget-consuming execution path
+            if not getattr(controlled_adapter, "controlled", False):
+                raise ValueError("only a ControlledRunnerAdapter may replace the RESEARCH_ONLY_REAL adapter")
+            if test_mode:
+                raise ValueError("controlled execution runs in a production-mode orchestrator (verified approvals)")
+            if self.gov.production_books or not controlled_adapter.enabled:
+                # RESEARCH_ONLY_REAL stays DISABLED: never even create a budget ledger next to the real books
+                raise ValueError("controlled execution is DISABLED for production books / non-synthetic backends")
+            from strategy_agent.execution.budget import BudgetLedger  # noqa: PLC0415
+            self.adapters["RESEARCH_ONLY_REAL"] = controlled_adapter
+            self.budget = BudgetLedger.for_governance(self.gov, clock=self.clock, git_commit=self.code["git_sha"])
+            # P0-1: the adapter executes only against THIS ledger; approval evidence comes from THIS task log
+            controlled_adapter.bind(ledger=self.budget, artifact_root=self.root, approvals=self._running_approval,
+                                    worker_id=self.worker, clock=self.clock)
+            # G10 may pass only for an ENABLED controlled adapter on ISOLATED books (Governance re-checks the books)
+            self.gov.isolated_controlled_execution = bool(controlled_adapter.enabled and not self.gov.production_books)
 
     # ------------------------------------------------------------------------------------------------ helpers
     def _sys(self, task_id, to, **kw):
@@ -90,11 +109,18 @@ class Orchestrator:
         st = self.log.get(task_id)
         if st is None:
             raise IllegalTransition("UNKNOWN_TASK", task_id)
-        return {"task_id": task_id, "state": st.state, "request_hash": st.request_hash, "attempt": st.attempt,
-                "lease_owner": st.lease_owner, "lease_expires_at": st.lease_expires_at,
-                "history": [{k: e.get(k) for k in ("seq", "from", "to", "at", "actor", "actor_kind", "reason")}
-                            for e in st.events],
-                "last_data": st.last.get("data")}
+        out = {"task_id": task_id, "state": st.state, "request_hash": st.request_hash, "attempt": st.attempt,
+               "lease_owner": st.lease_owner, "lease_expires_at": st.lease_expires_at,
+               "history": [{k: e.get(k) for k in ("seq", "from", "to", "at", "actor", "actor_kind", "reason")}
+                           for e in st.events],
+               "last_data": st.last.get("data")}
+        if self.budget is not None:                              # the ledger, not the task state, says if it settled
+            try:
+                r = self.budget.for_task(task_id)
+                out["budget_state"] = r["state"] if r else None
+            except Exception as e:  # noqa: BLE001 - a corrupted ledger is reported, never hidden
+                out["budget_state"] = f"LEDGER_UNREADABLE:{getattr(e, 'code', type(e).__name__)}"
+        return out
 
     # ---------------------------------------------------------------------------------------------- lifecycle
     def submit(self, doc: dict, *, actor: str, actor_kind: str = "HUMAN") -> dict:
@@ -206,8 +232,9 @@ class Orchestrator:
         except ApprovalRejected as e:
             return "APPROVAL_" + e.code
         adapter = self.adapters[doc["execution_mode"]]
-        if adapter.consumes_budget and ev["approval_source"]["trust"] != "PRODUCTION":
-            return "APPROVAL_TRUST_NOT_PRODUCTION"
+        if adapter.consumes_budget and ev["approval_source"]["trust"] != "PRODUCTION" and \
+                not (self.budget is not None and self.gov.isolated_controlled_execution and not self.gov.production_books):
+            return "APPROVAL_TRUST_NOT_PRODUCTION"            # ISOLATED_TEST evidence only ever spends isolated budget
         from strategy_agent.binding.store import BindingStore  # noqa: PLC0415
         rec = BindingStore(self.governance_root).for_bound(Q.request_hash(doc))
         if rec is not None:
@@ -283,11 +310,11 @@ class Orchestrator:
                           idempotency_key=f"{task_id}:BLOCKED:approval:{st.attempt}")
                 return self.status(task_id)
             if adapter.consumes_budget:
-                # M2: no authorization use may be consumed until a reservation exists that is taken atomically
-                # under the uses-log lock right before RUNNING. Not implemented in 5-B1 => fail closed.
-                self._sys(task_id, "BLOCKED", reason="BUDGET_RESERVATION_NOT_IMPLEMENTED",
-                          data={"adapter": adapter.kind}, idempotency_key=f"{task_id}:BLOCKED:reservation:{st.attempt}")
-                return self.status(task_id)
+                if self.budget is None or not getattr(adapter, "controlled", False):
+                    self._sys(task_id, "BLOCKED", reason="BUDGET_RESERVATION_REQUIRED",
+                              data={"adapter": adapter.kind}, idempotency_key=f"{task_id}:BLOCKED:reservation:{st.attempt}")
+                    return self.status(task_id)
+                return self._dispatch_controlled(task_id, doc, st, dec, adapter)
             attempt = st.attempt + 1
             claim = __import__("uuid").uuid4().hex
             ev = self.log.transition(task_id, "RUNNING", actor="orchestrator", actor_kind="SYSTEM", worker=self.worker,
@@ -315,7 +342,153 @@ class Orchestrator:
             st = self.log.get(task_id)
         if st.state == "EVALUATED":
             self._archive(task_id, doc)
+        self._settle(task_id)
         return self.status(task_id)
+
+    # ------------------------------------------------------------------------- 5-B2 controlled execution
+    def _approval_evidence_sha(self, st) -> str:
+        appr = next((e for e in reversed(st.events) if e["to"] == "APPROVED"), None)
+        return (appr or {}).get("data", {}).get("approval_evidence_sha256") or ""
+
+    def _running_approval(self, task_id, reservation_id) -> str | None:
+        """Approval evidence sha of a task that is RUNNING for exactly this reservation (else None => no grant)."""
+        st = self.log.get(task_id)
+        if st is None or st.state != "RUNNING":
+            return None
+        run = next((e for e in reversed(st.events) if e["to"] == "RUNNING"), None)
+        if (run or {}).get("data", {}).get("reservation_id") != reservation_id:
+            return None
+        return self._approval_evidence_sha(st) or None
+
+    def _reconcile(self, task_id, reservation_id, reason):
+        try:
+            self.budget.require_reconciliation(reservation_id, reason=reason, worker_id=self.worker)
+        except Exception:  # noqa: BLE001 - the task outcome is still recorded below; budget stays consumed
+            pass
+
+    def _dispatch_controlled(self, task_id, doc, st, dec, adapter) -> dict:
+        """QUEUED -> [precheck] -> reserve -> commit -> RUNNING -> execute -> receipt -> EVALUATING -> ... -> settle.
+        Every step fails closed; after the commit nothing is ever released or re-run automatically."""
+        from strategy_agent.binding.store import BindingStore  # noqa: PLC0415
+        from strategy_agent.execution.budget import BudgetRefused  # noqa: PLC0415
+
+        def block(reason, data=None, key=None):
+            self._sys(task_id, "BLOCKED", reason=reason, data=data or {}, idempotency_key=f"{task_id}:BLOCKED:{key or reason}")
+            return self.status(task_id)
+        problems = adapter.precheck(doc)                              # identity / PIT pins before any budget
+        if problems:
+            return block("CONTROLLED_PRECHECK_FAILED", {"problems": problems})
+        rec = BindingStore(self.governance_root).for_bound(Q.request_hash(doc))
+        if rec is None:
+            return block("BINDING_REQUIRED")
+        attempt = st.attempt + 1
+        try:
+            self.budget.register_executor(self.worker, actor="orchestrator")
+            r = self.budget.reserve(authorization_id=doc["authorization_ref"]["authorization_id"],
+                                    request_sha256=Q.request_hash(doc), task_id=task_id,
+                                    attempt_id=f"{task_id}:{attempt}", approval_evidence_sha256=self._approval_evidence_sha(st),
+                                    binding_id=rec["binding_id"], worker_id=self.worker,
+                                    planned_run_id=adapter.planned_run_id(task_id, self.clock()),
+                                    # P0-2 residual: commit the task archive's research_request.json bytes BEFORE execution
+                                    request_file_sha256=hashlib.sha256(I.archive_request_bytes(doc)).hexdigest())
+        except BudgetRefused as e:
+            return block("BUDGET_" + e.code, {"detail": str(e)})
+        if r.get("state") != "RESERVED":                             # replayed reservation already past RESERVED
+            self._reconcile(task_id, r["reservation_id"], "dispatch found a reservation beyond RESERVED")
+            return block("RESERVATION_NOT_FRESH", {"reservation": r["reservation_id"], "state": r.get("state")})
+        rid = r["reservation_id"]
+        try:
+            com = self.budget.commit(rid, worker_id=self.worker, actor=self.worker,
+                                     scenarios=list(doc["cost_profile_ref"]["scenarios"]))
+        except BudgetRefused as e:
+            try:
+                self.budget.release(rid, reason=f"commit refused: {e.code}", worker_id=self.worker)
+            except BudgetRefused:
+                self._reconcile(task_id, rid, f"commit refused and release refused: {e.code}")
+            return block("BUDGET_" + e.code, {"detail": str(e), "reservation_id": rid})
+        claim = __import__("uuid").uuid4().hex
+        ev = self.log.transition(task_id, "RUNNING", actor="orchestrator", actor_kind="SYSTEM", worker=self.worker,
+                                 lease_seconds=self.lease_seconds, expect_from="QUEUED",
+                                 data={"attempt": attempt, "adapter": adapter.kind, "governance": dec.as_dict(),
+                                       "claim": claim, "reservation_id": rid, "use_record_sha256": com["use"]["record_sha256"],
+                                       "budget_consistency": "SINGLE_EXECUTOR_ONLY"},
+                                 idempotency_key=f"{task_id}:RUNNING:{attempt}")
+        if ev.get("data", {}).get("claim") != claim:
+            self._reconcile(task_id, rid, "RUNNING claim replayed after commit")
+            return {**self.status(task_id), "dispatch": "CLAIMED_BY_ANOTHER_WORKER"}
+        exec_dir = self.state_dir / "executions" / task_id / f"attempt_{attempt}"
+        try:
+            ref = adapter.execute(doc, exec_dir, reservation_id=rid, task_id=task_id, attempt_id=f"{task_id}:{attempt}",
+                                  started_at=self.clock())
+        except Exception as e:  # noqa: BLE001 - after commit: never release, never re-run
+            self._reconcile(task_id, rid, f"execution failed after commit: {getattr(e, 'code', type(e).__name__)}")
+            self._sys(task_id, "FAILED", reason=getattr(e, "code", type(e).__name__), worker=self.worker,
+                      data={"diagnostics": str(e)[:500], "attempt": attempt, "consumed_batches": 1,
+                            "reservation_id": rid, "budget_state": "RECONCILIATION_REQUIRED", "rerun": "NEVER"},
+                      idempotency_key=f"{task_id}:FAILED:{attempt}")
+            return self.status(task_id)
+        self.log.transition(task_id, "EVALUATING", actor="orchestrator", actor_kind="SYSTEM", worker=self.worker,
+                            lease_seconds=self.lease_seconds, expect_from="RUNNING",
+                            data={"execution_reference": {**ref, "reservation_id": rid}, "attempt": attempt},
+                            idempotency_key=f"{task_id}:EVALUATING:{attempt}")
+        chk = adapter.verify_evidence(rid, doc=doc)                  # P0-2: from disk, before the evaluator reads it
+        if not chk["ok"]:
+            self._reconcile(task_id, rid, f"execution evidence invalid before evaluation: {chk['problems']}"[:400])
+            self._sys(task_id, "FAILED", reason="EXECUTION_EVIDENCE_INVALID", worker=self.worker,
+                      data={"problems": chk["problems"], "consumed_batches": 1, "reservation_id": rid,
+                            "budget_state": "RECONCILIATION_REQUIRED", "rerun": "NEVER"},
+                      idempotency_key=f"{task_id}:FAILED:evidence:{attempt}")
+            return self.status(task_id)
+        try:
+            self._evaluate(task_id, doc, self.log.get(task_id))
+            if self.log.get(task_id).state == "EVALUATED":
+                self._archive(task_id, doc)
+        except Exception as e:  # noqa: BLE001 - evaluator / archive failure: never re-run the strategy
+            self._reconcile(task_id, rid, f"evaluation/archive failed: {type(e).__name__}")
+            self._sys(task_id, "FAILED", reason="EVALUATION_OR_ARCHIVE_FAILED_NO_RERUN", worker=self.worker,
+                      data={"diagnostics": str(e)[:500], "consumed_batches": 1, "reservation_id": rid,
+                            "budget_state": "RECONCILIATION_REQUIRED", "rerun": "NEVER"},
+                      idempotency_key=f"{task_id}:FAILED:eval:{attempt}")
+            return self.status(task_id)
+        self._settle(task_id)
+        return self.status(task_id)
+
+    def _settle(self, task_id) -> None:
+        """ARCHIVED + COMMITTED reservation -> CONSUMED only after the receipt, archive, identity and evaluation
+        reference are re-verified FROM DISK against the ledger (P0-2). Any failure: RECONCILIATION_REQUIRED (the
+        batch stays consumed; nothing is released or re-run)."""
+        if self.budget is None:
+            return
+        from strategy_agent.execution.budget import BudgetRefused  # noqa: PLC0415
+        r = self.budget.for_task(task_id)
+        st = self.log.get(task_id)
+        if not r or r["state"] != "COMMITTED" or st is None or st.state != "ARCHIVED":
+            return
+        adapter = self.adapters["RESEARCH_ONLY_REAL"]
+        arch = next((e for e in reversed(st.events) if e["to"] == "ARCHIVED"), {}).get("data", {})
+        ev = next((e for e in reversed(st.events) if e["to"] == "EVALUATED"), {}).get("data", {})
+        if not getattr(adapter, "controlled", False) or not arch.get("task_archive"):
+            self._reconcile(task_id, r["reservation_id"], "archived without controlled adapter or task archive")
+            return
+        doc = self.request_of(task_id)
+        kw = {"doc": doc, "evaluation_reference": ev.get("evaluation_reference"), "archive_ref": arch["task_archive"],
+              "archived_files": arch.get("files_sha256")}
+        chk = adapter.verify_evidence(r["reservation_id"], record=True, **kw)
+        if not chk["ok"]:
+            self._reconcile(task_id, r["reservation_id"], f"settlement refused: {chk['problems']}"[:400])
+            return
+        from strategy_agent.execution.controlled import verify_execution_evidence  # noqa: PLC0415
+
+        def recheck(res, use):                    # INSIDE the ledger lock, right before CONSUMED (TOCTOU)
+            return verify_execution_evidence(self.budget, r["reservation_id"], record=False, worker_id=self.worker,
+                                             governance_root=self.governance_root, reservation=res, use=use,
+                                             **kw)["problems"]
+        try:
+            self.budget.settle(r["reservation_id"], receipt_sha256=chk["receipt_sha256"],
+                               output_manifest_sha256=chk["output_manifest_sha256"], archive_ref=arch["task_archive"],
+                               worker_id=self.worker, recheck=recheck)
+        except BudgetRefused as e:
+            self._reconcile(task_id, r["reservation_id"], f"settlement refused: {e.code}")
 
     def _execution_reference(self, st) -> dict:
         return next(e["data"]["execution_reference"] for e in reversed(st.events)
@@ -348,7 +521,9 @@ class Orchestrator:
                             expect_from="EVALUATING",
                             data={"evaluation_reference": {"dir": str(out), "files_sha256": files, "evaluated_at": at,
                                                            "evaluator_commit": self.code["git_sha"],
-                                                           "input_sha256": ev.get("input_sha256")},
+                                                           "input_sha256": ev.get("input_sha256"),
+                                                           "archive_path": ref["archive_path"],
+                                                           "archive_manifest_sha256": ref["archive_manifest_sha256"]},
                                   "research_decision": decision},
                             idempotency_key=f"{task_id}:EVALUATED:{st.attempt}")
 
@@ -388,6 +563,8 @@ class Orchestrator:
         EVALUATING with an expired lease -> evaluation resumed (read-only, consumes nothing)."""
         out = []
         now = self.clock()
+        if self.budget is not None:
+            out += self.budget.recover(worker_id=self.worker)
         for tid in self.log.task_ids():
             st = self.log.get(tid)
             if st.state not in ("RUNNING", "EVALUATING") or not st.lease_expires_at:
@@ -398,6 +575,10 @@ class Orchestrator:
             if datetime.fromisoformat(st.lease_expires_at) > now:
                 continue
             if st.state == "RUNNING":
+                if self.budget is not None:                       # committed budget whose outcome is unknown
+                    r = self.budget.for_task(tid)
+                    if r and r["state"] in ("RESERVED", "COMMITTED"):
+                        self._reconcile(tid, r["reservation_id"], "worker crashed while RUNNING (lease expired)")
                 self._sys(tid, "FAILED", reason="CRASH_RECOVERY_LEASE_EXPIRED", worker=self.worker,
                           data={"diagnostics": f"worker {st.lease_owner} lease expired at {st.lease_expires_at} before an "
                                                "execution reference was recorded; not re-executed", "consumed_batches": 0},

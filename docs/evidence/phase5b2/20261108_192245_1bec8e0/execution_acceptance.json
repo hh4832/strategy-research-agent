@@ -1,0 +1,223 @@
+{
+  "cloud": true,
+  "code": {
+    "dirty": false,
+    "git_sha": "1bec8e0aee004d97ba8603f9ecb75fc20b538801",
+    "python": "3.13.18"
+  },
+  "consistency": "SINGLE_EXECUTOR_ONLY",
+  "exactly_once": "NOT_CLAIMED (at-most-once dispatch per ledger)",
+  "gates": {
+    "B2-01": {
+      "actual": {
+        "failed": [],
+        "passed": 3,
+        "skipped": []
+      },
+      "evidence": {},
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "Atomic Reservation: concurrent workers / processes never exceed the limit; authority re-read in one critical section",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_01_corrupted_ledger_fails_closed",
+        "tests.test_phase5b2_controlled::test_B2_01_multiprocess_reservations_never_exceed_the_limit[8]",
+        "tests.test_phase5b2_controlled::test_B2_01_reservation_counts_uses_and_open_reservations_and_retry_is_idempotent"
+      ]
+    },
+    "B2-02": {
+      "actual": {
+        "failed": [],
+        "passed": 4,
+        "skipped": []
+      },
+      "evidence": {},
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "Authorization Scope: PENDING / unbound / exhausted / revoked authorizations never execute",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_02_authorization_revoked_after_approval_never_executes",
+        "tests.test_phase5b2_controlled::test_B2_02_exhausted_budget_after_approval_never_executes",
+        "tests.test_phase5b2_controlled::test_B2_02_pending_authorization_and_unbound_requests_never_execute",
+        "tests.test_phase5b2_runner_core::test_B2_02_layer_b_execute_without_committed_reservation_is_refused"
+      ]
+    },
+    "B2-03": {
+      "actual": {
+        "failed": [],
+        "passed": 2,
+        "skipped": []
+      },
+      "evidence": {},
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "Human Approval Verification: unapproved or revoked approval never executes",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_03_revoked_approval_blocks_before_any_reservation",
+        "tests.test_phase5b2_controlled::test_B2_03_unapproved_task_never_executes"
+      ]
+    },
+    "B2-04": {
+      "actual": {
+        "failed": [],
+        "passed": 1,
+        "skipped": []
+      },
+      "evidence": {},
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "Bound Request Integrity: a modified or forged bound request is not bound",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_04_modified_bound_request_is_not_bound"
+      ]
+    },
+    "B2-05": {
+      "actual": {
+        "failed": [],
+        "passed": 2,
+        "skipped": []
+      },
+      "evidence": {
+        "layer_a": {
+          "backend_calls": 1,
+          "state": "ARCHIVED"
+        },
+        "layer_a_budget": [
+          "RESERVED",
+          "COMMITTED",
+          "EXECUTION_STARTED",
+          "EXECUTION_COMPLETED",
+          "EVIDENCE_VERIFIED",
+          "CONSUMED"
+        ],
+        "layer_b": {
+          "acceptance": "PASS",
+          "runner_calls": 1,
+          "status": "PASS",
+          "uses_records": 1,
+          "why": null
+        }
+      },
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "Synthetic Controlled Execution: approved + reserved execution runs exactly once and settles",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_05_approved_reserved_execution_runs_once_and_settles",
+        "tests.test_phase5b2_runner_core::test_B2_05_layer_b_existing_runner_under_ledger_then_existing_evaluator_passes"
+      ]
+    },
+    "B2-06": {
+      "actual": {
+        "failed": [],
+        "passed": 8,
+        "skipped": []
+      },
+      "evidence": {},
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "Crash / Retry / Concurrency: no silent release, no re-run, single executor, idempotent replays",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_06_crash_after_commit_is_never_released_or_rerun",
+        "tests.test_phase5b2_controlled::test_B2_06_crash_before_commit_releases_only_with_proof",
+        "tests.test_phase5b2_controlled::test_B2_06_crash_between_uses_append_and_commit_event_needs_reconciliation",
+        "tests.test_phase5b2_controlled::test_B2_06_duplicate_request_and_repeated_dispatch_execute_once",
+        "tests.test_phase5b2_controlled::test_B2_06_running_lease_expiry_marks_reconciliation",
+        "tests.test_phase5b2_controlled::test_B2_06_second_executor_is_refused_single_executor_only",
+        "tests.test_phase5b2_controlled::test_B2_06_threads_dispatching_concurrently_execute_once",
+        "tests.test_phase5b2_runner_core::test_B2_06_layer_b_runner_crash_after_commit_needs_reconciliation"
+      ]
+    },
+    "B2-07": {
+      "actual": {
+        "failed": [],
+        "passed": 3,
+        "skipped": []
+      },
+      "evidence": {},
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "PIT / Dataset / Cost Integrity: pin mismatches block before any reservation",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_07_precheck_refuses_missing_pins_and_pit_rules",
+        "tests.test_phase5b2_controlled::test_B2_07_spec_or_cost_changed_after_approval_blocks_before_reservation",
+        "tests.test_phase5b2_runner_core::test_B2_07_layer_b_pin_mismatch_blocks_before_reservation"
+      ]
+    },
+    "B2-08": {
+      "actual": {
+        "failed": [],
+        "passed": 3,
+        "skipped": []
+      },
+      "evidence": {
+        "layer_a_decision": {
+          "acceptance_status": "FAIL",
+          "strategy_verdict": "RETEST"
+        },
+        "layer_b_acceptance": "PASS",
+        "layer_b_checks": {
+          "C1_archive_identity": "PASS",
+          "C2_archive_integrity": "PASS",
+          "C3_trade_integrity": "PASS",
+          "C4_performance_consistency": "PASS",
+          "C5_temporal_safety": "PASS",
+          "C6_research_evaluation": "PASS",
+          "C7_reproducibility": "PASS",
+          "C8_governance_isolation": "PASS"
+        }
+      },
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "Evaluator / Archive Integration: existing evaluator, never KEEP on failure, incomplete archive never success",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_08_evaluator_failure_never_reruns",
+        "tests.test_phase5b2_controlled::test_B2_08_existing_evaluator_runs_and_never_keeps_on_identity_mismatch",
+        "tests.test_phase5b2_controlled::test_B2_08_incomplete_archive_is_never_success"
+      ]
+    },
+    "B2-09": {
+      "actual": {
+        "failed": [],
+        "passed": 3,
+        "skipped": []
+      },
+      "evidence": {
+        "REAL_EXECUTION_ENABLED": false,
+        "repo_budget_ledger_exists": false
+      },
+      "expected": "all listed tests PASS (+ artefact checks)",
+      "requirement": "No Real Execution / No Holdout / No Budget Consumption on real books",
+      "status": "PASS",
+      "test": [
+        "tests.test_phase5b2_controlled::test_B2_09_non_synthetic_backend_is_never_enabled",
+        "tests.test_phase5b2_controlled::test_B2_09_production_books_never_enable_controlled_execution",
+        "tests.test_phase5b2_controlled::test_B2_09_repository_books_untouched_by_layer_a"
+      ]
+    },
+    "B2-10": {
+      "actual": {
+        "cloud": true,
+        "consistency": "SINGLE_EXECUTOR_ONLY",
+        "python": "3.13.18",
+        "tests_returncode": 0
+      },
+      "evidence": {
+        "cloud": true,
+        "consistency": "SINGLE_EXECUTOR_ONLY",
+        "python": "3.13.18",
+        "tests_returncode": 0
+      },
+      "expected": "rc=0, cloud",
+      "requirement": "CI / Colab / Drive Reproducibility",
+      "status": "PASS",
+      "test": "regression + B2 suites + Drive archive"
+    }
+  },
+  "generated_at": "2026-11-08T19:23:47+08:00",
+  "repository_books_unchanged": true,
+  "verdict": {
+    "verdict": "SCOPED_GO",
+    "why": [
+      "consistency SINGLE_EXECUTOR_ONLY: fcntl locks are not a distributed lock across Colab runtimes / Google Drive"
+    ]
+  }
+}

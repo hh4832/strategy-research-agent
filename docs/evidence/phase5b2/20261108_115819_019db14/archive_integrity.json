@@ -1,0 +1,62 @@
+{
+  "layer_a_decision": {
+    "acceptance_checks": {
+      "C1_archive_identity": "PASS",
+      "C2_archive_integrity": "PASS",
+      "C3_trade_integrity": "PASS",
+      "C4_performance_consistency": "FAIL",
+      "C5_temporal_safety": "PASS",
+      "C6_research_evaluation": "FAIL",
+      "C7_reproducibility": "PASS",
+      "C8_governance_isolation": "FAIL"
+    },
+    "acceptance_status": "FAIL",
+    "blocked_reason": null,
+    "engineering_status": "BLOCKED",
+    "evidence": "CONTROLLED_EXECUTION",
+    "evidence_sufficiency": "UNDETERMINED",
+    "risk_flags": [
+      "INVALID_OR_MISSING_EVIDENCE"
+    ],
+    "strategy_verdict": "RETEST",
+    "test_mode": false
+  },
+  "layer_a_task_archive": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/executions/20261108_115819_019db14/work/layer_a/out/tasks/20261108_115845_0000000_T-b3e6dbc01e351a0cbf96",
+  "layer_b": {
+    "acceptance": "PASS",
+    "status": "PASS"
+  },
+  "tests": {
+    "tests.test_phase5b2_acceptance::test_B2_10_acceptance_archive_is_complete_immutable_and_zip_consistent": "PASS",
+    "tests.test_phase5b2_acceptance::test_B2_10_failed_tests_propagate_to_a_failing_acceptance": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_01_corrupted_ledger_fails_closed": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_01_multiprocess_reservations_never_exceed_the_limit[8]": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_01_reservation_counts_uses_and_open_reservations_and_retry_is_idempotent": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_02_authorization_revoked_after_approval_never_executes": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_02_exhausted_budget_after_approval_never_executes": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_02_pending_authorization_and_unbound_requests_never_execute": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_03_revoked_approval_blocks_before_any_reservation": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_03_unapproved_task_never_executes": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_04_modified_bound_request_is_not_bound": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_05_approved_reserved_execution_runs_once_and_settles": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_crash_after_commit_is_never_released_or_rerun": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_crash_before_commit_releases_only_with_proof": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_crash_between_uses_append_and_commit_event_needs_reconciliation": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_duplicate_request_and_repeated_dispatch_execute_once": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_running_lease_expiry_marks_reconciliation": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_second_executor_is_refused_single_executor_only": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_threads_dispatching_concurrently_execute_once": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_07_precheck_refuses_missing_pins_and_pit_rules": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_07_spec_or_cost_changed_after_approval_blocks_before_reservation": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_08_evaluator_failure_never_reruns": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_08_existing_evaluator_runs_and_never_keeps_on_identity_mismatch": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_08_incomplete_archive_is_never_success": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_09_non_synthetic_backend_is_never_enabled": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_09_production_books_never_enable_controlled_execution": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_09_repository_books_untouched_by_layer_a": "PASS",
+    "tests.test_phase5b2_runner_core::test_B2_02_layer_b_execute_without_committed_reservation_is_refused": "PASS",
+    "tests.test_phase5b2_runner_core::test_B2_05_layer_b_existing_runner_under_ledger_then_existing_evaluator_passes": "PASS",
+    "tests.test_phase5b2_runner_core::test_B2_06_layer_b_runner_crash_after_commit_needs_reconciliation": "PASS",
+    "tests.test_phase5b2_runner_core::test_B2_07_layer_b_pin_mismatch_blocks_before_reservation": "PASS"
+  }
+}

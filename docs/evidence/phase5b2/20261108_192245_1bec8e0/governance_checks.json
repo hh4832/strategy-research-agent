@@ -1,0 +1,14 @@
+{
+  "layer_a_submit": null,
+  "layer_b_checks": {
+    "C1_archive_identity": "PASS",
+    "C2_archive_integrity": "PASS",
+    "C3_trade_integrity": "PASS",
+    "C4_performance_consistency": "PASS",
+    "C5_temporal_safety": "PASS",
+    "C6_research_evaluation": "PASS",
+    "C7_reproducibility": "PASS",
+    "C8_governance_isolation": "PASS"
+  },
+  "real_execution_enabled": false
+}

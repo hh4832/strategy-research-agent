@@ -1,0 +1,267 @@
+{
+  "P0_1_reservation_replay_forgery": {
+    "VULNERABLE": false,
+    "fake_committed_status": {
+      "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+      "outcome": "REFUSED"
+    },
+    "forged_reservation": {
+      "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+      "outcome": "REFUSED"
+    },
+    "forged_reservation_id_only": {
+      "error": "ExecutionFailed: UNKNOWN_RESERVATION UNKNOWN_RESERVATION: UNKNOWN_RESERVATION: BR-000000000000000000000000",
+      "outcome": "REFUSED"
+    },
+    "ledger_state_after_legit": "CONSUMED",
+    "ledger_state_final": "CONSUMED",
+    "legit_dispatch_state": "ARCHIVED",
+    "replay_same_reservation_id_only_x3": [
+      {
+        "error": "ExecutionFailed: EXECUTION_NOT_ELIGIBLE EXECUTION_NOT_ELIGIBLE: EXECUTION_NOT_ELIGIBLE: BR-2fbd56bd41b00846b1e4aa79 is CONSUMED in the ledger",
+        "outcome": "REFUSED"
+      },
+      {
+        "error": "ExecutionFailed: EXECUTION_NOT_ELIGIBLE EXECUTION_NOT_ELIGIBLE: EXECUTION_NOT_ELIGIBLE: BR-2fbd56bd41b00846b1e4aa79 is CONSUMED in the ledger",
+        "outcome": "REFUSED"
+      },
+      {
+        "error": "ExecutionFailed: EXECUTION_NOT_ELIGIBLE EXECUTION_NOT_ELIGIBLE: EXECUTION_NOT_ELIGIBLE: BR-2fbd56bd41b00846b1e4aa79 is CONSUMED in the ledger",
+        "outcome": "REFUSED"
+      }
+    ],
+    "replay_same_reservation_x3": [
+      {
+        "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+        "outcome": "REFUSED"
+      },
+      {
+        "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+        "outcome": "REFUSED"
+      },
+      {
+        "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+        "outcome": "REFUSED"
+      }
+    ],
+    "runner_calls_after_forged": 1,
+    "runner_calls_after_legit_dispatch": 1,
+    "runner_calls_after_replay": 1,
+    "runner_calls_total": 1,
+    "uses_records": 1
+  },
+  "P0_2_receipt_archive_integrity": {
+    "VULNERABLE": false,
+    "archive_file_removed": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "ledger_state": "RECONCILIATION_REQUIRED",
+      "runner_calls": 1,
+      "settled": false,
+      "task_state": "ARCHIVED"
+    },
+    "archive_manifest_corrupted": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "ledger_state": "RECONCILIATION_REQUIRED",
+      "runner_calls": 1,
+      "settled": false,
+      "task_state": "ARCHIVED"
+    },
+    "receipt_deleted": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "ledger_state": "RECONCILIATION_REQUIRED",
+      "runner_calls": 1,
+      "settled": false,
+      "task_state": "ARCHIVED"
+    },
+    "receipt_modified": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "ledger_state": "RECONCILIATION_REQUIRED",
+      "runner_calls": 1,
+      "settled": false,
+      "task_state": "ARCHIVED"
+    }
+  },
+  "P0_2_task_archive_research_request": {
+    "CONTROL_SETTLES": true,
+    "VULNERABLE": true,
+    "deleted": {
+      "evidence_verified": true,
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "EVIDENCE_VERIFIED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "file_and_manifest_modified": {
+      "evidence_verified": true,
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "EVIDENCE_VERIFIED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "identity_modified": {
+      "evidence_verified": true,
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "EVIDENCE_VERIFIED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "invalid_json": {
+      "evidence_verified": true,
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "EVIDENCE_VERIFIED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "modified_after_evidence_verified": {
+      "evidence_verified": true,
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "EVIDENCE_VERIFIED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "non_identity_bytes_modified": {
+      "evidence_verified": true,
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "EVIDENCE_VERIFIED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "swapped_other_request": {
+      "evidence_verified": true,
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "EVIDENCE_VERIFIED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "untampered_control": {
+      "evidence_verified": true,
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "EVIDENCE_VERIFIED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    }
+  },
+  "P0_3_identity_layer_a_precheck": {
+    "VULNERABLE": false,
+    "core_commit": {
+      "passed_precheck": false,
+      "precheck_problems": [
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:core_commit"
+      ]
+    },
+    "dataset_manifest_sha256": {
+      "passed_precheck": false,
+      "precheck_problems": [
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:dataset_manifest_sha256"
+      ]
+    },
+    "strategy_spec_sha256": {
+      "passed_precheck": false,
+      "precheck_problems": [
+        "ARTEFACT_SHA_MISMATCH:strategy_spec",
+        "AUTHORIZATION_SCOPE_MISMATCH:strategy_spec_sha256",
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:strategy_spec_sha256"
+      ]
+    }
+  },
+  "P0_3_identity_layer_b_runner": {
+    "reason": "ModuleNotFoundError: No module named 'pandas'",
+    "status": "SKIPPED"
+  },
+  "adapter_api": "LEDGER_AUTHORITATIVE_RESERVATION_ID",
+  "git_head": "126813670f6ccd923b950b4da40f420d68b5b357",
+  "kind": "PHASE5B2_SECURITY_REPRODUCTION",
+  "provenance": "RE-DERIVED from the remediation brief; Codex's original report/reproducer unavailable to Claude",
+  "python": "3.13.18"
+}

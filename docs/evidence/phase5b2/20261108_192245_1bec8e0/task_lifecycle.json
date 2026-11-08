@@ -1,0 +1,26 @@
+{
+  "budget_state_machine": [
+    "RESERVED",
+    "COMMITTED",
+    "EXECUTION_STARTED",
+    "EXECUTION_COMPLETED",
+    "EVIDENCE_VERIFIED",
+    "CONSUMED"
+  ],
+  "layer_a": {
+    "backend_calls": 1,
+    "state": "ARCHIVED",
+    "states": [
+      "PROPOSED",
+      "VALIDATED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "QUEUED",
+      "RUNNING",
+      "EVALUATING",
+      "EVALUATED",
+      "ARCHIVED"
+    ],
+    "task_id": "T-b3e6dbc01e351a0cbf96"
+  }
+}

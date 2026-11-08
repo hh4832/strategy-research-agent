@@ -1,0 +1,41 @@
+{
+  "files": {
+    "archive_integrity.json": {
+      "bytes": 4269,
+      "sha256": "ccb95395c5819d956c34b5407c0c9ae5ca18fd66289e0a4bf6f3aa46aa79a548"
+    },
+    "budget_reservations.json": {
+      "bytes": 11105,
+      "sha256": "baa7b3dff990b12bafe23091e2b4a6b418dfd22b00f7a1f3cdd40bb3d0962683"
+    },
+    "execution_acceptance.json": {
+      "bytes": 8251,
+      "sha256": "2d43c756fe1b453c6a0c6225f530bb58f5d1be2b4f586152a1564e794c302dbf"
+    },
+    "execution_receipts.json": {
+      "bytes": 3713,
+      "sha256": "31a2d376d7a8d6435bc934925442f5d3e8193c1cca60b964896439ba8458ad9d"
+    },
+    "governance_checks.json": {
+      "bytes": 382,
+      "sha256": "283952eb6fd8a6ff432772b62c78f7618a423a53ba94d605d4f535009f96f079"
+    },
+    "notebook_context.json": {
+      "bytes": 944,
+      "sha256": "4d04907b69b1057b27459029b96ffe79cf17e0de39582644f39faf484d3474c5"
+    },
+    "run_info.txt": {
+      "bytes": 321,
+      "sha256": "423db406f7fad7ef48cb3fb4f54c64170b9bdb0a9664980661f1ac478866fb91"
+    },
+    "task_lifecycle.json": {
+      "bytes": 386,
+      "sha256": "aed47adb64324e6bb507540c4134ec3ba88c9aeff9294d2c20efebd02c706edf"
+    }
+  },
+  "kind": "PHASE5B2_ARCHIVE_INDEX",
+  "work_tree": {
+    "files": 96,
+    "sha256": "92ed88469a9f69670888fffde190b6e18470a71e7ff66e15e6133633e203bb55"
+  }
+}

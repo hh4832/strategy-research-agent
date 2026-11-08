@@ -1,0 +1,136 @@
+{
+  "P0_1_reservation_replay_forgery": {
+    "VULNERABLE": true,
+    "fake_committed_status": {
+      "detail": "{'adapter': 'CONTROLLED_RESEARCH_ONLY', 'evidence': 'CONTROLLED_EXECUTION', 'archive_path': '/tmp/p5b2_repro_omirpo2h/fake_committed/20261106_224000_0123456', 'archive_manifest_sha256': '5a63fd0e7ee03",
+      "outcome": "EXECUTED_OR_ACCEPTED"
+    },
+    "forged_reservation": {
+      "error": "ExecutionFailed: RECEIPT_ARCHIVE_INCOMPLETE RECEIPT_ARCHIVE_INCOMPLETE: ARCHIVE_RUN_ID: ARCHIVE_RUN_ID: directory 20991231_235959_forged0 != MANIFEST run_id 20261106_224000_0123456",
+      "outcome": "REFUSED"
+    },
+    "ledger_state_after_legit": "CONSUMED",
+    "ledger_state_final": "CONSUMED",
+    "legit_dispatch_state": "ARCHIVED",
+    "replay_same_reservation_x3": [
+      {
+        "detail": "{'adapter': 'CONTROLLED_RESEARCH_ONLY', 'evidence': 'CONTROLLED_EXECUTION', 'archive_path': '/tmp/p5b2_repro_omirpo2h/replay_0/20261106_224000_0123456', 'archive_manifest_sha256': '5a63fd0e7ee03ce3fb5",
+        "outcome": "EXECUTED_OR_ACCEPTED"
+      },
+      {
+        "detail": "{'adapter': 'CONTROLLED_RESEARCH_ONLY', 'evidence': 'CONTROLLED_EXECUTION', 'archive_path': '/tmp/p5b2_repro_omirpo2h/replay_1/20261106_224000_0123456', 'archive_manifest_sha256': '5a63fd0e7ee03ce3fb5",
+        "outcome": "EXECUTED_OR_ACCEPTED"
+      },
+      {
+        "detail": "{'adapter': 'CONTROLLED_RESEARCH_ONLY', 'evidence': 'CONTROLLED_EXECUTION', 'archive_path': '/tmp/p5b2_repro_omirpo2h/replay_2/20261106_224000_0123456', 'archive_manifest_sha256': '5a63fd0e7ee03ce3fb5",
+        "outcome": "EXECUTED_OR_ACCEPTED"
+      }
+    ],
+    "runner_calls_after_forged": 5,
+    "runner_calls_after_legit_dispatch": 1,
+    "runner_calls_after_replay": 4,
+    "runner_calls_total": 6,
+    "uses_records": 1
+  },
+  "P0_2_receipt_archive_integrity": {
+    "VULNERABLE": true,
+    "archive_file_removed": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "archive_manifest_corrupted": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "receipt_deleted": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    },
+    "receipt_modified": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "CONSUMED"
+      ],
+      "ledger_state": "CONSUMED",
+      "runner_calls": 1,
+      "settled": true,
+      "task_state": "ARCHIVED"
+    }
+  },
+  "P0_3_identity_layer_a_precheck": {
+    "VULNERABLE": true,
+    "core_commit": {
+      "passed_precheck": true,
+      "precheck_problems": []
+    },
+    "dataset_manifest_sha256": {
+      "passed_precheck": true,
+      "precheck_problems": []
+    },
+    "strategy_spec_sha256": {
+      "passed_precheck": true,
+      "precheck_problems": []
+    }
+  },
+  "P0_3_identity_layer_b_runner": {
+    "VULNERABLE": true,
+    "core": "installed Core b16179a (pinned b16179a)",
+    "core_commit": {
+      "direct_execute": {
+        "detail": "{'adapter': 'CONTROLLED_RESEARCH_ONLY', 'evidence': 'CONTROLLED_EXECUTION', 'archive_path': '/tmp/p5b2_repro_omirpo2h/p03b_exec_core_commit/20261106_224000_71b9a6d', 'archive_manifest_sha256': 'ec5882",
+        "outcome": "EXECUTED_OR_ACCEPTED"
+      },
+      "passed_precheck": true,
+      "precheck_problems": [],
+      "runner_calls": 1,
+      "runner_executed_with_wrong_pin": true
+    },
+    "dataset_manifest_sha256": {
+      "direct_execute": {
+        "detail": "{'adapter': 'CONTROLLED_RESEARCH_ONLY', 'evidence': 'CONTROLLED_EXECUTION', 'archive_path': '/tmp/p5b2_repro_omirpo2h/p03b_exec_dataset_manifest_sha256/20261106_224000_71b9a6d', 'archive_manifest_sha2",
+        "outcome": "EXECUTED_OR_ACCEPTED"
+      },
+      "passed_precheck": true,
+      "precheck_problems": [],
+      "runner_calls": 1,
+      "runner_executed_with_wrong_pin": true
+    },
+    "strategy_spec_sha256": {
+      "direct_execute": {
+        "detail": "{'adapter': 'CONTROLLED_RESEARCH_ONLY', 'evidence': 'CONTROLLED_EXECUTION', 'archive_path': '/tmp/p5b2_repro_omirpo2h/p03b_exec_strategy_spec_sha256/20261106_224000_71b9a6d', 'archive_manifest_sha256'",
+        "outcome": "EXECUTED_OR_ACCEPTED"
+      },
+      "passed_precheck": true,
+      "precheck_problems": [],
+      "runner_calls": 1,
+      "runner_executed_with_wrong_pin": true
+    }
+  },
+  "adapter_api": "CALLER_SUPPLIED_USE_AND_RESERVATION",
+  "git_head": "71b9a6da829c652d7e1f89e107b770d730728598",
+  "kind": "PHASE5B2_SECURITY_REPRODUCTION",
+  "provenance": "RE-DERIVED from the remediation brief; Codex's original report/reproducer unavailable to Claude",
+  "python": "3.13.18"
+}
