@@ -1,0 +1,32 @@
+{
+  "b2_suites": {
+    "core": "b16179a7cc077c36046574769a32c367fa476cae",
+    "returncode": 0,
+    "summary": "80 passed in 245.24s (0:04:05)"
+  },
+  "clean_colab_runtime": true,
+  "cloud": true,
+  "executor": "this Colab runtime (SINGLE_EXECUTOR_ONLY)",
+  "notebook": "PHASE5B2-EXECUTION-v5",
+  "python": "3.13.18",
+  "regression": {
+    "core": "absent",
+    "returncode": 0,
+    "summary": "607 passed, 65 skipped in 383.74s (0:06:23)"
+  },
+  "version_sync": {
+    "checkout_head": "1bec8e0aee004d97ba8603f9ecb75fc20b538801",
+    "files_changed_after_pin": [
+      "docs/PHASE5B2_ACCEPTANCE.md",
+      "docs/PHASE5B2_SECURITY_REMEDIATION.md",
+      "docs/evidence/phase5b2_remediation/after_p02_task_archive_1bec8e0.json",
+      "notebooks/Phase5B2_Controlled_Execution_Acceptance.ipynb"
+    ],
+    "github_remote_head": "ad97624f1973385bbdca159444303da78371c842",
+    "notebook_version": "PHASE5B2-EXECUTION-v5",
+    "notebook_version_on_github_head": "PHASE5B2-EXECUTION-v5",
+    "pin_on_branch": true,
+    "pinned_sha": "1bec8e0aee004d97ba8603f9ecb75fc20b538801",
+    "working_tree_clean": true
+  }
+}

@@ -248,6 +248,21 @@ P0-1 與 P0-3 的 regression tests 全部照舊通過，語意未改。
 - **GitHub 證據副本：** `docs/evidence/phase5b2/<ts>_1bec8e0/`，是 ZIP 頂層檔案的複本。
 - **未提交的 `work/` supporting artifacts：** Drive 封存下的 `work/` 目錄，包含 Layer A / B 的隔離帳本、task archive、runner archive 等。它的 tree hash 記錄在 `ARCHIVE_INDEX.json` 的 `work_tree`。這些檔案**不在** ZIP 和 GitHub 副本中，因此光憑 GitHub 副本無法獨立驗證 `work/` 的每個檔案；要驗證需存取 Drive 上的原封存。
 
+### 7.6.1 雲端驗收結果（`executions/20261108_192245_1bec8e0`）
+
+- **環境：** Notebook `PHASE5B2-EXECUTION-v5`（GitHub HEAD `ad97624`），全新 runtime，Python 3.13.18，`cloud=true`。程式 pin `1bec8e0`，checkout 乾淨；pin 之後只有 docs 與 notebook 變更。
+- **回歸：** 607 passed / 65 skipped（無 Core；比本機多 1 個 skipped，是環境條件造成的 skip，沒有失敗）。B2 + security suites 80 passed（Core b16179a）。
+- **B2：** B2-01..B2-10 全部 PASS；Layer B PASS；SCOPED_GO（SINGLE_EXECUTOR_ONLY）；repo 帳本未變。
+- **安全修補：** P0-1（10 tests）、P0-2（24）、P0-3（15）皆 `FIXED_PENDING_INDEPENDENT_REVIEW`，0 failed。
+- **雲端重現：** P0-2 殘留攻擊 7/7 為 `RECONCILIATION_REQUIRED`（「驗證後竄改」在 EVIDENCE_VERIFIED 之後被 in-lock recheck 擋下），對照組 CONSUMED 一次；第一輪 P0-2 四種竄改仍為 `RECONCILIATION_REQUIRED`；P0-1 runner 呼叫 1 次、uses 1 筆；P0-3 Layer A / B 皆 BLOCKED，runner 呼叫 0。
+- **帳本：** Layer A / Layer B 皆為 `RESERVED → COMMITTED → EXECUTION_STARTED → EXECUTION_COMPLETED → EVIDENCE_VERIFIED → CONSUMED`，uses 1 筆。
+- **封存：** Colab 端 `--verify-archive --zip` PASS（10 個檔案）；Claude 對上傳的 ZIP 重新核對，`ARCHIVE_INDEX.json` 列出的 10 個檔案 SHA 全部吻合、無額外檔案。ZIP sha256 `b0d5afff291af0161a307c1ff38b48a492e2ef7540c0a924d415a1273ea1e2b8`。
+- **證據的三種形式（依 §7.6）：**
+  - ZIP：上述 11 個頂層檔案（含 `ARCHIVE_INDEX.json`）。
+  - GitHub 副本：`docs/evidence/phase5b2/20261108_192245_1bec8e0/`，與 ZIP 內容相同。
+  - `work/`：只在 Drive 上；它的 tree hash 記錄在 `ARCHIVE_INDEX.json` 的 `work_tree`，Claude **未能**取得 `work/` 本身，因此無法獨立驗證其中的檔案。
+- **同日其他 run 不列為證據：** `1bec8e0` 的兩次 v4 執行（`cloud=false`，Drive 未授權）與兩次在舊 runtime 上 STOP 的執行，都只是除錯紀錄；舊封存 `20261108_115819_019db14`、`20261108_153034_9f73a56` 保留未覆寫。
+
 ### 7.7 尚未解決的限制
 
 - 同 §5：SINGLE_EXECUTOR_ONLY；不受帳本鎖約束的程序在微小窗口內或 CONSUMED 之後的修改，只能事後偵測，無法事前阻止。

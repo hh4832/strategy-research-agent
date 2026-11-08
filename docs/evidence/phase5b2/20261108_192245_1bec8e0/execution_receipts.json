@@ -1,0 +1,94 @@
+{
+  "execution_identity": {
+    "approval_evidence_sha256": "a6d5267b21c5f6454d01c246967034676db0d0f08aa0e768b6c5ea12b0a15451",
+    "authorization_id": "RA-SYNTHETIC_FIXTURE-B1-0001",
+    "batch_reservation_id": "BR-2fbd56bd41b00846b1e4aa79",
+    "binding_id": "AB-a55a21cc4f11c1395a754024",
+    "bound_request_sha256": "b3e6dbc01e351a0cbf965b579d013206f1a817b5259adaa65604303c4a03d32d",
+    "core_commit": "b16179a7cc077c36046574769a32c367fa476cae",
+    "cost_scenarios": [
+      "BASE",
+      "LOW",
+      "STRESS",
+      "CAT_STRESS"
+    ],
+    "dataset_manifest_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "dataset_snapshot_id": "SYNTHETIC_FIXTURE_snapshot",
+    "execution_time_rule": {
+      "rule": "NEXT_ELIGIBLE_BAR_OPEN"
+    },
+    "git_commit": "0000000000000000000000000000000000000000",
+    "holdout_policy": {
+      "access": "NO_ACCESS",
+      "lock_id": "HOLDOUT-TSM-15M-v1"
+    },
+    "output_manifest_sha256": "87f34484c978ab632e7e9812475d5a6c11cd71d6eebd1b884c3e6504c41c1aef",
+    "proposal_sha256": "2de3fabc4a8fd07a7d1a552b14078495c390d511252f9f756462ff1c6655f744",
+    "research_window": {
+      "end": "2024-06-29T00:00:00+08:00",
+      "start": "2024-06-03T00:00:00+08:00",
+      "warmup_start": "2024-05-29T00:00:00+08:00"
+    },
+    "signal_time_rule": {
+      "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+      "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+      "policy_version": "1.0.0",
+      "signal_time": "CORE_MODELED_AVAILABLE_AT"
+    },
+    "strategy_spec_sha256": "672d9b1c0c49715ee015724f0dfedddb0fd49b97ad5cd205eaa20713a297b670"
+  },
+  "layer_a": {
+    "receipt": {
+      "approval_evidence_sha256": "a6d5267b21c5f6454d01c246967034676db0d0f08aa0e768b6c5ea12b0a15451",
+      "archive_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/executions/20261108_192245_1bec8e0/work/layer_a/s/executions/T-b3e6dbc01e351a0cbf96/attempt_1/SYNSTUB_a493f9cd413e60bb",
+      "attempt_id": "T-b3e6dbc01e351a0cbf96:1",
+      "authorization_id": "RA-SYNTHETIC_FIXTURE-B1-0001",
+      "backend": "SYNTHETIC_STUB_IDENTITY_CONFIGURED",
+      "backend_identity": {
+        "fixture": "20261106_224000_0123456",
+        "label": "SYNTHETIC_STUB"
+      },
+      "binding_id": "AB-a55a21cc4f11c1395a754024",
+      "consumed_batches": 1,
+      "execution_started_event_sha256": "f9ddb559af2a5605a21f8458711e5fd497b293c61c9ac34f9a5cba9a106ad62e",
+      "finished_at": "2026-11-08T11:22:50+00:00",
+      "kind": "EXECUTION_RECEIPT",
+      "output_manifest_sha256": "87f34484c978ab632e7e9812475d5a6c11cd71d6eebd1b884c3e6504c41c1aef",
+      "request_sha256": "b3e6dbc01e351a0cbf965b579d013206f1a817b5259adaa65604303c4a03d32d",
+      "reservation_id": "BR-2fbd56bd41b00846b1e4aa79",
+      "run_id": "SYNSTUB_a493f9cd413e60bb",
+      "started_at": "2026-11-08T19:23:07+08:00",
+      "synthetic": true,
+      "task_id": "T-b3e6dbc01e351a0cbf96",
+      "use_record_sha256": "7a0343ab5448c5ed52e81054ad243fc377bf9f0149db707f461aebb213dc3165"
+    },
+    "sha256": "36cec51aa22f44c1bdf7c1b9344b4ff03bb05ff7a9d1e946b49a676fcc45dac7"
+  },
+  "layer_b": {
+    "receipt": {
+      "approval_evidence_sha256": "27b826d127fe7fbc56664720d36f7bf6539fed21d1decc996bc6218c5125c2af",
+      "archive_path": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/executions/20261108_192245_1bec8e0/work/layer_b_orch/state/executions/T-5eddba579d6c7bbd7383/attempt_1/20261108_192310_1bec8e0",
+      "attempt_id": "T-5eddba579d6c7bbd7383:1",
+      "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+      "backend": "RESEARCH_ONLY_RUNNER_SYNTHETIC_SNAPSHOT",
+      "backend_identity": {
+        "agent_git_sha": "1bec8e0aee004d97ba8603f9ecb75fc20b538801",
+        "core_git_sha": "b16179a7cc077c36046574769a32c367fa476cae"
+      },
+      "binding_id": "AB-357a315bd9a96b881286db82",
+      "consumed_batches": 1,
+      "execution_started_event_sha256": "7a0a190352352a86de339552bb6083abfee2336ad5536a9452850518371d520f",
+      "finished_at": "2026-11-08T11:23:18+00:00",
+      "kind": "EXECUTION_RECEIPT",
+      "output_manifest_sha256": "114119efe2117afd658bc900b4c70105d6773564c48fecdcb90b72910474f67a",
+      "request_sha256": "5eddba579d6c7bbd7383ebdb8e7d3c5b6045aa4fa2c2d2195cca11cb7f53380c",
+      "reservation_id": "BR-0207c4e4d2b1d16ed89ca849",
+      "run_id": "20261108_192310_1bec8e0",
+      "started_at": "2026-11-08T19:23:17+08:00",
+      "synthetic": true,
+      "task_id": "T-5eddba579d6c7bbd7383",
+      "use_record_sha256": "fccad5482d2f86a535fe54f65c4e0e83e3b0e598bada1647f7c21b2dcfe5cc80"
+    },
+    "sha256": "4b6e1f46bc9b375e2adb1737c5a13bf2c92e4d2de3b6af2f5c689b1fa1315343"
+  }
+}
