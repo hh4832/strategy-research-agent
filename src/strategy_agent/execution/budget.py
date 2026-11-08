@@ -25,6 +25,18 @@ distributed lock across Colab runtimes or Google Drive. The ledger therefore adm
 (SINGLE_EXECUTOR_ONLY): a second executor id is refused until the first is retired with no open reservation.
 At-most-once dispatch is guaranteed per ledger; exactly-once execution is NOT claimed (it would need an idempotent
 external runner with verifiable receipts end to end).
+
+Security remediation (Codex P0-1 / P0-2 on PR #13). Execution progress is recorded as MARKER events that are only valid
+while the reservation is COMMITTED (they never change the state):
+  EXECUTION_STARTED    ``claim_execution``: the ONLY grant to run a backend. Written in the critical section after
+                       re-verifying the reservation identity (request / task / authorization / binding / attempt /
+                       approval evidence), the registered executor and the authoritative uses record. At most one per
+                       reservation: a replay, a second process or a caller-claimed state is refused, never run again.
+  EXECUTION_COMPLETED  receipt sha + output MANIFEST sha recorded right after the receipt is written
+  EVIDENCE_VERIFIED    receipt + archive + identity re-verified from disk against the ledger (orchestrator)
+``settle`` (COMMITTED -> CONSUMED) requires COMPLETED and VERIFIED with identical shas. A started execution without
+verified evidence is never released and never re-run: it can only go to RECONCILIATION_REQUIRED.
+Caller-supplied reservation / use objects are never trusted anywhere: only this ledger's folded state is.
 """
 from __future__ import annotations
 
@@ -42,6 +54,8 @@ TERMINAL = ("CONSUMED", "RELEASED")
 CONSISTENCY = "SINGLE_EXECUTOR_ONLY"
 TRANSITIONS = {"COMMITTED": ("RESERVED",), "RELEASED": ("RESERVED",), "CONSUMED": ("COMMITTED",),
                "RECONCILIATION_REQUIRED": ("COMMITTED", "RESERVED")}
+MARKERS = ("EXECUTION_STARTED", "EXECUTION_COMPLETED", "EVIDENCE_VERIFIED")    # valid only while COMMITTED
+CLAIM_IDENTITY = ("request_sha256", "task_id", "authorization_id", "binding_id", "attempt_id", "approval_evidence_sha256")
 
 
 class BudgetRefused(RuntimeError):
@@ -117,6 +131,12 @@ class BudgetLedger:
 
     def for_task(self, task_id: str) -> dict | None:
         return next((r for r in self.reservations().values() if r["task_id"] == task_id), None)
+
+    def use_record(self, reservation_id: str) -> dict | None:
+        """The authoritative uses record a COMMITTED reservation was granted (matched by its record sha)."""
+        with self._cs() as v:
+            r = v.get(reservation_id)
+            return next((dict(u) for u in v.uses if u.get("record_sha256") == r.get("use_record_sha256")), None)
 
     def capacity(self, authorization_id: str) -> dict:
         with self._cs() as v:
@@ -205,9 +225,64 @@ class BudgetLedger:
             r = v.get(reservation_id)
             if r["state"] != "COMMITTED":
                 raise BudgetRefused("SETTLE_REFUSED", f"{reservation_id} is {r['state']}")
+            if v.executor() != worker_id:
+                raise BudgetRefused("EXECUTOR_NOT_REGISTERED", worker_id)
+            done, ver = r.get("execution_completed") or {}, r.get("evidence_verified") or {}
+            if not r.get("execution_started") or not done or not ver:
+                raise BudgetRefused("SETTLE_REFUSED", f"{reservation_id}: execution evidence not completed and verified")
+            for k, val in (("receipt_sha256", receipt_sha256), ("output_manifest_sha256", output_manifest_sha256)):
+                if not val or done.get(k) != val or ver.get(k) != val:
+                    raise BudgetRefused("SETTLE_EVIDENCE_MISMATCH", f"{k} differs from the recorded execution evidence")
             return v.append({"event_type": "CONSUMED", "reservation_id": reservation_id, "worker_id": worker_id,
                              "receipt_sha256": receipt_sha256, "output_manifest_sha256": output_manifest_sha256,
                              "archive_ref": archive_ref}, r)
+
+    def claim_execution(self, reservation_id: str, *, worker_id: str, expect: dict) -> dict:
+        """The ONE grant to execute: COMMITTED + identity match + registered executor + authoritative uses record +
+        no earlier EXECUTION_STARTED. Returns the ledger's own reservation and uses record (never the caller's)."""
+        with self._cs() as v:
+            r = v.get(reservation_id)
+            if r["state"] != "COMMITTED":
+                raise BudgetRefused("EXECUTION_NOT_ELIGIBLE", f"{reservation_id} is {r['state']} in the ledger")
+            if r.get("execution_started"):
+                raise BudgetRefused("EXECUTION_ALREADY_STARTED", f"{reservation_id} was already granted one execution "
+                                    f"(attempt {r['execution_started'].get('attempt_id')}); never run again")
+            if v.executor() != worker_id or r.get("worker_id") != worker_id:
+                raise BudgetRefused("EXECUTOR_NOT_REGISTERED", f"{worker_id} ({CONSISTENCY})")
+            diff = [k for k in CLAIM_IDENTITY if not r.get(k) or expect.get(k) != r.get(k)]
+            if diff:
+                raise BudgetRefused("RESERVATION_IDENTITY_MISMATCH", ",".join(diff))
+            use = next((u for u in v.uses if u.get("record_sha256") == r.get("use_record_sha256")), None)
+            if use is None or use.get("run_id") != r["planned_run_id"] or use.get("authorization_id") != r["authorization_id"] \
+                    or use.get("seq") != r.get("use_seq"):
+                raise BudgetRefused("USE_RECORD_MISSING", "no authoritative uses record for this reservation")
+            ev = v.append({"event_type": "EXECUTION_STARTED", "reservation_id": reservation_id, "worker_id": worker_id,
+                           "use_record_sha256": use["record_sha256"], "planned_run_id": r["planned_run_id"]}, r)
+            return {"reservation": v.get(reservation_id), "use": dict(use), "event": ev}
+
+    def record_completion(self, reservation_id: str, *, worker_id: str, receipt_sha256: str,
+                          output_manifest_sha256: str, receipt_path: str) -> dict:
+        with self._cs() as v:
+            r = v.get(reservation_id)
+            if r["state"] != "COMMITTED" or not r.get("execution_started") or r.get("execution_completed"):
+                raise BudgetRefused("COMPLETION_REFUSED", f"{reservation_id} is {r['state']} "
+                                    f"started={bool(r.get('execution_started'))} completed={bool(r.get('execution_completed'))}")
+            return v.append({"event_type": "EXECUTION_COMPLETED", "reservation_id": reservation_id, "worker_id": worker_id,
+                             "receipt_sha256": receipt_sha256, "output_manifest_sha256": output_manifest_sha256,
+                             "receipt_path": str(receipt_path)}, r)
+
+    def record_evidence_verified(self, reservation_id: str, *, worker_id: str, receipt_sha256: str,
+                                 output_manifest_sha256: str, archive_ref: str, evaluation_input_sha256: str | None) -> dict:
+        with self._cs() as v:
+            r = v.get(reservation_id)
+            done = r.get("execution_completed") or {}
+            if r["state"] != "COMMITTED" or not done or r.get("evidence_verified"):
+                raise BudgetRefused("VERIFY_REFUSED", f"{reservation_id} is {r['state']} completed={bool(done)}")
+            if done.get("receipt_sha256") != receipt_sha256 or done.get("output_manifest_sha256") != output_manifest_sha256:
+                raise BudgetRefused("SETTLE_EVIDENCE_MISMATCH", "verified evidence differs from the recorded completion")
+            return v.append({"event_type": "EVIDENCE_VERIFIED", "reservation_id": reservation_id, "worker_id": worker_id,
+                             "receipt_sha256": receipt_sha256, "output_manifest_sha256": output_manifest_sha256,
+                             "archive_ref": archive_ref, "evaluation_input_sha256": evaluation_input_sha256}, r)
 
     def require_reconciliation(self, reservation_id: str, *, reason: str, worker_id: str) -> dict:
         with self._cs() as v:
@@ -299,6 +374,20 @@ def _fold(events: list[dict]) -> dict[str, dict]:
                 "reservation_id", "authorization_id", "request_sha256", "task_id", "attempt_id", "batch_units",
                 "approval_evidence_sha256", "binding_id", "worker_id", "planned_run_id")},
                 "state": "RESERVED", "last_event_sha256": e["record_sha256"], "history": ["RESERVED"]}
+        elif t in MARKERS:
+            r = out.get(e["reservation_id"])
+            key = {"EXECUTION_STARTED": "execution_started", "EXECUTION_COMPLETED": "execution_completed",
+                   "EVIDENCE_VERIFIED": "evidence_verified"}[t]
+            prereq = {"EXECUTION_STARTED": None, "EXECUTION_COMPLETED": "execution_started",
+                      "EVIDENCE_VERIFIED": "execution_completed"}[t]
+            if r is None or r["state"] != "COMMITTED" or r.get(key) or (prereq and not r.get(prereq)):
+                raise BudgetRefused("LEDGER_INCONSISTENT", f"{t} for {e.get('reservation_id')} from "
+                                    f"{None if r is None else r['state']}")
+            r[key] = {k: e.get(k) for k in ("attempt_id", "worker_id", "use_record_sha256", "receipt_sha256",
+                                            "output_manifest_sha256", "receipt_path", "archive_ref",
+                                            "evaluation_input_sha256", "record_sha256") if e.get(k) is not None}
+            r["last_event_sha256"] = e["record_sha256"]
+            r["history"].append(t)
         elif t in TRANSITIONS:
             r = out.get(e["reservation_id"])
             if r is None or r["state"] not in TRANSITIONS[t]:
@@ -306,10 +395,10 @@ def _fold(events: list[dict]) -> dict[str, dict]:
                                     f"{None if r is None else r['state']}")
             r.update(state=t, last_event_sha256=e["record_sha256"])
             r["history"].append(t)
-            for k in ("use_record_sha256", "receipt_sha256", "output_manifest_sha256", "archive_ref", "reason"):
+            for k in ("use_record_sha256", "use_seq", "receipt_sha256", "output_manifest_sha256", "archive_ref", "reason"):
                 if k in e:
                     r[k] = e[k]
     return out
 
 
-__all__ = ["BudgetLedger", "BudgetRefused", "CONSISTENCY", "ConditionFailed"]
+__all__ = ["BudgetLedger", "BudgetRefused", "CONSISTENCY", "CLAIM_IDENTITY", "MARKERS", "ConditionFailed"]

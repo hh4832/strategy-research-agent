@@ -205,20 +205,26 @@ jobs:
   phase5b2-controlled:
     # Phase 5-B2: controlled execution + atomic budget. Layer A (SYNTHETIC_FIXTURE, no Core) and Layer B (the existing
     # ResearchOnlyRunner on a SYNTHETIC development snapshot, Core b16179a). Isolated books only; real runner DISABLED.
+    # Security remediation of PR #13 (Codex P0-1/2/3): regression suite + re-derived reproducer, Python 3.11 and 3.12.
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     env:
       MRC_SHA: b16179a7cc077c36046574769a32c367fa476cae
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
       - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}"
       - name: B2 suites (junit; the real exit code fails the step)
         run: |
           rc=0
           pytest -q -p no:cacheprovider tests/test_phase5b2_controlled.py tests/test_phase5b2_runner_core.py \
-            tests/test_phase5b2_acceptance.py --junitxml "$RUNNER_TEMP/b2.xml" || rc=$?
+            tests/test_phase5b2_security_remediation.py tests/test_phase5b2_acceptance.py \
+            --junitxml "$RUNNER_TEMP/b2.xml" || rc=$?
           echo "$rc" > "$RUNNER_TEMP/b2_rc"
           exit "$rc"
       - name: B2-01..B2-10 acceptance (fresh process; expected SCOPED_GO, B2-10 BLOCKED without Drive)
@@ -230,12 +236,14 @@ jobs:
           r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "b2.json")))
           assert all(r["gates"][f"B2-0{i}"] == "PASS" for i in range(1, 10)), r["gates"]
           assert r["layer_b"] == "PASS" and r["verdict"]["verdict"] == "SCOPED_GO", r
+          # the three P0 findings: fixed + not reproducible here; Security GO is NOT declared (Codex re-review)
+          assert set(r["security_remediation"].values()) == {"FIXED_PENDING_INDEPENDENT_REVIEW"}, r["security_remediation"]
           PY
           python -m strategy_agent.execution.acceptance --out-dir "$RUNNER_TEMP/executions/ci_${GITHUB_SHA::7}" --verify-archive
           git diff --exit-code -- registry governance configs schemas
       - uses: actions/upload-artifact@v4
         with:
-          name: phase5b2-execution-acceptance
+          name: phase5b2-execution-acceptance-py${{ matrix.python-version }}
           path: |
             ${{ runner.temp }}/executions/*/*.json
             ${{ runner.temp }}/executions/*/run_info.txt

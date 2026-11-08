@@ -58,10 +58,13 @@ def _try(fn):
         return {"outcome": "REFUSED", "error": f"{type(e).__name__}: {getattr(e, 'code', '')} {str(e)[:200]}"}
 
 
-def _execute(adapter, doc, out_dir, *, use, reservation, task_id, attempt_id):
+def _execute(adapter, doc, out_dir, *, use, reservation, task_id, attempt_id, id_only=False):
     """Call the PUBLIC adapter the way a direct caller can, on whichever API this commit exposes."""
     if NEW_API:
-        # a caller can still try to hand over objects; the remediated adapter must refuse / ignore them
+        if id_only:                    # the remediated API: only ids; the ledger must refuse a replay / forgery
+            return adapter.execute(doc, out_dir, reservation_id=reservation.get("reservation_id"), task_id=task_id,
+                                   attempt_id=attempt_id)
+        # a caller can still try to hand over objects; the remediated adapter must refuse them
         return adapter.execute(doc, out_dir, reservation_id=reservation.get("reservation_id"), task_id=task_id,
                                attempt_id=attempt_id, use=use, reservation=reservation)
     return adapter.execute(doc, out_dir, use=use, reservation=reservation)
@@ -87,12 +90,20 @@ def p0_1(work: Path) -> dict:
         reps.append(_try(lambda i=i: _execute(ad, doc, work / f"replay_{i}", use=use, reservation={**r},
                                               task_id=tid, attempt_id=attempt)))
     out["replay_same_reservation_x3"] = reps
+    if NEW_API:
+        out["replay_same_reservation_id_only_x3"] = [
+            _try(lambda i=i: _execute(ad, doc, work / f"replay_id_{i}", use=use, reservation=r, task_id=tid,
+                                      attempt_id=attempt, id_only=True)) for i in range(3)]
     out["runner_calls_after_replay"] = _calls(be)
     # (b) forged reservation + forged use (never in the ledger)
     forged_use = {"run_id": "20991231_235959_forged0", "record_sha256": "f" * 64, "authorization_id": "RA-FORGED"}
     forged_res = {"reservation_id": "BR-" + "0" * 24, "task_id": "T-FORGED", "planned_run_id": forged_use["run_id"]}
     out["forged_reservation"] = _try(lambda: _execute(ad, doc, work / "forged", use=forged_use, reservation=forged_res,
                                                       task_id="T-FORGED", attempt_id="T-FORGED:1"))
+    if NEW_API:
+        out["forged_reservation_id_only"] = _try(lambda: _execute(ad, doc, work / "forged_id", use=None,
+                                                                  reservation=forged_res, task_id="T-FORGED",
+                                                                  attempt_id="T-FORGED:1", id_only=True))
     out["runner_calls_after_forged"] = _calls(be)
     # (c) caller claims COMMITTED for the real reservation id
     fake = {**r, "state": "COMMITTED", "history": ["RESERVED", "COMMITTED"]}
@@ -156,7 +167,8 @@ def p0_2(work: Path) -> dict:
 def p0_3_layer_a(work: Path) -> dict:
     """Wrong Core / spec / manifest pins on the request: does the controlled precheck notice?"""
     W = X.world(work / "p03a")
-    ad = CT.ControlledRunnerAdapter(W["backend"], governance_root=W["gov"])
+    ad = (CT.ControlledRunnerAdapter(W["backend"], governance_root=W["gov"], artifact_root=W["art"]) if NEW_API
+          else CT.ControlledRunnerAdapter(W["backend"], governance_root=W["gov"]))
     out = {}
     for field, bad in (("core_commit", "0" * 40), ("strategy_spec_sha256", "0" * 64), ("dataset_manifest_sha256", "0" * 64)):
         doc = {**W["bound"], field: bad}
@@ -171,39 +183,42 @@ def p0_3_layer_b(work: Path) -> dict:
     ok, why = CW.core_available()
     if not ok:
         return {"status": "SKIPPED", "reason": why}
+    from strategy_agent.orchestration import request as Q
     from strategy_agent.phase5a import acceptance as A5
     g40 = A5.code_identity()["git_sha"]
     out = {"core": why}
     for field, bad in (("core_commit", "0" * 40), ("strategy_spec_sha256", "0" * 64), ("dataset_manifest_sha256", "0" * 64)):
         w = CW.build(work / f"p03b_{field}")
-        led = X.ledger_for(w["gov"], clock=lambda w=w: w["now"], git_commit=g40)
         be = CT.ResearchOnlyRunnerBackend(w["runner"], config_path=w["config_path"], snapshot_root=w["snapshot_root"],
                                           git_commit=g40, synthetic_snapshot=True,
-                                          run_context={**w["run_context"], "agent_git_sha": g40},
-                                          **({"root": w["art"]} if "art" in w else {}))
-        kw = {"ledger": led} if NEW_API else {}
-        ad = CT.ControlledRunnerAdapter(be, governance_root=w["gov"], **kw)
-        base = CW.bound_request(w) if hasattr(CW, "bound_request") else CW.request_for(w)
+                                          run_context={**w["run_context"], "agent_git_sha": g40})
+        task = "T-" + "c" * 20
+        if NEW_API:
+            o = CW.orchestrator(w, work / f"p03b_orch_{field}", be)
+            ad, led = o.adapters["RESEARCH_ONLY_REAL"], o.budget
+            base = CW.bound_request(w)
+            binding = w["binding"]["binding_id"]
+        else:
+            led = X.ledger_for(w["gov"], clock=lambda w=w: w["now"], git_commit=g40)
+            ad = CT.ControlledRunnerAdapter(be, governance_root=w["gov"])
+            base, binding = CW.request_for(w), None
         doc = {**base, field: bad}
         rec = {"precheck_problems": ad.precheck(doc)}
-        led.register_executor("worker-1", actor="repro")
-        task = "T-" + "c" * 20
         try:
-            from strategy_agent.orchestration import request as Q
-            binding = None
-            if NEW_API:
-                from strategy_agent.binding.store import BindingStore
-                b = BindingStore(w["gov"]).for_bound(Q.request_hash(base))
-                binding = b and b["binding_id"]
+            led.register_executor("worker-1", actor="repro")
             r = led.reserve(authorization_id=w["authorization_id"], request_sha256=Q.request_hash(doc), task_id=task,
                             attempt_id=f"{task}:1", approval_evidence_sha256="d" * 64, binding_id=binding,
                             worker_id="worker-1", planned_run_id=ad.planned_run_id(task, w["now"]))
             com = led.commit(r["reservation_id"], worker_id="worker-1", actor="repro",
                              scenarios=doc["cost_profile_ref"]["scenarios"])
             rec["direct_execute"] = _try(lambda: _execute(ad, doc, work / f"p03b_exec_{field}", use=com["use"],
-                                                          reservation=r, task_id=task, attempt_id=f"{task}:1"))
+                                                          reservation=r, task_id=task, attempt_id=f"{task}:1",
+                                                          id_only=True))
         except Exception as e:  # noqa: BLE001
             rec["direct_execute"] = {"outcome": "REFUSED", "error": f"{type(e).__name__}: {str(e)[:200]}"}
+        if NEW_API:          # and through the orchestrator: the tampered doc is not the bound request
+            s_ = o.submit(doc, actor="TEST_FIXTURE_SUBMITTER", actor_kind="TEST_FIXTURE")
+            rec["orchestrator_submit_state"] = s_["state"]
         rec["runner_calls"] = be.calls
         rec["passed_precheck"] = rec["precheck_problems"] == []
         rec["runner_executed_with_wrong_pin"] = be.calls > 0

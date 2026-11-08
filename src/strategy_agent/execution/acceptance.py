@@ -34,7 +34,18 @@ TPE = ZoneInfo("Asia/Taipei")
 ROOT = A5.ROOT
 INDEX = "ARCHIVE_INDEX.json"
 OUTPUT_FILES = ("execution_acceptance.json", "budget_reservations.json", "execution_receipts.json", "task_lifecycle.json",
-                "governance_checks.json", "archive_integrity.json", "notebook_context.json", "run_info.txt", INDEX)
+                "governance_checks.json", "archive_integrity.json", "notebook_context.json", "security_remediation.json",
+                "security_reproduction.json", "run_info.txt", INDEX)
+SETTLED_HISTORY = ["RESERVED", "COMMITTED", "EXECUTION_STARTED", "EXECUTION_COMPLETED", "EVIDENCE_VERIFIED", "CONSUMED"]
+REPRODUCER = ROOT / "docs/evidence/phase5b2_remediation/reproduce.py"
+SECURITY = {   # Codex security review of PR #13 (HEAD 71b9a6d); reported SEPARATELY from B2-01..B2-10
+    "P0-1": ("Reservation Replay / Forgery: only the ledger grants execution, exactly once per reservation",
+             ("P0_1_reservation_replay_forgery",)),
+    "P0-2": ("Receipt / Archive Integrity Before Settlement: re-verified from disk; tampering never settles",
+             ("P0_2_receipt_archive_integrity",)),
+    "P0-3": ("Request / Execution Identity: Core / spec / dataset manifest verified against authoritative sources",
+             ("P0_3_identity_layer_a_precheck", "P0_3_identity_layer_b_runner")),
+}
 GATES = {
     "B2-01": "Atomic Reservation: concurrent workers / processes never exceed the limit; authority re-read in one critical section",
     "B2-02": "Authorization Scope: PENDING / unbound / exhausted / revoked authorizations never execute",
@@ -73,7 +84,7 @@ def layer_a(work: Path) -> dict:
     tr = trace(o, tid)
     ev = next(e for e in o.log.get(tid).events if e["to"] == "EVALUATING")["data"]["execution_reference"]
     receipt = json.loads(Path(ev["receipt_path"]).read_text(encoding="utf-8"))
-    return {"label": "SYNTHETIC_FIXTURE (Layer A)", "task_id": tid, "state": st["state"],
+    return {"label": "SYNTHETIC_STUB (Layer A; ledger / evidence mechanics only, not producer output)", "task_id": tid, "state": st["state"],
             "states": [h["to"] for h in st["history"]], "reservation": o.budget.for_task(tid),
             "budget_events": o.budget.events(), "receipt": receipt, "receipt_sha256": ev["receipt_sha256"],
             "decision": tr["research_decision"], "task_archive": tr["task_archive"], "backend_calls": W["backend"].calls,
@@ -93,43 +104,43 @@ def layer_a(work: Path) -> dict:
 
 
 def layer_b(work: Path) -> dict:
+    """The EXISTING ResearchOnlyRunner + Core on a SYNTHETIC snapshot, driven by the production-mode Orchestrator on
+    ISOLATED books through a real A2 -> verified binding -> bound request (security remediation: no self-referential
+    request), then the existing Phase 4-C evaluator in a fresh process."""
     from . import core_world as CW  # noqa: PLC0415
     ok, why = CW.core_available()
     if not ok:
         return {"status": "NOT_AVAILABLE", "why": why}
-    from .budget import BudgetLedger  # noqa: PLC0415
-    from .controlled import ControlledRunnerAdapter, ResearchOnlyRunnerBackend  # noqa: PLC0415
+    from .controlled import ResearchOnlyRunnerBackend  # noqa: PLC0415
     g40 = A5.code_identity()["git_sha"]
     w = CW.build(work / "layer_b")
     g = w["gov"]
-    L = BudgetLedger(authorizations_path=g / "governance/research_authorizations.jsonl",
-                     approvers_path=g / "governance/approvers.json", uses_path=g / "registry/research_authorization_uses.jsonl",
-                     events_path=g / "registry/research_budget_events.jsonl", clock=lambda: w["now"], git_commit=g40)
     be = ResearchOnlyRunnerBackend(w["runner"], config_path=w["config_path"], snapshot_root=w["snapshot_root"],
                                    git_commit=g40, synthetic_snapshot=True, run_context={**w["run_context"], "agent_git_sha": g40})
-    ad = ControlledRunnerAdapter(be, governance_root=g)
-    doc = CW.request_for(w)
-    pre = ad.precheck(doc)
+    o = CW.orchestrator(w, work / "layer_b_orch", be)
+    pre = o.adapters["RESEARCH_ONLY_REAL"].precheck(w["bound"])
     if pre:
         return {"status": "PRECHECK_BLOCKED", "problems": pre}
-    L.register_executor("worker-1", actor="acceptance")
-    tid = "T-" + "b" * 20
-    r = L.reserve(authorization_id=w["authorization_id"], request_sha256=_sha(json.dumps(doc, sort_keys=True).encode()),
-                  task_id=tid, attempt_id="1", approval_evidence_sha256="0" * 64, binding_id=None, worker_id="worker-1",
-                  planned_run_id=ad.planned_run_id(tid, w["now"]))
-    com = L.commit(r["reservation_id"], worker_id="worker-1", actor="acceptance", scenarios=doc["cost_profile_ref"]["scenarios"])
-    ref = ad.execute(doc, work / "layer_b_exec", use=com["use"], reservation=r, started_at=w["now"])
+    s = o.submit(w["bound"], actor="TEST_FIXTURE_SUBMITTER", actor_kind="TEST_FIXTURE")
+    if s["state"] != "PENDING_APPROVAL":
+        return {"status": "SUBMIT_BLOCKED", "governance": s.get("governance")}
+    tid = s["task_id"]
+    w["fa"].approve_task(o, tid)
+    st = o.dispatch(tid)
+    r = o.budget.for_task(tid)
+    if st["state"] != "ARCHIVED":
+        return {"status": "FAIL", "state": st["state"], "last_data": st["last_data"], "reservation": r,
+                "runner_calls": be.calls}
+    ref = o._execution_reference(o.log.get(tid))                      # noqa: SLF001
     acc = fresh_process_accept(ref["archive_path"], ref["archive_manifest_sha256"], g40, g)
-    if acc["status"] == "PASS":
-        L.settle(r["reservation_id"], receipt_sha256=ref["receipt_sha256"], output_manifest_sha256=ref["archive_manifest_sha256"],
-                 archive_ref=ref["archive_path"], worker_id="worker-1")
-    else:
-        L.require_reconciliation(r["reservation_id"], reason=f"evaluation {acc['status']}", worker_id="worker-1")
     uses = (g / "registry/research_authorization_uses.jsonl").read_text().splitlines()
-    return {"status": "PASS" if acc["status"] == "PASS" and len(uses) == 1 and be.calls == 1 else "FAIL",
-            "label": "SYNTHETIC development snapshot via the existing ResearchOnlyRunner (Layer B)",
-            "core": why, "acceptance": acc["status"], "acceptance_checks": {k: v["status"] for k, v in acc["checks"].items()},
-            "reservation": L.for_task(tid), "budget_events": L.events(),
+    ok = acc["status"] == "PASS" and len(uses) == 1 and be.calls == 1 and r["state"] == "CONSUMED"
+    return {"status": "PASS" if ok else "FAIL",
+            "label": "SYNTHETIC development snapshot via the existing ResearchOnlyRunner (Layer B, orchestrated)",
+            "core": why, "task_state": st["state"], "acceptance": acc["status"],
+            "acceptance_checks": {k: v["status"] for k, v in acc["checks"].items()},
+            "reservation": r, "budget_events": o.budget.events(), "binding_id": w["binding"]["binding_id"],
+            "bound_request_sha256": w["binding"]["bound_request_sha256"],
             "receipt": json.loads(Path(ref["receipt_path"]).read_text()), "receipt_sha256": ref["receipt_sha256"],
             "uses_records": len(uses), "runner_calls": be.calls}
 
@@ -159,7 +170,8 @@ def gates(A: dict, B: dict, tests: dict, *, cloud: bool, tests_rc: int | None) -
         extra_ok, evidence = True, {}
         if gid == "B2-05":
             extra_ok = A["state"] == "ARCHIVED" and A["backend_calls"] == 1 and \
-                A["reservation"]["history"] == ["RESERVED", "COMMITTED", "CONSUMED"] and len(A["uses"]) == 1
+                A["reservation"]["history"] == SETTLED_HISTORY and len(A["uses"]) == 1 and \
+                B.get("status") in ("PASS", "NOT_AVAILABLE")
             evidence = {"layer_a": {k: A[k] for k in ("state", "backend_calls")}, "layer_a_budget": A["reservation"]["history"],
                         "layer_b": {k: B.get(k) for k in ("status", "acceptance", "uses_records", "runner_calls", "why")}}
         if gid == "B2-08":
@@ -186,6 +198,35 @@ def gates(A: dict, B: dict, tests: dict, *, cloud: bool, tests_rc: int | None) -
         out[gid] = {"requirement": req, "test": sorted(t), "expected": "all listed tests PASS (+ artefact checks)",
                     "actual": {"passed": len(passed), "failed": failed, "skipped": [k for k, v in t.items() if v == "SKIPPED"]},
                     "evidence": evidence, "status": status}
+    return out
+
+
+def reproduce(out: Path) -> dict:
+    """The re-derived P0 reproducer in a FRESH interpreter (its results are what actually happened)."""
+    import subprocess  # noqa: PLC0415
+    r = subprocess.run([sys.executable, str(REPRODUCER), "--out", str(out)], capture_output=True, text=True,
+                       cwd=str(ROOT), timeout=1800)
+    if r.returncode != 0 or not out.is_file():
+        return {"status": "ERROR", "returncode": r.returncode, "stderr": r.stderr[-2000:]}
+    return json.loads(out.read_text(encoding="utf-8"))
+
+
+def security_gates(tests: dict, repro: dict) -> dict:
+    out = {}
+    for gid, (req, keys) in SECURITY.items():
+        t = {k: v for k, v in tests.items() if f"test_{gid.replace('-', '_')}_" in k}
+        failed = [k for k, v in t.items() if v == "FAIL"]
+        res = {k: repro.get(k, {}) for k in keys}
+        vulnerable = [k for k, v in res.items() if not isinstance(v, dict) or v.get("VULNERABLE") is not False]
+        skipped = [k for k, v in res.items() if isinstance(v, dict) and v.get("status") == "SKIPPED"]
+        status = "FAIL" if failed or (set(vulnerable) - set(skipped)) else (
+            "BLOCKED" if skipped or not t else "FIXED_PENDING_INDEPENDENT_REVIEW")
+        out[gid] = {"finding": req, "regression_tests": {"passed": sum(v == "PASS" for v in t.values()),
+                                                         "failed": failed, "names": sorted(t)},
+                    "reproduction_after_fix": {k: {"VULNERABLE": v.get("VULNERABLE") if isinstance(v, dict) else None,
+                                                   "status": v.get("status") if isinstance(v, dict) else None}
+                                               for k, v in res.items()},
+                    "status": status}
     return out
 
 
@@ -243,6 +284,9 @@ def run(out_dir: Path, *, junit_paths: list[Path], tests_rc: int | None, cloud: 
     B = layer_b(work)
     tests = junit(junit_paths)
     g = gates(A, B, tests, cloud=cloud, tests_rc=tests_rc)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    repro = reproduce(out_dir / "security_reproduction.json")
+    sec = security_gates(tests, repro)
     code = A5.code_identity()
     v = verdict(g, B)
     unchanged = A5.tree_fingerprint(ROOT) == repo_before
@@ -266,14 +310,18 @@ def run(out_dir: Path, *, junit_paths: list[Path], tests_rc: int | None, cloud: 
         "archive_integrity.json": {"layer_a_task_archive": A["task_archive"], "layer_a_decision": A["decision"],
                                    "layer_b": {k: B.get(k) for k in ("status", "acceptance")}, "tests": tests},
         "notebook_context.json": context or {"note": "no notebook context (CLI / CI run)"},
+        "security_remediation.json": {"gates": sec, "reviewed_head": "71b9a6da829c652d7e1f89e107b770d730728598",
+                                      "security_verdict": "NOT_DECLARED (independent Codex re-review required)",
+                                      "reproducer": "RE-DERIVED from the remediation brief; Codex's original unavailable"},
     }
-    out_dir.mkdir(parents=True, exist_ok=True)
     for n, obj in files.items():
         with open(out_dir / n, "xb") as fh:
             fh.write(dumps(obj))
     info = {"kind": "PHASE5B2_CONTROLLED_EXECUTION_ACCEPTANCE", "verdict": v["verdict"], **code, "cloud": cloud,
             "consistency": CONSISTENCY, "layer_b": B.get("status"), "real_market_execution": False, "holdout_read": False,
-            "real_authorization_consumed": False, "broker_api_called": False, "tests_returncode": tests_rc}
+            "real_authorization_consumed": False, "broker_api_called": False, "tests_returncode": tests_rc,
+            "security_remediation": {k: x["status"] for k, x in sec.items()},
+            "security_verdict": "NOT_DECLARED (independent Codex re-review required)"}
     with open(out_dir / "run_info.txt", "x", encoding="utf-8") as fh:
         fh.write("".join(f"{k}={v_ if isinstance(v_, str) else json.dumps(v_)}\n" for k, v_ in info.items()))
     idx = {"kind": "PHASE5B2_ARCHIVE_INDEX", "work_tree": _tree(work),
@@ -283,7 +331,8 @@ def run(out_dir: Path, *, junit_paths: list[Path], tests_rc: int | None, cloud: 
         json.dump(idx, fh, indent=2, sort_keys=True)
     if verify_archive(out_dir)["status"] != "PASS":
         raise RuntimeError("archive index self-check failed")
-    return {"verdict": v, "gates": {k: x["status"] for k, x in g.items()}, "layer_b": B.get("status")}
+    return {"verdict": v, "gates": {k: x["status"] for k, x in g.items()}, "layer_b": B.get("status"),
+            "security_remediation": {k: x["status"] for k, x in sec.items()}}
 
 
 def main(argv=None) -> int:
@@ -303,7 +352,8 @@ def main(argv=None) -> int:
     ctx = json.loads(Path(a.context_json).read_text()) if a.context_json else None
     r = run(Path(a.out_dir), junit_paths=[Path(p) for p in a.junit], tests_rc=a.tests_rc, cloud=a.cloud, context=ctx)
     print(json.dumps(r, indent=2))
-    return 0 if r["verdict"]["verdict"] in ("GO", "SCOPED_GO") else 1
+    sec_ok = "FAIL" not in r["security_remediation"].values()       # BLOCKED (not evidenced here) is reported, not hidden
+    return 0 if r["verdict"]["verdict"] in ("GO", "SCOPED_GO") and sec_ok else 1
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ def _junit(tmp_path, failed=False):
     case = '<testcase classname="t" name="test_B2_01_x"><failure>boom</failure></testcase>' if failed else \
         '<testcase classname="t" name="test_B2_01_x"/>'
     names = "".join(f'<testcase classname="t" name="test_B2_0{i}_x"/>' for i in range(2, 10))
+    names += "".join(f'<testcase classname="t" name="test_P0_{i}_x"/>' for i in range(1, 4))
     p.write_text(f'<testsuite>{case}{names}</testsuite>')
     return p
 
@@ -30,9 +31,17 @@ def test_B2_10_acceptance_archive_is_complete_immutable_and_zip_consistent(tmp_p
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     res = json.loads(r.stdout[r.stdout.index("{"):])
     assert res["verdict"]["verdict"] == "SCOPED_GO" and res["gates"]["B2-10"] == "BLOCKED"     # no Drive here
+    sec = res["security_remediation"]
+    assert sec["P0-1"] == sec["P0-2"] == "FIXED_PENDING_INDEPENDENT_REVIEW"                    # never "Security GO"
+    assert sec["P0-3"] in ("FIXED_PENDING_INDEPENDENT_REVIEW", "BLOCKED")                       # BLOCKED without Core
+    rep = json.loads((out / "security_reproduction.json").read_text())
+    assert rep["P0_1_reservation_replay_forgery"]["VULNERABLE"] is False
+    assert rep["P0_1_reservation_replay_forgery"]["runner_calls_total"] == 1
+    assert rep["P0_2_receipt_archive_integrity"]["VULNERABLE"] is False
     names = {p.name for p in out.iterdir() if p.is_file()}
     for n in ("execution_acceptance.json", "budget_reservations.json", "execution_receipts.json", "task_lifecycle.json",
-              "governance_checks.json", "archive_integrity.json", "run_info.txt", "ARCHIVE_INDEX.json"):
+              "governance_checks.json", "archive_integrity.json", "security_remediation.json",
+              "security_reproduction.json", "run_info.txt", "ARCHIVE_INDEX.json"):
         assert n in names
     z = tmp_path / "a.zip"
     with zipfile.ZipFile(z, "w") as f:

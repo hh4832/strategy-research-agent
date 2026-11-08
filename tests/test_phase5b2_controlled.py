@@ -51,7 +51,8 @@ def test_B2_05_approved_reserved_execution_runs_once_and_settles(W):
     o, tid, st = run(W)
     assert st["state"] == "ARCHIVED" and W["backend"].calls == 1
     r = o.budget.for_task(tid)
-    assert r["history"] == ["RESERVED", "COMMITTED", "CONSUMED"] and r["binding_id"] == W["binding"]["binding_id"]
+    assert r["history"] == ["RESERVED", "COMMITTED", "EXECUTION_STARTED", "EXECUTION_COMPLETED", "EVIDENCE_VERIFIED",
+                            "CONSUMED"] and r["binding_id"] == W["binding"]["binding_id"]
     assert r["approval_evidence_sha256"] and r["receipt_sha256"]
     assert len(uses(W)) == 1 and uses(W)[0]["run_id"] == r["planned_run_id"]
     ev = [json.loads(x) for x in (W["gov"] / "registry/research_budget_events.jsonl").read_text().splitlines()]
@@ -70,9 +71,9 @@ def test_B2_08_existing_evaluator_runs_and_never_keeps_on_identity_mismatch(W):
     o, tid, st = run(W)
     from strategy_agent.phase5a.integration import trace
     d = trace(o, tid)["research_decision"]
-    # the SYNTHETIC_FIXTURE archive carries another authorization => the existing Phase 4-C evaluator refuses it
-    assert d["acceptance_status"] == "FAIL" and d["strategy_verdict"] != "KEEP"
-    assert d["acceptance_checks"]["C8_governance_isolation"] == "FAIL"
+    # the Layer A SYNTHETIC_STUB is not producer output => the existing Phase 4-C evaluator refuses it (never KEEP)
+    assert d["acceptance_status"] == "FAIL" and d["strategy_verdict"] != "KEEP" and d["engineering_status"] == "BLOCKED"
+    assert d["acceptance_checks"]["C1_archive_identity"] == "FAIL"
 
 
 # --------------------------------------------------------------------------- B2-03 approval (2, 6)
@@ -149,7 +150,7 @@ def test_B2_04_modified_bound_request_is_not_bound(W):
 
 
 def test_B2_07_precheck_refuses_missing_pins_and_pit_rules(W):
-    ad = ControlledRunnerAdapter(W["backend"], governance_root=W["gov"])
+    ad = ControlledRunnerAdapter(W["backend"], governance_root=W["gov"], artifact_root=W["art"])
     for k, v in (("dataset_snapshot_id", ""), ("core_commit", "PENDING")):
         assert any(k in p for p in ad.precheck(dict(W["bound"], **{k: v})))
     assert "PIT_RULE_MISMATCH" in ad.precheck(dict(W["bound"], execution_time_rule={"rule": "SAME_BAR_CLOSE"}))
@@ -230,7 +231,7 @@ def test_B2_06_second_executor_is_refused_single_executor_only(W):
 
 
 def test_B2_06_crash_after_commit_is_never_released_or_rerun(tmp_path):
-    W = X.world(tmp_path, backend=SyntheticFixtureBackend(A5.FIX / A5.FIX_RUN, fail_with="worker crashed mid-run"))
+    W = X.world(tmp_path, stub={"fail_with": "worker crashed mid-run"})
     o, tid, st = run(W)
     r = o.budget.for_task(tid)
     assert st["state"] == "FAILED" and r["state"] == "RECONCILIATION_REQUIRED" and len(uses(W)) == 1
@@ -298,7 +299,7 @@ def test_B2_08_evaluator_failure_never_reruns(W, monkeypatch):
 
 
 def test_B2_08_incomplete_archive_is_never_success(tmp_path):
-    W = X.world(tmp_path, backend=SyntheticFixtureBackend(A5.FIX / A5.FIX_RUN, drop_file="trades.csv"))
+    W = X.world(tmp_path, stub={"drop_file": "trades.csv"})
     o, tid, st = run(W)
     assert st["state"] == "FAILED" and st["history"][-1]["reason"] == "RECEIPT_ARCHIVE_INCOMPLETE"
     assert "ARCHIVED" not in [h["to"] for h in st["history"]]
