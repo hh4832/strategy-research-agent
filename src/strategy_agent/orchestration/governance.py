@@ -198,9 +198,12 @@ class Governance:
         add("G9_FORMAL_GATE", formal is not None, {"formal_market_status": formal, "trading_permission": False,
                                                    "meaning": "recorded only; NO_GO stays NO_GO and is never read as a "
                                                               "trading permission"})
-        enabled = mode == "ARCHIVE_REPLAY" or (mode == "RESEARCH_ONLY_REAL" and REAL_EXECUTION_ENABLED)
+        controlled = mode == "RESEARCH_ONLY_REAL" and getattr(self, "isolated_controlled_execution", False) \
+            and not self.production_books                       # 5-B2: isolated synthetic books only, never production
+        enabled = mode == "ARCHIVE_REPLAY" or (mode == "RESEARCH_ONLY_REAL" and (REAL_EXECUTION_ENABLED or controlled))
         add("G10_EXECUTION_MODE", enabled, "ARCHIVE_REPLAY (read-only, 0 batches)" if mode == "ARCHIVE_REPLAY"
-            else "RESEARCH_ONLY_REAL is DISABLED in Phase 5-A1 (needs a separate user authorization and acceptance)")
+            else ("ISOLATED_SYNTHETIC_CONTROLLED_EXECUTION (isolated books + synthetic backend; never production)"
+                  if controlled else "RESEARCH_ONLY_REAL is DISABLED (needs a separate user authorization and acceptance)"))
         if binding_check:
             self._g11(doc, mode, add)
         status = "PASS" if all(c["status"] in ("PASS", "NOT_APPLICABLE") for c in out) else "BLOCKED"

@@ -91,7 +91,8 @@ Synthetic 範例僅證明工程行為，不是真實策略研究結論。
 | 5-A1 | Research Orchestrator：狀態機、治理 G1–G10、Archive Replay／Synthetic adapter、評估、封存、CLI（[文件](docs/PHASE5A1_ORCHESTRATOR.md)） | PR #9（Draft，SCOPED_GO） |
 | 5-A2 | Research Proposal Agent：自然語言 → Proposal → 共用 Request 匯出（[文件](docs/PHASE5A2_PROPOSAL_AGENT.md)） | PR #10（Draft，Codex） |
 | 5-A3 | Proposal × Orchestrator 端到端整合 A3-01..A3-10（[文件](docs/PHASE5A3_INTEGRATION_ACCEPTANCE.md)） | GO，已併入 main（PR #11） |
-| 5-B1 | 可信人工核准（GitHub 留言證據）× 受治理授權綁定 B1-01..B1-10（[驗收](docs/PHASE5B1_ACCEPTANCE.md)、[威脅模型](docs/PHASE5B1_APPROVAL_THREAT_MODEL.md)） | `feature/phase5b1-trusted-approval`（Draft PR） |
+| 5-B1 | 可信人工核准（GitHub 留言證據）× 受治理授權綁定 B1-01..B1-10（[驗收](docs/PHASE5B1_ACCEPTANCE.md)、[威脅模型](docs/PHASE5B1_APPROVAL_THREAT_MODEL.md)） | 已併入 main（PR #12） |
+| 5-B2 | 受控研究執行 × 原子額度帳本 B2-01..B2-10（[設計](docs/PHASE5B2_CONTROLLED_EXECUTION.md)、[驗收](docs/PHASE5B2_ACCEPTANCE.md)）；正式 RESEARCH_ONLY_REAL 仍 DISABLED，SINGLE_EXECUTOR_ONLY | `feature/phase5b2-controlled-execution`（Draft PR） |
 
 共用契約：[`schemas/RESEARCH_REQUEST_SCHEMA.json`](schemas/RESEARCH_REQUEST_SCHEMA.json) v1.0.0（commit `5d088c4`，sha256 `1b0530f3…`）。
 
