@@ -130,4 +130,6 @@ A2 Proposal → PENDING Request (authorization_ref=PENDING)
 | Codex 原始檔案 | `SECURITY_REVIEW.md`／`reproduce.py`／`reproduction_results.json` **未取得**；第 9 項 Finding = **PENDING** |
 | Colab 第 1 次（2026-11-08 08:17，`20261108_081706_eb72cd0`） | 乾淨的 runtime，Version Sync PASS，Colab 回歸測試 538 passed。B1-01..B1-10 + **B1-SEC 全 PASS**（11 個重現案例全部 BLOCKED）。真實 GitHub 證據 **VERIFIED**（V01–V09 PASS，PRODUCTION／LIVE）；對真實帳本的 dry-run 綁定被正確拒絕。ARCHIVE_INDEX 涵蓋 7 個檔案，hash 全部一致，輸出中沒有 token。**但 Drive 沒有掛載（`cloud=false`）**，輸出寫到 Colab 本機，所以判定是 SCOPED_GO。副本：`docs/evidence/phase5b1_remediation/20261108_081706_eb72cd0_LOCAL_CLOUD_PENDING/` |
 
-**判定：在 Codex 複驗前，Security Verdict = SCOPED_GO（工程修復完成，等待獨立複驗）。** 任何 HIGH Finding 若無法複驗，都不得宣告 Security GO。
+| Colab 第 2 次（正式，2026-11-08 09:41，`approvals/20261108_094126_eb72cd0`） | **cloud=true**。乾淨的 runtime，Version Sync PASS（pin 之後只有 docs／notebooks 變動），Colab 回歸測試 538 passed。B1-01..B1-10 + **B1-SEC 全 PASS**（11／11 BLOCKED），18 個威脅案例全 PASS。真實 GitHub 證據 VERIFIED（`hh4832`／`269247281`／OWNER，PRODUCTION／LIVE）；對真實帳本的 dry-run 綁定被拒絕（B02／B03／B05／B06），repo 沒有被修改。`verify-archive` PASS，7 個檔案 hash 全部一致，輸出中沒有 token。驗收 verdict：**GO**（工程）。副本：`docs/evidence/phase5b1_remediation/20261108_094126_eb72cd0/` |
+
+**判定：工程驗收 GO（Colab 雲端封存）。Security Verdict = SCOPED_GO，等待 Codex 獨立複驗；第 9 項 Finding 仍是 PENDING。** 在複驗完成之前，不宣告 Security GO。 任何 HIGH Finding 若無法複驗，都不得宣告 Security GO。

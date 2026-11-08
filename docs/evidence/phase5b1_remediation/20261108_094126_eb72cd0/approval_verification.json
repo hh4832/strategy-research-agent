@@ -1,0 +1,183 @@
+{
+  "isolated_evidence": {
+    "approval_source": {
+      "kind": "TEST_FIXTURE",
+      "transport": "TEST_FIXTURE",
+      "trust": "ISOLATED_TEST"
+    },
+    "author": {
+      "author_association": "OWNER",
+      "id": 269247281,
+      "login": "hh4832",
+      "performed_via_github_app": null,
+      "type": "User"
+    },
+    "comment": {
+      "body_sha256": "497823bd50a8fe4cd829a3455b8b842e37af9cd0821dbeb6cbc30c20c4a4bfc8",
+      "created_at": "2026-11-08T01:40:32Z",
+      "edited": false,
+      "id": 9000000001,
+      "issue_number": 900,
+      "token_line": "RESEARCH-APPROVAL v1 decision=APPROVE intent=BIND_AUTHORIZATION request=36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98 authorization=RA-SYNTHETIC_FIXTURE-B1-0001 scope=be7c899beaf2fb68844961a739576402c29b01889a32769cab0f7a234541fe4b expires=2026-11-10T01:41:32Z",
+      "updated_at": "2026-11-08T01:40:32Z",
+      "url": "https://github.com/hh4832/strategy-research-agent/pull/900#issuecomment-9000000001"
+    },
+    "decision": "APPROVE",
+    "evidence_id": "AE-GH-9000000001",
+    "evidence_version": "1.0.0",
+    "expires_at": "2026-11-10T01:41:32Z",
+    "intent": "BIND_AUTHORIZATION",
+    "repository": {
+      "full_name": "hh4832/strategy-research-agent",
+      "id": 1443253343
+    },
+    "revocation": {
+      "revoked_by_comments": [],
+      "status": "NOT_REVOKED"
+    },
+    "subject": {
+      "authorization_id": "RA-SYNTHETIC_FIXTURE-B1-0001",
+      "request_sha256": "36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98",
+      "scope_sha256": "be7c899beaf2fb68844961a739576402c29b01889a32769cab0f7a234541fe4b",
+      "task_id": null
+    },
+    "verification": {
+      "checks": {
+        "V01": "PASS",
+        "V02": "PASS",
+        "V03": "PASS",
+        "V04": "PASS",
+        "V05": "PASS",
+        "V06": "PASS",
+        "V07": "PASS",
+        "V08": "PASS",
+        "V09": "NOT_APPLICABLE"
+      },
+      "code": null,
+      "result": "PASS"
+    },
+    "verified_at": "2026-11-08T01:41:32Z",
+    "verifier": {
+      "name": "strategy_agent.approval.verifier",
+      "version": "1.0.0"
+    }
+  },
+  "real": {
+    "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+    "dry_run_binding_on_real_books": {
+      "failure_codes": [
+        "B02_PROVENANCE",
+        "B03_PROPOSAL_INVALID",
+        "B05_GOVERNANCE",
+        "B06_BUDGET_EXHAUSTED"
+      ],
+      "governance": {
+        "G10_EXECUTION_MODE": "FAIL",
+        "G1_REQUEST_SCHEMA": "PASS",
+        "G2_STRATEGY_SPEC": "PASS",
+        "G3_DATASET": "PASS",
+        "G4_CORE_COST": "PASS",
+        "G5_AUTHORIZATION": "PASS",
+        "G6_AUTHORIZATION_SCOPE": "PASS",
+        "G7_BUDGET": "FAIL",
+        "G8_HOLDOUT": "PASS",
+        "G9_FORMAL_GATE": "PASS"
+      },
+      "ok": false,
+      "written": false
+    },
+    "repo_unchanged": true,
+    "request": "docs/examples/phase5b1/PROBE_PENDING_tsm_sma520_research_only_real.json",
+    "request_sha256": "6d725724bd6ff15d5d5fce028c2691a85d034365a923a3541f215638ccc83958",
+    "scope_sha256": "6c2614202c181f01f3361a597fdd78f7eb0cf9b799d11ec5dc4a9cb9cd78b6f7",
+    "status": "VERIFIED",
+    "verification": {
+      "evidence": {
+        "approval_source": {
+          "kind": "GITHUB_REST_API",
+          "transport": "LIVE",
+          "trust": "PRODUCTION"
+        },
+        "author": {
+          "author_association": "OWNER",
+          "id": 269247281,
+          "login": "hh4832",
+          "performed_via_github_app": null,
+          "type": "User"
+        },
+        "comment": {
+          "body_sha256": "cbed1e79ad5c38e6c94315d2b1c020cf115b643d26f4e7b8995844a67156d6ff",
+          "created_at": "2026-11-07T09:15:08Z",
+          "edited": false,
+          "id": 6704937578,
+          "issue_number": 12,
+          "token_line": "RESEARCH-APPROVAL v1 decision=APPROVE intent=BIND_AUTHORIZATION request=6d725724bd6ff15d5d5fce028c2691a85d034365a923a3541f215638ccc83958 authorization=RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e scope=6c2614202c181f01f3361a597fdd78f7eb0cf9b799d11ec5dc4a9cb9cd78b6f7 expires=2026-11-09T08:52:11Z",
+          "updated_at": "2026-11-07T09:15:08Z",
+          "url": "https://github.com/hh4832/strategy-research-agent/pull/12#issuecomment-6704937578"
+        },
+        "decision": "APPROVE",
+        "evidence_id": "AE-GH-6704937578",
+        "evidence_version": "1.0.0",
+        "expires_at": "2026-11-09T08:52:11Z",
+        "intent": "BIND_AUTHORIZATION",
+        "repository": {
+          "full_name": "hh4832/strategy-research-agent",
+          "id": 1443253343
+        },
+        "revocation": {
+          "revoked_by_comments": [],
+          "status": "NOT_REVOKED"
+        },
+        "subject": {
+          "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+          "request_sha256": "6d725724bd6ff15d5d5fce028c2691a85d034365a923a3541f215638ccc83958",
+          "scope_sha256": "6c2614202c181f01f3361a597fdd78f7eb0cf9b799d11ec5dc4a9cb9cd78b6f7",
+          "task_id": null
+        },
+        "verification": {
+          "checks": {
+            "V01": "PASS",
+            "V02": "PASS",
+            "V03": "PASS",
+            "V04": "PASS",
+            "V05": "PASS",
+            "V06": "PASS",
+            "V07": "PASS",
+            "V08": "PASS",
+            "V09": "PASS"
+          },
+          "code": null,
+          "result": "PASS"
+        },
+        "verified_at": "2026-11-08T01:42:24Z",
+        "verifier": {
+          "name": "strategy_agent.approval.verifier",
+          "version": "1.0.0"
+        }
+      },
+      "result": "PASS"
+    }
+  },
+  "task_approval_replay": {
+    "actor": "hh4832",
+    "approval": {
+      "approval_evidence_sha256": "450ab6f970f35d67e713d97f9312a0623caa15761d2c77d9b9419d0baa6cc489",
+      "approval_ref": "https://github.com/hh4832/strategy-research-agent/pull/900#issuecomment-9000000001",
+      "approval_trust": "ISOLATED_TEST"
+    },
+    "states": [
+      "PROPOSED",
+      "VALIDATED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "QUEUED",
+      "RUNNING",
+      "EVALUATING",
+      "EVALUATED",
+      "ARCHIVED"
+    ],
+    "status": "ARCHIVED",
+    "uses_after": 1,
+    "uses_before": 1
+  }
+}
