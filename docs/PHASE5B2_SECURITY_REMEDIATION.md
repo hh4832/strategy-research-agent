@@ -244,7 +244,7 @@ P0-1 與 P0-3 的 regression tests 全部照舊通過，語意未改。
 
 ### 7.6 證據的三種形式
 
-- **ZIP（正式封存內容）：** 由 Colab 從 Drive 的 `executions/<ts>_1bec8e0/` 打包，只包含頂層的 12 個檔案（含 `ARCHIVE_INDEX.json`），由 `--verify-archive --zip` 驗證。
+- **ZIP（正式封存內容）：** 由 Colab 從 Drive 的 `executions/<ts>_1bec8e0/` 打包，只包含頂層的 11 個檔案（含 `ARCHIVE_INDEX.json`），由 `--verify-archive --zip` 驗證。
 - **GitHub 證據副本：** `docs/evidence/phase5b2/<ts>_1bec8e0/`，是 ZIP 頂層檔案的複本。
 - **未提交的 `work/` supporting artifacts：** Drive 封存下的 `work/` 目錄，包含 Layer A / B 的隔離帳本、task archive、runner archive 等。它的 tree hash 記錄在 `ARCHIVE_INDEX.json` 的 `work_tree`。這些檔案**不在** ZIP 和 GitHub 副本中，因此光憑 GitHub 副本無法獨立驗證 `work/` 的每個檔案；要驗證需存取 Drive 上的原封存。
 
