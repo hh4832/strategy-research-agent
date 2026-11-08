@@ -42,7 +42,7 @@ SECURITY = {   # Codex security review of PR #13 (HEAD 71b9a6d); reported SEPARA
     "P0-1": ("Reservation Replay / Forgery: only the ledger grants execution, exactly once per reservation",
              ("P0_1_reservation_replay_forgery",)),
     "P0-2": ("Receipt / Archive Integrity Before Settlement: re-verified from disk; tampering never settles",
-             ("P0_2_receipt_archive_integrity",)),
+             ("P0_2_receipt_archive_integrity", "P0_2_task_archive_research_request")),
     "P0-3": ("Request / Execution Identity: Core / spec / dataset manifest verified against authoritative sources",
              ("P0_3_identity_layer_a_precheck", "P0_3_identity_layer_b_runner")),
 }
@@ -217,7 +217,8 @@ def security_gates(tests: dict, repro: dict) -> dict:
         t = {k: v for k, v in tests.items() if f"test_{gid.replace('-', '_')}_" in k}
         failed = [k for k, v in t.items() if v == "FAIL"]
         res = {k: repro.get(k, {}) for k in keys}
-        vulnerable = [k for k, v in res.items() if not isinstance(v, dict) or v.get("VULNERABLE") is not False]
+        vulnerable = [k for k, v in res.items() if not isinstance(v, dict) or v.get("VULNERABLE") is not False
+                      or v.get("CONTROL_SETTLES") is False]          # a fix that blocks honest settlement is a FAIL
         skipped = [k for k, v in res.items() if isinstance(v, dict) and v.get("status") == "SKIPPED"]
         status = "FAIL" if failed or (set(vulnerable) - set(skipped)) else (
             "BLOCKED" if skipped or not t else "FIXED_PENDING_INDEPENDENT_REVIEW")

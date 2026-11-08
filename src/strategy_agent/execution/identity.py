@@ -182,6 +182,12 @@ def verify_request(doc: dict, *, governance_root: Path, artifact_root: Path, bac
             "backend_identity": bid}
 
 
+def archive_request_bytes(doc: dict) -> bytes:
+    """The exact bytes the orchestrator writes as the task archive's research_request.json (same rendering as
+    ``orchestrator._dumps``); its sha is committed in the ledger at reservation, BEFORE execution."""
+    return (json.dumps(doc, indent=2, sort_keys=True, default=str, ensure_ascii=False) + "\n").encode()
+
+
 # ----------------------------------------------------------------------------- produced archive (P0-2 / P0-3)
 def raw_run_info(data: bytes) -> dict:
     """run_info.txt as RAW strings (a digits-only sha must never become an int); authorization_use parsed as JSON."""
@@ -228,4 +234,4 @@ def archive_problems(archive: dict, *, doc: dict, use: dict, run_id: str) -> lis
 
 
 __all__ = ["IDENTITY_KEYS", "request_identity", "compare", "verify_request", "archive_problems", "same_window",
-           "authorization_problems", "artefact_problems", "policy_problems", "raw_run_info"]
+           "authorization_problems", "artefact_problems", "policy_problems", "raw_run_info", "archive_request_bytes"]

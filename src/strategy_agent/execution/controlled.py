@@ -176,22 +176,103 @@ class ControlledRunnerAdapter(ExecutionAdapter):
                 "backend": self.backend.kind, "synthetic": True, "reservation_id": reservation_id}
 
     def verify_evidence(self, reservation_id: str, *, doc: dict, evaluation_reference: dict | None = None,
-                        archive_ref: str | None = None, record: bool = False) -> dict:
-        """P0-2: re-verify receipt + archive + identity FROM DISK against the ledger. ``record`` appends
-        EVIDENCE_VERIFIED (the precondition of settlement). Never trusts the caller's execution reference."""
+                        archive_ref: str | None = None, archived_files: dict | None = None, record: bool = False) -> dict:
+        """P0-2: re-verify receipt + archive + identity (+ the TASK archive when ``archive_ref`` is given) FROM DISK
+        against the ledger. ``record`` appends EVIDENCE_VERIFIED (with the verified task-archive hashes)."""
         if self._ledger is None:
             return {"ok": False, "problems": ["LEDGER_UNBOUND"]}
         return verify_execution_evidence(self._ledger, reservation_id, doc=doc, evaluation_reference=evaluation_reference,
-                                         archive_ref=archive_ref, record=record, worker_id=self._worker)
+                                         archive_ref=archive_ref, archived_files=archived_files, record=record,
+                                         worker_id=self._worker, governance_root=self.governance_root)
+
+
+TASK_ARCHIVE_FILES = ("research_request.json", "task_events.jsonl", "governance_decision.json", "execution_reference.json",
+                      "evaluation_reference.json", "research_decision.json", "run_info.txt")
+
+
+def _read_regular(p: Path) -> bytes | None:
+    return p.read_bytes() if p.is_file() and not p.is_symlink() else None
+
+
+def task_archive_problems(task_archive: str | Path, *, r: dict, done: dict, archived_files: dict | None,
+                          evaluation_reference: dict | None, governance_root: Path | None) -> tuple[list[str], dict]:
+    """P0-2 residual: the TASK archive's research_request.json must be byte-identical to the request file committed
+    in the ledger BEFORE execution (``request_file_sha256`` at reservation) - never only to a manifest the same
+    attacker could rewrite - and must hash / bind to the reservation, receipt and binding record. The other task
+    archive files must match the hashes recorded when the archive was written and the verified execution evidence.
+    Nothing is ever rebuilt to make this pass."""
+    root, bad, hashes = Path(task_archive), [], {}
+    if root.is_symlink() or not root.is_dir():
+        return ["TASK_ARCHIVE_MISSING"], {}
+    present = {p.name for p in root.iterdir()}
+    if present != set(TASK_ARCHIVE_FILES):
+        bad.append(f"TASK_ARCHIVE_FILESET:{sorted(set(TASK_ARCHIVE_FILES) ^ present)}")
+    raw = {n: _read_regular(root / n) for n in TASK_ARCHIVE_FILES}
+    hashes = {n: _sha(b) for n, b in raw.items() if b is not None}
+    # --- research_request.json: ledger commitment (pre-execution), content, identity chain
+    req = raw["research_request.json"]
+    want_file = r.get("request_file_sha256")
+    if req is None:
+        bad.append("TASK_ARCHIVE_REQUEST_MISSING")
+    else:
+        if not want_file:
+            bad.append("TASK_ARCHIVE_REQUEST_UNCOMMITTED")
+        elif _sha(req) != want_file:
+            bad.append("TASK_ARCHIVE_REQUEST_SHA_MISMATCH")
+        try:
+            parsed = json.loads(req)
+        except (ValueError, UnicodeDecodeError):
+            parsed = None
+            bad.append("TASK_ARCHIVE_REQUEST_INVALID_JSON")
+        if parsed is not None:
+            errs = Q.validate(parsed) if isinstance(parsed, dict) else ["not an object"]
+            if errs:
+                bad.append("TASK_ARCHIVE_REQUEST_SCHEMA")
+            elif Q.request_hash(parsed) != r["request_sha256"]:
+                bad.append("TASK_ARCHIVE_REQUEST_IDENTITY_MISMATCH")
+    if governance_root is not None and want_file:                 # the commitment itself is tied to the binding
+        from strategy_agent.binding.store import BindingStore  # noqa: PLC0415
+        rec = BindingStore(governance_root).for_bound(r["request_sha256"])
+        bound = _read_regular(Path(governance_root) / rec["bound_request_path"]) if rec else None
+        if rec is None or rec["binding_id"] != r.get("binding_id") or bound is None \
+                or _sha(bound) != rec["bound_request_file_sha256"]:
+            bad.append("TASK_ARCHIVE_BINDING_UNVERIFIABLE")
+        elif _sha(I.archive_request_bytes(json.loads(bound))) != want_file:
+            bad.append("TASK_ARCHIVE_REQUEST_COMMITMENT_NOT_BOUND")
+    # --- the other required evidence: hashes recorded at archive time + consistency with the verified execution
+    if not archived_files:
+        bad.append("TASK_ARCHIVE_HASHES_UNRECORDED")
+    else:
+        bad += [f"TASK_ARCHIVE_FILE_ALTERED:{n}" for n in TASK_ARCHIVE_FILES if hashes.get(n) != archived_files.get(n)]
+    try:
+        er = json.loads(raw["execution_reference.json"] or b"null") or {}
+        if er.get("receipt_sha256") != done.get("receipt_sha256") or \
+                er.get("archive_manifest_sha256") != done.get("output_manifest_sha256") or er.get("reservation_id") != r["reservation_id"]:
+            bad.append("TASK_ARCHIVE_EXECUTION_REFERENCE_MISMATCH")
+        ev = json.loads(raw["evaluation_reference.json"] or b"null")
+        if evaluation_reference is not None and ev != json.loads(json.dumps(evaluation_reference, default=str)):
+            bad.append("TASK_ARCHIVE_EVALUATION_REFERENCE_MISMATCH")
+        info = I.raw_run_info(raw["run_info.txt"] or b"")
+        if info.get("request_hash") != r["request_sha256"]:
+            bad.append("TASK_ARCHIVE_RUN_INFO_REQUEST_MISMATCH")
+    except (ValueError, UnicodeDecodeError, AttributeError):
+        bad.append("TASK_ARCHIVE_EVIDENCE_UNPARSEABLE")
+    return bad, hashes
 
 
 def verify_execution_evidence(ledger, reservation_id: str, *, doc: dict, evaluation_reference: dict | None,
-                              archive_ref: str | None, record: bool, worker_id: str | None) -> dict:
+                              archive_ref: str | None, record: bool, worker_id: str | None,
+                              archived_files: dict | None = None, governance_root: Path | None = None,
+                              reservation: dict | None = None, use: dict | None = None) -> dict:
+    """``reservation`` / ``use`` are passed only by ``BudgetLedger.settle`` from INSIDE its critical section (the
+    ledger's own folded state); every other caller reads them from the ledger here."""
     bad: list[str] = []
-    try:
-        r = ledger.reservations().get(reservation_id)
-    except Exception as e:  # noqa: BLE001 - unreadable ledger => not verified
-        return {"ok": False, "problems": [f"LEDGER_UNREADABLE:{e}"]}
+    r = reservation
+    if r is None:
+        try:
+            r = ledger.reservations().get(reservation_id)
+        except Exception as e:  # noqa: BLE001 - unreadable ledger => not verified
+            return {"ok": False, "problems": [f"LEDGER_UNREADABLE:{e}"]}
     if r is None:
         return {"ok": False, "problems": ["UNKNOWN_RESERVATION"]}
     started, done = r.get("execution_started") or {}, r.get("execution_completed") or {}
@@ -218,7 +299,8 @@ def verify_execution_evidence(ledger, reservation_id: str, *, doc: dict, evaluat
         archive = C.read_archive(arch, expected_manifest_sha256=done.get("output_manifest_sha256") or "")
     except C.ArchiveRejected as e:
         return {"ok": False, "problems": bad + [f"ARCHIVE_INVALID:{e.code}"]}
-    use = ledger.use_record(reservation_id)
+    if use is None and reservation is None:
+        use = ledger.use_record(reservation_id)
     if use is None:
         bad.append("USE_RECORD_MISSING")
     else:
@@ -235,15 +317,22 @@ def verify_execution_evidence(ledger, reservation_id: str, *, doc: dict, evaluat
                 bad.append(f"EVALUATION_OUTPUT_ALTERED:{name}")
         if not ev.get("files_sha256"):
             bad.append("EVALUATION_OUTPUT_MISSING")
-    if archive_ref is not None and not Path(archive_ref).is_dir():
-        bad.append("TASK_ARCHIVE_MISSING")
+    task_hashes = None
+    if archive_ref is not None:
+        tp, task_hashes = task_archive_problems(archive_ref, r=r, done=done, archived_files=archived_files,
+                                                evaluation_reference=evaluation_reference, governance_root=governance_root)
+        bad += tp
+        committed = (r.get("evidence_verified") or {}).get("task_archive_files_sha256")
+        if committed is not None and committed != task_hashes:       # changed after EVIDENCE_VERIFIED
+            bad.append("TASK_ARCHIVE_CHANGED_AFTER_VERIFICATION")
     out = {"ok": not bad, "problems": bad, "receipt_sha256": done.get("receipt_sha256"),
-           "output_manifest_sha256": done.get("output_manifest_sha256")}
+           "output_manifest_sha256": done.get("output_manifest_sha256"), "task_archive_files_sha256": task_hashes}
     if not bad and record:
         ledger.record_evidence_verified(reservation_id, worker_id=worker_id, receipt_sha256=done["receipt_sha256"],
                                         output_manifest_sha256=done["output_manifest_sha256"],
                                         archive_ref=archive_ref or str(arch),
-                                        evaluation_input_sha256=(evaluation_reference or {}).get("input_sha256"))
+                                        evaluation_input_sha256=(evaluation_reference or {}).get("input_sha256"),
+                                        task_archive_files_sha256=task_hashes)
     return out
 
 

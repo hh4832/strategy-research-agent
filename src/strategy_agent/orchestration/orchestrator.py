@@ -8,6 +8,7 @@ acceptance (``evaluation.phase4c``) over the Phase 4-B evaluator; no PnL is reco
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 from datetime import datetime
@@ -16,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 from strategy_agent.approval import ApprovalRejected, Expectation, evidence_sha256
 from strategy_agent.evaluation import phase4c as C
+from strategy_agent.execution import identity as I
 from strategy_agent.registry.chain import ChainedLog, ConditionFailed
 
 from . import request as Q
@@ -386,7 +388,9 @@ class Orchestrator:
                                     request_sha256=Q.request_hash(doc), task_id=task_id,
                                     attempt_id=f"{task_id}:{attempt}", approval_evidence_sha256=self._approval_evidence_sha(st),
                                     binding_id=rec["binding_id"], worker_id=self.worker,
-                                    planned_run_id=adapter.planned_run_id(task_id, self.clock()))
+                                    planned_run_id=adapter.planned_run_id(task_id, self.clock()),
+                                    # P0-2 residual: commit the task archive's research_request.json bytes BEFORE execution
+                                    request_file_sha256=hashlib.sha256(I.archive_request_bytes(doc)).hexdigest())
         except BudgetRefused as e:
             return block("BUDGET_" + e.code, {"detail": str(e)})
         if r.get("state") != "RESERVED":                             # replayed reservation already past RESERVED
@@ -466,16 +470,23 @@ class Orchestrator:
         if not getattr(adapter, "controlled", False) or not arch.get("task_archive"):
             self._reconcile(task_id, r["reservation_id"], "archived without controlled adapter or task archive")
             return
-        chk = adapter.verify_evidence(r["reservation_id"], doc=self.request_of(task_id),
-                                      evaluation_reference=ev.get("evaluation_reference"),
-                                      archive_ref=arch["task_archive"], record=True)
+        doc = self.request_of(task_id)
+        kw = {"doc": doc, "evaluation_reference": ev.get("evaluation_reference"), "archive_ref": arch["task_archive"],
+              "archived_files": arch.get("files_sha256")}
+        chk = adapter.verify_evidence(r["reservation_id"], record=True, **kw)
         if not chk["ok"]:
             self._reconcile(task_id, r["reservation_id"], f"settlement refused: {chk['problems']}"[:400])
             return
+        from strategy_agent.execution.controlled import verify_execution_evidence  # noqa: PLC0415
+
+        def recheck(res, use):                    # INSIDE the ledger lock, right before CONSUMED (TOCTOU)
+            return verify_execution_evidence(self.budget, r["reservation_id"], record=False, worker_id=self.worker,
+                                             governance_root=self.governance_root, reservation=res, use=use,
+                                             **kw)["problems"]
         try:
             self.budget.settle(r["reservation_id"], receipt_sha256=chk["receipt_sha256"],
                                output_manifest_sha256=chk["output_manifest_sha256"], archive_ref=arch["task_archive"],
-                               worker_id=self.worker)
+                               worker_id=self.worker, recheck=recheck)
         except BudgetRefused as e:
             self._reconcile(task_id, r["reservation_id"], f"settlement refused: {e.code}")
 

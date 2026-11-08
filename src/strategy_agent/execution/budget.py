@@ -163,7 +163,9 @@ class BudgetLedger:
 
     def reserve(self, *, authorization_id: str, request_sha256: str, task_id: str, attempt_id: str,
                 approval_evidence_sha256: str, binding_id: str | None, worker_id: str, planned_run_id: str,
-                batch_units: int = 1) -> dict:
+                batch_units: int = 1, request_file_sha256: str | None = None) -> dict:
+        """``request_file_sha256``: sha of the exact research_request.json bytes the task archive must contain,
+        committed here BEFORE execution (P0-2 residual); settlement compares the archived file against it."""
         if batch_units != 1:
             raise BudgetRefused("BATCH_UNITS", "exactly one batch per reservation")
         with self._cs() as v:
@@ -187,7 +189,8 @@ class BudgetLedger:
                              "request_sha256": request_sha256, "task_id": task_id, "attempt_id": attempt_id,
                              "batch_units": batch_units, "approval_evidence_sha256": approval_evidence_sha256,
                              "binding_id": binding_id, "worker_id": worker_id, "planned_run_id": planned_run_id,
-                             "authorization_record_sha256": a.get("record_sha256")})
+                             "authorization_record_sha256": a.get("record_sha256"),
+                             "request_file_sha256": request_file_sha256})
             return {**v.get(rid), "idempotent": False}
 
     def commit(self, reservation_id: str, *, worker_id: str, actor: str, scenarios: list[str]) -> dict:
@@ -220,7 +223,10 @@ class BudgetLedger:
                              "worker_id": worker_id, "proof": "planned_run_id absent from the uses log; never committed"}, r)
 
     def settle(self, reservation_id: str, *, receipt_sha256: str, output_manifest_sha256: str, archive_ref: str,
-               worker_id: str) -> dict:
+               worker_id: str, recheck=None) -> dict:
+        """COMMITTED -> CONSUMED. ``recheck(reservation, use)`` is REQUIRED and runs INSIDE the critical section right
+        before CONSUMED is appended: it re-verifies the evidence from disk against this ledger's commitments (closes
+        the verify -> settle TOCTOU window for every writer that respects the ledger lock; see the limits doc)."""
         with self._cs() as v:
             r = v.get(reservation_id)
             if r["state"] != "COMMITTED":
@@ -233,6 +239,14 @@ class BudgetLedger:
             for k, val in (("receipt_sha256", receipt_sha256), ("output_manifest_sha256", output_manifest_sha256)):
                 if not val or done.get(k) != val or ver.get(k) != val:
                     raise BudgetRefused("SETTLE_EVIDENCE_MISMATCH", f"{k} differs from the recorded execution evidence")
+            if ver.get("archive_ref") != archive_ref or not ver.get("task_archive_files_sha256"):
+                raise BudgetRefused("SETTLE_EVIDENCE_MISMATCH", "task archive differs from the verified evidence")
+            if recheck is None:
+                raise BudgetRefused("SETTLE_REFUSED", "settlement requires an in-lock evidence re-check")
+            use = next((dict(u) for u in v.uses if u.get("record_sha256") == r.get("use_record_sha256")), None)
+            problems = recheck(r, use)
+            if problems:
+                raise BudgetRefused("SETTLE_EVIDENCE_CHANGED", "; ".join(problems)[:600])
             return v.append({"event_type": "CONSUMED", "reservation_id": reservation_id, "worker_id": worker_id,
                              "receipt_sha256": receipt_sha256, "output_manifest_sha256": output_manifest_sha256,
                              "archive_ref": archive_ref}, r)
@@ -272,7 +286,8 @@ class BudgetLedger:
                              "receipt_path": str(receipt_path)}, r)
 
     def record_evidence_verified(self, reservation_id: str, *, worker_id: str, receipt_sha256: str,
-                                 output_manifest_sha256: str, archive_ref: str, evaluation_input_sha256: str | None) -> dict:
+                                 output_manifest_sha256: str, archive_ref: str, evaluation_input_sha256: str | None,
+                                 task_archive_files_sha256: dict | None = None) -> dict:
         with self._cs() as v:
             r = v.get(reservation_id)
             done = r.get("execution_completed") or {}
@@ -282,7 +297,8 @@ class BudgetLedger:
                 raise BudgetRefused("SETTLE_EVIDENCE_MISMATCH", "verified evidence differs from the recorded completion")
             return v.append({"event_type": "EVIDENCE_VERIFIED", "reservation_id": reservation_id, "worker_id": worker_id,
                              "receipt_sha256": receipt_sha256, "output_manifest_sha256": output_manifest_sha256,
-                             "archive_ref": archive_ref, "evaluation_input_sha256": evaluation_input_sha256}, r)
+                             "archive_ref": archive_ref, "evaluation_input_sha256": evaluation_input_sha256,
+                             "task_archive_files_sha256": task_archive_files_sha256}, r)
 
     def require_reconciliation(self, reservation_id: str, *, reason: str, worker_id: str) -> dict:
         with self._cs() as v:
@@ -372,7 +388,7 @@ def _fold(events: list[dict]) -> dict[str, dict]:
         if t == "RESERVED":
             out[e["reservation_id"]] = {**{k: e.get(k) for k in (
                 "reservation_id", "authorization_id", "request_sha256", "task_id", "attempt_id", "batch_units",
-                "approval_evidence_sha256", "binding_id", "worker_id", "planned_run_id")},
+                "approval_evidence_sha256", "binding_id", "worker_id", "planned_run_id", "request_file_sha256")},
                 "state": "RESERVED", "last_event_sha256": e["record_sha256"], "history": ["RESERVED"]}
         elif t in MARKERS:
             r = out.get(e["reservation_id"])
@@ -385,7 +401,8 @@ def _fold(events: list[dict]) -> dict[str, dict]:
                                     f"{None if r is None else r['state']}")
             r[key] = {k: e.get(k) for k in ("attempt_id", "worker_id", "use_record_sha256", "receipt_sha256",
                                             "output_manifest_sha256", "receipt_path", "archive_ref",
-                                            "evaluation_input_sha256", "record_sha256") if e.get(k) is not None}
+                                            "evaluation_input_sha256", "task_archive_files_sha256", "record_sha256")
+                      if e.get(k) is not None}
             r["last_event_sha256"] = e["record_sha256"]
             r["history"].append(t)
         elif t in TRANSITIONS:

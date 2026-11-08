@@ -38,6 +38,8 @@ def test_B2_10_acceptance_archive_is_complete_immutable_and_zip_consistent(tmp_p
     assert rep["P0_1_reservation_replay_forgery"]["VULNERABLE"] is False
     assert rep["P0_1_reservation_replay_forgery"]["runner_calls_total"] == 1
     assert rep["P0_2_receipt_archive_integrity"]["VULNERABLE"] is False
+    t = rep["P0_2_task_archive_research_request"]
+    assert t["VULNERABLE"] is False and t["CONTROL_SETTLES"] is True
     names = {p.name for p in out.iterdir() if p.is_file()}
     for n in ("execution_acceptance.json", "budget_reservations.json", "execution_receipts.json", "task_lifecycle.json",
               "governance_checks.json", "archive_integrity.json", "security_remediation.json",
