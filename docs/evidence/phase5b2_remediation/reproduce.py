@@ -163,6 +163,97 @@ def p0_2(work: Path) -> dict:
     return out
 
 
+# ------------------------------------------------------------- P0-2 (residual): task archive research_request.json
+def _rewrite_archived_hashes(o, task_id, name, new_sha):
+    """Attacker also rewrites the task log's ARCHIVED file hashes and re-chains the log (the 'manifest' of the task
+    archive), so the archive and its manifest agree with each other."""
+    from strategy_agent.registry.chain import GENESIS, record_hash
+    p = o.log.log.path
+    recs = [json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+    prev = GENESIS
+    for r in recs:
+        if r.get("task_id") == task_id and r.get("to") == "ARCHIVED":
+            r["data"]["files_sha256"][name] = new_sha
+        r["prev_sha256"] = prev
+        r["record_sha256"] = record_hash(r)
+        prev = r["record_sha256"]
+    p.write_text("".join(json.dumps(r, sort_keys=True, ensure_ascii=False) + "\n" for r in recs))
+
+
+def _request_tamper(kind, other_doc):
+    import hashlib
+
+    def hook(o, task_id):
+        st = o.log.get(task_id)
+        arch = Path(next(e for e in reversed(st.events) if e["to"] == "ARCHIVED")["data"]["task_archive"])
+        f = arch / "research_request.json"
+        f.chmod(0o644)
+        if kind == "deleted":
+            f.unlink()
+            return
+        if kind == "identity_modified":
+            d = json.loads(f.read_text())
+            d["dataset_snapshot_id"] = "SYNTHETIC_LATEST"
+            data = json.dumps(d, indent=2, sort_keys=True, ensure_ascii=False).encode() + b"\n"
+        elif kind == "non_identity_bytes_modified":
+            data = f.read_bytes() + b"\n "
+        elif kind == "swapped_other_request":
+            data = json.dumps(other_doc, indent=2, sort_keys=True, ensure_ascii=False).encode() + b"\n"
+        elif kind == "invalid_json":
+            data = b"{ not json"
+        elif kind == "file_and_manifest_modified":
+            d = json.loads(f.read_text())
+            d["hypothesis"] = "rewritten after execution"
+            data = json.dumps(d, indent=2, sort_keys=True, ensure_ascii=False).encode() + b"\n"
+            f.write_bytes(data)
+            _rewrite_archived_hashes(o, task_id, "research_request.json", hashlib.sha256(data).hexdigest())
+            return
+        f.write_bytes(data)
+    return hook
+
+
+def p0_2_task_archive_request(work: Path) -> dict:
+    from strategy_agent.binding import testkit as K
+    out = {}
+    kinds = ("deleted", "identity_modified", "non_identity_bytes_modified", "swapped_other_request", "invalid_json",
+             "file_and_manifest_modified", "modified_after_evidence_verified", "untampered_control")
+    for kind in kinds:
+        W = X.world(work / f"p02b_{kind}")
+        other = K.another_request(W, "other")["request"]
+        o = X.orchestrator(W)
+        tid = X.submit_and_approve(W, o)
+        orig = o._archive
+        if kind == "modified_after_evidence_verified":
+            rec = o.budget.record_evidence_verified
+
+            def rec_then_tamper(*a, _rec=rec, _o=o, _tid=tid, **k):
+                ev = _rec(*a, **k)
+                _request_tamper("identity_modified", other)(_o, _tid)
+                return ev
+            o.budget.record_evidence_verified = rec_then_tamper
+        elif kind != "untampered_control":
+            hook = _request_tamper(kind, other)
+
+            def archive_then_tamper(task_id, doc, _orig=orig, _hook=hook, _o=o):
+                _orig(task_id, doc)
+                _hook(_o, task_id)
+            o._archive = archive_then_tamper
+        try:
+            st = o.dispatch(tid)["state"]
+        except Exception as e:  # noqa: BLE001
+            st = f"RAISED {type(e).__name__}: {e}"[:200]
+        try:
+            r = o.budget.for_task(tid)
+            out[kind] = {"task_state": st, "ledger_state": r["state"], "history": r["history"],
+                         "evidence_verified": "EVIDENCE_VERIFIED" in r["history"], "settled": r["state"] == "CONSUMED",
+                         "runner_calls": _calls(W["backend"])}
+        except Exception as e:  # noqa: BLE001
+            out[kind] = {"task_state": st, "error": f"{type(e).__name__}: {e}"[:200], "settled": False}
+    out["VULNERABLE"] = any(v.get("settled") for k, v in out.items() if k != "untampered_control")
+    out["CONTROL_SETTLES"] = out["untampered_control"].get("settled") is True
+    return out
+
+
 # ------------------------------------------------------------------------------------------------------- P0-3
 def p0_3_layer_a(work: Path) -> dict:
     """Wrong Core / spec / manifest pins on the request: does the controlled precheck notice?"""
@@ -238,6 +329,7 @@ def main() -> int:
            "LEDGER_AUTHORITATIVE_RESERVATION_ID" if NEW_API else "CALLER_SUPPLIED_USE_AND_RESERVATION",
            "python": sys.version.split()[0]}
     for name, fn in (("P0_1_reservation_replay_forgery", p0_1), ("P0_2_receipt_archive_integrity", p0_2),
+                     ("P0_2_task_archive_research_request", p0_2_task_archive_request),
                      ("P0_3_identity_layer_a_precheck", p0_3_layer_a), ("P0_3_identity_layer_b_runner", p0_3_layer_b)):
         try:
             res[name] = fn(work)
