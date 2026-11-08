@@ -139,6 +139,6 @@ CI（GitHub Actions）與 Colab 結果見 PR #13 與 §6。
 
 ## 6. Engineering Verdict
 
-- **Engineering：三項 P0 已修補。** 在 Claude 可執行的環境中，重新推導的攻擊已無法重現；必要的 regression tests 與本機三組套件都已通過，唯一例外是已知的 `test_15`。CI（3.11 / 3.12）與 Colab acceptance 的結果以 PR #13 及新的 Drive archive 為準。新 archive 為 `executions/<ts>_86b068b/`，不覆寫修補前的 `executions/20261108_115819_019db14`。
+- **Engineering：三項 P0 已修補。** 在 Claude 可執行的環境中，重新推導的攻擊已無法重現；必要的 regression tests 與本機三組套件都已通過，唯一例外是已知的 `test_15`。CI（3.11 / 3.12）與 Colab acceptance 的結果以 PR #13 及新的 Drive archive 為準。新 archive 為 `executions/<ts>_9f73a56/`（notebook `PHASE5B2-EXECUTION-v3` pin `9f73a56`：與 `86b068b` 相比只差文件、README 與 notebook，程式完全相同；v2 因 pin 之後改了 README 被 Version Sync 正確擋下），不覆寫修補前的 `executions/20261108_115819_019db14`。
 - **B2 範圍：** `SCOPED_GO (SINGLE_EXECUTOR_ONLY)`，前提是雲端 acceptance 通過。
 - **Security：不宣告 GO。** 狀態為 `FIXED_PENDING_INDEPENDENT_REVIEW`，交由 Codex 只針對 P0-1 / P0-2 / P0-3 做獨立複審。PR #13 維持 Draft、不 merge，也不進入 Phase 5-B3。
