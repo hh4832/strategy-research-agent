@@ -1,5 +1,7 @@
 # Phase 5-B2：Controlled Research Execution & Atomic Budget Governance
 
+> **安全修補（PR #13）。** Adapter 只接受 `reservation_id`，執行授權只來自帳本的 `claim_execution`（EXECUTION_STARTED，每個 reservation 最多一次）。結算前會從磁碟重新驗證 receipt / archive / 身分。Request 身分必須與 binding、authorization、artefact 檔案以及 backend 自己的執行身分（runner config + snapshot manifest + 已安裝 Core）全部一致。設計與證據見 [PHASE5B2_SECURITY_REMEDIATION.md](PHASE5B2_SECURITY_REMEDIATION.md)；本文件以下描述的狀態機以該文件為準（新增 marker 事件）。
+
 > 範圍：把既有的 `ResearchOnlyRunner` 接到 Orchestrator 的受治理執行介面，並加上原子化的研究額度控管。
 > 只在**隔離的 synthetic 環境**中可執行；**正式 `RESEARCH_ONLY_REAL` 維持 DISABLED**。
 > 沒有新策略、新回測引擎、真實市場執行、正式額度消耗、Holdout 讀取或券商 API。
