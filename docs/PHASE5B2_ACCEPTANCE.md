@@ -2,7 +2,7 @@
 
 > **安全修補注意（PR #13，Codex P0-1 / P0-2 / P0-3）。** 下表與 Colab 紀錄 `executions/20261108_115819_019db14`（pin `019db14`）都是**修補前**的結果，修補前的實作有三項 P0 漏洞，因此該結果不再代表目前的程式。修補後的驗收使用 `PHASE5B2-EXECUTION-v3`（pin `9f73a56`；與修補 commit `86b068b` 相比只多了文件、README 與 notebook，程式完全相同），會寫入新的 `executions/<ts>_9f73a56/`，舊紀錄保留、不覆寫。三項 finding 另行報告於 `security_remediation.json`，詳見 [PHASE5B2_SECURITY_REMEDIATION.md](PHASE5B2_SECURITY_REMEDIATION.md)。Security GO 不由本專案宣告。
 >
-> **修補後雲端驗收：** `executions/20261108_153034_9f73a56`（v3，pin `9f73a56`）B2-01..B2-10 全部 PASS、Layer B PASS、SCOPED_GO；P0-1/2/3 = FIXED_PENDING_INDEPENDENT_REVIEW。證據在 `docs/evidence/phase5b2/20261108_153034_9f73a56/`。該次驗收**早於** P0-2 殘留漏洞修補（Codex 第二輪：task archive 的 `research_request.json`）；修補後的驗收使用 `PHASE5B2-EXECUTION-v4`（pin `1bec8e0`），會寫入新的 `executions/<ts>_1bec8e0/`。
+> **修補後雲端驗收：** `executions/20261108_153034_9f73a56`（v3，pin `9f73a56`）B2-01..B2-10 全部 PASS、Layer B PASS、SCOPED_GO；P0-1/2/3 = FIXED_PENDING_INDEPENDENT_REVIEW。證據在 `docs/evidence/phase5b2/20261108_153034_9f73a56/`。該次驗收**早於** P0-2 殘留漏洞修補（Codex 第二輪：task archive 的 `research_request.json`）；修補後的驗收使用 `PHASE5B2-EXECUTION-v4`（pin `1bec8e0`），會寫入新的 `executions/<ts>_1bec8e0/`（notebook v5：Drive 授權與全新 runtime 檢查都移到第 1 格，失敗立即 STOP）。
 
 每個 Gate 都由 `strategy_agent.execution.acceptance` 依**真實的 junit 結果**加 E2E artefact 計算；文件描述不能代替測試。
 測試名稱以 Gate 為前綴（`test_B2_0X_…`）。
