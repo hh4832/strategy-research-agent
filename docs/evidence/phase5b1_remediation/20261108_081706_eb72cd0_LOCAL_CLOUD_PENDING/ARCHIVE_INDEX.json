@@ -1,0 +1,38 @@
+{
+  "files": {
+    "approval_verification.json": {
+      "bytes": 6152,
+      "sha256": "dff19a919de45c21a9e1d7f1dc7eb28cd8aaaf28b7bbe3fdba470bf6aa831705"
+    },
+    "authorization_binding.json": {
+      "bytes": 3354,
+      "sha256": "dee2e197a40260168791994733579d6d617c8b6404162d8abaa9ac865548fb6b"
+    },
+    "governance_checks.json": {
+      "bytes": 1629,
+      "sha256": "658b2b20e93623062c8302b1a11879d5d60299536717323f5d1ab5fcbfd32d40"
+    },
+    "integration_acceptance.json": {
+      "bytes": 6417,
+      "sha256": "a32dc67119f01b156833b772738b9f2f401333f96a554fa4f204a6e809a79334"
+    },
+    "notebook_context.json": {
+      "bytes": 1092,
+      "sha256": "c79d123161c6e401d7791df26bda365e0df912c40cc1d888b6a8bcc93fef3b2a"
+    },
+    "run_info.txt": {
+      "bytes": 931,
+      "sha256": "d03458f81474523c81dd2ecda6dbe3d983fa95a962c5150b773bc07569255d93"
+    },
+    "security_negative_tests.json": {
+      "bytes": 15937,
+      "sha256": "e60a4b8c938e7078ce287ee146b36f234d48a1ab1b2c9fa61ebef5e114827881"
+    }
+  },
+  "kind": "PHASE5B1_ARCHIVE_INDEX",
+  "rule": "every top-level file is listed; any extra, missing or altered file fails verify_archive",
+  "work_tree": {
+    "files": 215,
+    "sha256": "cc854cd78aa9da1859a7d64af3d6c76a6549f3e6f5da2f30896b828ff9edbd20"
+  }
+}

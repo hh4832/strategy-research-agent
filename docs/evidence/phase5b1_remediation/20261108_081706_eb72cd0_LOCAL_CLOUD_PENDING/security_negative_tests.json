@@ -1,0 +1,620 @@
+{
+  "concurrency": {
+    "binding_records": 1,
+    "results": [
+      [
+        "REJECTED",
+        [
+          "B09_REQUEST_ALREADY_BOUND"
+        ]
+      ],
+      [
+        "ACCEPTED",
+        "BOUND"
+      ],
+      [
+        "REJECTED",
+        [
+          "B09_REQUEST_ALREADY_BOUND"
+        ]
+      ],
+      [
+        "REJECTED",
+        [
+          "B09_REQUEST_ALREADY_BOUND"
+        ]
+      ],
+      [
+        "ACCEPTED",
+        "ALREADY_BOUND"
+      ],
+      [
+        "ACCEPTED",
+        "ALREADY_BOUND"
+      ]
+    ]
+  },
+  "threats": [
+    {
+      "cases": [
+        {
+          "case": "caller says approver=hh4832 with a non-GitHub ref",
+          "codes": [
+            "APPROVAL_V01_UNTRUSTED_URL"
+          ],
+          "expected": "V01",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "declared approver differs from verified author",
+          "codes": [
+            "APPROVER_MISMATCH"
+          ],
+          "expected": "APPROVER_MISMATCH",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "no evidence at all",
+          "codes": [
+            "APPROVAL_EVIDENCE_REQUIRED"
+          ],
+          "expected": "APPROVAL_EVIDENCE_REQUIRED",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "forged approver name",
+      "status": "PASS",
+      "threat": 1
+    },
+    {
+      "cases": [
+        {
+          "case": "other host",
+          "codes": [
+            "V01_UNTRUSTED_URL"
+          ],
+          "expected": "V01",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "issue URL without a comment anchor",
+          "codes": [
+            "V01_UNTRUSTED_URL"
+          ],
+          "expected": "V01",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "lookalike repository name",
+          "codes": [
+            "V01_UNTRUSTED_URL"
+          ],
+          "expected": "V01",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "forged GitHub URL",
+      "status": "PASS",
+      "threat": 2
+    },
+    {
+      "cases": [
+        {
+          "case": "right login, wrong numeric id",
+          "codes": [
+            "V04_AUTHOR_NOT_ALLOWED"
+          ],
+          "expected": "V04",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "payload html_url disagrees with the URL",
+          "codes": [
+            "V03_COMMENT_IDENTITY"
+          ],
+          "expected": "V03",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "author type Bot",
+          "codes": [
+            "V04_AUTHOR_NOT_ALLOWED"
+          ],
+          "expected": "V04",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "forged GitHub comment payload",
+      "status": "PASS",
+      "threat": 3
+    },
+    {
+      "cases": [
+        {
+          "case": "unknown login",
+          "codes": [
+            "V04_AUTHOR_NOT_ALLOWED"
+          ],
+          "expected": "V04",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "allow-listed login but CONTRIBUTOR association",
+          "codes": [
+            "V04_AUTHOR_ASSOCIATION"
+          ],
+          "expected": "V04",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "GitHub identity not on the allow-list",
+      "status": "PASS",
+      "threat": 4
+    },
+    {
+      "cases": [
+        {
+          "case": "URL of another repository",
+          "codes": [
+            "V01_UNTRUSTED_URL"
+          ],
+          "expected": "V01",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "API repository id differs from the pinned id",
+          "codes": [
+            "V02_REPOSITORY_IDENTITY"
+          ],
+          "expected": "V02",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "approval from another repository",
+      "status": "PASS",
+      "threat": 5
+    },
+    {
+      "cases": [
+        {
+          "case": "bind a modified request with the original approval",
+          "codes": [
+            "B02_PROVENANCE",
+            "B05_GOVERNANCE",
+            "B06_AUTHORIZATION_FULLY_BOUND",
+            "B07_APPROVAL_V06_SUBJECT_MISMATCH"
+          ],
+          "expected": "B07_APPROVAL_V06",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "submit a modified bound request",
+          "codes": [
+            "G11_AUTHORIZATION_BINDING_FAIL"
+          ],
+          "expected": "G11",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "request modified after approval",
+      "status": "PASS",
+      "threat": 6
+    },
+    {
+      "cases": [
+        {
+          "case": "spec file changed",
+          "codes": [
+            "G2_STRATEGY_SPEC_FAIL"
+          ],
+          "expected": "G2",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "strategy spec modified after binding",
+      "status": "PASS",
+      "threat": 7
+    },
+    {
+      "cases": [
+        {
+          "case": "cost scenario file changed",
+          "codes": [
+            "G4_CORE_COST_FAIL"
+          ],
+          "expected": "G4",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "dataset snapshot changed in the bound request",
+          "codes": [
+            "G11_AUTHORIZATION_BINDING_FAIL"
+          ],
+          "expected": "G11",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "dataset or cost configuration modified after binding",
+      "status": "PASS",
+      "threat": 8
+    },
+    {
+      "cases": [
+        {
+          "case": "second request on a max_batches=1 authorization already bound",
+          "codes": [
+            "B06_AUTHORIZATION_FULLY_BOUND"
+          ],
+          "expected": "B06_AUTHORIZATION_FULLY_BOUND",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "authorization with 1/1 uses",
+          "codes": [
+            "B05_GOVERNANCE",
+            "B06_BUDGET_EXHAUSTED"
+          ],
+          "expected": "B06_BUDGET_EXHAUSTED",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "exhausted / fully bound authorization re-bound",
+      "status": "PASS",
+      "threat": 9
+    },
+    {
+      "cases": [
+        {
+          "case": "binding approval of request A used for request B",
+          "codes": [
+            "B06_AUTHORIZATION_FULLY_BOUND",
+            "B07_APPROVAL_V06_SUBJECT_MISMATCH"
+          ],
+          "expected": "V06_SUBJECT_MISMATCH",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "one comment claimed by a second task",
+          "codes": [
+            "APPROVAL_EVIDENCE_REUSED"
+          ],
+          "expected": "EVIDENCE_REUSED",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "approval evidence reused",
+      "status": "PASS",
+      "threat": 10
+    },
+    {
+      "cases": [
+        {
+          "case": "expired",
+          "codes": [
+            "V07_EXPIRED"
+          ],
+          "expected": "V07_EXPIRED",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "validity window longer than policy",
+          "codes": [
+            "V07_VALIDITY_WINDOW"
+          ],
+          "expected": "V07_VALIDITY_WINDOW",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "revoked by the lead",
+          "codes": [
+            "V08_REVOKED"
+          ],
+          "expected": "V08_REVOKED",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "edited after creation",
+          "codes": [
+            "V05_EDITED"
+          ],
+          "expected": "V05_EDITED",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "deleted / never existed",
+          "codes": [
+            "V03_EVIDENCE_NOT_FOUND"
+          ],
+          "expected": "V03_EVIDENCE_NOT_FOUND",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "expired, revoked, edited or deleted approval",
+      "status": "PASS",
+      "threat": 11
+    },
+    {
+      "cases": [
+        {
+          "case": "source offline",
+          "codes": [
+            "V00_APPROVAL_SOURCE_UNAVAILABLE"
+          ],
+          "expected": "V00_APPROVAL_SOURCE_UNAVAILABLE",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "production verifier without a token",
+          "codes": [
+            "V00_APPROVAL_SOURCE_UNAVAILABLE"
+          ],
+          "expected": "V00",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "GitHub API unavailable",
+      "status": "PASS",
+      "threat": 12
+    },
+    {
+      "cases": [
+        {
+          "case": "6 workers, 2 different evidence comments, same request",
+          "codes": [
+            "records=1",
+            "accepted=3"
+          ],
+          "expected": "records=1",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "concurrent binding workers",
+      "status": "PASS",
+      "threat": 13
+    },
+    {
+      "cases": [
+        {
+          "case": "orphan bound file without a log record is not a binding",
+          "codes": [
+            "NOT_BOUND"
+          ],
+          "expected": "NOT_BOUND",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "retry after the crash completes idempotently (no half state)",
+          "codes": [
+            "retry=BOUND"
+          ],
+          "expected": "retry=BOUND",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "crash between artefact write and log append",
+      "status": "PASS",
+      "threat": 14
+    },
+    {
+      "cases": [
+        {
+          "case": "test verifier with the repository's governance books",
+          "codes": [
+            "ValueError: the repository's governance books accept only the production (live GitHub) verifier"
+          ],
+          "expected": "ValueError",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "test evidence binding against the repository's books",
+          "codes": [
+            "B05_GOVERNANCE",
+            "B06_AUTHORIZATION_MISSING",
+            "B08_TRUST"
+          ],
+          "expected": "B08_TRUST",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "TEST_FIXTURE source with production=True",
+          "codes": [
+            "V09_PRODUCTION_SOURCE"
+          ],
+          "expected": "V09",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "ISOLATED_TEST approval for a budget-consuming adapter",
+          "codes": [
+            "APPROVAL_TRUST_NOT_PRODUCTION"
+          ],
+          "expected": "APPROVAL_TRUST_NOT_PRODUCTION",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "synthetic request cannot be bound",
+          "codes": [
+            "B01_SYNTHETIC_NOT_BINDABLE",
+            "B02_PROVENANCE",
+            "B05_GOVERNANCE"
+          ],
+          "expected": "B01_SYNTHETIC_NOT_BINDABLE",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "synthetic / test approval flowing into production",
+      "status": "PASS",
+      "threat": 15
+    },
+    {
+      "cases": [
+        {
+          "case": "comment posted through the Claude GitHub App",
+          "codes": [
+            "V04_POSTED_VIA_APP"
+          ],
+          "expected": "V04_POSTED_VIA_APP",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "comment posted through the Codex connector",
+          "codes": [
+            "V04_POSTED_VIA_APP"
+          ],
+          "expected": "V04_POSTED_VIA_APP",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "prompt-injection text without a token (never executed)",
+          "codes": [
+            "V06_NO_APPROVAL_TOKEN"
+          ],
+          "expected": "V06_NO_APPROVAL_TOKEN",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "two marker lines (ambiguous)",
+          "codes": [
+            "V06_AMBIGUOUS_OR_MALFORMED_TOKEN"
+          ],
+          "expected": "V06_AMBIGUOUS",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "A2 asked to export with an authorization",
+          "codes": [
+            "ValueError: AUTHORIZATION_MUST_REMAIN_PENDING; Proposal Agent never selects or grants authorization"
+          ],
+          "expected": "AUTHORIZATION_MUST_REMAIN_PENDING",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "LLM / agent attempts to approve itself",
+      "status": "PASS",
+      "threat": 16
+    },
+    {
+      "cases": [
+        {
+          "case": "window reaching into the holdout (RA08/RA09 via G6/G8)",
+          "codes": [
+            "G10_EXECUTION_MODE",
+            "G6_AUTHORIZATION_SCOPE",
+            "G8_HOLDOUT"
+          ],
+          "expected": "G",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "holdout access requested",
+          "codes": [
+            "holdout_policy/access: 'NO_ACCESS' was expected"
+          ],
+          "expected": "holdout",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "holdout access",
+      "status": "PASS",
+      "threat": 17
+    },
+    {
+      "cases": [
+        {
+          "case": "orchestration approve without evidence",
+          "codes": [
+            "rc=2"
+          ],
+          "expected": "rc=2",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "orchestration approve with a non-GitHub ref",
+          "codes": [
+            "rc=2",
+            "{\n  \"error\": \"APPROVAL_V01_UNTRUSTED_URL\",\n  \"message\": \"APPROVAL_V01_UNTRUSTED_URL: V01_UNTRUSTED_URL: evidence must be a comment URL on the pinned repository\"\n}\n"
+          ],
+          "expected": "V01",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "orchestration approve with a real comment but no token (fail closed)",
+          "codes": [
+            "rc=2",
+            "{\n  \"error\": \"APPROVAL_V00_APPROVAL_SOURCE_UNAVAILABLE\",\n  \"message\": \"APPROVAL_V00_APPROVAL_SOURCE_UNAVAILABLE: V00_APPROVAL_SOURCE_UNAVAILABLE: GITHUB_TOKEN_MISSING: fail closed\"\n}\n"
+          ],
+          "expected": "V00",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "binding CLI offers no test source / fixture option",
+          "codes": [
+            "NO_FIXTURE_OPTION"
+          ],
+          "expected": "NO_FIXTURE_OPTION",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        },
+        {
+          "case": "phase5a CLI has no approve command",
+          "codes": [
+            "rc=2"
+          ],
+          "expected": "rc=2",
+          "outcome": "REJECTED",
+          "status": "PASS"
+        }
+      ],
+      "name": "bypassing trusted verification through a CLI",
+      "status": "PASS",
+      "threat": 18
+    }
+  ]
+}

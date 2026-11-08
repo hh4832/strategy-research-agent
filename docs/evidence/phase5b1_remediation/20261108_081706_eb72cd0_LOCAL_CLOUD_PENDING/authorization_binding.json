@@ -1,0 +1,77 @@
+{
+  "binding": {
+    "approval_evidence_id": "AE-GH-9000000001",
+    "approval_evidence_path": "registry/approval_evidence/cf41f579903c0b91738c4bb3365cb5ac0e16a3fbb72785e5958ed39e27ed48d8.json",
+    "approval_evidence_sha256": "cf41f579903c0b91738c4bb3365cb5ac0e16a3fbb72785e5958ed39e27ed48d8",
+    "approval_trust": "ISOLATED_TEST",
+    "approves_execution": false,
+    "authorization_id": "RA-SYNTHETIC_FIXTURE-B1-0001",
+    "authorization_state": {
+      "bindings_before": 0,
+      "max_batches": 1,
+      "record_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uses_at_binding": 0
+    },
+    "binding_actor": {
+      "github_id": 269247281,
+      "github_login": "hh4832",
+      "source": "VERIFIED_APPROVAL_EVIDENCE_AUTHOR"
+    },
+    "binding_id": "AB-a55a21cc4f11c1395a754024",
+    "binding_timestamp": "2026-11-08T08:17:09+08:00",
+    "bound_request_file_sha256": "0dbde57ad2726533d002f5a7feebdc9910c66719fc85096763af452680487bc3",
+    "bound_request_path": "registry/bound_requests/b3e6dbc01e351a0cbf965b579d013206f1a817b5259adaa65604303c4a03d32d.json",
+    "bound_request_sha256": "b3e6dbc01e351a0cbf965b579d013206f1a817b5259adaa65604303c4a03d32d",
+    "consumes_budget": false,
+    "governance": {
+      "checks": {
+        "G10_EXECUTION_MODE": "FAIL",
+        "G1_REQUEST_SCHEMA": "PASS",
+        "G2_STRATEGY_SPEC": "PASS",
+        "G3_DATASET": "PASS",
+        "G4_CORE_COST": "PASS",
+        "G5_AUTHORIZATION": "PASS",
+        "G6_AUTHORIZATION_SCOPE": "PASS",
+        "G7_BUDGET": "PASS",
+        "G8_HOLDOUT": "PASS",
+        "G9_FORMAL_GATE": "PASS"
+      },
+      "execution_mode_enabled": false
+    },
+    "prev_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "record_sha256": "5e9dd620cba24890df346c92f95b3424fa2d7db3a23d2e9295bff0136aa1f913",
+    "relationship": {
+      "changed_fields": [
+        "authorization_ref"
+      ],
+      "derived_request_sha256": "b3e6dbc01e351a0cbf965b579d013206f1a817b5259adaa65604303c4a03d32d",
+      "kind": "AUTHORIZATION_BINDING",
+      "parent_request_sha256": "36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98"
+    },
+    "schema_version": "1.0.0",
+    "scope_sha256": "be7c899beaf2fb68844961a739576402c29b01889a32769cab0f7a234541fe4b",
+    "seq": 0,
+    "source_proposal_id": "PROP-d5b7f8af9d133dec1588",
+    "source_proposal_sha256": "2de3fabc4a8fd07a7d1a552b14078495c390d511252f9f756462ff1c6655f744",
+    "source_provenance_sha256": "323e3fa244a4d1291e16e94f5ccece9e87c0b127004c98b16ca6203126885894",
+    "source_request_file_sha256": "2af0e3d5966110f960ba0eca0ca0b0ac7c348c72c52cbc40be11fac7abda048c",
+    "source_request_id": "RR-PROP-D5B7F8AF9D133DEC1588",
+    "source_request_sha256": "36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98",
+    "tool": "strategy_agent.binding"
+  },
+  "binding_log_records": 1,
+  "binding_status": "BOUND",
+  "bound_request_sha256": "b3e6dbc01e351a0cbf965b579d013206f1a817b5259adaa65604303c4a03d32d",
+  "dry_run": {
+    "registry_files_after_dry_run": [
+      "research_authorization_uses.jsonl"
+    ],
+    "status": "DRY_RUN_OK",
+    "written": false
+  },
+  "parent_child_differs_only_in": [
+    "authorization_ref"
+  ],
+  "rebind_status": "ALREADY_BOUND",
+  "source_request_sha256": "36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98"
+}

@@ -128,6 +128,6 @@ A2 Proposal → PENDING Request (authorization_ref=PENDING)
 | 本地測試 | 無 Core 538 passed／54 skipped；Core 699e3ad 632 passed；Core b16179a 642 passed + 已知 `test_15` |
 | 新 gate | B1-SEC：Colab 驗收時重跑重現案例，必須全部 BLOCKED |
 | Codex 原始檔案 | `SECURITY_REVIEW.md`／`reproduce.py`／`reproduction_results.json` **未取得**；第 9 項 Finding = **PENDING** |
-| Colab | 待執行 `PHASE5B1-APPROVAL-v2`，輸出到新的 `approvals/<ts>_eb72cd0/` |
+| Colab 第 1 次（2026-11-08 08:17，`20261108_081706_eb72cd0`） | 乾淨的 runtime，Version Sync PASS，Colab 回歸測試 538 passed。B1-01..B1-10 + **B1-SEC 全 PASS**（11 個重現案例全部 BLOCKED）。真實 GitHub 證據 **VERIFIED**（V01–V09 PASS，PRODUCTION／LIVE）；對真實帳本的 dry-run 綁定被正確拒絕。ARCHIVE_INDEX 涵蓋 7 個檔案，hash 全部一致，輸出中沒有 token。**但 Drive 沒有掛載（`cloud=false`）**，輸出寫到 Colab 本機，所以判定是 SCOPED_GO。副本：`docs/evidence/phase5b1_remediation/20261108_081706_eb72cd0_LOCAL_CLOUD_PENDING/` |
 
 **判定：在 Codex 複驗前，Security Verdict = SCOPED_GO（工程修復完成，等待獨立複驗）。** 任何 HIGH Finding 若無法複驗，都不得宣告 Security GO。
