@@ -2,8 +2,8 @@
 
 | 項目 | 值 |
 |---|---|
-| 程式 pin | `5045d4af4130ae5dfd40be40643740d19acbf6bd`（readiness 程式、測試、CI、manifest／draft） |
-| Notebook | `notebooks/Phase5B3A_Readiness_Acceptance.ipynb`，`PHASE5B3A-READINESS-v1` |
+| 程式 pin | 第一輪 `5045d4a`（NO_GO）；**目前 `c906d48845fee26199b0382f88eead20c625480e`**（研究負責人決定後：spec 0.1.1） |
+| Notebook | `notebooks/Phase5B3A_Readiness_Acceptance.ipynb`，目前 `PHASE5B3A-READINESS-v2`（pin `c906d48`） |
 | 執行 | `python -m strategy_agent.readiness.acceptance --out-dir … --junit … --tests-rc … [--cloud] [--snapshot-dir …]` |
 | 封存 | `MyDrive/Quant_Research/strategy-research-agent/readiness/<YYYYMMDD_HHMMSS>_<pin7>/`：`b3a_acceptance.json`、`readiness_manifest.json`、`authorization_draft.json`、`readiness_checks.json`、`notebook_context.json`、`run_info.txt`、`ARCHIVE_INDEX.json`；O_EXCL 寫入、不可覆寫；沒有 `work/` tree |
 
@@ -61,9 +61,21 @@ GO／SCOPED_GO 都**不**授權 Runner。
 4. 驗證封存；
 5. 對 `registry`、`governance`、`configs`、`schemas`、`specs` 執行 `git diff --exit-code`。
 
+## 研究負責人決定後（pin `c906d48`）
+
+決定內容見 [`PHASE5B3A_READINESS.md`](PHASE5B3A_READINESS.md) §0.2：spec 0.1.1 只重新綁定資料集。
+
+- 測試增為 27 個。原 spec 的 NO_GO 路徑保留為測試；新增 0.1.1 通過 exporter、只改資料綁定的測試；新增 5 種「改到資料綁定以外的內容」→ BLOCKED 的注入測試。
+- 本機回歸：
+  - 無 Core：641 passed / 64 skipped；
+  - Core `699e3ad`：735 passed / 13 skipped；
+  - Core `b16179a`：755 passed / 4 skipped / 1 failed（已知 `test_15`）。
+- 治理相關 suites：176 passed。
+- 本機 acceptance：B3A-01..07 全部 PASS。B3A-08 在本機因 tree 未提交顯示 FAIL，提交後的 CI 為 BLOCKED（CI 不是 cloud），要由 Colab 證明。
+
 ## Colab／Drive
 
-**`readiness/20261108_225409_5045d4a`**（notebook v1，全新 runtime，Python 3.13.18，`cloud=true`）。
+### 第一輪（pin `5045d4a`，NO_GO）：**`readiness/20261108_225409_5045d4a`**（notebook v1，全新 runtime，Python 3.13.18，`cloud=true`）。
 
 - **程式版本：** pin `5045d4a`，checkout 乾淨；pin 之後只有 docs 與 notebook 變更。
 - **回歸：** 無 Core 634 passed / 65 skipped（比本機多 1 個 skipped，是環境條件造成的 skip，0 failed）。5-B1＋5-B2＋5-B3-A suites 在 Core `b16179a` 下 170 passed。

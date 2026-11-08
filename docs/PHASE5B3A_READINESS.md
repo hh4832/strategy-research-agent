@@ -12,15 +12,29 @@
 
 ## 0. 結論（工程判定）
 
-**`NO_GO`：有一個具體的阻擋，必須由人做決定。** B3A-01、03、04、05、06、07、08 全部 PASS。B3A-08 由 Colab＋Drive 證明（`readiness/20261108_225409_5045d4a`），同一次執行也對 DEV snapshot 做了整檔 hash，結果 PASS，見驗收文件。
+### 0.1 第一輪（pin `5045d4a`，Colab `readiness/20261108_225409_5045d4a`）：**NO_GO**
 
-**唯一的工程阻擋（B3A-02）：** 策略規格 `specs/research/sma_crossover_tsm_15m_5_20.json` 的 `data_requirements` 綁定的是 **FINAL_GATE 母快照**（`20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL`，producer `06359faf…`）。候選資料集是由它衍生的 **DEV 子快照**（`TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e`，producer `b16179a…`）。
+B3A-01、03..08 PASS；**B3A-02 BLOCKED**。原因：原 spec `sma_crossover_tsm_15m_5_20.json`（0.1.0，`b358416e…`）的 `data_requirements` 綁定的是 FINAL_GATE 母快照，Phase 5 A2 exporter 對 DEV 快照的 request 回 `SPEC_DATASET_REFERENCE_MISMATCH`。這是實際呼叫 exporter 的結果。該封存保留，不覆寫。
 
-Phase 5 的 A2 exporter 是 request 與 spec 綁定的權威，它會以 `SPEC_DATASET_REFERENCE_MISMATCH` 拒絕這個 request。這是直接呼叫 exporter 實際得到的結果，不是推論。Phase 4-A 的 DEV smoke run 沒遇到這個問題，因為那條路徑（RA07）只比對 spec SHA，不檢查 spec 內的資料集綁定。
+### 0.2 研究負責人決定（2026-11-08 23:48 +08:00）
 
-**需要的決定：** 是否核准一個新的 spec 版本。新版只把 `data_requirements` 重新綁到 DEV 快照，規則和參數都不變（SMA 5/20），SHA 會改變。測試 `test_a_spec_repinned_to_the_dev_snapshot_would_satisfy_the_exporter` 已證明這樣改就足以通過 exporter。新的授權必須釘選新 spec 的 SHA。B3-A **沒有**自行建立這個 spec。
+> 「先處理第一項，做到 SCOPED_GO。」
 
-GO 和 SCOPED_GO 都**不**授權 Runner；真實執行仍需另外一份由研究負責人核准的授權。
+依此決定新增 `specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json`（0.1.1，sha `f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34`）：
+
+- **只改資料綁定。** `data_requirements.datasets[0]` 改綁 DEV 快照：snapshot `TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e`、producer `b16179a…`、manifest `8b6fc838…`，access contract 改為 Development Snapshot Contract v1.1。另外只改 `version` 與 `provenance`（`parent_spec_id = sma_crossover_tsm_15m_5_20@0.1.0`，並記錄 parent 檔案 sha）。
+- **其餘完全相同。** universe、signal、execution、position sizing、risk、costs、parameters（SMA 5/20）都與 0.1.0 相同。這由交叉檢查 `spec_rules_unchanged_vs_parent` 強制：除上述欄位外任何差異都是 BLOCKED，有 5 種注入測試。
+- **原 spec 0.1.0 不動。** run config 與已用盡的 DEV 授權仍釘選它。
+- **狀態仍是 DRAFT。** 只能由**新的**研究授權釘選；新授權與 B3-B 的 run config 都必須釘選 0.1.1 的 sha。
+
+### 0.3 目前（pin `c906d48`）
+
+本機結果：B3A-01..07 全部 PASS，B3A-02 由 BLOCKED 轉為 PASS（exporter 接受、規則未變）。B3A-08 由 Colab＋Drive 證明（見驗收文件）。預期判定為 **SCOPED_GO**，限制如下：
+- SINGLE_EXECUTOR_ONLY；
+- 資料集 readiness 來自封存證據加上整檔 hash；
+- 真實 Runner 仍 DISABLED。
+
+**SCOPED_GO 不授權 Runner。** 剩下的都是刻意保留給人的決定（§6），不是工程阻擋。
 
 ## 1. Repository 檢查
 
@@ -47,8 +61,8 @@ GO 和 SCOPED_GO 都**不**授權 Runner；真實執行仍需另外一份由研�
 | 欄位 | 狀態 | 值／理由 | 來源（全部一致才算 RESOLVED） |
 |---|---|---|---|
 | Research market | RESOLVED | IBKR_TSM / TSM | run config、授權、spec universe |
-| Strategy ID / version | RESOLVED | `sma_crossover_tsm_15m_5_20` 0.1.0，fast 5／slow 20 | config、授權、spec 檔、先前 run |
-| Strategy Spec SHA256 | RESOLVED | `b358416e…4123` | 磁碟檔案、config、授權 |
+| Strategy ID / version | RESOLVED | `sma_crossover_tsm_15m_5_20` **0.1.1**，fast 5／slow 20；策略識別（id＋參數）與 config、授權、先前 run 一致 | 候選 spec 檔、config、授權、先前 run |
+| Strategy Spec SHA256 | RESOLVED | `f4f60b44…cff34`（0.1.1；parent 0.1.0 = `b358416e…4123`） | 磁碟檔案、candidate pin |
 | Dataset snapshot ID | RESOLVED | `TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e` | config、授權、snapshot pin、先前 run |
 | Dataset manifest SHA256 | RESOLVED | `8b6fc838…cfc5` | config、integrity receipt、先前 run |
 | Core commit SHA | RESOLVED | `b16179a7…6cae` | config、授權的 producer、先前 run、CI pin |
@@ -64,8 +78,9 @@ GO 和 SCOPED_GO 都**不**授權 Runner；真實執行仍需另外一份由研�
 | Git／環境 identity | RESOLVED（執行時取得） | 由 acceptance 記錄實際 git SHA、clean、Python；B3-B 執行時必須再記錄一次 | 程式碼 |
 | Archive destination | RESOLVED | `MyDrive/Quant_Research/strategy-research-agent/`，`YYYYMMDD_HHMMSS_<git_commit>`，immutable | config、brief |
 
-另外有兩項交叉檢查（`cross_checks`），呼叫的是真實的程式路徑：
-- `phase5_request_spec_dataset_binding`：**BLOCKED**（§0）。
+另外有三項交叉檢查（`cross_checks`），呼叫的是真實的程式路徑：
+- `phase5_request_spec_dataset_binding`：PASS（0.1.1；parent 0.1.0 仍會被拒，有測試）。
+- `spec_rules_unchanged_vs_parent`：PASS，只有 `data_requirements`（資料集綁定）、`provenance`、`version` 不同。
 - `snapshot_integrity_receipt`：PASS。先前的 run 每個 session 都會更新 receipt（Core `renew_development_receipt`）；B3-B 必須再更新一次，而且 session config 只能在 receipt 欄位上與正式 config 不同。
 
 ## 3. 真實資料集 readiness（9 項；使用先前真實 run 的封存證據，不讀新資料）
@@ -114,7 +129,7 @@ GO 和 SCOPED_GO 都**不**授權 Runner；真實執行仍需另外一份由研�
 | 研究目的與假設 | 第一次經由治理過的 Phase 5 管線執行真實研究；假設只有預先登錄的 SMA 5/20 baseline。**重跑已評估過的 DEV 窗口只增加管線證據，不增加關於 SMA 的統計證據** → 是否要做，由人決定 |
 | 市場／標的 | IBKR_TSM / TSM |
 | 資料集與期間 | DEV 快照，研究窗口 `[2024-05-29, 2024-06-29)` ET，manifest `8b6fc838…` |
-| 策略規格 | **HUMAN_DECISION_REQUIRED**（§0：需要重新綁定資料集的 spec 新版本與新 SHA） |
+| 策略規格 | `specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json` 0.1.1，sha `f4f60b44…`（parent 0.1.0 `b358416e…`；只改資料綁定） |
 | 成本假設 | 成本集 `bf4f2365…`，四個情境 |
 | 最大批次 | 提議 1 → 由人決定 |
 | 有效期間 | `issued_at`／`expires_at` → 由人決定（RA10：formal gate 一旦變動即失效） |
@@ -123,11 +138,11 @@ GO 和 SCOPED_GO 都**不**授權 Runner；真實執行仍需另外一份由研�
 | 封存位置 | `MyDrive/Quant_Research/strategy-research-agent/`，`YYYYMMDD_HHMMSS_<git_commit>` |
 | 授權 ID | 由人決定（格式 `RA-IBKR_TSM-SMA520_<NEW>`） |
 
-**Schema dry-run：PASS。** 在記憶體中以真實的 `RESEARCH_AUTHORIZATION_SCHEMA` 驗證；核准欄位是明顯的假值（`dry-run-not-an-approver`、`https://example.invalid/…`），spec 欄位用 placeholder；沒有寫入任何檔案（有測試）。用盡的 1/1 授權沒有被重用或重置。synthetic 驗收只使用測試授權。
+**Schema dry-run：PASS。** 在記憶體中以真實的 `RESEARCH_AUTHORIZATION_SCHEMA` 驗證；核准欄位是明顯的假值（`dry-run-not-an-approver`、`https://example.invalid/…`），已不需要任何 spec placeholder；沒有寫入任何檔案（有測試）。用盡的 1/1 授權沒有被重用或重置。synthetic 驗收只使用測試授權。
 
 ## 6. 需要人核准的 pin／決定
 
-1. **Spec 新版本**：只重新綁定 `data_requirements`，規則和參數不變；新 SHA 由新授權釘選。
+1. ~~Spec 新版本~~：**已決定**（§0.2），0.1.1 `f4f60b44…`。新授權與 B3-B 的新 run config 必須釘選它。
 2. **是否以 DEV 窗口作為第一次 Phase 5 真實 run**。它只驗證管線，不產生新的研究證據。替代方案是更長的 development 期間，但目前**沒有**這樣的不可變快照，需要 Codex／producer 產生新快照並由研究負責人核准（範圍外，未啟動）。
 3. **新授權**：ID、`max_batches`、有效期間、executor、approval ref；由研究負責人以 `research_authorization_admin approve` 執行。
 4. **Binding**：以正式 GitHub 核准證據（5-B1）完成；Bound Request Hash 在此之後才存在。
