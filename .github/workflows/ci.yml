@@ -249,6 +249,35 @@ jobs:
             ${{ runner.temp }}/executions/*/run_info.txt
           retention-days: 30
 
+  phase5b2-p0-2-independent:
+    # Independent synthetic-only archive settlement check. No Core, no secrets, no real authorization.
+    # Fail closed when research_request.json is missing or changed, including after evidence verification.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies (no Core)
+        run: pip install -e '.[test]'
+      - name: Independent P0-2 original archive-request path
+        run: |
+          python -m pytest -q -p no:cacheprovider tests/test_phase5b2_independent_p0_2_gate.py \
+            --junitxml "$RUNNER_TEMP/independent_p0_2.xml"
+          git diff --exit-code -- registry governance configs schemas
+      - name: Publish test result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-p0-2-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/independent_p0_2.xml
+          if-no-files-found: warn
+          retention-days: 30
+
   phase5a3-integration:
     # Phase 5-A3: actual A2 export -> actual A1 orchestrator (SYNTHETIC_FIXTURE Route A + fixture archive replay).
     # No Core, no market data, no batch, no Holdout. Real archive replay runs only in Colab (notebook).
