@@ -1,0 +1,94 @@
+{
+  "gates": {
+    "P0-1": {
+      "finding": "Reservation Replay / Forgery: only the ledger grants execution, exactly once per reservation",
+      "regression_tests": {
+        "failed": [],
+        "names": [
+          "tests.test_phase5b2_security_remediation::test_P0_1_adapter_refuses_a_foreign_ledger_and_unbound_execution",
+          "tests.test_phase5b2_security_remediation::test_P0_1_committed_reservation_needs_matching_identity_and_running_task",
+          "tests.test_phase5b2_security_remediation::test_P0_1_fake_committed_status_is_never_eligibility",
+          "tests.test_phase5b2_security_remediation::test_P0_1_forged_reservation_is_blocked_without_running",
+          "tests.test_phase5b2_security_remediation::test_P0_1_ledger_settle_requires_completed_and_verified_evidence",
+          "tests.test_phase5b2_security_remediation::test_P0_1_marker_events_cannot_be_forged_into_the_ledger",
+          "tests.test_phase5b2_security_remediation::test_P0_1_replay_while_in_flight_is_refused",
+          "tests.test_phase5b2_security_remediation::test_P0_1_reused_reservation_runs_at_most_once",
+          "tests.test_phase5b2_security_remediation::test_P0_1_same_reservation_from_several_processes_runs_at_most_once[2]",
+          "tests.test_phase5b2_security_remediation::test_P0_1_same_reservation_from_several_processes_runs_at_most_once[6]"
+        ],
+        "passed": 10
+      },
+      "reproduction_after_fix": {
+        "P0_1_reservation_replay_forgery": {
+          "VULNERABLE": false,
+          "status": null
+        }
+      },
+      "status": "FIXED_PENDING_INDEPENDENT_REVIEW"
+    },
+    "P0-2": {
+      "finding": "Receipt / Archive Integrity Before Settlement: re-verified from disk; tampering never settles",
+      "regression_tests": {
+        "failed": [],
+        "names": [
+          "tests.test_phase5b2_security_remediation::test_P0_2_archive_carrying_another_uses_record_is_inconsistent",
+          "tests.test_phase5b2_security_remediation::test_P0_2_archive_or_evaluation_tampered_before_settlement_never_settles[archive_file_removed]",
+          "tests.test_phase5b2_security_remediation::test_P0_2_archive_or_evaluation_tampered_before_settlement_never_settles[archive_manifest_corrupted]",
+          "tests.test_phase5b2_security_remediation::test_P0_2_archive_or_evaluation_tampered_before_settlement_never_settles[evaluation_output_altered]",
+          "tests.test_phase5b2_security_remediation::test_P0_2_crash_after_execution_started_is_never_rerun",
+          "tests.test_phase5b2_security_remediation::test_P0_2_evaluator_failure_is_never_rerun",
+          "tests.test_phase5b2_security_remediation::test_P0_2_evidence_tampered_before_evaluation_fails_closed",
+          "tests.test_phase5b2_security_remediation::test_P0_2_receipt_deleted_or_modified_before_settlement_needs_reconciliation[receipt_deleted]",
+          "tests.test_phase5b2_security_remediation::test_P0_2_receipt_deleted_or_modified_before_settlement_needs_reconciliation[receipt_modified]",
+          "tests.test_phase5b2_security_remediation::test_P0_2_runner_result_inconsistent_with_request_is_never_settled"
+        ],
+        "passed": 10
+      },
+      "reproduction_after_fix": {
+        "P0_2_receipt_archive_integrity": {
+          "VULNERABLE": false,
+          "status": null
+        }
+      },
+      "status": "FIXED_PENDING_INDEPENDENT_REVIEW"
+    },
+    "P0-3": {
+      "finding": "Request / Execution Identity: Core / spec / dataset manifest verified against authoritative sources",
+      "regression_tests": {
+        "failed": [],
+        "names": [
+          "tests.test_phase5b2_runner_core::test_P0_3_layer_b_installed_core_differs_from_request_blocks_before_runner",
+          "tests.test_phase5b2_runner_core::test_P0_3_layer_b_runner_config_changed_after_claim_never_runs_core",
+          "tests.test_phase5b2_runner_core::test_P0_3_layer_b_runner_snapshot_manifest_swapped_on_disk_blocks_before_runner",
+          "tests.test_phase5b2_runner_core::test_P0_3_layer_b_wrong_core_spec_manifest_blocked_before_runner[core_commit-0000000000000000000000000000000000000000]",
+          "tests.test_phase5b2_runner_core::test_P0_3_layer_b_wrong_core_spec_manifest_blocked_before_runner[dataset_manifest_sha256-0000000000000000000000000000000000000000000000000000000000000000]",
+          "tests.test_phase5b2_runner_core::test_P0_3_layer_b_wrong_core_spec_manifest_blocked_before_runner[strategy_spec_sha256-0000000000000000000000000000000000000000000000000000000000000000]",
+          "tests.test_phase5b2_security_remediation::test_P0_3_artefact_changed_on_disk_after_binding_blocks",
+          "tests.test_phase5b2_security_remediation::test_P0_3_backend_identity_differs_from_bound_request_blocks_before_reservation",
+          "tests.test_phase5b2_security_remediation::test_P0_3_expired_or_revoked_authorization_blocks_at_execution",
+          "tests.test_phase5b2_security_remediation::test_P0_3_foreign_fixture_identity_is_blocked_before_runner",
+          "tests.test_phase5b2_security_remediation::test_P0_3_identity_rechecked_at_execution_time_after_commit",
+          "tests.test_phase5b2_security_remediation::test_P0_3_wrong_core_spec_or_manifest_is_blocked_before_runner[core_commit-0000000000000000000000000000000000000000]",
+          "tests.test_phase5b2_security_remediation::test_P0_3_wrong_core_spec_or_manifest_is_blocked_before_runner[dataset_manifest_sha256-0000000000000000000000000000000000000000000000000000000000000000]",
+          "tests.test_phase5b2_security_remediation::test_P0_3_wrong_core_spec_or_manifest_is_blocked_before_runner[dataset_snapshot_id-SYNTHETIC_LATEST]",
+          "tests.test_phase5b2_security_remediation::test_P0_3_wrong_core_spec_or_manifest_is_blocked_before_runner[strategy_spec_sha256-0000000000000000000000000000000000000000000000000000000000000000]"
+        ],
+        "passed": 15
+      },
+      "reproduction_after_fix": {
+        "P0_3_identity_layer_a_precheck": {
+          "VULNERABLE": false,
+          "status": null
+        },
+        "P0_3_identity_layer_b_runner": {
+          "VULNERABLE": false,
+          "status": null
+        }
+      },
+      "status": "FIXED_PENDING_INDEPENDENT_REVIEW"
+    }
+  },
+  "reproducer": "RE-DERIVED from the remediation brief; Codex's original unavailable",
+  "reviewed_head": "71b9a6da829c652d7e1f89e107b770d730728598",
+  "security_verdict": "NOT_DECLARED (independent Codex re-review required)"
+}

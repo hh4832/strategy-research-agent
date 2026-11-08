@@ -1,0 +1,187 @@
+{
+  "P0_1_reservation_replay_forgery": {
+    "VULNERABLE": false,
+    "fake_committed_status": {
+      "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+      "outcome": "REFUSED"
+    },
+    "forged_reservation": {
+      "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+      "outcome": "REFUSED"
+    },
+    "forged_reservation_id_only": {
+      "error": "ExecutionFailed: UNKNOWN_RESERVATION UNKNOWN_RESERVATION: UNKNOWN_RESERVATION: BR-000000000000000000000000",
+      "outcome": "REFUSED"
+    },
+    "ledger_state_after_legit": "CONSUMED",
+    "ledger_state_final": "CONSUMED",
+    "legit_dispatch_state": "ARCHIVED",
+    "replay_same_reservation_id_only_x3": [
+      {
+        "error": "ExecutionFailed: EXECUTION_NOT_ELIGIBLE EXECUTION_NOT_ELIGIBLE: EXECUTION_NOT_ELIGIBLE: BR-2fbd56bd41b00846b1e4aa79 is CONSUMED in the ledger",
+        "outcome": "REFUSED"
+      },
+      {
+        "error": "ExecutionFailed: EXECUTION_NOT_ELIGIBLE EXECUTION_NOT_ELIGIBLE: EXECUTION_NOT_ELIGIBLE: BR-2fbd56bd41b00846b1e4aa79 is CONSUMED in the ledger",
+        "outcome": "REFUSED"
+      },
+      {
+        "error": "ExecutionFailed: EXECUTION_NOT_ELIGIBLE EXECUTION_NOT_ELIGIBLE: EXECUTION_NOT_ELIGIBLE: BR-2fbd56bd41b00846b1e4aa79 is CONSUMED in the ledger",
+        "outcome": "REFUSED"
+      }
+    ],
+    "replay_same_reservation_x3": [
+      {
+        "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+        "outcome": "REFUSED"
+      },
+      {
+        "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+        "outcome": "REFUSED"
+      },
+      {
+        "error": "ExecutionFailed: CALLER_SUPPLIED_RESERVATION_REFUSED CALLER_SUPPLIED_RESERVATION_REFUSED: refused caller objects ['reservation', 'use']; only the ledger is authoritative",
+        "outcome": "REFUSED"
+      }
+    ],
+    "runner_calls_after_forged": 1,
+    "runner_calls_after_legit_dispatch": 1,
+    "runner_calls_after_replay": 1,
+    "runner_calls_total": 1,
+    "uses_records": 1
+  },
+  "P0_2_receipt_archive_integrity": {
+    "VULNERABLE": false,
+    "archive_file_removed": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "ledger_state": "RECONCILIATION_REQUIRED",
+      "runner_calls": 1,
+      "settled": false,
+      "task_state": "ARCHIVED"
+    },
+    "archive_manifest_corrupted": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "ledger_state": "RECONCILIATION_REQUIRED",
+      "runner_calls": 1,
+      "settled": false,
+      "task_state": "ARCHIVED"
+    },
+    "receipt_deleted": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "ledger_state": "RECONCILIATION_REQUIRED",
+      "runner_calls": 1,
+      "settled": false,
+      "task_state": "ARCHIVED"
+    },
+    "receipt_modified": {
+      "history": [
+        "RESERVED",
+        "COMMITTED",
+        "EXECUTION_STARTED",
+        "EXECUTION_COMPLETED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "ledger_state": "RECONCILIATION_REQUIRED",
+      "runner_calls": 1,
+      "settled": false,
+      "task_state": "ARCHIVED"
+    }
+  },
+  "P0_3_identity_layer_a_precheck": {
+    "VULNERABLE": false,
+    "core_commit": {
+      "passed_precheck": false,
+      "precheck_problems": [
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:core_commit"
+      ]
+    },
+    "dataset_manifest_sha256": {
+      "passed_precheck": false,
+      "precheck_problems": [
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:dataset_manifest_sha256"
+      ]
+    },
+    "strategy_spec_sha256": {
+      "passed_precheck": false,
+      "precheck_problems": [
+        "ARTEFACT_SHA_MISMATCH:strategy_spec",
+        "AUTHORIZATION_SCOPE_MISMATCH:strategy_spec_sha256",
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:strategy_spec_sha256"
+      ]
+    }
+  },
+  "P0_3_identity_layer_b_runner": {
+    "VULNERABLE": false,
+    "core": "installed Core b16179a (pinned b16179a)",
+    "core_commit": {
+      "direct_execute": {
+        "error": "ExecutionFailed: IDENTITY_VERIFICATION_FAILED IDENTITY_VERIFICATION_FAILED: BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding); IDENTITY_MISMATCH:BACKEND:core_commit",
+        "outcome": "REFUSED"
+      },
+      "orchestrator_submit_state": "BLOCKED",
+      "passed_precheck": false,
+      "precheck_problems": [
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:core_commit"
+      ],
+      "runner_calls": 0,
+      "runner_executed_with_wrong_pin": false
+    },
+    "dataset_manifest_sha256": {
+      "direct_execute": {
+        "error": "ExecutionFailed: IDENTITY_VERIFICATION_FAILED IDENTITY_VERIFICATION_FAILED: BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding); IDENTITY_MISMATCH:BACKEND:dataset_manifest_sha256",
+        "outcome": "REFUSED"
+      },
+      "orchestrator_submit_state": "BLOCKED",
+      "passed_precheck": false,
+      "precheck_problems": [
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:dataset_manifest_sha256"
+      ],
+      "runner_calls": 0,
+      "runner_executed_with_wrong_pin": false
+    },
+    "strategy_spec_sha256": {
+      "direct_execute": {
+        "error": "ExecutionFailed: IDENTITY_VERIFICATION_FAILED IDENTITY_VERIFICATION_FAILED: ARTEFACT_SHA_MISMATCH:strategy_spec; AUTHORIZATION_SCOPE_MISMATCH:strategy_spec_sha256; BINDING_INVALID:no binding record for this request hash (unbound, or modified afte",
+        "outcome": "REFUSED"
+      },
+      "orchestrator_submit_state": "BLOCKED",
+      "passed_precheck": false,
+      "precheck_problems": [
+        "ARTEFACT_SHA_MISMATCH:strategy_spec",
+        "AUTHORIZATION_SCOPE_MISMATCH:strategy_spec_sha256",
+        "BINDING_INVALID:no binding record for this request hash (unbound, or modified after binding)",
+        "IDENTITY_MISMATCH:BACKEND:strategy_spec_sha256"
+      ],
+      "runner_calls": 0,
+      "runner_executed_with_wrong_pin": false
+    }
+  },
+  "adapter_api": "LEDGER_AUTHORITATIVE_RESERVATION_ID",
+  "git_head": "9f73a568b04656ce6b9523adf1e871f9ebd0fd9f",
+  "kind": "PHASE5B2_SECURITY_REPRODUCTION",
+  "provenance": "RE-DERIVED from the remediation brief; Codex's original report/reproducer unavailable to Claude",
+  "python": "3.13.18"
+}

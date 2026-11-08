@@ -1,0 +1,15 @@
+kind=PHASE5B2_CONTROLLED_EXECUTION_ACCEPTANCE
+verdict=SCOPED_GO
+git_sha=9f73a568b04656ce6b9523adf1e871f9ebd0fd9f
+dirty=false
+python=3.13.18
+cloud=true
+consistency=SINGLE_EXECUTOR_ONLY
+layer_b=PASS
+real_market_execution=false
+holdout_read=false
+real_authorization_consumed=false
+broker_api_called=false
+tests_returncode=0
+security_remediation={"P0-1": "FIXED_PENDING_INDEPENDENT_REVIEW", "P0-2": "FIXED_PENDING_INDEPENDENT_REVIEW", "P0-3": "FIXED_PENDING_INDEPENDENT_REVIEW"}
+security_verdict=NOT_DECLARED (independent Codex re-review required)

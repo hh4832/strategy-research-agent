@@ -125,7 +125,17 @@ Brief 要求的 regression tests：
 - 故障注入改由 stub 的 `fail_with` / `drop_file` 提供；
 - Layer B precheck 錯誤碼改為 `IDENTITY_MISMATCH:*` / `BINDING_INVALID:*`。
 
-CI（GitHub Actions）與 Colab 結果見 PR #13 與 §6。
+**GitHub CI**（HEAD `9f73a56`）：全部 job success，包含 `phase5b2-controlled (3.11)` 與 `(3.12)`。
+
+**Colab 雲端驗收**（`executions/20261108_153034_9f73a56`；證據副本 `docs/evidence/phase5b2/20261108_153034_9f73a56/`；ZIP sha256 `f76c5dff…3858`）：
+- 全新 runtime，Python 3.13.18；pin `9f73a56`，checkout 乾淨；pin 之後只有 docs 與 notebook 變更。
+- 回歸 594 passed / 64 skipped（無 Core）；B2 + security suites 66 passed（Core b16179a）。
+- B2-01..B2-10 全部 PASS；Layer B PASS（Orchestrator 流程，fresh-process evaluator PASS）；`cloud=true`；SCOPED_GO（SINGLE_EXECUTOR_ONLY）。
+- `security_remediation.json`：P0-1（10 tests）、P0-2（10）、P0-3（15）皆 `FIXED_PENDING_INDEPENDENT_REVIEW`，0 failed。
+- 雲端重現：P0-1 runner 呼叫 1 次（uses 1 筆）；P0-2 四種竄改都是 RECONCILIATION_REQUIRED；P0-3 Layer A 與 Layer B 皆 BLOCKED，runner 呼叫 0。
+- Layer A、Layer B 帳本皆為 `RESERVED → COMMITTED → EXECUTION_STARTED → EXECUTION_COMPLETED → EVIDENCE_VERIFIED → CONSUMED`，uses 1 筆。
+- ARCHIVE_INDEX 列出的 10 個檔案 SHA 全部吻合，ZIP 內沒有額外檔案。
+- 修補前的 `executions/20261108_115819_019db14` 保留，未被覆寫。
 
 ## 5. 仍存在的限制
 
@@ -139,6 +149,6 @@ CI（GitHub Actions）與 Colab 結果見 PR #13 與 §6。
 
 ## 6. Engineering Verdict
 
-- **Engineering：三項 P0 已修補。** 在 Claude 可執行的環境中，重新推導的攻擊已無法重現；必要的 regression tests 與本機三組套件都已通過，唯一例外是已知的 `test_15`。CI（3.11 / 3.12）與 Colab acceptance 的結果以 PR #13 及新的 Drive archive 為準。新 archive 為 `executions/<ts>_9f73a56/`（notebook `PHASE5B2-EXECUTION-v3` pin `9f73a56`：與 `86b068b` 相比只差文件、README 與 notebook，程式完全相同；v2 因 pin 之後改了 README 被 Version Sync 正確擋下），不覆寫修補前的 `executions/20261108_115819_019db14`。
-- **B2 範圍：** `SCOPED_GO (SINGLE_EXECUTOR_ONLY)`，前提是雲端 acceptance 通過。
+- **Engineering：三項 P0 已修補。** 在 Claude 可執行的環境中，重新推導的攻擊已無法重現；必要的 regression tests 與本機三組套件都已通過，唯一例外是已知的 `test_15`。CI（3.11 / 3.12）全綠；Colab 雲端驗收 `executions/20261108_153034_9f73a56` 為 B2-01..B2-10 全部 PASS，三項皆 FIXED_PENDING_INDEPENDENT_REVIEW。新 archive 為 `executions/<ts>_9f73a56/`（notebook `PHASE5B2-EXECUTION-v3` pin `9f73a56`：與 `86b068b` 相比只差文件、README 與 notebook，程式完全相同；v2 因 pin 之後改了 README 被 Version Sync 正確擋下），不覆寫修補前的 `executions/20261108_115819_019db14`。
+- **B2 範圍：** `SCOPED_GO (SINGLE_EXECUTOR_ONLY)`，已由雲端驗收確認。
 - **Security：不宣告 GO。** 狀態為 `FIXED_PENDING_INDEPENDENT_REVIEW`，交由 Codex 只針對 P0-1 / P0-2 / P0-3 做獨立複審。PR #13 維持 Draft、不 merge，也不進入 Phase 5-B3。
