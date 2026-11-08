@@ -152,3 +152,104 @@ Brief 要求的 regression tests：
 - **Engineering：三項 P0 已修補。** 在 Claude 可執行的環境中，重新推導的攻擊已無法重現；必要的 regression tests 與本機三組套件都已通過，唯一例外是已知的 `test_15`。CI（3.11 / 3.12）全綠；Colab 雲端驗收 `executions/20261108_153034_9f73a56` 為 B2-01..B2-10 全部 PASS，三項皆 FIXED_PENDING_INDEPENDENT_REVIEW。新 archive 為 `executions/<ts>_9f73a56/`（notebook `PHASE5B2-EXECUTION-v3` pin `9f73a56`：與 `86b068b` 相比只差文件、README 與 notebook，程式完全相同；v2 因 pin 之後改了 README 被 Version Sync 正確擋下），不覆寫修補前的 `executions/20261108_115819_019db14`。
 - **B2 範圍：** `SCOPED_GO (SINGLE_EXECUTOR_ONLY)`，已由雲端驗收確認。
 - **Security：不宣告 GO。** 狀態為 `FIXED_PENDING_INDEPENDENT_REVIEW`，交由 Codex 只針對 P0-1 / P0-2 / P0-3 做獨立複審。PR #13 維持 Draft、不 merge，也不進入 Phase 5-B3。
+
+---
+
+## 7. P0-2 殘留漏洞修補（Codex 獨立複審第二輪）
+
+| 項目 | 值 |
+|---|---|
+| 複審結果（Codex） | P0-1 FIXED、**P0-2 STILL_EXPLOITABLE**、P0-3 FIXED → Security **NO_GO / FIX_BEFORE_MERGE** |
+| 起始 HEAD | `126813670f6ccd923b950b4da40f420d68b5b357`（與 brief 預期一致） |
+| 重現 commit | `1cad02e`（只加攻擊腳本與修補前結果，未改程式） |
+| 修補 commit | `1bec8e0aee004d97ba8603f9ecb75fc20b538801` |
+| Notebook | `PHASE5B2-EXECUTION-v4`，pin `1bec8e0` |
+
+> Codex 的 `/workspace/security-review-reports/pr13-remediation/SECURITY_REVIEW.md` 在本環境同樣不存在（`/workspace` 不存在），Claude 沒有讀到這份報告。攻擊依 brief 描述的原始路徑重現：修改或刪除 task archive 的 `research_request.json`，看是否仍能 EVIDENCE_VERIFIED → CONSUMED。
+
+### 7.1 Root cause
+
+第一輪修補驗證了 **execution** archive（runner 產出，MANIFEST pin 記錄在帳本）和 receipt。但對 Orchestrator 寫的 **task** archive，`verify_execution_evidence` 只做了一件事：`archive_ref is not None and not Path(archive_ref).is_dir()`（`1268136` controlled.py:239）。它沒有讀取任何檔案內容，所以 `research_request.json` 被刪除、修改或換成別的 request，結算照樣通過。task archive 唯一的「清單」是 task log 裡 ARCHIVED 事件的 `files_sha256`。task log 也在 state_dir，攻擊者可以把檔案和清單一起改寫，再重算整條 chain。所以這份清單不能當唯一的信任來源。
+
+### 7.2 `research_request.json` 的可信 hash 綁定
+
+1. **執行前在帳本固定（ledger commitment）。** `reserve(..., request_file_sha256=…)`（budget.py:166；orchestrator.py:393）在 uses-log 臨界區內，把 task archive 之後必須寫出的 `research_request.json` **確切位元組**的 SHA256 寫進 RESERVED 事件。位元組的產生方式見 `identity.archive_request_bytes`（identity.py:185），與 `orchestrator._dumps` 的輸出相同，有測試證明。這發生在 `EXECUTION_STARTED` 之前，攻擊者事後改 archive 或 task log 都動不到它；帳本本身有 chain hash。
+2. **結算前比對**（`task_archive_problems`，controlled.py:197）：
+   - 檔案必須存在、是一般檔案（不是 symlink）、可以解析成 JSON、通過 request schema；
+   - 原始位元組 SHA == 帳本承諾；
+   - `request_hash(parsed)` == reservation 的 `request_sha256`；receipt 的 `request_sha256` 已在先前驗證中與 reservation 比對過；
+   - 帳本承諾本身必須能從 binding store 的不可變 bound request 重新推得，而且 bound request 檔案的 SHA 必須等於 binding record。
+3. **其他 task archive 證據**：
+   - 檔案集合必須正好是 7 個指定檔案；
+   - 每個檔案都必須等於寫入當下記錄的 hash；
+   - `execution_reference.json` 必須對應帳本的 receipt / manifest / reservation；
+   - `evaluation_reference.json` 必須與評估事件一致；
+   - `run_info.txt` 的 `request_hash` 必須正確。
+4. **不重建、不修復。** 驗證失敗不會重寫任何檔案；帳本直接進入 `RECONCILIATION_REQUIRED`，不 release、不重跑。
+
+### 7.3 Settlement 時如何阻擋竄改（TOCTOU）
+
+| 時間點 | 防護 |
+|---|---|
+| Archive 建立完成 | 寫入當下的 hash 記錄在 task log；`research_request.json` 另以執行前的帳本承諾為準 |
+| Evidence Verification | 從磁碟完整驗證（§7.2 加上第一輪的 receipt / archive / 身分） |
+| 寫入 `EVIDENCE_VERIFIED` | 只在驗證通過後寫入，並把**已驗證的 task archive 檔案 hash** 一併寫進帳本（`task_archive_files_sha256`） |
+| 寫入 `CONSUMED` | `settle()` **必須**帶 `recheck`（budget.py:244），沒有就 `SETTLE_REFUSED`。`recheck` 在帳本臨界區內、CONSUMED 寫入前一刻重新從磁碟驗證全部證據，並要求 task archive hash 與 EVIDENCE_VERIFIED 的承諾完全相同（controlled.py:327 `TASK_ARCHIVE_CHANGED_AFTER_VERIFICATION`）。不一致就 `SETTLE_EVIDENCE_CHANGED`，進入 `RECONCILIATION_REQUIRED` |
+
+**保證範圍。**
+- 帳本的 flock 只能序列化遵守帳本鎖的寫入者（本專案的 Orchestrator / Ledger）。
+- 若有不受信任的程序在檢查與 CONSUMED 寫入之間的微小窗口內持續改檔，flock 擋不住；它也擋不住 CONSUMED **之後**的修改。
+- 本修補保證的是：CONSUMED 寫入前一刻的磁碟內容，與執行前的帳本承諾以及 EVIDENCE_VERIFIED 的承諾一致；而且帳本永久保存這些承諾，事後任何竄改都可以偵測。
+- 不宣稱跨 runtime 的 atomicity 或 exactly-once。
+
+### 7.4 修補前後的原始攻擊
+
+結果檔：`before_p02_task_archive_1268136.json` / `after_p02_task_archive_1bec8e0.json`。
+
+| 攻擊 | 修補前 `1268136` | 修補後 `1bec8e0` |
+|---|---|---|
+| 刪除 `research_request.json` | EVIDENCE_VERIFIED → **CONSUMED** | RECONCILIATION_REQUIRED（無 EVIDENCE_VERIFIED） |
+| 修改合法 JSON 中的 request identity | **CONSUMED** | RECONCILIATION_REQUIRED |
+| 只改非身分位元組（內容 hash 改變） | **CONSUMED** | RECONCILIATION_REQUIRED |
+| 換成另一個 request 的 JSON | **CONSUMED** | RECONCILIATION_REQUIRED |
+| 換成無效 JSON | **CONSUMED** | RECONCILIATION_REQUIRED |
+| 同時改檔案與清單（重算整條 task log chain） | **CONSUMED** | RECONCILIATION_REQUIRED |
+| 驗證後、結算前竄改 | **CONSUMED** | EVIDENCE_VERIFIED 之後被 in-lock recheck 擋下 → RECONCILIATION_REQUIRED |
+| 對照組：證據正常 | CONSUMED | CONSUMED（剛好一次） |
+
+所有案例的 runner 呼叫次數都是 1，uses 都是 1 筆。
+
+### 7.5 測試
+
+新增 regression tests（`test_P0_2_*`），security suite 從 29 個增為 43 個：
+- 6 種竄改（parametrize）
+- 驗證後竄改
+- 正常結算剛好一次（並確認帳本承諾的 hash 等於磁碟上的 hash）
+- 執行前承諾存在，且與 archive 的渲染方式相同
+- 沒有承諾的 reservation 永遠無法驗證（即使檔案位元組正確）
+- 其他 3 種 task archive 檔案被竄改
+- `settle()` 沒有 recheck 就拒絕，recheck 發現變更也拒絕
+
+本機結果：
+
+| 環境 | 結果 |
+|---|---|
+| 無 Core | 608 passed / 64 skipped |
+| Core `699e3ad` | 702 passed / 13 skipped |
+| Core `b16179a` | 722 passed / 4 skipped / 1 failed = 已知 `test_15` |
+| B2 + security suites（Core `b16179a`） | 80 passed |
+| 本機 acceptance | B2-01..09 PASS；B2-10 BLOCKED（無 Drive）；Layer B PASS（真 runner 的路徑在新檢查下仍會結算）；P0-1/2/3 = `FIXED_PENDING_INDEPENDENT_REVIEW` |
+
+P0-1 與 P0-3 的 regression tests 全部照舊通過，語意未改。
+
+### 7.6 證據的三種形式
+
+- **ZIP（正式封存內容）：** 由 Colab 從 Drive 的 `executions/<ts>_1bec8e0/` 打包，只包含頂層的 12 個檔案（含 `ARCHIVE_INDEX.json`），由 `--verify-archive --zip` 驗證。
+- **GitHub 證據副本：** `docs/evidence/phase5b2/<ts>_1bec8e0/`，是 ZIP 頂層檔案的複本。
+- **未提交的 `work/` supporting artifacts：** Drive 封存下的 `work/` 目錄，包含 Layer A / B 的隔離帳本、task archive、runner archive 等。它的 tree hash 記錄在 `ARCHIVE_INDEX.json` 的 `work_tree`。這些檔案**不在** ZIP 和 GitHub 副本中，因此光憑 GitHub 副本無法獨立驗證 `work/` 的每個檔案；要驗證需存取 Drive 上的原封存。
+
+### 7.7 尚未解決的限制
+
+- 同 §5：SINGLE_EXECUTOR_ONLY；不受帳本鎖約束的程序在微小窗口內或 CONSUMED 之後的修改，只能事後偵測，無法事前阻止。
+- 這個承諾機制只在 reservation 帶有 `request_file_sha256` 時有效。測試工具直接呼叫 `reserve` 而沒有給承諾時，永遠無法結算（fail closed，有測試）。
+- Codex 第二輪報告不可得；若原始攻擊另有細節（例如不同的檔案替換方式），需由 Codex 以原始步驟複驗。
