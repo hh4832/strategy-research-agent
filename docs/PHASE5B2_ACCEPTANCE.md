@@ -14,7 +14,7 @@
 | B2-07 | PIT／Dataset／Cost Integrity | `test_B2_07_*`：spec 被改、PIT 規則、pin 缺失、Layer B 的 snapshot 或成本不一致 | 預留前 BLOCKED | 0 筆預留 | PASS |
 | B2-08 | Evaluator／Archive Integration | `test_B2_08_*`：既有 evaluator、evaluator crash、archive 不完整 | 不重跑、絕不 KEEP、絕不 ARCHIVED | 均符合 | PASS |
 | B2-09 | No Real Execution／Holdout／Budget | `test_B2_09_*`：正式帳本、環境變數、非 synthetic backend、repo 帳本不變 | 全部 DISABLED | `REAL_EXECUTION_ENABLED=False`；repo 內沒有 budget ledger | PASS |
-| B2-10 | CI／Colab／Drive Reproducibility | 全套件 + B2 suites + Drive 封存（`ARCHIVE_INDEX` + ZIP 比對） | rc=0 且 cloud | 本地 rc=0，沒有 Drive → **BLOCKED**；待 Colab | PENDING |
+| B2-10 | CI／Colab／Drive Reproducibility | 全套件 + B2 suites + Drive 封存（`ARCHIVE_INDEX` + ZIP 比對） | rc=0 且 cloud | Colab：回歸 565 passed（無 Core），B2 suites 31 passed（Core b16179a），cloud=true，封存與 ZIP 一致 | PASS |
 
 ## 測試（本地）
 
@@ -30,3 +30,14 @@
 
 - 本地：**SCOPED_GO**。原因是一致性限於 `SINGLE_EXECUTOR_ONLY`，B2-10 也還沒有 Colab／Drive 證據。
 - Colab 跑完並寫入 `MyDrive/.../executions/<ts>_<sha7>/`、`ARCHIVE_INDEX` 與 ZIP 都比對一致後，B2-10 才會 PASS。即便如此判定仍是 SCOPED_GO，因為沒有分散式 atomicity；依 brief，跨 runtime 一致性未驗證時屬於 SCOPED_GO。
+
+## Colab 雲端驗收（2026-11-08 11:58，`executions/20261108_115819_019db14`）
+
+- 乾淨的 runtime，Version Sync PASS（pin 之後只有 notebook 變動），Python 3.13.18。
+- 回歸測試（無 Core）565 passed／58 skipped；B2 suites（Core b16179a）31 passed，rc=0，Layer B 沒有被 skip。
+- **B2-01..B2-10 全 PASS**。
+  - Layer A：ARCHIVED，預留依序 RESERVED→COMMITTED→CONSUMED，backend 執行 1 次。
+  - Layer B：既有 ResearchOnlyRunner 經 fresh-process evaluator 驗收 **PASS**，uses 1 筆，Runner 只執行 1 次。
+- repo 帳本未變；`real_market_execution=false`、`holdout_read=false`、`real_authorization_consumed=false`、`broker_api_called=false`。
+- `ARCHIVE_INDEX` 涵蓋 8 個檔案，hash 全部一致（含 ZIP 比對）。副本：`docs/evidence/phase5b2/20261108_115819_019db14/`
+- **Engineering Verdict：SCOPED_GO**。全部 Gate PASS；但一致性限於 `SINGLE_EXECUTOR_ONLY`，沒有分散式 atomicity，也不宣稱 exactly-once。
