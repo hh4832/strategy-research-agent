@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "repository": {"full_name": "hh4832/strategy-research-agent", "id": 1443253343},
+  "github_accounts": {"hh4832": 269247281},
+  "allowed_author_associations": ["OWNER", "MEMBER", "COLLABORATOR"],
+  "max_approval_validity_hours": 336,
+  "note": "Phase 5-B1. Maps each research lead in approvers.json to its immutable numeric GitHub user id; the repository is pinned by numeric id. Approval evidence is accepted only from a comment on this repository whose GitHub-authenticated author (login AND id) is listed here and in approvers.json. Changes go through a PR reviewed by the research lead."
+}

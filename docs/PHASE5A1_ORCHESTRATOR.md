@@ -122,3 +122,16 @@ Full suite:
 - `RESEARCH_ONLY_REAL` stays disabled. Enabling it needs a separate user authorization and an independent acceptance.
 - Phase 5-C was not started.
 - Approver identity is asserted by the CLI caller, the same model as the existing `*_admin` tools. There is no cryptographic identity.
+
+## 5-B1 介面變更（核准）
+
+`Orchestrator.approve(task_id, *, approver=None, approval_ref=None, evidence_ref=None)`：
+- **Test mode**：維持原狀，只接受 `TEST_FIXTURE` 核准者，且只適用 synthetic task。
+- **正式模式**：`evidence_ref`（或 `approval_ref`）必須是 `ApprovalEvidenceVerifier` 對**這個** task、request、authorization、scope 驗證通過的 GitHub 留言。
+  - 核准者身分取自已驗證的作者；`approver` 若有提供，必須與作者相同。
+  - 同一則留言只能核准一個 task。
+  - 執行前（QUEUED 階段）會重新驗證；核准被刪除、編輯或撤銷，task 就會變成 BLOCKED。
+- CLI 改為 `approve --task-id T --evidence-ref <URL>`，只使用 live GitHub 驗證器。
+- 治理新增 G11（授權綁定）。檢查狀態分為 PASS／FAIL／NOT_APPLICABLE／NOT_EVALUATED；SYNTHETIC_TEST 的 G5 為 `NOT_EVALUATED`。
+
+細節見 [`PHASE5B1_ACCEPTANCE.md`](PHASE5B1_ACCEPTANCE.md)。

@@ -1,0 +1,106 @@
+{
+  "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+  "context": {
+    "checked_at": "2026-11-07T17:18:35+08:00",
+    "code": {
+      "dirty": true,
+      "git_sha": "dfd0983d9933b73e7bf8d3d52c417acf9bb1ad3e",
+      "python": "3.13.18"
+    },
+    "note": "Independent session-side verification of the research lead's own comment. Not part of the Colab Drive archive (its run had no GH_TOKEN, so real_github_evidence=PENDING_USER_EVIDENCE).",
+    "where": "Claude session (live GitHub REST API, repository-scoped App token, read only)"
+  },
+  "dry_run_binding_on_real_books": {
+    "failure_codes": [
+      "B02_PROVENANCE",
+      "B03_PROPOSAL_INVALID",
+      "B05_GOVERNANCE",
+      "B06_BUDGET_EXHAUSTED"
+    ],
+    "governance": {
+      "G10_EXECUTION_MODE": "FAIL",
+      "G1_REQUEST_SCHEMA": "PASS",
+      "G2_STRATEGY_SPEC": "PASS",
+      "G3_DATASET": "PASS",
+      "G4_CORE_COST": "PASS",
+      "G5_AUTHORIZATION": "PASS",
+      "G6_AUTHORIZATION_SCOPE": "PASS",
+      "G7_BUDGET": "FAIL",
+      "G8_HOLDOUT": "PASS",
+      "G9_FORMAL_GATE": "PASS"
+    },
+    "ok": false,
+    "written": false
+  },
+  "repo_unchanged": true,
+  "request": "docs/examples/phase5b1/PROBE_PENDING_tsm_sma520_research_only_real.json",
+  "request_sha256": "6d725724bd6ff15d5d5fce028c2691a85d034365a923a3541f215638ccc83958",
+  "scope_sha256": "6c2614202c181f01f3361a597fdd78f7eb0cf9b799d11ec5dc4a9cb9cd78b6f7",
+  "status": "VERIFIED",
+  "verification": {
+    "evidence": {
+      "approval_source": {
+        "kind": "GITHUB_REST_API",
+        "transport": "LIVE",
+        "trust": "PRODUCTION"
+      },
+      "author": {
+        "author_association": "OWNER",
+        "id": 269247281,
+        "login": "hh4832",
+        "performed_via_github_app": null,
+        "type": "User"
+      },
+      "comment": {
+        "body_sha256": "cbed1e79ad5c38e6c94315d2b1c020cf115b643d26f4e7b8995844a67156d6ff",
+        "created_at": "2026-11-07T09:15:08Z",
+        "edited": false,
+        "id": 6704937578,
+        "issue_number": 12,
+        "token_line": "RESEARCH-APPROVAL v1 decision=APPROVE intent=BIND_AUTHORIZATION request=6d725724bd6ff15d5d5fce028c2691a85d034365a923a3541f215638ccc83958 authorization=RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e scope=6c2614202c181f01f3361a597fdd78f7eb0cf9b799d11ec5dc4a9cb9cd78b6f7 expires=2026-11-09T08:52:11Z",
+        "updated_at": "2026-11-07T09:15:08Z",
+        "url": "https://github.com/hh4832/strategy-research-agent/pull/12#issuecomment-6704937578"
+      },
+      "decision": "APPROVE",
+      "evidence_id": "AE-GH-6704937578",
+      "evidence_version": "1.0.0",
+      "expires_at": "2026-11-09T08:52:11Z",
+      "intent": "BIND_AUTHORIZATION",
+      "repository": {
+        "full_name": "hh4832/strategy-research-agent",
+        "id": 1443253343
+      },
+      "revocation": {
+        "revoked_by_comments": [],
+        "status": "NOT_REVOKED"
+      },
+      "subject": {
+        "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+        "request_sha256": "6d725724bd6ff15d5d5fce028c2691a85d034365a923a3541f215638ccc83958",
+        "scope_sha256": "6c2614202c181f01f3361a597fdd78f7eb0cf9b799d11ec5dc4a9cb9cd78b6f7",
+        "task_id": null
+      },
+      "verification": {
+        "checks": {
+          "V01": "PASS",
+          "V02": "PASS",
+          "V03": "PASS",
+          "V04": "PASS",
+          "V05": "PASS",
+          "V06": "PASS",
+          "V07": "PASS",
+          "V08": "PASS",
+          "V09": "PASS"
+        },
+        "code": null,
+        "result": "PASS"
+      },
+      "verified_at": "2026-11-07T09:18:32Z",
+      "verifier": {
+        "name": "strategy_agent.approval.verifier",
+        "version": "1.0.0"
+      }
+    },
+    "result": "PASS"
+  }
+}

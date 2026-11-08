@@ -1,0 +1,26 @@
+{
+  "checkout": "/tmp/old",
+  "api": "reviewed (cf15654)",
+  "imported_from": "/tmp/old",
+  "S1_revocation_deleted": {
+    "first_check": "BLOCKED",
+    "after_deletion": [
+      "EXPLOITABLE",
+      "{'evidence_version': '1.0.0', 'evidence_id': 'AE-GH-9000000001', 'approval_source': {'kind': 'TEST_FIXTURE', 'transport': 'TEST_FIXTURE', 'trust': 'ISOLATED_TES"
+    ]
+  },
+  "S2_revocation_on_page_51": "EXPLOITABLE",
+  "S3_fake_source_gets_production": [
+    "EXPLOITABLE",
+    "{'kind': 'GITHUB_REST_API', 'transport': 'LIVE', 'trust': 'PRODUCTION'}"
+  ],
+  "S3_test_verifier_on_copied_real_books": "EXPLOITABLE",
+  "M1_comment_created_in_future": "EXPLOITABLE",
+  "M2_budget_used_during_binding": "EXPLOITABLE",
+  "M3_executions": 2,
+  "M3_double_execution": "EXPLOITABLE",
+  "M4_ci_pipe_masking": "EXPLOITABLE",
+  "M4_hardcoded_returncode": "EXPLOITABLE",
+  "M4_append_only_missing_base": "EXPLOITABLE",
+  "M5_index_covers_all_files": "EXPLOITABLE"
+}

@@ -1,0 +1,233 @@
+{
+  "cloud": true,
+  "code": {
+    "dirty": false,
+    "git_sha": "eb72cd02770793a168b704af94824a7300e2010d",
+    "python": "3.13.18"
+  },
+  "fresh_process": true,
+  "gates": {
+    "B1-01": {
+      "evidence": {
+        "isolated": "PASS",
+        "real_github_identity": "VERIFIED"
+      },
+      "status": "PASS"
+    },
+    "B1-02": {
+      "evidence": {
+        "subject": {
+          "authorization_id": "RA-SYNTHETIC_FIXTURE-B1-0001",
+          "request_sha256": "36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98",
+          "scope_sha256": "be7c899beaf2fb68844961a739576402c29b01889a32769cab0f7a234541fe4b",
+          "task_id": null
+        },
+        "threats_6_7_8": [
+          "PASS",
+          "PASS",
+          "PASS"
+        ]
+      },
+      "status": "PASS"
+    },
+    "B1-03": {
+      "evidence": {
+        "2": "PASS",
+        "3": "PASS",
+        "11": "PASS",
+        "12": "PASS"
+      },
+      "status": "PASS"
+    },
+    "B1-04": {
+      "evidence": {
+        "dry_run": {
+          "registry_files_after_dry_run": [
+            "research_authorization_uses.jsonl"
+          ],
+          "status": "DRY_RUN_OK",
+          "written": false
+        },
+        "relationship": {
+          "changed_fields": [
+            "authorization_ref"
+          ],
+          "derived_request_sha256": "b3e6dbc01e351a0cbf965b579d013206f1a817b5259adaa65604303c4a03d32d",
+          "kind": "AUTHORIZATION_BINDING",
+          "parent_request_sha256": "36fb79bf2fb9aa01326f5358cd395c160407df769e5197c4d39f5851a1a33c98"
+        }
+      },
+      "status": "PASS"
+    },
+    "B1-05": {
+      "evidence": {
+        "bound_submit": {
+          "checks": {
+            "G10_EXECUTION_MODE": "FAIL",
+            "G11_AUTHORIZATION_BINDING": "PASS",
+            "G1_REQUEST_SCHEMA": "PASS",
+            "G2_STRATEGY_SPEC": "PASS",
+            "G3_DATASET": "PASS",
+            "G4_CORE_COST": "PASS",
+            "G5_AUTHORIZATION": "PASS",
+            "G6_AUTHORIZATION_SCOPE": "PASS",
+            "G7_BUDGET": "PASS",
+            "G8_HOLDOUT": "PASS",
+            "G9_FORMAL_GATE": "PASS"
+          },
+          "eligibility": "ELIGIBLE_PENDING_EXECUTION_ENABLEMENT",
+          "failing": [
+            "G10_EXECUTION_MODE"
+          ],
+          "state": "BLOCKED"
+        },
+        "unbound": {
+          "checks": {
+            "G10_EXECUTION_MODE": "FAIL",
+            "G11_AUTHORIZATION_BINDING": "FAIL",
+            "G1_REQUEST_SCHEMA": "PASS",
+            "G2_STRATEGY_SPEC": "PASS",
+            "G3_DATASET": "PASS",
+            "G4_CORE_COST": "PASS",
+            "G5_AUTHORIZATION": "FAIL",
+            "G9_FORMAL_GATE": "PASS"
+          },
+          "state": "BLOCKED"
+        }
+      },
+      "status": "PASS"
+    },
+    "B1-06": {
+      "evidence": {
+        "concurrency": {
+          "binding_records": 1,
+          "results": [
+            [
+              "ACCEPTED",
+              "BOUND"
+            ],
+            [
+              "REJECTED",
+              [
+                "B09_REQUEST_ALREADY_BOUND"
+              ]
+            ],
+            [
+              "REJECTED",
+              [
+                "B09_REQUEST_ALREADY_BOUND"
+              ]
+            ],
+            [
+              "REJECTED",
+              [
+                "B09_REQUEST_ALREADY_BOUND"
+              ]
+            ],
+            [
+              "ACCEPTED",
+              "ALREADY_BOUND"
+            ],
+            [
+              "ACCEPTED",
+              "ALREADY_BOUND"
+            ]
+          ]
+        },
+        "rebind": "ALREADY_BOUND"
+      },
+      "status": "PASS"
+    },
+    "B1-07": {
+      "evidence": {
+        "replay_approval": {
+          "actor": "hh4832",
+          "approval": {
+            "approval_evidence_sha256": "450ab6f970f35d67e713d97f9312a0623caa15761d2c77d9b9419d0baa6cc489",
+            "approval_ref": "https://github.com/hh4832/strategy-research-agent/pull/900#issuecomment-9000000001",
+            "approval_trust": "ISOLATED_TEST"
+          },
+          "states": [
+            "PROPOSED",
+            "VALIDATED",
+            "PENDING_APPROVAL",
+            "APPROVED",
+            "QUEUED",
+            "RUNNING",
+            "EVALUATING",
+            "EVALUATED",
+            "ARCHIVED"
+          ],
+          "status": "ARCHIVED",
+          "uses_after": 1,
+          "uses_before": 1
+        },
+        "threat_15": "PASS"
+      },
+      "status": "PASS"
+    },
+    "B1-08": {
+      "evidence": {
+        "production": {
+          "G5": "NOT_EVALUATED",
+          "status": "BLOCKED"
+        },
+        "test_mode": {
+          "G5": "NOT_EVALUATED",
+          "status": "TEST_MODE_ONLY"
+        }
+      },
+      "status": "PASS"
+    },
+    "B1-09": {
+      "evidence": {
+        "executor_modules_loaded": [],
+        "fresh_process": true,
+        "repo_unchanged": true,
+        "uses": "0->0"
+      },
+      "status": "PASS"
+    },
+    "B1-10": {
+      "evidence": {
+        "cloud": true,
+        "python": "3.13.18",
+        "tests": {
+          "python": "3.13.18",
+          "returncode": 0,
+          "summary": "538 passed, 54 skipped in 435.85s (0:07:15)",
+          "where": "Colab"
+        }
+      },
+      "status": "PASS"
+    },
+    "B1-SEC": {
+      "evidence": {
+        "api": "remediated",
+        "cases": {
+          "M1_comment_created_in_future": "BLOCKED",
+          "M2_budget_used_during_binding": "BLOCKED",
+          "M3_double_execution": "BLOCKED",
+          "M4_append_only_missing_base": "BLOCKED",
+          "M4_ci_pipe_masking": "BLOCKED",
+          "M4_hardcoded_returncode": "BLOCKED",
+          "M5_index_covers_all_files": "BLOCKED",
+          "S1_revocation_deleted.after_deletion": "BLOCKED",
+          "S2_revocation_on_page_51": "BLOCKED",
+          "S3_fake_source_gets_production": "BLOCKED",
+          "S3_test_verifier_on_copied_real_books": "BLOCKED"
+        },
+        "not_blocked": [],
+        "original_codex_reproduce_py": "NOT_AVAILABLE_TO_THIS_SESSION",
+        "status": "PASS"
+      },
+      "status": "PASS"
+    }
+  },
+  "generated_at": "2026-11-08T09:42:29+08:00",
+  "scope": "Phase 5-B1 approval + binding engineering acceptance. No backtest, no batch, no Holdout, no broker. Isolated evidence is TEST_FIXTURE; only the real part touches the live GitHub API (read only).",
+  "verdict": {
+    "verdict": "GO",
+    "why": "B1-01..B1-10 + B1-SEC PASS; real GitHub identity verified via the live API; cloud archive (Security GO additionally requires Codex re-review)"
+  }
+}

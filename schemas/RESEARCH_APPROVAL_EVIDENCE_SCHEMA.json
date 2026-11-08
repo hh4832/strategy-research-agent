@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hh4832/strategy-research-agent/schemas/RESEARCH_APPROVAL_EVIDENCE_SCHEMA.json",
+  "title": "Research Approval Evidence v1.0.0 (Phase 5-B1)",
+  "description": "A VERIFIED human approval taken from a GitHub comment on the pinned repository. Produced only by strategy_agent.approval.verifier after checks V01-V09; a record that failed verification never validates (verification.result const PASS). The comment body is untrusted text; only its single RESEARCH-APPROVAL line is parsed and nothing in it is executed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidence_version", "evidence_id", "approval_source", "repository", "author", "comment", "intent",
+               "subject", "decision", "expires_at", "revocation", "verified_at", "verifier", "verification"],
+  "properties": {
+    "evidence_version": {"const": "1.0.0"},
+    "evidence_id": {"type": "string", "pattern": "^AE-GH-[0-9]{1,20}$"},
+    "approval_source": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "transport", "trust"],
+      "properties": {
+        "kind": {"enum": ["GITHUB_REST_API", "TEST_FIXTURE"]},
+        "transport": {"enum": ["LIVE", "INJECTED", "TEST_FIXTURE"]},
+        "trust": {"enum": ["PRODUCTION", "ISOLATED_TEST"]}
+      },
+      "allOf": [{"if": {"properties": {"trust": {"const": "PRODUCTION"}}},
+                 "then": {"properties": {"kind": {"const": "GITHUB_REST_API"}, "transport": {"const": "LIVE"}}}}]
+    },
+    "repository": {
+      "type": "object", "additionalProperties": false, "required": ["full_name", "id"],
+      "properties": {"full_name": {"const": "hh4832/strategy-research-agent"}, "id": {"type": "integer", "minimum": 1}}
+    },
+    "author": {
+      "type": "object", "additionalProperties": false,
+      "required": ["login", "id", "type", "author_association", "performed_via_github_app"],
+      "properties": {
+        "performed_via_github_app": {"type": "null", "description": "Must be null: a comment posted through a GitHub App (an AI agent acting for the user) is never approval evidence."},
+        "login": {"type": "string", "pattern": "^[A-Za-z0-9-]{1,39}$"},
+        "id": {"type": "integer", "minimum": 1},
+        "type": {"const": "User"},
+        "author_association": {"enum": ["OWNER", "MEMBER", "COLLABORATOR"]}
+      }
+    },
+    "comment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "url", "issue_number", "created_at", "updated_at", "edited", "body_sha256", "token_line"],
+      "properties": {
+        "id": {"type": "integer", "minimum": 1},
+        "url": {"type": "string", "pattern": "^https://github\\.com/hh4832/strategy-research-agent/(pull|issues)/[0-9]+#issuecomment-[0-9]+$"},
+        "issue_number": {"type": "integer", "minimum": 1},
+        "created_at": {"$ref": "#/$defs/utc"},
+        "updated_at": {"$ref": "#/$defs/utc"},
+        "edited": {"const": false},
+        "body_sha256": {"$ref": "#/$defs/sha256"},
+        "token_line": {"type": "string", "pattern": "^RESEARCH-APPROVAL v1 decision=APPROVE intent=(BIND_AUTHORIZATION|APPROVE_TASK) "}
+      }
+    },
+    "intent": {"enum": ["BIND_AUTHORIZATION", "APPROVE_TASK"]},
+    "subject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_sha256", "task_id", "authorization_id", "scope_sha256"],
+      "properties": {
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "task_id": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^T-[0-9a-f]{20}$"}]},
+        "authorization_id": {"type": "string", "pattern": "^RA-[A-Za-z0-9_.-]{3,120}$"},
+        "scope_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "decision": {"const": "APPROVE"},
+    "expires_at": {"$ref": "#/$defs/utc"},
+    "revocation": {
+      "type": "object", "additionalProperties": false, "required": ["status", "revoked_by_comments"],
+      "properties": {"status": {"const": "NOT_REVOKED"}, "revoked_by_comments": {"type": "array", "maxItems": 0}}
+    },
+    "verified_at": {"$ref": "#/$defs/utc"},
+    "verifier": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version"],
+      "properties": {"name": {"const": "strategy_agent.approval.verifier"}, "version": {"const": "1.0.0"}}
+    },
+    "verification": {
+      "type": "object", "additionalProperties": false, "required": ["result", "code", "checks"],
+      "properties": {
+        "result": {"const": "PASS"},
+        "code": {"type": "null"},
+        "checks": {"type": "object", "additionalProperties": {"enum": ["PASS", "NOT_APPLICABLE"]},
+                   "required": ["V01", "V02", "V03", "V04", "V05", "V06", "V07", "V08", "V09"]}
+      }
+    }
+  },
+  "allOf": [{"if": {"properties": {"intent": {"const": "APPROVE_TASK"}}},
+             "then": {"properties": {"subject": {"properties": {"task_id": {"type": "string"}}}}},
+             "else": {"properties": {"subject": {"properties": {"task_id": {"type": "null"}}}}}}],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"}
+  }
+}

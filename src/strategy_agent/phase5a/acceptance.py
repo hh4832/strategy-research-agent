@@ -35,6 +35,8 @@ from strategy_agent.orchestration import request as Q
 from strategy_agent.orchestration.orchestrator import ARCHIVE_FILES, Orchestrator
 from strategy_agent.orchestration.tasks import IllegalTransition, TaskLog
 
+from strategy_agent.approval.testkit import FixtureApprovals
+
 from .integration import CONTRACT, LinkLog, contract_check, proposal_to_request, submit_proposal, trace
 
 ROOT = Q.ROOT
@@ -186,6 +188,7 @@ def route_a(work: Path, *, agent_commit_sha: str, clock: StepClock | None = None
     lead = sorted(json.loads((gov / "governance/approvers.json").read_text())["research_leads"])[0]
     repo_before = tree_fingerprint(ROOT)
     R: dict = {"label": SYN, "work": str(work), "created_at": at}
+    fa = FixtureApprovals()                    # 5-B1: isolated TEST_FIXTURE approval evidence for production paths
 
     def test_orch(state, **kw):
         kw.setdefault("synthetic_fixture", FIX / FIX_RUN)
@@ -193,6 +196,7 @@ def route_a(work: Path, *, agent_commit_sha: str, clock: StepClock | None = None
 
     def prod_orch(state, **kw):
         kw.setdefault("source_archive_root", work / "src")
+        kw.setdefault("approval_verifier", fa.verifier)
         return Orchestrator(work / state, work / "out", clock=clock, governance_root=gov, **kw)
 
     # --- A3-02 positive path: actual A2 draft -> actual A2 export -> actual A1 submit -> full lifecycle
@@ -329,14 +333,14 @@ def route_a(work: Path, *, agent_commit_sha: str, clock: StepClock | None = None
 
     # --- Route B (synthetic fixture archive) + archive integrity negatives
     R["replay_fixture"] = route_b(work / "replay_fixture", fixture=True, approver=lead,
-                                  approval_ref="https://example.test/approval", clock=clock)
+                                  approval_ref="https://example.test/approval", clock=clock)  # fixture: evidence via testkit
     shutil.copytree(FIX / FIX_RUN, work / "src_missing" / FIX_RUN)
     dm = fixture_replay_request(work / "src_missing")
     victim = next(p for p in sorted((work / "src_missing" / FIX_RUN).iterdir()) if p.name != "MANIFEST.json")
     victim.unlink()
     om = prod_orch("state_missing", source_archive_root=work / "src_missing")
     tm = om.submit(dm, actor=lead, actor_kind="HUMAN")["task_id"]
-    om.approve(tm, approver=lead, approval_ref="https://example.test/approval")
+    fa.approve_task(om, tm)
     sm = om.dispatch(tm)
     R["missing_file"] = {"removed": victim.name, "state": sm["state"], "reason": sm["history"][-1]["reason"],
                          "states": [h["to"] for h in sm["history"]]}
@@ -351,7 +355,7 @@ def route_a(work: Path, *, agent_commit_sha: str, clock: StepClock | None = None
     (src_ev / FIX_RUN / "MANIFEST.json").write_text(json.dumps(m))
     oe = prod_orch("state_evalfail", source_archive_root=src_ev)
     te = oe.submit(fixture_replay_request(src_ev), actor=lead, actor_kind="HUMAN")["task_id"]
-    oe.approve(te, approver=lead, approval_ref="https://example.test/approval")
+    fa.approve_task(oe, te)
     se = oe.dispatch(te)
     dec = trace(oe, te)["research_decision"] or {}
     R["evaluator_failure"] = {"state": se["state"], "acceptance_status": dec.get("acceptance_status"),
@@ -412,7 +416,14 @@ def route_b(out: Path, *, fixture: bool, approver: str | None, approval_ref: str
     if not (src / doc["replay_source"]["run_id"]).is_dir():
         return {**rep, "status": "PENDING_ARCHIVE", "reason": f"archive not present under {src}"}
     gb = tree_fingerprint(gov)
-    o = Orchestrator(out / "state", out, source_archive_root=src, governance_root=gov, clock=clock)
+    fa = FixtureApprovals() if fixture else None
+    if fixture:
+        verifier = fa.verifier
+    else:
+        from strategy_agent.approval import production_verifier  # noqa: PLC0415 - live GitHub only
+        verifier = production_verifier()
+    o = Orchestrator(out / "state", out, source_archive_root=src, governance_root=gov, clock=clock,
+                     approval_verifier=verifier)
     aid = doc["authorization_ref"]["authorization_id"]
     uses_before = len(o.gov.uses(aid))
     s = o.submit(doc, actor=approver, actor_kind="HUMAN")
@@ -420,7 +431,15 @@ def route_b(out: Path, *, fixture: bool, approver: str | None, approval_ref: str
     rep.update(task_id=tid, state_after_submit=s["state"], governance=s.get("governance"))
     if s["state"] != "PENDING_APPROVAL":
         return {**rep, "status": "BLOCKED", "states": _states(o, tid), "uses_before": uses_before}
-    o.approve(tid, approver=approver, approval_ref=approval_ref)
+    try:
+        if fixture:
+            fa.approve_task(o, tid)
+        else:                                       # 5-B1: verified GitHub evidence for THIS task, or nothing
+            o.approve(tid, approver=approver, evidence_ref=approval_ref)
+    except IllegalTransition as e:
+        return {**rep, "status": "APPROVAL_REJECTED", "reason": e.code, "message": str(e)[:300],
+                "states": _states(o, tid), "uses_before": uses_before,
+                "approval_line_required": "RESEARCH-APPROVAL v1 ... intent=APPROVE_TASK task=" + tid}
     if o.request_of(tid)["execution_mode"] != "ARCHIVE_REPLAY":
         raise IllegalTransition("REPLAY_ONLY", "replay runs ARCHIVE_REPLAY tasks only")
     st = o.dispatch(tid)
@@ -434,8 +453,8 @@ def route_b(out: Path, *, fixture: bool, approver: str | None, approval_ref: str
     return {**rep, "status": st["state"], "states": [h["to"] for h in st["history"]], "trace": tr,
             "execution_reference": ex, "acceptance_checks": accept, "uses_before": uses_before,
             "uses_after": len(o.gov.uses(aid)), "governance_unchanged": tree_fingerprint(gov) == gb,
-            "approver_declared": approver, "approver_note": "caller-declared identity checked against approvers.json "
-            "only; not an authenticated identity (Phase 5-B prerequisite)"}
+            "approver_declared": approver, "approver_note": "5-B1: approver is the verified GitHub author of the "
+            "approval evidence (fixture: TEST_FIXTURE source, ISOLATED_TEST trust)"}
 
 
 # ------------------------------------------------------------------------------------------------ isolation

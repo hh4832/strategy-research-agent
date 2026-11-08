@@ -1,0 +1,29 @@
+{
+  "clean_colab_runtime": true,
+  "cloud": false,
+  "evidence_ref": "https://github.com/hh4832/strategy-research-agent/pull/12#issuecomment-6704937578",
+  "notebook": "PHASE5B1-APPROVAL-v2",
+  "python": "3.13.18",
+  "real_check_requested": true,
+  "superseded_evidence": "approvals/20261107_173254_a3251d3 (pre-remediation GO, overturned by Codex security review)",
+  "tests": {
+    "python": "3.13.18",
+    "returncode": 0,
+    "summary": "538 passed, 54 skipped in 442.00s (0:07:21)",
+    "where": "Colab"
+  },
+  "version_sync": {
+    "checkout_head": "eb72cd02770793a168b704af94824a7300e2010d",
+    "files_changed_after_pin": [
+      "docs/PHASE5B1_ACCEPTANCE.md",
+      "docs/PHASE5B1_APPROVAL_THREAT_MODEL.md",
+      "notebooks/Phase5B1_Approval_Binding_Acceptance.ipynb"
+    ],
+    "github_remote_head": "8966c621cf38aeab71fd48f0e044f9df116a8d25",
+    "notebook_version": "PHASE5B1-APPROVAL-v2",
+    "notebook_version_on_github_head": "PHASE5B1-APPROVAL-v2",
+    "pin_on_branch": true,
+    "pinned_sha": "eb72cd02770793a168b704af94824a7300e2010d",
+    "working_tree_clean": true
+  }
+}

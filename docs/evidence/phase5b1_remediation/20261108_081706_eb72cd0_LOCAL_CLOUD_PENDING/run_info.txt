@@ -1,0 +1,14 @@
+kind=PHASE5B1_APPROVAL_BINDING_ACCEPTANCE
+verdict=SCOPED_GO
+git_sha=eb72cd02770793a168b704af94824a7300e2010d
+dirty=false
+python=3.13.18
+generated_at=2026-11-08T08:18:00+08:00
+cloud=false
+real_github_evidence=VERIFIED
+consumed_batches=0
+real_backtest_executed=false
+holdout_read=false
+broker_api_called=false
+github_token_written=false
+files_sha256={"approval_verification.json": "dff19a919de45c21a9e1d7f1dc7eb28cd8aaaf28b7bbe3fdba470bf6aa831705", "authorization_binding.json": "dee2e197a40260168791994733579d6d617c8b6404162d8abaa9ac865548fb6b", "governance_checks.json": "658b2b20e93623062c8302b1a11879d5d60299536717323f5d1ab5fcbfd32d40", "integration_acceptance.json": "a32dc67119f01b156833b772738b9f2f401333f96a554fa4f204a6e809a79334", "notebook_context.json": "c79d123161c6e401d7791df26bda365e0df912c40cc1d888b6a8bcc93fef3b2a", "security_negative_tests.json": "e60a4b8c938e7078ce287ee146b36f234d48a1ab1b2c9fa61ebef5e114827881"}
