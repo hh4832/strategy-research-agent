@@ -1,0 +1,339 @@
+{
+  "authorization_created": false,
+  "blocking_categories": [
+    "CONTRADICTION",
+    "HUMAN_DECISION"
+  ],
+  "candidate": {
+    "approvers": "governance/approvers.json",
+    "authorization_book": "governance/research_authorizations.jsonl",
+    "candidate_id": "IBKR_TSM_SMA520_DEV_SNAPSHOT_PHASE5",
+    "ci_core_job": "phase5b2-controlled",
+    "ci_workflow": ".github/workflows/ci.yml",
+    "description": "IBKR TSM, existing validated DEVELOPMENT snapshot, pre-registered SMA 5/20 baseline, executed through the Phase 5 controlled pipeline (A2 request -> verified binding -> budget ledger -> ResearchOnlyRunner)",
+    "drive_archive_root": "MyDrive/Quant_Research/strategy-research-agent/",
+    "holdout_book": "governance/holdout_locks.jsonl",
+    "market_readiness": "governance/market_readiness.json",
+    "prior_real_run_evidence": "docs/evidence/phase4a_dev_smoke/20261107_081300_9439f8c",
+    "run_config": "configs/research_only/tsm_sma_5_20_smoke_2024_06_dev_18350b3adba8e28a7e5e.json",
+    "template_authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+    "uses_log": "registry/research_authorization_uses.jsonl"
+  },
+  "candidate_lineage_sha256": "3455f2b3d39f4fd05dda7ca9fed472c9ff0bcbf345f89f177e78eccbe5fd92a4",
+  "cross_checks": {
+    "phase5_request_spec_dataset_binding": {
+      "candidate_dataset": {
+        "dataset_id": "ibkr_tsm_1m_normalized",
+        "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+        "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+      },
+      "detail": "the strategy spec pins the FINAL_GATE parent snapshot; the candidate DEV snapshot is a derived subset. The Phase 5 A2 exporter refuses the request, so a first Phase 5 run needs a NEW spec version re-pinned to the DEV snapshot (rules / parameters unchanged; new spec sha) approved by the research lead, and the new authorization must pin that spec sha",
+      "error": "ValueError: SPEC_DATASET_REFERENCE_MISMATCH",
+      "spec_data_requirements": [
+        {
+          "dataset_id": "ibkr_tsm_1m_normalized",
+          "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
+          "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
+        }
+      ],
+      "status": "BLOCKED"
+    },
+    "snapshot_integrity_receipt": {
+      "note": "the prior real run renewed this receipt per session (Core renew_development_receipt); the B3-B session must renew it again and the session config must differ ONLY in the receipt fields (as recorded in the prior run_info session_config_difference)",
+      "status": "PASS",
+      "verification_ref": "DERIVED_OUTPUT_INDEPENDENT_HASH:bbb3cb2e486c85093477303bcc41cd5600fee6f991577c54cd3d4440976bd2f5"
+    }
+  },
+  "fields": {
+    "archive_destination": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "brief": "MyDrive/Quant_Research/strategy-research-agent/",
+        "run_config": "MyDrive/Quant_Research/strategy-research-agent/"
+      },
+      "status": "RESOLVED",
+      "value": {
+        "drive_root": "MyDrive/Quant_Research/strategy-research-agent/",
+        "immutable": true,
+        "run_id_format": "YYYYMMDD_HHMMSS_<git_commit>"
+      }
+    },
+    "authorization_id": {
+      "category": "HUMAN_DECISION",
+      "reason": "a NEW authorization is required; RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e is SPENT (1/1) and may not be reused or reset. B3-A prepares a draft only (docs/phase5b3a/authorization_draft.json)",
+      "sources": {},
+      "status": "BLOCKED",
+      "value": null
+    },
+    "bound_request_hash": {
+      "category": "HUMAN_DECISION",
+      "reason": "exists only after the authorization is approved and the A2 request is bound with production GitHub approval evidence (Phase 5-B1)",
+      "sources": {},
+      "status": "BLOCKED",
+      "value": null
+    },
+    "budget_batch_limit": {
+      "category": "HUMAN_DECISION",
+      "reason": "proposed max_batches = 1 (draft); set only by the research lead's approval",
+      "sources": {},
+      "status": "BLOCKED",
+      "value": null
+    },
+    "core_commit_sha": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "ci_pin": "b16179a7cc077c36046574769a32c367fa476cae",
+        "dataset_producer_in_authorization": "b16179a7cc077c36046574769a32c367fa476cae",
+        "prior_real_run_core": "b16179a7cc077c36046574769a32c367fa476cae",
+        "run_config": "b16179a7cc077c36046574769a32c367fa476cae"
+      },
+      "status": "RESOLVED",
+      "value": "b16179a7cc077c36046574769a32c367fa476cae"
+    },
+    "dataset_manifest_sha256": {
+      "category": null,
+      "reason": "bytes on Drive are re-hashed only by the Colab acceptance (optional, non-consuming)",
+      "sources": {
+        "integrity_receipt": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+        "prior_real_run": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+        "run_config": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5"
+      },
+      "status": "RESOLVED",
+      "value": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5"
+    },
+    "dataset_snapshot_id": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "authorization": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+        "prior_real_run": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+        "run_config": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+        "snapshot_pin": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+      },
+      "status": "RESOLVED",
+      "value": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+    },
+    "executor_identity": {
+      "category": "HUMAN_DECISION",
+      "reason": "single registered executor id (SINGLE_EXECUTOR_ONLY) to be named in the authorization decision; proposed in the draft, never self-registered by B3-A",
+      "sources": {},
+      "status": "BLOCKED",
+      "value": null
+    },
+    "git_and_environment_identity": {
+      "category": "HUMAN_DECISION",
+      "reason": "captured at acceptance / run time",
+      "sources": {},
+      "status": "BLOCKED",
+      "value": null
+    },
+    "holdout_exclusion": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "authorization": "HOLDOUT-TSM-15M-v1",
+        "exclusion_proven": "HOLDOUT-TSM-15M-v1",
+        "holdout_book": "HOLDOUT-TSM-15M-v1"
+      },
+      "status": "RESOLVED",
+      "value": {
+        "blindness": "BLINDNESS_UNVERIFIED",
+        "holdout": [
+          "2025-01-01T00:00:00-05:00",
+          "2026-10-17T00:00:00-04:00"
+        ],
+        "lock_id": "HOLDOUT-TSM-15M-v1",
+        "window_end_before_holdout": true
+      }
+    },
+    "research_market": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "authorization": {
+          "market_id": "IBKR_TSM",
+          "symbol": "TSM"
+        },
+        "run_config": {
+          "market_id": "IBKR_TSM",
+          "symbol": "TSM"
+        },
+        "strategy_spec_universe": {
+          "market_id": "IBKR_TSM",
+          "symbol": "TSM"
+        }
+      },
+      "status": "RESOLVED",
+      "value": {
+        "market_id": "IBKR_TSM",
+        "symbol": "TSM"
+      }
+    },
+    "research_window": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "authorization_research_window": {
+          "end": "2024-06-29T00:00:00-04:00",
+          "start": "2024-05-29T00:00:00-04:00"
+        },
+        "prior_real_run_window": {
+          "end": "2024-06-29T00:00:00-04:00",
+          "start": "2024-05-29T00:00:00-04:00"
+        },
+        "run_config_warmup_to_end": {
+          "end": "2024-06-29T00:00:00-04:00",
+          "start": "2024-05-29T00:00:00-04:00"
+        }
+      },
+      "status": "RESOLVED",
+      "value": {
+        "end": "2024-06-29T00:00:00-04:00",
+        "interval": "[start,end)",
+        "start": "2024-06-03T00:00:00-04:00",
+        "warmup_start": "2024-05-29T00:00:00-04:00"
+      }
+    },
+    "slippage_assumption": {
+      "category": null,
+      "reason": "RESEARCH_ONLY assumption, not account-verified",
+      "sources": {
+        "cost_set": {
+          "BASE": 2,
+          "CAT_STRESS": 2,
+          "LOW": 1,
+          "STRESS": 4
+        }
+      },
+      "status": "RESOLVED",
+      "value": {
+        "half_spread_bps": 0,
+        "slippage_bps_per_side": {
+          "BASE": 2,
+          "CAT_STRESS": 2,
+          "LOW": 1,
+          "STRESS": 4
+        }
+      }
+    },
+    "strategy_id_version": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "authorization": {
+          "parameters": {
+            "fast": 5,
+            "slow": 20
+          },
+          "strategy_id": "sma_crossover_tsm_15m_5_20",
+          "version": "0.1.0"
+        },
+        "prior_real_run": {
+          "parameters": {
+            "fast": 5,
+            "slow": 20
+          },
+          "strategy_id": "sma_crossover_tsm_15m_5_20",
+          "version": "0.1.0"
+        },
+        "run_config": {
+          "parameters": {
+            "fast": 5,
+            "slow": 20
+          },
+          "strategy_id": "sma_crossover_tsm_15m_5_20",
+          "version": "0.1.0"
+        },
+        "strategy_spec_file": {
+          "parameters": {
+            "fast": 5,
+            "slow": 20
+          },
+          "strategy_id": "sma_crossover_tsm_15m_5_20",
+          "version": "0.1.0"
+        }
+      },
+      "status": "RESOLVED",
+      "value": {
+        "parameters": {
+          "fast": 5,
+          "slow": 20
+        },
+        "strategy_id": "sma_crossover_tsm_15m_5_20",
+        "version": "0.1.0"
+      }
+    },
+    "strategy_spec_sha256": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "authorization": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+        "run_config": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123",
+        "spec_file_on_disk": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
+      },
+      "status": "RESOLVED",
+      "value": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
+    },
+    "temporal_rules": {
+      "category": null,
+      "reason": "signal_time=BAR_AVAILABLE_AT fill_rule=NEXT_ELIGIBLE_BAR_OPEN order_type=MARKET; Core conservative 15m aggregation: RTH only, closing auction excluded, fills strictly after modeled availability",
+      "sources": {
+        "authorization": {
+          "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+          "scope": "RESEARCH_ONLY"
+        },
+        "market_readiness_research_approval": {
+          "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+          "scope": "RESEARCH_ONLY"
+        },
+        "prior_real_run": {
+          "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+          "scope": "RESEARCH_ONLY"
+        },
+        "run_config": {
+          "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+          "scope": "RESEARCH_ONLY"
+        }
+      },
+      "status": "RESOLVED",
+      "value": {
+        "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+        "scope": "RESEARCH_ONLY"
+      }
+    },
+    "trading_cost_profile": {
+      "category": null,
+      "reason": null,
+      "sources": {
+        "authorization": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+        "cost_file_on_disk": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+        "run_config": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3"
+      },
+      "status": "RESOLVED",
+      "value": {
+        "coverage": {
+          "end": "2024-12-31",
+          "note": "development period only; no rate for the holdout period (2025-01-01 .. 2026-10-16) is recorded here",
+          "start": "2016-10-19"
+        },
+        "model": "IBKR_PRO_FIXED",
+        "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+        "scenarios": [
+          "BASE",
+          "LOW",
+          "STRESS",
+          "CAT_STRESS"
+        ],
+        "scope": "RESEARCH_ONLY"
+      }
+    }
+  },
+  "kind": "PHASE5B3A_PRODUCTION_READINESS_MANIFEST",
+  "market_data_read": false,
+  "ready_for_authorization_decision": false,
+  "real_runner": "DISABLED",
+  "status": "BLOCKED",
+  "version": "1.0.0"
+}

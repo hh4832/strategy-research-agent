@@ -278,6 +278,56 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  phase5b3a-readiness:
+    # Phase 5-B3-A: production READINESS only (no backtest, no market data, no Holdout, no authorization created or
+    # consumed; real Runner DISABLED). Core b16179a is installed so the 5-B2 Layer B suites run as evidence.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    env:
+      MRC_SHA: b16179a7cc077c36046574769a32c367fa476cae
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}" pyarrow
+      - name: Governance / controlled-execution / readiness suites (junit)
+        run: |
+          rc=0
+          pytest -q -p no:cacheprovider tests/test_phase5b1*.py tests/test_phase5b2_*.py tests/test_phase5b3a_readiness.py \
+            --junitxml "$RUNNER_TEMP/b3a.xml" || rc=$?
+          echo "TESTS_RC=$rc" >> "$GITHUB_ENV"
+          test "$rc" = 0
+      - name: Committed manifest / draft are the deterministic output
+        run: |
+          python -m strategy_agent.readiness.acceptance --emit-docs
+          git diff --exit-code -- docs/phase5b3a
+      - name: B3A-01..B3A-08 (CI is not cloud evidence => B3A-08 BLOCKED; no gate may FAIL)
+        run: |
+          python -m strategy_agent.readiness.acceptance --out-dir "$RUNNER_TEMP/readiness/ci" \
+            --junit "$RUNNER_TEMP/b3a.xml" --tests-rc "$TESTS_RC" | tee "$RUNNER_TEMP/b3a_result.json"
+          python - <<'PY'
+          import json, os
+          r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "b3a_result.json")))
+          print(r["verdict"]["verdict"], r["gates"])
+          assert "FAIL" not in r["gates"].values(), r["gates"]
+          assert r["gates"]["B3A-08"] == "BLOCKED"          # cloud reproducibility is evidenced only by Colab + Drive
+          PY
+          python -m strategy_agent.readiness.acceptance --verify-archive "$RUNNER_TEMP/readiness/ci"
+          git diff --exit-code -- registry governance configs schemas specs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase5b3a-readiness-py${{ matrix.python-version }}
+          path: |
+            ${{ runner.temp }}/b3a.xml
+            ${{ runner.temp }}/readiness/ci
+          if-no-files-found: warn
+          retention-days: 30
+
   phase5a3-integration:
     # Phase 5-A3: actual A2 export -> actual A1 orchestrator (SYNTHETIC_FIXTURE Route A + fixture archive replay).
     # No Core, no market data, no batch, no Holdout. Real archive replay runs only in Colab (notebook).
