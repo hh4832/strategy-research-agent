@@ -1,0 +1,412 @@
+{
+  "controlled": {
+    "C1_real_runner_disabled": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "REAL_EXECUTION_ENABLED": false,
+        "ResearchOnlyRunnerAdapter.execute": "AdapterDisabled"
+      },
+      "status": "PASS"
+    },
+    "C2_controlled_adapter_refuses_production_books": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "enabled": false,
+        "isolated": false
+      },
+      "status": "PASS"
+    },
+    "C3_orchestrator_refuses_controlled_execution_on_production_books": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "refused": true
+      },
+      "status": "PASS"
+    },
+    "C4_no_environment_variable_enable_path": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "allowed": [
+          "GH_TOKEN",
+          "GITHUB_TOKEN",
+          "REQUESTS_CA_BUNDLE",
+          "SSL_CERT_FILE"
+        ],
+        "unexpected_env_reads": []
+      },
+      "status": "PASS"
+    },
+    "C5_single_executor_only": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "consistency": "SINGLE_EXECUTOR_ONLY",
+        "exactly_once": "NOT_CLAIMED"
+      },
+      "status": "PASS"
+    }
+  },
+  "dataset": {
+    "D1_snapshot_exists_and_immutable": {
+      "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+      "detail": {
+        "integrity_method": "REUSED_TRUSTED_SHA256_RECEIPT_WITH_STAT_GUARD",
+        "lineage_sha256": "3455f2b3d39f4fd05dda7ca9fed472c9ff0bcbf345f89f177e78eccbe5fd92a4",
+        "note": "immutability attested by the Core development-snapshot contract receipt of the prior real run; bytes are re-hashed only by the optional Colab Drive check",
+        "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+      },
+      "status": "PASS"
+    },
+    "D2_manifest_matches_dataset": {
+      "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+      "detail": {
+        "loader_provenance_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+        "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5"
+      },
+      "status": "PASS"
+    },
+    "D3_timestamps_and_available_at_PIT": {
+      "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+      "detail": {
+        "arrow_schema_timestamp": "timestamp[us, tz=UTC]",
+        "m3a4": {
+          "BASE": {
+            "P03_available_at_policy": "PASS",
+            "P04_temporal_policy_sha256": "PASS",
+            "P07_modeled_rule": "PASS",
+            "T01_no_lookahead": "PASS"
+          },
+          "CAT_STRESS": {
+            "P03_available_at_policy": "PASS",
+            "P04_temporal_policy_sha256": "PASS",
+            "P07_modeled_rule": "PASS",
+            "T01_no_lookahead": "PASS"
+          },
+          "LOW": {
+            "P03_available_at_policy": "PASS",
+            "P04_temporal_policy_sha256": "PASS",
+            "P07_modeled_rule": "PASS",
+            "T01_no_lookahead": "PASS"
+          },
+          "STRESS": {
+            "P03_available_at_policy": "PASS",
+            "P04_temporal_policy_sha256": "PASS",
+            "P07_modeled_rule": "PASS",
+            "T01_no_lookahead": "PASS"
+          }
+        },
+        "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4"
+      },
+      "status": "PASS"
+    },
+    "D4_signal_to_execution_conservative": {
+      "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+      "detail": {
+        "BASE": {
+          "fills_not_strictly_after_signal_available_at": 0,
+          "min_minutes_signal_available_to_fill": 14.0
+        },
+        "CAT_STRESS": {
+          "fills_not_strictly_after_signal_available_at": 0,
+          "min_minutes_signal_available_to_fill": 14.0
+        },
+        "LOW": {
+          "fills_not_strictly_after_signal_available_at": 0,
+          "min_minutes_signal_available_to_fill": 14.0
+        },
+        "STRESS": {
+          "fills_not_strictly_after_signal_available_at": 0,
+          "min_minutes_signal_available_to_fill": 14.0
+        }
+      },
+      "status": "PASS"
+    },
+    "D5_calendar_and_RTH_boundaries": {
+      "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+      "detail": {
+        "rejections": {
+          "CLOSING_AUCTION_EXCLUDED": 22,
+          "INCOMPLETE_SOURCE_BUCKET": 1,
+          "OUTSIDE_CONSERVATIVE_RTH": 857
+        },
+        "sessions": 22
+      },
+      "status": "PASS"
+    },
+    "D6_missing_data_explicit_policy": {
+      "basis": "ARCHIVED_EVIDENCE_ATTESTED",
+      "detail": {
+        "observed": {
+          "INCOMPLETE_SOURCE_BUCKET": 1
+        },
+        "policy": "Core conservative aggregation: an incomplete source bucket is never executable (INCOMPLETE_SOURCE_BUCKET); orders not filled within max_fill_delay_bars expire (ORDER_EXPIRED); no forward fill"
+      },
+      "status": "PASS"
+    },
+    "D7_cost_and_slippage_pinned": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "core_profile_sha256_per_scenario_prior_run": {
+          "BASE": "ea2cb1932ba83eadcdc12720a56d7404d30686a03c6fe6ce10482cceca63c529",
+          "CAT_STRESS": "bd42c2661b3bf6dcf1b7d9f68b51762af2682ff13035384a49a340b1d574cbfc",
+          "LOW": "4111a7d0798162ff2c0cb6a8fd7f4e15f59d8f830e70f04da7b41e660efb101b",
+          "STRESS": "80c00d97c8dc333ba7d39e54782e3af123cc09a46ca5703331faef82e105c401"
+        },
+        "note": "Core profile shas depend on the trade date (dated SEC interval); re-derived (CO07) by the B3-B run",
+        "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3"
+      },
+      "status": "PASS"
+    },
+    "D8_research_period_excludes_holdout": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "holdout": [
+          "2025-01-01T00:00:00-05:00",
+          "2026-10-17T00:00:00-04:00"
+        ],
+        "native_last_utc": "2024-06-28T23:59:00+00:00"
+      },
+      "status": "PASS"
+    },
+    "D9_core_benchmark_and_readiness_evidence": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "DATA_QUALITY_gate": "PASS",
+        "core_benchmark": {
+          "status": "BENCHMARK_PASS",
+          "why": "all 12 cases, G16 acceptance and oracle probes G17/G14b PASS on the real Core"
+        },
+        "market_status": "NO_GO",
+        "note": "market status NO_GO is the FORMAL gate (unchanged); research-only eligibility rests on the authorization"
+      },
+      "status": "PASS"
+    }
+  },
+  "governance": {
+    "G1_books_valid": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "authorization_book": true
+      },
+      "status": "PASS"
+    },
+    "G2_template_authorization_spent_not_reusable": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "authorization_id": "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+        "max_batches": 1,
+        "used": 1
+      },
+      "status": "PASS"
+    },
+    "G3_no_new_authorization_created": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "book": [
+          "RA-IBKR_TSM-SMA520_SMOKE-0001",
+          "RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e"
+        ]
+      },
+      "status": "PASS"
+    },
+    "G4_new_authorization_is_a_human_decision": {
+      "basis": "RECORD_OR_CODE_CHECK",
+      "detail": {
+        "authorization_id": "BLOCKED",
+        "bound_request_hash": "BLOCKED",
+        "budget_batch_limit": "BLOCKED",
+        "executor_identity": "BLOCKED"
+      },
+      "status": "PASS"
+    }
+  },
+  "snapshot_bytes": {
+    "detail": "SHA-256 of whole files only; no decoding, no Holdout bytes (development subset)",
+    "expected": {
+      "manifest.json": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+      "tsm_development_1m.parquet": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452"
+    },
+    "observed": {
+      "manifest.json": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+      "tsm_development_1m.parquet": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452"
+    },
+    "status": "PASS"
+  },
+  "tests": {
+    "tests.test_phase5b1_approval_binding::test_binding_creates_new_immutable_derived_request_and_consumes_nothing": "PASS",
+    "tests.test_phase5b1_approval_binding::test_binding_detects_tampered_proposal_and_provenance": "PASS",
+    "tests.test_phase5b1_approval_binding::test_binding_refuses_unknown_authorization_and_never_creates_one": "PASS",
+    "tests.test_phase5b1_approval_binding::test_bound_request_still_needs_governance_and_unbound_real_request_is_blocked": "PASS",
+    "tests.test_phase5b1_approval_binding::test_fresh_process_acceptance_is_scoped_go_without_real_evidence_and_never_overwrites": "PASS",
+    "tests.test_phase5b1_approval_binding::test_g5_semantics_for_synthetic_are_machine_readable": "PASS",
+    "tests.test_phase5b1_approval_binding::test_identities_pin_repository_and_numeric_account": "PASS",
+    "tests.test_phase5b1_approval_binding::test_injected_github_transport_parses_real_shaped_payloads": "PASS",
+    "tests.test_phase5b1_approval_binding::test_isolated_run_leaves_repository_books_unchanged": "PASS",
+    "tests.test_phase5b1_approval_binding::test_production_verifier_refuses_fixture_and_injected_sources": "PASS",
+    "tests.test_phase5b1_approval_binding::test_repository_books_refuse_test_verifier": "PASS",
+    "tests.test_phase5b1_approval_binding::test_schemas_are_valid_and_request_schema_v1_untouched": "PASS",
+    "tests.test_phase5b1_approval_binding::test_scope_excludes_authorization_and_covers_execution_relevant_fields": "PASS",
+    "tests.test_phase5b1_approval_binding::test_task_approval_is_one_time_and_rechecked_before_running": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[10]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[11]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[12]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[13]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[14]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[15]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[16]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[17]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[18]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[1]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[2]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[3]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[4]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[5]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[6]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[7]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[8]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_threat_model_case_is_rejected_for_the_right_reason[9]": "PASS",
+    "tests.test_phase5b1_approval_binding::test_token_grammar_roundtrip_and_strictness": "PASS",
+    "tests.test_phase5b1_approval_binding::test_verified_evidence_is_schema_valid_and_identity_comes_from_github": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M1_expiry_exact_boundary_utc_and_other_timezones": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M1_validity_window_boundary": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M2_authorization_revoked_after_preliminary_validation_blocks_commit": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M2_budget_used_after_preliminary_validation_blocks_commit": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M2_concurrent_binding_of_two_requests_respects_budget": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M3_concurrent_dispatch_executes_once": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M3_duplicate_execution_attempt_after_completion_and_replayed_claim": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M3_replayed_running_claim_never_executes": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M4_append_only_guard_fails_on_missing_base_ref": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M4_ci_never_masks_failures": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M4_failed_test_subprocess_makes_acceptance_fail": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M5_archive_index_covers_every_file_and_detects_tampering": "PASS",
+    "tests.test_phase5b1_security_remediation::test_M5_missing_or_altered_binding_evidence_file_blocks": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S1_isolated_verifier_cannot_use_production_ledger": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S1_revocation_between_prepare_and_commit_blocks_binding": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S1_revocation_deleted_after_observation_stays_revoked": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S1_revocation_edited_after_observation_stays_revoked": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S1_tampered_revocation_ledger_fails_closed": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S2_api_failure_mid_pagination_fails_closed": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S2_complete_scan_passes_and_exact_100_boundary": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S2_page_cap_is_incomplete_not_pass": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S2_revocation_on_page_51_is_found": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S2_truncated_listing_is_never_not_revoked": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S3_books_are_production_unless_marked_regardless_of_path": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S3_budget_consuming_adapter_never_runs": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S3_fake_source_impersonating_production_never_gets_production": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S3_isolated_binding_never_usable_with_production_books": "PASS",
+    "tests.test_phase5b1_security_remediation::test_S3_production_verifier_with_swapped_or_mutated_source_is_refused": "PASS",
+    "tests.test_phase5b1_security_remediation::test_SEC_gate_requires_every_reproduction_blocked": "PASS",
+    "tests.test_phase5b2_acceptance::test_B2_10_acceptance_archive_is_complete_immutable_and_zip_consistent": "PASS",
+    "tests.test_phase5b2_acceptance::test_B2_10_failed_tests_propagate_to_a_failing_acceptance": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_01_corrupted_ledger_fails_closed": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_01_multiprocess_reservations_never_exceed_the_limit[8]": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_01_reservation_counts_uses_and_open_reservations_and_retry_is_idempotent": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_02_authorization_revoked_after_approval_never_executes": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_02_exhausted_budget_after_approval_never_executes": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_02_pending_authorization_and_unbound_requests_never_execute": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_03_revoked_approval_blocks_before_any_reservation": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_03_unapproved_task_never_executes": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_04_modified_bound_request_is_not_bound": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_05_approved_reserved_execution_runs_once_and_settles": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_crash_after_commit_is_never_released_or_rerun": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_crash_before_commit_releases_only_with_proof": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_crash_between_uses_append_and_commit_event_needs_reconciliation": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_duplicate_request_and_repeated_dispatch_execute_once": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_running_lease_expiry_marks_reconciliation": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_second_executor_is_refused_single_executor_only": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_06_threads_dispatching_concurrently_execute_once": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_07_precheck_refuses_missing_pins_and_pit_rules": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_07_spec_or_cost_changed_after_approval_blocks_before_reservation": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_08_evaluator_failure_never_reruns": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_08_existing_evaluator_runs_and_never_keeps_on_identity_mismatch": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_08_incomplete_archive_is_never_success": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_09_non_synthetic_backend_is_never_enabled": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_09_production_books_never_enable_controlled_execution": "PASS",
+    "tests.test_phase5b2_controlled::test_B2_09_repository_books_untouched_by_layer_a": "PASS",
+    "tests.test_phase5b2_independent_p0_2_gate::test_independent_p0_2_archive_request_modified_before_settlement[bad_json]": "PASS",
+    "tests.test_phase5b2_independent_p0_2_gate::test_independent_p0_2_archive_request_modified_before_settlement[change_bytes]": "PASS",
+    "tests.test_phase5b2_independent_p0_2_gate::test_independent_p0_2_archive_request_modified_before_settlement[change_identity]": "PASS",
+    "tests.test_phase5b2_independent_p0_2_gate::test_independent_p0_2_archive_request_modified_before_settlement[delete]": "PASS",
+    "tests.test_phase5b2_independent_p0_2_gate::test_independent_p0_2_request_changed_after_verification_before_settlement": "PASS",
+    "tests.test_phase5b2_independent_p0_2_gate::test_independent_p0_2_unchanged_archive_settles_once": "PASS",
+    "tests.test_phase5b2_runner_core::test_B2_02_layer_b_execute_without_committed_reservation_is_refused": "PASS",
+    "tests.test_phase5b2_runner_core::test_B2_05_layer_b_existing_runner_under_ledger_then_existing_evaluator_passes": "PASS",
+    "tests.test_phase5b2_runner_core::test_B2_06_layer_b_runner_crash_after_commit_needs_reconciliation": "PASS",
+    "tests.test_phase5b2_runner_core::test_B2_07_layer_b_pin_mismatch_blocks_before_reservation": "PASS",
+    "tests.test_phase5b2_runner_core::test_P0_3_layer_b_installed_core_differs_from_request_blocks_before_runner": "PASS",
+    "tests.test_phase5b2_runner_core::test_P0_3_layer_b_runner_config_changed_after_claim_never_runs_core": "PASS",
+    "tests.test_phase5b2_runner_core::test_P0_3_layer_b_runner_snapshot_manifest_swapped_on_disk_blocks_before_runner": "PASS",
+    "tests.test_phase5b2_runner_core::test_P0_3_layer_b_wrong_core_spec_manifest_blocked_before_runner[core_commit-0000000000000000000000000000000000000000]": "PASS",
+    "tests.test_phase5b2_runner_core::test_P0_3_layer_b_wrong_core_spec_manifest_blocked_before_runner[dataset_manifest_sha256-0000000000000000000000000000000000000000000000000000000000000000]": "PASS",
+    "tests.test_phase5b2_runner_core::test_P0_3_layer_b_wrong_core_spec_manifest_blocked_before_runner[strategy_spec_sha256-0000000000000000000000000000000000000000000000000000000000000000]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_adapter_refuses_a_foreign_ledger_and_unbound_execution": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_committed_reservation_needs_matching_identity_and_running_task": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_fake_committed_status_is_never_eligibility": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_forged_reservation_is_blocked_without_running": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_ledger_settle_requires_completed_and_verified_evidence": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_marker_events_cannot_be_forged_into_the_ledger": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_replay_while_in_flight_is_refused": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_reused_reservation_runs_at_most_once": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_same_reservation_from_several_processes_runs_at_most_once[2]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_1_same_reservation_from_several_processes_runs_at_most_once[6]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_archive_carrying_another_uses_record_is_inconsistent": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_archive_or_evaluation_tampered_before_settlement_never_settles[archive_file_removed]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_archive_or_evaluation_tampered_before_settlement_never_settles[archive_manifest_corrupted]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_archive_or_evaluation_tampered_before_settlement_never_settles[evaluation_output_altered]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_crash_after_execution_started_is_never_rerun": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_evaluator_failure_is_never_rerun": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_evidence_tampered_before_evaluation_fails_closed": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_ledger_settle_requires_the_in_lock_recheck": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_other_task_archive_evidence_tampered_never_settles[execution_reference.json]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_other_task_archive_evidence_tampered_never_settles[research_decision.json]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_other_task_archive_evidence_tampered_never_settles[run_info.txt]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_receipt_deleted_or_modified_before_settlement_needs_reconciliation[receipt_deleted]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_receipt_deleted_or_modified_before_settlement_needs_reconciliation[receipt_modified]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_request_file_commitment_is_fixed_before_execution": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_runner_result_inconsistent_with_request_is_never_settled": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_task_archive_request_tampered_after_evidence_verified_is_not_settled": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_task_archive_research_request_tampered_never_verifies_or_settles[deleted]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_task_archive_research_request_tampered_never_verifies_or_settles[file_and_manifest]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_task_archive_research_request_tampered_never_verifies_or_settles[identity_modified]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_task_archive_research_request_tampered_never_verifies_or_settles[invalid_json]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_task_archive_research_request_tampered_never_verifies_or_settles[non_identity_bytes]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_task_archive_research_request_tampered_never_verifies_or_settles[swapped]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_task_archive_untampered_settles_exactly_once": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_2_uncommitted_request_file_never_settles": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_artefact_changed_on_disk_after_binding_blocks": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_backend_identity_differs_from_bound_request_blocks_before_reservation": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_expired_or_revoked_authorization_blocks_at_execution": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_foreign_fixture_identity_is_blocked_before_runner": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_identity_rechecked_at_execution_time_after_commit": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_wrong_core_spec_or_manifest_is_blocked_before_runner[core_commit-0000000000000000000000000000000000000000]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_wrong_core_spec_or_manifest_is_blocked_before_runner[dataset_manifest_sha256-0000000000000000000000000000000000000000000000000000000000000000]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_wrong_core_spec_or_manifest_is_blocked_before_runner[dataset_snapshot_id-SYNTHETIC_LATEST]": "PASS",
+    "tests.test_phase5b2_security_remediation::test_P0_3_wrong_core_spec_or_manifest_is_blocked_before_runner[strategy_spec_sha256-0000000000000000000000000000000000000000000000000000000000000000]": "PASS",
+    "tests.test_phase5b3a_readiness::test_a_spec_repinned_to_the_dev_snapshot_would_satisfy_the_exporter": "PASS",
+    "tests.test_phase5b3a_readiness::test_a_spec_that_changes_more_than_the_data_binding_is_blocked[<lambda>0]": "PASS",
+    "tests.test_phase5b3a_readiness::test_a_spec_that_changes_more_than_the_data_binding_is_blocked[<lambda>1]": "PASS",
+    "tests.test_phase5b3a_readiness::test_a_spec_that_changes_more_than_the_data_binding_is_blocked[<lambda>2]": "PASS",
+    "tests.test_phase5b3a_readiness::test_a_spec_that_changes_more_than_the_data_binding_is_blocked[<lambda>3]": "PASS",
+    "tests.test_phase5b3a_readiness::test_a_spec_that_changes_more_than_the_data_binding_is_blocked[<lambda>4]": "PASS",
+    "tests.test_phase5b3a_readiness::test_archive_is_immutable_indexed_and_tamper_evident": "PASS",
+    "tests.test_phase5b3a_readiness::test_authorization_binding_budget_executor_are_human_decisions_never_defaults": "PASS",
+    "tests.test_phase5b3a_readiness::test_authorization_draft_is_unapproved_and_never_written": "PASS",
+    "tests.test_phase5b3a_readiness::test_committed_docs_are_the_deterministic_output": "PASS",
+    "tests.test_phase5b3a_readiness::test_contradictory_or_missing_values_are_blocked_never_inferred[<lambda>-core_commit_sha-CONTRADICTION]": "PASS",
+    "tests.test_phase5b3a_readiness::test_contradictory_or_missing_values_are_blocked_never_inferred[<lambda>-core_commit_sha-MISSING]": "PASS",
+    "tests.test_phase5b3a_readiness::test_contradictory_or_missing_values_are_blocked_never_inferred[<lambda>-dataset_manifest_sha256-CONTRADICTION]": "PASS",
+    "tests.test_phase5b3a_readiness::test_contradictory_or_missing_values_are_blocked_never_inferred[<lambda>-dataset_snapshot_id-MISSING]": "PASS",
+    "tests.test_phase5b3a_readiness::test_contradictory_or_missing_values_are_blocked_never_inferred[<lambda>-research_window-CONTRADICTION]": "PASS",
+    "tests.test_phase5b3a_readiness::test_contradictory_or_missing_values_are_blocked_never_inferred[<lambda>-strategy_spec_sha256-CONTRADICTION]": "PASS",
+    "tests.test_phase5b3a_readiness::test_contradictory_or_missing_values_are_blocked_never_inferred[<lambda>-trading_cost_profile-MISSING]": "PASS",
+    "tests.test_phase5b3a_readiness::test_controlled_readiness_real_runner_disabled_and_no_env_enable_path": "PASS",
+    "tests.test_phase5b3a_readiness::test_dataset_readiness_nine_checks_pass_from_archived_evidence": "PASS",
+    "tests.test_phase5b3a_readiness::test_gates_scoped_go_only_if_the_spec_binding_passes_and_cloud": "PASS",
+    "tests.test_phase5b3a_readiness::test_gates_verdict_no_go_while_spec_binding_is_blocked": "PASS",
+    "tests.test_phase5b3a_readiness::test_governance_spent_authorization_not_reusable_and_nothing_created": "PASS",
+    "tests.test_phase5b3a_readiness::test_holdout_exclusion_fails_when_the_window_reaches_the_holdout": "PASS",
+    "tests.test_phase5b3a_readiness::test_manifest_covers_every_required_field_and_resolves_from_authoritative_records": "PASS",
+    "tests.test_phase5b3a_readiness::test_parent_spec_dataset_contradiction_is_found_by_the_real_exporter": "PASS",
+    "tests.test_phase5b3a_readiness::test_repinned_spec_passes_the_exporter_and_changes_only_the_data_binding": "PASS",
+    "tests.test_phase5b3a_readiness::test_snapshot_bytes_check_is_strict": "PASS"
+  }
+}

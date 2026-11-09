@@ -75,6 +75,33 @@ GO／SCOPED_GO 都**不**授權 Runner。
 
 ## Colab／Drive
 
+### 決定後（pin `c906d48`）：**`readiness/20261109_212701_c906d48` → SCOPED_GO**
+
+- **執行環境：** notebook v2，全新 runtime，Python 3.13.18，`cloud=true`；checkout 乾淨，pin 之後只有 docs 與 notebook 變更。
+- **測試：**
+  - 回歸（無 Core）：640 passed / 65 skipped（比本機多 1 個 skipped，0 failed）。
+  - 5-B1＋5-B2＋5-B3-A suites（Core `b16179a`）：176 passed。
+- **Gates：** B3A-01..B3A-08 **全部 PASS**。
+- **判定：SCOPED_GO**，限制如下：
+  - SINGLE_EXECUTOR_ONLY；
+  - 資料集 readiness 來自先前真實 run 的封存證據，沒有讀新資料；
+  - 真實 Runner 在另外的授權決定之前維持 DISABLED。
+
+  **SCOPED_GO 不授權 Runner。**
+- **Manifest：**
+  - 剩下的 BLOCKED 只有 `HUMAN_DECISION` 類別（授權 ID、bound request hash、batch 上限、executor），`ready_for_authorization_decision = true`；
+  - 三項交叉檢查都是 PASS：exporter 綁定、spec 規則未變、integrity receipt。
+- **DEV snapshot 整檔 hash：** PASS。
+- **其他確認：**
+  - repo 帳本前後不變；
+  - `real_runner=DISABLED`、`authorization_created=false`、`market_data_read=false`、`holdout_read=false`、`new_backtest_executed=false`。
+- **封存：**
+  - Colab 端 `--verify-archive --zip` PASS；
+  - Claude 對上傳的 ZIP 重新核對，6 個檔案的 SHA 全部吻合，沒有額外檔案；
+  - ZIP sha256 為 `da47d617faefc107e6cd3cb6f5b11687888fae4f6ad83333af99200725de7e1f`；
+  - GitHub 副本放在 `docs/evidence/phase5b3a/20261109_212701_c906d48/`；
+  - 沒有 `work/` tree。
+
 ### 第一輪（pin `5045d4a`，NO_GO）：**`readiness/20261108_225409_5045d4a`**（notebook v1，全新 runtime，Python 3.13.18，`cloud=true`）。
 
 - **程式版本：** pin `5045d4a`，checkout 乾淨；pin 之後只有 docs 與 notebook 變更。

@@ -27,9 +27,9 @@ B3A-01、03..08 PASS；**B3A-02 BLOCKED**。原因：原 spec `sma_crossover_tsm
 - **原 spec 0.1.0 不動。** run config 與已用盡的 DEV 授權仍釘選它。
 - **狀態仍是 DRAFT。** 只能由**新的**研究授權釘選；新授權與 B3-B 的 run config 都必須釘選 0.1.1 的 sha。
 
-### 0.3 目前（pin `c906d48`）
+### 0.3 目前（pin `c906d48`）：**SCOPED_GO**（Colab `readiness/20261109_212701_c906d48`）
 
-本機結果：B3A-01..07 全部 PASS，B3A-02 由 BLOCKED 轉為 PASS（exporter 接受、規則未變）。B3A-08 由 Colab＋Drive 證明（見驗收文件）。預期判定為 **SCOPED_GO**，限制如下：
+B3A-01..B3A-08 全部 PASS，B3A-02 由 BLOCKED 轉為 PASS（exporter 接受、規則未變）；B3A-08 由 Colab＋Drive 證明，DEV snapshot 整檔 hash 也是 PASS。判定為 **SCOPED_GO**，限制如下：
 - SINGLE_EXECUTOR_ONLY；
 - 資料集 readiness 來自封存證據加上整檔 hash；
 - 真實 Runner 仍 DISABLED。
