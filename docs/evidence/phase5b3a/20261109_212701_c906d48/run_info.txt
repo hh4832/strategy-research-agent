@@ -1,0 +1,14 @@
+kind=PHASE5B3A_READINESS_ACCEPTANCE
+verdict=SCOPED_GO
+git_sha=c906d48845fee26199b0382f88eead20c625480e
+dirty=false
+python=3.13.18
+cloud=true
+gates={"B3A-01": "PASS", "B3A-02": "PASS", "B3A-03": "PASS", "B3A-04": "PASS", "B3A-05": "PASS", "B3A-06": "PASS", "B3A-07": "PASS", "B3A-08": "PASS"}
+real_runner=DISABLED
+authorization_created=false
+market_data_read=false
+holdout_read=false
+new_backtest_executed=false
+snapshot_bytes_check=PASS
+tests_returncode=0

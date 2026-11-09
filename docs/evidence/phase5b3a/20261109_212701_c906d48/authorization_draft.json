@@ -1,0 +1,191 @@
+{
+  "authorization_id": {
+    "decision": "HUMAN_DECISION_REQUIRED",
+    "proposed_pattern": "RA-IBKR_TSM-SMA520_<NEW>"
+  },
+  "cost_assumptions": {
+    "scenario_set": {
+      "model": "IBKR_PRO_FIXED",
+      "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+      "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+      "scenarios": [
+        "BASE",
+        "LOW",
+        "STRESS",
+        "CAT_STRESS"
+      ]
+    },
+    "slippage_bps_per_side": {
+      "half_spread_bps": 0,
+      "slippage_bps_per_side": {
+        "BASE": 2,
+        "CAT_STRESS": 2,
+        "LOW": 1,
+        "STRESS": 4
+      }
+    }
+  },
+  "dataset_and_period": {
+    "dataset": {
+      "dataset_id": "ibkr_tsm_1m_normalized",
+      "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+      "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+    },
+    "dataset_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "research_window": {
+      "end": "2024-06-29T00:00:00-04:00",
+      "interval": "[start,end)",
+      "start": "2024-05-29T00:00:00-04:00"
+    },
+    "trading_window": {
+      "end": "2024-06-29T00:00:00-04:00",
+      "start": "2024-06-03T00:00:00-04:00"
+    }
+  },
+  "executor_identity": {
+    "consistency": "SINGLE_EXECUTOR_ONLY",
+    "decision": "HUMAN_DECISION_REQUIRED",
+    "proposed": "single named executor (e.g. one Colab runtime of hh4832)"
+  },
+  "expected_archive_destination": {
+    "drive_root": "MyDrive/Quant_Research/strategy-research-agent/",
+    "immutable": true,
+    "run_id_format": "YYYYMMDD_HHMMSS_<git_commit>"
+  },
+  "holdout_policy": {
+    "access": "NO_ACCESS",
+    "blindness": "BLINDNESS_UNVERIFIED",
+    "holdout": [
+      "2025-01-01T00:00:00-05:00",
+      "2026-10-17T00:00:00-04:00"
+    ],
+    "lock_id": "HOLDOUT-TSM-15M-v1"
+  },
+  "kind": "PHASE5B3A_AUTHORIZATION_SPECIFICATION_DRAFT",
+  "market_instrument": {
+    "market_id": "IBKR_TSM",
+    "symbol": "TSM"
+  },
+  "max_research_batches": {
+    "decision": "HUMAN_DECISION_REQUIRED",
+    "proposed": 1
+  },
+  "proposal_fields": {
+    "contract": "research-only-authorization-v1",
+    "costs": {
+      "model": "IBKR_PRO_FIXED",
+      "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+      "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+      "scenarios": [
+        "BASE",
+        "LOW",
+        "STRESS",
+        "CAT_STRESS"
+      ]
+    },
+    "dataset": {
+      "dataset_id": "ibkr_tsm_1m_normalized",
+      "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+      "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+    },
+    "development_boundary": {
+      "end": "2025-01-01T00:00:00-05:00",
+      "interval": "[start,end)",
+      "start": "2016-10-19T00:00:00-04:00"
+    },
+    "does_not_authorize": [
+      "any formal gate PASS",
+      "live or paper trading",
+      "holdout access for warm-up, signals, fills, metrics or tuning",
+      "parameter search or any parameters other than SMA 5/20",
+      "any symbol other than TSM",
+      "any window outside 2024-05-29..2024-06-28",
+      "treating RESEARCH_ONLY costs as account-verified or BROKER_ACTUAL",
+      "more than 1 batch (BASE/LOW/STRESS + CAT_STRESS)",
+      "use of results for family promotion, FROZEN status or deployment",
+      "enabling the real Runner outside the governed Phase 5 controlled path",
+      "more than the approved max_batches",
+      "any executor other than the named single executor",
+      "reuse or reset of RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e"
+    ],
+    "formal_gate_pin": {
+      "gate_version": "2026-11-05.4",
+      "gates": {
+        "COST_APPROVAL": "FAIL",
+        "COST_MODEL_COMPATIBILITY": "PASS",
+        "DATA_QUALITY": "PASS",
+        "FORMAL_EXECUTION_ELIGIBILITY": "FAIL",
+        "HOLDOUT_APPROVAL": "FAIL",
+        "TEMPORAL_SAFETY": "UNKNOWN"
+      },
+      "gates_sha256": "11837b368e65efddc31f26f7237e881b5e9a80120ed2f22af76dcb4089b9ea32",
+      "market_status": "NO_GO"
+    },
+    "holdout": {
+      "blindness": "BLINDNESS_UNVERIFIED",
+      "end": "2026-10-17T00:00:00-04:00",
+      "lock_id": "HOLDOUT-TSM-15M-v1",
+      "start": "2025-01-01T00:00:00-05:00"
+    },
+    "market_id": "IBKR_TSM",
+    "research_window": {
+      "end": "2024-06-29T00:00:00-04:00",
+      "interval": "[start,end)",
+      "start": "2024-05-29T00:00:00-04:00"
+    },
+    "scope": "RESEARCH_ONLY_EXPLORATORY",
+    "strategy": {
+      "parameters": {
+        "fast": 5,
+        "slow": 20
+      },
+      "spec_file_sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34",
+      "spec_path": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
+      "strategy_id": "sma_crossover_tsm_15m_5_20",
+      "version": "0.1.1"
+    },
+    "symbol": "TSM",
+    "temporal_policy": {
+      "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+      "scope": "RESEARCH_ONLY",
+      "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+      "version": "1.0.0"
+    }
+  },
+  "research_purpose": {
+    "decision": "HUMAN_DECISION_REQUIRED",
+    "hypothesis": "Pre-registered baseline only: SMA 5/20 on TSM 15m (spec hypothesis unchanged). Re-running the already-evaluated DEV window adds pipeline evidence, NOT new statistical evidence about SMA",
+    "purpose": "First real research execution through the governed Phase 5 pipeline (A2 request -> verified binding -> atomic budget ledger -> existing ResearchOnlyRunner -> evidence-verified settlement)"
+  },
+  "schema_dry_run": {
+    "placeholders_used_for": [],
+    "status": "PASS",
+    "written": false
+  },
+  "status": "DRAFT_NOT_APPROVED",
+  "strategy_specification": {
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "spec": {
+      "change": "data_requirements re-pinned to the DEV snapshot only (research lead decision 2026-11-08); rules / parameters unchanged",
+      "parent": {
+        "path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+        "sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
+      },
+      "path": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
+      "rules_unchanged_check": "PASS",
+      "sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34"
+    },
+    "spec_decision": "DECIDED (re-pinned spec)",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.1"
+  },
+  "validity_period": {
+    "constraint": "must expire before any change of the pinned formal gates (RA10)",
+    "expires_at": "HUMAN_DECISION_REQUIRED",
+    "issued_at": "HUMAN_DECISION_REQUIRED"
+  },
+  "warning": "NOT an authorization. Not in governance/. Creating / approving it is the research lead's action (research_authorization_admin approve), after reviewing every HUMAN_DECISION_REQUIRED entry."
+}

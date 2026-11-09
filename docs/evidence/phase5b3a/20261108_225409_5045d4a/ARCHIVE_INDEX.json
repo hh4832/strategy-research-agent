@@ -1,0 +1,30 @@
+{
+  "files": {
+    "authorization_draft.json": {
+      "bytes": 7361,
+      "sha256": "c33532bec78290d9291f0dd4f4f163d11f2397682e41ae7577185f0edc7f49dc"
+    },
+    "b3a_acceptance.json": {
+      "bytes": 21346,
+      "sha256": "d7ecab6eb429634f14d3bac4d54a49f026ba104f76626ba484b746fd9fd31196"
+    },
+    "notebook_context.json": {
+      "bytes": 1526,
+      "sha256": "11f7f0d34d0c4a4ab8876af72dff93ed666adf0c51ff28643c5dbf34c22fbf95"
+    },
+    "readiness_checks.json": {
+      "bytes": 28401,
+      "sha256": "0077070d5c0ad2e9723e0c1cec0b3153085ac66ff18fedcc8ea0f7a086147ec3"
+    },
+    "readiness_manifest.json": {
+      "bytes": 12724,
+      "sha256": "234001cc18ba1e292d98f15637c748173920d5e1d74200a244d10777d081a3fc"
+    },
+    "run_info.txt": {
+      "bytes": 455,
+      "sha256": "70014ef22935f20d1feb9522f31930495866cb2a73b383e7307d7b8c6f886674"
+    }
+  },
+  "kind": "PHASE5B3A_ARCHIVE_INDEX",
+  "work_tree": "NONE (B3-A writes no supporting work/ tree)"
+}
