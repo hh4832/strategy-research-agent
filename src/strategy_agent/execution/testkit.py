@@ -38,9 +38,10 @@ def stub_identity(w: dict) -> dict:
             "research_window": dict(B["research_window"])}
 
 
-def world(work: Path, *, max_batches: int = 1, backend=None, stub: dict | None = None) -> dict:
+def world(work: Path, *, max_batches: int = 1, backend=None, stub: dict | None = None,
+          executor_id: str | None = None) -> dict:
     work = Path(work)
-    w = K.build_world(work / "w", max_batches=max_batches)
+    w = K.build_world(work / "w", max_batches=max_batches, executor_id=executor_id)
     fa = FixtureApprovals()
     svc = K.service(w, fa.verifier)
     r = svc.bind(dry_run=False, **K.bind_kwargs(w, fa.bind_url(w["request"], w["authorization_id"])))

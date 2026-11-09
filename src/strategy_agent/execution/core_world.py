@@ -83,7 +83,10 @@ def make_dev_snapshot(tmp: Path, core_sha: str) -> dict:
     return D.produce_development_snapshot(plan, tmp / "derived", producer_sha=core_sha)
 
 
-def build(tmp: Path, *, max_batches: int = 1) -> dict:
+def build(tmp: Path, *, max_batches: int = 1, authorization_id: str | None = None,
+          executor_id: str | None = None) -> dict:
+    """``authorization_id`` / ``executor_id`` (5-B3-B): a NEW test authorization id naming a single executor, so the
+    REAL_GATED path can be exercised end to end; the default keeps the 5-B2 world (DEV id re-pinned, no executor)."""
     from strategy_agent.governance.holdout_admin import approve as approve_lock  # noqa: PLC0415
     from strategy_agent.governance.research_authorization_admin import approve as approve_auth  # noqa: PLC0415
     from strategy_agent.research_only import development_run as DR  # noqa: PLC0415
@@ -123,10 +126,17 @@ def build(tmp: Path, *, max_batches: int = 1) -> dict:
     p["dataset"].update(snapshot_id=sid, producer_commit_sha=core)          # SYNTHETIC_FIXTURE dataset pin
     p["strategy"]["spec_file_sha256"] = spec_sha                            # SYNTHETIC_FIXTURE spec pin
     p["max_batches"] = max_batches
+    if authorization_id is not None:
+        p["authorization_id"] = authorization_id
+        p["notes"] = "SYNTHETIC_FIXTURE Layer B authorization for Phase 5-B3-B (isolated books); not a real authorization."
+    if executor_id is not None:
+        p["executor"] = {"executor_id": executor_id, "consistency": "SINGLE_EXECUTOR_ONLY"}
     approve_auth(G / "research_authorizations.jsonl", G / "approvers.json", p, approved_by="hh4832", approval_ref=URL,
                  now=NOW)
     cfg["dataset"].update(snapshot_id=sid, producer_commit_sha=core)
     cfg["strategy"]["spec_file_sha256"] = spec_sha
+    if authorization_id is not None:
+        cfg["authorization_id"] = authorization_id
     sb = cfg["snapshot_binding"]
     for k in ("manifest_sha256", "integrity_receipt", "integrity_receipt_sha256", "snapshot_pin"):
         sb[k] = copy.deepcopy(bundle[k])
@@ -145,6 +155,7 @@ def build(tmp: Path, *, max_batches: int = 1) -> dict:
                    "canonical_config": sc["canonical_config"], "session_config_difference": sc["difference"],
                    "authorization_record_sha256": appr[-1]["record_sha256"] if appr else None}
     w = {"runner": runner, "run_context": run_context, "gov": gov, "art": art, "config_path": Path(sc["path"]),
+         "canonical_config_path": cpath,
          "snapshot_root": Path(bundle["snapshot_root"]), "authorization_id": cfg["authorization_id"],
          "config": sc["config"], "core_sha": core, "now": NOW,
          "snapshot": {"snapshot_id": sid, "manifest_sha256": bundle["manifest_sha256"]}}
@@ -206,19 +217,31 @@ def _bind(w: dict, tmp: Path) -> dict:
     return {"fa": fa, "binding": r["record"], "bound": bound, "exp": exp, "request": req}
 
 
+def readiness_manifest(world: dict) -> dict:
+    """A10 manifest for the ISOLATED Layer B world (TEST): pins of its authorization, snapshot bundle and Core."""
+    auth = next(json.loads(x) for x in (world["gov"] / "governance/research_authorizations.jsonl").read_text().splitlines()
+                if x.strip() and json.loads(x).get("authorization_id") == world["authorization_id"])
+    F = {"strategy_spec_sha256": auth["strategy"]["spec_file_sha256"], "dataset_snapshot_id": auth["dataset"]["snapshot_id"],
+         "dataset_manifest_sha256": world["snapshot"]["manifest_sha256"], "core_commit_sha": world["core_sha"],
+         "trading_cost_profile": {"scenario_set_sha256": auth["costs"]["scenario_set_sha256"]}}
+    return {"kind": "TEST_LAYER_B_READINESS_MANIFEST", "fields": {k: {"status": "RESOLVED", "category": None, "value": v}
+                                                                for k, v in F.items()},
+            "cross_checks": {"phase5_request_spec_dataset_binding": {"status": "PASS"}}}
+
+
 def bound_request(world: dict) -> dict:
     """The registered bound request of the Layer B world (a copy: callers may mutate it)."""
     return copy.deepcopy(world["bound"])
 
 
-def orchestrator(world: dict, work: Path, backend, *, worker: str = "worker-1", clock=None):
+def orchestrator(world: dict, work: Path, backend, *, worker: str = "worker-1", clock=None, activation=None):
     """A production-mode Orchestrator on the ISOLATED Layer B books with the controlled adapter over ``backend``."""
     from strategy_agent.binding import testkit as K  # noqa: PLC0415
     from strategy_agent.orchestration.orchestrator import Orchestrator  # noqa: PLC0415
     from strategy_agent.phase5a import acceptance as A5  # noqa: PLC0415
 
     from .controlled import ControlledRunnerAdapter  # noqa: PLC0415
-    ad = ControlledRunnerAdapter(backend, governance_root=world["gov"])
+    ad = ControlledRunnerAdapter(backend, governance_root=world["gov"], activation=activation)
     return Orchestrator(Path(work) / "state", Path(work) / "out", root=world["art"], governance_root=world["gov"],
                         benchmark=K.synthetic_benchmark, approval_verifier=world["fa"].verifier, controlled_adapter=ad,
                         clock=clock or A5.StepClock(), worker=worker)

@@ -83,13 +83,27 @@ class Orchestrator:
                 raise ValueError("only a ControlledRunnerAdapter may replace the RESEARCH_ONLY_REAL adapter")
             if test_mode:
                 raise ValueError("controlled execution runs in a production-mode orchestrator (verified approvals)")
-            if self.gov.production_books or not controlled_adapter.enabled:
-                # RESEARCH_ONLY_REAL stays DISABLED: never even create a budget ledger next to the real books
+            mode = getattr(controlled_adapter, "mode", "DISABLED")
+            if not controlled_adapter.enabled or (self.gov.production_books and mode != "REAL_GATED"):
+                # never even create a budget ledger next to the real books unless the real path is fully gated
                 raise ValueError("controlled execution is DISABLED for production books / non-synthetic backends")
+            if mode == "REAL_GATED":
+                # 5-B3-B standing preconditions (no request yet): the gate's executor is THIS worker, production books
+                # need the production verifier, and an approved NEW authorization naming this executor must exist
+                # (its budget is checked per request by A07, so a consumed batch can still be recovered). Today's repository books have none => refused before any ledger file exists.
+                from strategy_agent.execution.activation import eligible_authorizations  # noqa: PLC0415
+                if controlled_adapter.activation.executor_id != worker:
+                    raise ValueError("REAL_GATED: the orchestrator worker is not the activation gate's executor")
+                if self.gov.production_books and (approval_verifier is None or not approval_verifier.production):
+                    raise ValueError("REAL_GATED on production books requires the production (live GitHub) verifier")
+                if not eligible_authorizations(self.governance_root, worker, self.clock()):
+                    raise ValueError("REAL_GATED: no approved, active, unexpired authorization names this executor "
+                                     "(real Runner stays DISABLED)")
             from strategy_agent.execution.budget import BudgetLedger  # noqa: PLC0415
             self.adapters["RESEARCH_ONLY_REAL"] = controlled_adapter
             self.budget = BudgetLedger.for_governance(self.gov, clock=self.clock, git_commit=self.code["git_sha"])
             # P0-1: the adapter executes only against THIS ledger; approval evidence comes from THIS task log
+            self.gov.gated_real_execution = mode == "REAL_GATED"
             controlled_adapter.bind(ledger=self.budget, artifact_root=self.root, approvals=self._running_approval,
                                     worker_id=self.worker, clock=self.clock)
             # G10 may pass only for an ENABLED controlled adapter on ISOLATED books (Governance re-checks the books)
@@ -482,13 +496,36 @@ class Orchestrator:
         def recheck(res, use):                    # INSIDE the ledger lock, right before CONSUMED (TOCTOU)
             return verify_execution_evidence(self.budget, r["reservation_id"], record=False, worker_id=self.worker,
                                              governance_root=self.governance_root, reservation=res, use=use,
-                                             **kw)["problems"]
+                                             expected_mode=adapter.mode, **kw)["problems"]
         try:
-            self.budget.settle(r["reservation_id"], receipt_sha256=chk["receipt_sha256"],
-                               output_manifest_sha256=chk["output_manifest_sha256"], archive_ref=arch["task_archive"],
-                               worker_id=self.worker, recheck=recheck)
+            ev_c = self.budget.settle(r["reservation_id"], receipt_sha256=chk["receipt_sha256"],
+                                      output_manifest_sha256=chk["output_manifest_sha256"],
+                                      archive_ref=arch["task_archive"], worker_id=self.worker, recheck=recheck)
         except BudgetRefused as e:
             self._reconcile(task_id, r["reservation_id"], f"settlement refused: {e.code}")
+            return
+        self._execution_record(task_id, r["reservation_id"], ev_c, arch, ev)
+
+    def _execution_record(self, task_id, reservation_id, consumed_event, arch, ev) -> None:
+        """5-B3-B: one immutable record per settled execution (contract + ledger settlement + evidence pointers)."""
+        r = self.budget.reservations()[reservation_id]
+        st = self.log.get(task_id)
+        ref = self._execution_reference(st)
+        rc = json.loads(Path(ref["receipt_path"]).read_text(encoding="utf-8"))
+        rec = {"kind": "PHASE5B3B_EXECUTION_RECORD", "task_id": task_id, "reservation_id": reservation_id,
+               "execution_mode": rc.get("execution_mode"), "contract": rc.get("execution_contract"),
+               "binding_id": r.get("binding_id"), "approval_evidence_sha256": r.get("approval_evidence_sha256"),
+               "runner_receipt_file": ref["receipt_path"], "runner_receipt_sha256": ref["receipt_sha256"],
+               "runner_archive": ref["archive_path"], "runner_archive_manifest_sha256": ref["archive_manifest_sha256"],
+               "evaluation_reference": ev.get("evaluation_reference"), "task_archive": arch["task_archive"],
+               "task_archive_files_sha256": (r.get("evidence_verified") or {}).get("task_archive_files_sha256"),
+               "budget_settlement": {"state": r["state"], "history": r["history"],
+                                     "consumed_event_sha256": consumed_event.get("record_sha256")},
+               "agent_commit": self.code["git_sha"]}
+        d = self.archive_root / "execution_records"
+        d.mkdir(parents=True, exist_ok=True)
+        with open(d / f"{task_id}.json", "x", encoding="utf-8") as fh:                  # never overwritten
+            fh.write(json.dumps(rec, indent=2, sort_keys=True, ensure_ascii=False, default=str) + "\n")
 
     def _execution_reference(self, st) -> dict:
         return next(e["data"]["execution_reference"] for e in reversed(st.events)

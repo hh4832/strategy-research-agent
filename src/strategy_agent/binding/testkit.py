@@ -36,7 +36,8 @@ def _sha(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-def build_world(work: Path, *, agent_commit_sha: str = "a" * 40, created_at: str = AT, max_batches: int = 1) -> dict:
+def build_world(work: Path, *, agent_commit_sha: str = "a" * 40, created_at: str = AT, max_batches: int = 1,
+                executor_id: str | None = None) -> dict:
     from strategy_agent.phase5a import acceptance as ACC  # noqa: PLC0415
     from strategy_agent.phase5a.integration import proposal_to_request  # noqa: PLC0415
     work = Path(work).resolve()
@@ -95,6 +96,8 @@ def build_world(work: Path, *, agent_commit_sha: str = "a" * 40, created_at: str
                 holdout=dict(auth["holdout"], lock_id=LOCK_ID, start="2025-01-01T00:00:00+08:00",
                              end="2026-10-17T00:00:00+08:00"),
                 notes="SYNTHETIC_FIXTURE test authorization for Phase 5-B1 binding tests; not a real authorization.")
+    if executor_id is not None:                      # 5-B3-B: the authorized single executor (test world only)
+        auth["executor"] = {"executor_id": executor_id, "consistency": "SINGLE_EXECUTOR_ONLY"}
     ChainedLog(gov / "governance/research_authorizations.jsonl").append(auth)
     (gov / "registry/research_authorization_uses.jsonl").write_text("")
     return {"work": work, "art": art, "gov": gov, "exp": exp, "proposal": P, "bindings": B, "request": req,

@@ -200,10 +200,14 @@ class Governance:
                                                               "trading permission"})
         controlled = mode == "RESEARCH_ONLY_REAL" and getattr(self, "isolated_controlled_execution", False) \
             and not self.production_books                       # 5-B2: isolated synthetic books only, never production
-        enabled = mode == "ARCHIVE_REPLAY" or (mode == "RESEARCH_ONLY_REAL" and (REAL_EXECUTION_ENABLED or controlled))
+        gated = mode == "RESEARCH_ONLY_REAL" and getattr(self, "gated_real_execution", False)   # 5-B3-B
+        controlled = controlled and not gated
+        enabled = mode == "ARCHIVE_REPLAY" or (mode == "RESEARCH_ONLY_REAL" and (REAL_EXECUTION_ENABLED or controlled or gated))
         add("G10_EXECUTION_MODE", enabled, "ARCHIVE_REPLAY (read-only, 0 batches)" if mode == "ARCHIVE_REPLAY"
             else ("ISOLATED_SYNTHETIC_CONTROLLED_EXECUTION (isolated books + synthetic backend; never production)"
-                  if controlled else "RESEARCH_ONLY_REAL is DISABLED (needs a separate user authorization and acceptance)"))
+                  if controlled else
+                  ("REAL_GATED: every request must pass the activation gate A01-A10 at precheck and at execute"
+                   if gated else "RESEARCH_ONLY_REAL is DISABLED (needs a separate user authorization and acceptance)")))
         if binding_check:
             self._g11(doc, mode, add)
         status = "PASS" if all(c["status"] in ("PASS", "NOT_APPLICABLE") for c in out) else "BLOCKED"
