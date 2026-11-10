@@ -291,9 +291,13 @@ def execute(prepared_dir: Path, *, bind_url: str, task_url: str, verifier, backe
     bad = list(probe) + list(bad) + I.compare(I.request_identity(bound), idn, source="BACKEND")
     if bad:
         raise B3CStopped("RUNNER_PRECHECK", bad)
+    if readiness_manifest is None:            # A10: the B3-A production readiness manifest (None would block A10)
+        from strategy_agent.readiness import manifest as RM  # noqa: PLC0415
+
+        def readiness_manifest():
+            return RM.build(None)
     gate = RealActivationGate(governance_root=governance_root, artifact_root=artifact_root, executor_id=executor_id,
-                              production_books=production_books,
-                              **({"readiness_manifest": readiness_manifest} if readiness_manifest else {}))
+                              production_books=production_books, readiness_manifest=readiness_manifest)
     ad = ControlledRunnerAdapter(backend, governance_root=governance_root, activation=gate)
     if ad.mode != "REAL_GATED":
         raise B3CStopped("NOT_REAL_GATED", ad.mode)

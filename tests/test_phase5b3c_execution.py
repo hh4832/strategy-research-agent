@@ -83,3 +83,44 @@ def test_prepared_files_and_manifest_are_tamper_evident(tmp_path):
     with pytest.raises(R.B3CStopped) as e:
         R.load_prepared(tmp_path / "prep")
     assert e.value.code == "PREPARED_FILES_CHANGED"
+
+
+@needs_auth
+def test_production_gate_on_the_repository_books_passes_everything_but_the_binding(tmp_path, monkeypatch):
+    """Regression (first Colab EXECUTE stopped at A10): execute() must give the REAL_GATED gate the B3-A production
+    readiness manifest. On the repository books every condition except A02/A03 (no binding yet) must PASS."""
+    from strategy_agent.execution import activation as AV
+    from strategy_agent.execution import identity as I
+    from strategy_agent.execution.real_testkit import MockRealRunnerBackend
+    R.prepare(tmp_path / "prep", agent_commit=G40, now=NOW)
+    src = json.loads((tmp_path / "prep/request.json").read_text())
+    bound = dict(src, authorization_ref={"authorization_id": R.AUTHORIZATION_ID})
+    seen = {}
+
+    class Spy(AV.RealActivationGate):
+        def __init__(self, **kw):
+            seen.update(kw)
+            raise RuntimeError("STOP_AFTER_GATE_CONSTRUCTION")
+    monkeypatch.setattr(AV, "RealActivationGate", Spy)
+    be = MockRealRunnerBackend(A5.FIX / A5.FIX_RUN, identity=I.request_identity(bound))
+    from strategy_agent.approval.testkit import FixtureApprovals
+    fa = FixtureApprovals()
+    m = R.load_prepared(tmp_path / "prep")[0]
+    import strategy_agent.binding.service as S
+
+    class DryOk:                      # only to reach the gate construction; nothing is written
+        def __init__(self, **kw): pass
+        def bind(self, dry_run=True, **kw):
+            return {"would_write": {"bound_request_sha256": m["bound_request_sha256"]}}
+    monkeypatch.setattr(S, "AuthorizationBindingService", DryOk)
+    monkeypatch.setattr(fa.verifier, "verify", lambda *a, **k: {})
+    with pytest.raises(RuntimeError, match="STOP_AFTER_GATE_CONSTRUCTION"):
+        R.execute(tmp_path / "prep", bind_url="b", task_url="t", verifier=fa.verifier, backend=be,
+                  work_dir=tmp_path / "w", claim_dir=tmp_path / "c")
+    assert callable(seen["readiness_manifest"]) and seen["production_books"] is True
+    monkeypatch.undo()
+    g = AV.RealActivationGate(governance_root=ROOT, artifact_root=ROOT, executor_id=R.EXECUTOR, production_books=True,
+                              readiness_manifest=seen["readiness_manifest"])
+    c = g.evaluate(bound, be)["conditions"]
+    assert {k for k, v in c.items() if v["status"] != "PASS"} == {"A02_verified_binding_evidence",
+                                                                   "A03_authorization_bound_request"}, c
