@@ -375,6 +375,40 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  phase5b3c-preparation:
+    # Phase 5-B3-C PREPARATION only: authorization draft (docs/, never governance/), run-config derivation in memory,
+    # non-consuming preflight. Every B3C gate must stay NOT_EXECUTED; no authorization, binding, budget or Runner.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    env:
+      MRC_SHA: b16179a7cc077c36046574769a32c367fa476cae
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}" pyarrow
+      - run: pytest -q -p no:cacheprovider tests/test_phase5b3c_preparation.py tests/test_phase5b3a_readiness.py
+      - name: Committed draft is the deterministic output
+        run: |
+          python -m strategy_agent.readiness.b3c emit-docs
+          git diff --exit-code -- docs/phase5b3c
+      - name: Preflight (B3C-01..10 NOT_EXECUTED; never a real-research PASS)
+        run: |
+          python -m strategy_agent.readiness.b3c preflight --out "$RUNNER_TEMP/b3c_preflight.json" > /dev/null
+          python - <<'PY'
+          import json, os
+          r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "b3c_preflight.json")))
+          assert {g["status"] for g in r["gates"].values()} == {"NOT_EXECUTED"}, r["gates"]
+          assert r["real_research_pass"] is False and r["research_authorization"] == "NOT_GRANTED"
+          assert r["preparation"] == "READY_FOR_HUMAN_DECISION", r["preparation_problems"]
+          PY
+          git diff --exit-code -- registry governance configs specs
+          test ! -e registry/research_budget_events.jsonl
+
   phase5a3-integration:
     # Phase 5-A3: actual A2 export -> actual A1 orchestrator (SYNTHETIC_FIXTURE Route A + fixture archive replay).
     # No Core, no market data, no batch, no Holdout. Real archive replay runs only in Colab (notebook).
