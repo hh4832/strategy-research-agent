@@ -1,0 +1,38 @@
+{
+  "checks": {
+    "C1_archive_identity": "PASS",
+    "C2_archive_integrity": "PASS",
+    "C3_trade_integrity": "PASS",
+    "C4_performance_consistency": "PASS",
+    "C5_temporal_safety": "PASS",
+    "C6_research_evaluation": "PASS",
+    "C7_reproducibility": "PASS",
+    "C8_governance_isolation": "PASS"
+  },
+  "consumed_batches": 0,
+  "engineering_status": "PASS",
+  "error": null,
+  "evaluated_at": "2026-11-10T14:46:45+08:00",
+  "evaluator_commit": "3f6284f07a6c103fb003421b19bf0aadf59a74de",
+  "evaluator_process": {
+    "executor_modules_loaded": [],
+    "fresh": true
+  },
+  "evidence_sufficiency": "UNDETERMINED",
+  "files_sha256": {
+    "acceptance_checks.json": "d63812df1f2b4f8c515541a7629c5b185b7409a12e818657a72df92f9e648328",
+    "archive_contract_mapping.md": "6bebd48c583d07b5bcb46dc513ab2080cc3ddb598c15d91fddf72e79821d8bcc",
+    "evaluation.json": "97723e9964b60c1e49568aa090624223adffcc2c7c69520f053afe0bb2dfdd8e",
+    "evaluation_report.md": "e63fcf6051d25b52cd62e1dd9f40258f99bcf458f2438db3856d470dc4a440f8",
+    "research_decision.json": "ab80b722e3a0666291c36f3d6e91bee388936bc5301ce2681b76dbb6bc053506",
+    "risk_flags.json": "dcb4f66203d681ad2d1a86365e880f989ffc47c71f43588464e3f50264a8e418",
+    "robustness_matrix.csv": "038b926170987692fc76426b233e40bf01e8d0b85a7cf097a7f9608ea899dace",
+    "run_info.txt": "19cd96e4fc68b18b4508b623ffa572f9863a1757912f2b37174898aafc7a357f"
+  },
+  "output_dir": "/content/drive/MyDrive/00Quant_Research/phase5b3c/RA-IBKR_TSM-SMA520_P5B3C-0001/reevaluation/20261110_144644/evaluation",
+  "runner_archive": "/content/drive/MyDrive/00Quant_Research/phase5b3c/RA-IBKR_TSM-SMA520_P5B3C-0001/runs/20261110_141740/state/executions/T-e458d0f7af8ffd3c1926/attempt_1/20261110_141805_e3ce267",
+  "runner_archive_manifest_sha256": "c35e1a164f225fa8fdb4d66026eefc4c96131bfe1ee1fff35100464959536151",
+  "status": "PASS",
+  "strategy_re_run": false,
+  "strategy_verdict": "RETEST"
+}

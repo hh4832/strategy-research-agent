@@ -1,0 +1,72 @@
+{
+  "approval_evidence_sha256": "6217af3cf8289904fcf9d6aa24f0d36563127918155f408ab3bc156a1e3273f3",
+  "archive_path": "/content/phase5b3c_run/state/executions/T-e458d0f7af8ffd3c1926/attempt_1/20261110_141805_e3ce267",
+  "attempt_id": "T-e458d0f7af8ffd3c1926:1",
+  "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+  "backend": "RESEARCH_ONLY_RUNNER_REAL_SNAPSHOT",
+  "backend_identity": {
+    "agent_git_sha": "e3ce26786054ff91d0d211e2f4dfd63a500e299f",
+    "core_git_sha": "b16179a7cc077c36046574769a32c367fa476cae"
+  },
+  "binding_id": "AB-12103e95fef3a534492af832",
+  "consumed_batches": 1,
+  "execution_contract": {
+    "agent_git_sha": "e3ce26786054ff91d0d211e2f4dfd63a500e299f",
+    "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+    "core_commit": "b16179a7cc077c36046574769a32c367fa476cae",
+    "cost_profile": {
+      "core_profile_sha256": "{\"BASE\": \"ea2cb1932ba83eadcdc12720a56d7404d30686a03c6fe6ce10482cceca63c529\", \"LOW\": \"4111a7d0798162ff2c0cb6a8fd7f4e15f59d8f830e70f04da7b41e660efb101b\", \"STRESS\": \"80c00d97c8dc333ba7d39e54782e3af123cc09a46ca5703331faef82e105c401\", \"CAT_STRESS\": \"bd42c2661b3bf6dcf1b7d9f68b51762af2682ff13035384a49a340b1d574cbfc\"}",
+      "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+      "scenarios": [
+        "BASE",
+        "LOW",
+        "STRESS",
+        "CAT_STRESS"
+      ]
+    },
+    "dataset_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "dataset_snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+    "execution_mode": "REAL_GATED",
+    "execution_result": {
+      "archive_run_id": "20261110_141805_e3ce267",
+      "files": 13,
+      "scenarios": [
+        "BASE",
+        "CAT_STRESS",
+        "LOW",
+        "STRESS"
+      ]
+    },
+    "execution_time_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+    "executor_id": "colab-hh4832-exec-01",
+    "request_sha256": "e458d0f7af8ffd3c1926d6cd4122ab22b2872008033cc785aad436ebce09e1de",
+    "run_id": "20261110_141805_e3ce267",
+    "runner_receipt": {
+      "config_sha256": "a57caa43a441e7396e51132daa1a6abdce83dd3e60f585ae34d9f18da4544106",
+      "integrity_receipt_sha256": "eb97079c7a4c7fecc505dd3b398cf98868f7babe1eed65484e8d981669835667",
+      "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+      "parquet_sha256": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452",
+      "verification_ref": "DEVELOPMENT_RECEIPT_RENEWAL:fdd7a4c67817b3b77ca3ed1cf32be09f8a06c1de19c32a0b1076bb1346e75cc4"
+    },
+    "signal_time_rule": "CORE_MODELED_AVAILABLE_AT",
+    "slippage_bps_per_side": {
+      "BASE": 2,
+      "CAT_STRESS": 2,
+      "LOW": 1,
+      "STRESS": 4
+    },
+    "strategy_spec_sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34"
+  },
+  "execution_mode": "REAL_GATED",
+  "execution_started_event_sha256": "ee475e8bf752d45e256e59db3d3909722299d1d9dd5d4d1eb5b9e65f731e76ee",
+  "finished_at": "2026-11-10T06:19:09+00:00",
+  "kind": "EXECUTION_RECEIPT",
+  "output_manifest_sha256": "c35e1a164f225fa8fdb4d66026eefc4c96131bfe1ee1fff35100464959536151",
+  "request_sha256": "e458d0f7af8ffd3c1926d6cd4122ab22b2872008033cc785aad436ebce09e1de",
+  "reservation_id": "BR-174ffee2ef6df52245e78888",
+  "run_id": "20261110_141805_e3ce267",
+  "started_at": "2026-11-10T14:18:06+08:00",
+  "synthetic": false,
+  "task_id": "T-e458d0f7af8ffd3c1926",
+  "use_record_sha256": "c7fd92df24c789035c0a5825138185d1c98b228e080c9b4242507dffec43f232"
+}

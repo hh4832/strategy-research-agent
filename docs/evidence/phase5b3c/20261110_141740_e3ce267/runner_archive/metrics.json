@@ -1,0 +1,1078 @@
+{
+  "BASE": {
+    "bars": 1408,
+    "by_holding_period_bars": {
+      "17-64": {
+        "average_loss": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": -84.0,
+        "payoff_ratio": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 2,
+        "win_rate": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      },
+      "5-16": {
+        "average_loss": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": -407.57,
+        "payoff_ratio": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 5,
+        "win_rate": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      },
+      ">=65": {
+        "average_loss": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": 2335.92,
+        "payoff_ratio": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 6,
+        "win_rate": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      }
+    },
+    "by_parameter_set": {
+      "fast=5,slow=20": {
+        "average_loss": -125.07857142857142,
+        "average_win": 453.31666666666666,
+        "expectancy": 141.87307692307692,
+        "net_pnl": 1844.35,
+        "payoff_ratio": 3.624255230045876,
+        "profit_factor": 3.106504482896465,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "by_regime": {
+      "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+      "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+      "TSM": {
+        "average_loss": -125.07857142857142,
+        "average_win": 453.31666666666666,
+        "expectancy": 141.87307692307692,
+        "net_pnl": 1844.35,
+        "payoff_ratio": 3.624255230045876,
+        "profit_factor": 3.106504482896465,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "by_year": {
+      "2024": {
+        "average_loss": -125.07857142857142,
+        "average_win": 453.31666666666666,
+        "expectancy": 141.87307692307692,
+        "net_pnl": 1844.35,
+        "payoff_ratio": 3.624255230045876,
+        "profit_factor": 3.106504482896465,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "cost_adjusted_net_return": 0.018443499999999998,
+    "cost_profile_sha256": "ea2cb1932ba83eadcdc12720a56d7404d30686a03c6fe6ce10482cceca63c529",
+    "costs": {
+      "cost_share_of_gross": 0.017394778902503995,
+      "fees": 26.0,
+      "regulatory_fees": 6.6499999999999995,
+      "taxes": 0.0,
+      "total": 32.65
+    },
+    "data_quality": {
+      "expected_bars_from_session_template": 572,
+      "max_participation_of_bar_volume": 0.001595405232929164,
+      "median_bar_volume": 18095.5,
+      "missing_bars": -836,
+      "order_qty": 100.0,
+      "rejections_by_reason": {
+        "BAR_NOT_ELIGIBLE": 2,
+        "ORDER_EXPIRED": 1
+      },
+      "slippage_cost_vs_bar_open": 103.99999999999352,
+      "unfillable_signals": 1,
+      "zero_volume_bars": 13
+    },
+    "descriptive_trade_stats": {
+      "average_loss": -125.07857142857144,
+      "average_win": 453.31666666666666,
+      "expectancy": 141.87307692307692,
+      "label": "DESCRIPTIVE_ONLY",
+      "losses": 7,
+      "net_pnl": 1844.35,
+      "payoff_ratio": 3.6242552300458755,
+      "profit_factor": 3.1065044828964647,
+      "trade_count": 13,
+      "win_rate": 0.46153846153846156,
+      "wins": 6
+    },
+    "exposure": 0.33735795454545453,
+    "fills": 26,
+    "gross_return_closed_trades": 0.01877,
+    "holding_period_bars_distribution": {
+      "buckets": {
+        "17-64": 6,
+        "5-16": 5,
+        "<=4": 0,
+        ">=65": 2
+      },
+      "count": 13,
+      "max": 127,
+      "mean": 36.53846153846154,
+      "median": 17,
+      "min": 6,
+      "overnight_trades": 6,
+      "unit": "Core 15m bars held (bar_end in (entry, exit])"
+    },
+    "m3a4_checks": {
+      "K00_ledger_is_fills": "PASS",
+      "K01_ledger_fields": "PASS",
+      "K02_ledger_cost_identities": "PASS",
+      "K03_round_trip_costs_equal_ledger": "PASS",
+      "P01_engine_git_sha": "PASS",
+      "P02_engine_version": "PASS",
+      "P03_available_at_policy": "PASS",
+      "P04_temporal_policy_sha256": "PASS",
+      "P05_temporal_policy_id": "PASS",
+      "P06_label_unknown": "PASS",
+      "P07_modeled_rule": "PASS",
+      "P08_research_only": "PASS",
+      "P09_cost_profile_sha256": "PASS",
+      "P10_cost_profile_version": "PASS",
+      "P11_cost_components_declared": "PASS",
+      "R01_rejection_codes_reviewed": "PASS",
+      "T01_no_lookahead": "PASS"
+    },
+    "max_drawdown": -0.00782950773686697,
+    "max_drawdown_duration_bars": 485,
+    "multiple_testing": {
+      "deflated_sharpe": 0.9464293223331991,
+      "family_id": "UNASSIGNED",
+      "family_trials": 1,
+      "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+      "psr_vs_zero": 0.9464293223331991
+    },
+    "open_position_at_end": null,
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "rejections": 3,
+    "sample": {
+      "effective_net_pnl": 1844.35,
+      "invalidated_abs_pnl_share": 0.0,
+      "invalidated_fraction": 0.0,
+      "invalidated_net_pnl_for_reference": 0,
+      "invalidated_trades": 0,
+      "reasons": [
+        {
+          "code": "Q5-1",
+          "message": "valid trades 13 < 30 after invalidation"
+        }
+      ],
+      "status": "INSUFFICIENT",
+      "valid_trades": 13
+    },
+    "sample_minimum_trades": 30,
+    "sample_status": "INSUFFICIENT_SAMPLE",
+    "sessions": 22,
+    "sharpe_ratio": {
+      "annualised": 3.2919755796656682,
+      "basis": "bar returns of Core equity, sqrt(6552) scaling, i.i.d. assumption",
+      "per_bar": 0.04066957748153682
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+      "bar_return": {
+        "cvar_95": -0.0006925875451812269,
+        "excess_kurtosis": 35.52053174559455,
+        "skew": 2.942198595350146,
+        "var_95": -0.00037722621781220055,
+        "worst": -0.0023612986510266366
+      },
+      "trades": {
+        "best_trade": 1074.51,
+        "extreme_losses_below_mean_minus_3sd": 0,
+        "max_consecutive_losses": 3,
+        "worst_trade": -216.49
+      },
+      "worst_session_return": -0.00306486011705921
+    },
+    "total_return": 0.018443499999999332,
+    "trades": {
+      "average_loss": -125.07857142857142,
+      "average_win": 453.31666666666666,
+      "expectancy": 141.87307692307692,
+      "net_pnl": 1844.35,
+      "payoff_ratio": 3.624255230045876,
+      "profit_factor": 3.106504482896465,
+      "trade_count": 13,
+      "win_rate": 0.46153846153846156
+    },
+    "turnover_annualised": 24.8973663478461
+  },
+  "CAT_STRESS": {
+    "bars": 1408,
+    "by_holding_period_bars": {
+      "17-64": {
+        "average_loss": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": -84.03999999999999,
+        "payoff_ratio": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 2,
+        "win_rate": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      },
+      "5-16": {
+        "average_loss": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": -407.67,
+        "payoff_ratio": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 5,
+        "win_rate": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      },
+      ">=65": {
+        "average_loss": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": 2335.8,
+        "payoff_ratio": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 6,
+        "win_rate": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      }
+    },
+    "by_parameter_set": {
+      "fast=5,slow=20": {
+        "average_loss": -125.09857142857142,
+        "average_win": 453.2966666666667,
+        "expectancy": 141.85307692307694,
+        "net_pnl": 1844.0900000000001,
+        "payoff_ratio": 3.6235159321982287,
+        "profit_factor": 3.1058707990270533,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "by_regime": {
+      "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+      "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+      "TSM": {
+        "average_loss": -125.09857142857142,
+        "average_win": 453.2966666666667,
+        "expectancy": 141.85307692307694,
+        "net_pnl": 1844.0900000000001,
+        "payoff_ratio": 3.6235159321982287,
+        "profit_factor": 3.1058707990270533,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "by_year": {
+      "2024": {
+        "average_loss": -125.09857142857142,
+        "average_win": 453.2966666666667,
+        "expectancy": 141.85307692307694,
+        "net_pnl": 1844.0900000000001,
+        "payoff_ratio": 3.6235159321982287,
+        "profit_factor": 3.1058707990270533,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "cost_adjusted_net_return": 0.018440900000000003,
+    "cost_profile_sha256": "bd42c2661b3bf6dcf1b7d9f68b51762af2682ff13035384a49a340b1d574cbfc",
+    "costs": {
+      "cost_share_of_gross": 0.01753329781566329,
+      "fees": 26.0,
+      "regulatory_fees": 6.91,
+      "taxes": 0.0,
+      "total": 32.91
+    },
+    "data_quality": {
+      "expected_bars_from_session_template": 572,
+      "max_participation_of_bar_volume": 0.001595405232929164,
+      "median_bar_volume": 18095.5,
+      "missing_bars": -836,
+      "order_qty": 100.0,
+      "rejections_by_reason": {
+        "BAR_NOT_ELIGIBLE": 2,
+        "ORDER_EXPIRED": 1
+      },
+      "slippage_cost_vs_bar_open": 103.99999999999352,
+      "unfillable_signals": 1,
+      "zero_volume_bars": 13
+    },
+    "descriptive_trade_stats": {
+      "average_loss": -125.09857142857142,
+      "average_win": 453.2966666666667,
+      "expectancy": 141.85307692307694,
+      "label": "DESCRIPTIVE_ONLY",
+      "losses": 7,
+      "net_pnl": 1844.0900000000001,
+      "payoff_ratio": 3.6235159321982287,
+      "profit_factor": 3.1058707990270533,
+      "trade_count": 13,
+      "win_rate": 0.46153846153846156,
+      "wins": 6
+    },
+    "exposure": 0.33735795454545453,
+    "fills": 26,
+    "gross_return_closed_trades": 0.01877,
+    "holding_period_bars_distribution": {
+      "buckets": {
+        "17-64": 6,
+        "5-16": 5,
+        "<=4": 0,
+        ">=65": 2
+      },
+      "count": 13,
+      "max": 127,
+      "mean": 36.53846153846154,
+      "median": 17,
+      "min": 6,
+      "overnight_trades": 6,
+      "unit": "Core 15m bars held (bar_end in (entry, exit])"
+    },
+    "m3a4_checks": {
+      "K00_ledger_is_fills": "PASS",
+      "K01_ledger_fields": "PASS",
+      "K02_ledger_cost_identities": "PASS",
+      "K03_round_trip_costs_equal_ledger": "PASS",
+      "P01_engine_git_sha": "PASS",
+      "P02_engine_version": "PASS",
+      "P03_available_at_policy": "PASS",
+      "P04_temporal_policy_sha256": "PASS",
+      "P05_temporal_policy_id": "PASS",
+      "P06_label_unknown": "PASS",
+      "P07_modeled_rule": "PASS",
+      "P08_research_only": "PASS",
+      "P09_cost_profile_sha256": "PASS",
+      "P10_cost_profile_version": "PASS",
+      "P11_cost_components_declared": "PASS",
+      "R01_rejection_codes_reviewed": "PASS",
+      "T01_no_lookahead": "PASS"
+    },
+    "max_drawdown": -0.007830495919687541,
+    "max_drawdown_duration_bars": 485,
+    "multiple_testing": {
+      "deflated_sharpe": 0.9464031492643402,
+      "family_id": "UNASSIGNED",
+      "family_trials": 1,
+      "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+      "psr_vs_zero": 0.9464031492643402
+    },
+    "open_position_at_end": null,
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "rejections": 3,
+    "sample": {
+      "effective_net_pnl": 1844.0900000000001,
+      "invalidated_abs_pnl_share": 0.0,
+      "invalidated_fraction": 0.0,
+      "invalidated_net_pnl_for_reference": 0,
+      "invalidated_trades": 0,
+      "reasons": [
+        {
+          "code": "Q5-1",
+          "message": "valid trades 13 < 30 after invalidation"
+        }
+      ],
+      "status": "INSUFFICIENT",
+      "valid_trades": 13
+    },
+    "sample_minimum_trades": 30,
+    "sample_status": "INSUFFICIENT_SAMPLE",
+    "sessions": 22,
+    "sharpe_ratio": {
+      "annualised": 3.2915088017183147,
+      "basis": "bar returns of Core equity, sqrt(6552) scaling, i.i.d. assumption",
+      "per_bar": 0.04066381083429502
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+      "bar_return": {
+        "cvar_95": -0.0006925939330380804,
+        "excess_kurtosis": 35.520352227218744,
+        "skew": 2.942184858011,
+        "var_95": -0.00037722664407731767,
+        "worst": -0.002361299350909436
+      },
+      "trades": {
+        "best_trade": 1074.49,
+        "extreme_losses_below_mean_minus_3sd": 0,
+        "max_consecutive_losses": 3,
+        "worst_trade": -216.51
+      },
+      "worst_session_return": -0.0030651576639421875
+    },
+    "total_return": 0.018440900000000548,
+    "trades": {
+      "average_loss": -125.09857142857142,
+      "average_win": 453.2966666666667,
+      "expectancy": 141.85307692307694,
+      "net_pnl": 1844.0900000000001,
+      "payoff_ratio": 3.6235159321982287,
+      "profit_factor": 3.1058707990270533,
+      "trade_count": 13,
+      "win_rate": 0.46153846153846156
+    },
+    "turnover_annualised": 24.897392729349907
+  },
+  "LOW": {
+    "bars": 1408,
+    "by_holding_period_bars": {
+      "17-64": {
+        "average_loss": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": -76.0,
+        "payoff_ratio": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 2,
+        "win_rate": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      },
+      "5-16": {
+        "average_loss": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": -387.57,
+        "payoff_ratio": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 5,
+        "win_rate": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      },
+      ">=65": {
+        "average_loss": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": 2359.92,
+        "payoff_ratio": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 6,
+        "win_rate": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      }
+    },
+    "by_parameter_set": {
+      "fast=5,slow=20": {
+        "average_loss": -121.07857142857142,
+        "average_win": 457.31666666666666,
+        "expectancy": 145.87307692307692,
+        "net_pnl": 1896.35,
+        "payoff_ratio": 3.777023971053822,
+        "profit_factor": 3.237449118046133,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "by_regime": {
+      "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+      "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+      "TSM": {
+        "average_loss": -121.07857142857142,
+        "average_win": 457.31666666666666,
+        "expectancy": 145.87307692307692,
+        "net_pnl": 1896.35,
+        "payoff_ratio": 3.777023971053822,
+        "profit_factor": 3.237449118046133,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "by_year": {
+      "2024": {
+        "average_loss": -121.07857142857142,
+        "average_win": 457.31666666666666,
+        "expectancy": 145.87307692307692,
+        "net_pnl": 1896.35,
+        "payoff_ratio": 3.777023971053822,
+        "profit_factor": 3.237449118046133,
+        "trade_count": 13,
+        "win_rate": 0.46153846153846156
+      }
+    },
+    "cost_adjusted_net_return": 0.018963499999999998,
+    "cost_profile_sha256": "4111a7d0798162ff2c0cb6a8fd7f4e15f59d8f830e70f04da7b41e660efb101b",
+    "costs": {
+      "cost_share_of_gross": 0.016925868325557283,
+      "fees": 26.0,
+      "regulatory_fees": 6.6499999999999995,
+      "taxes": 0.0,
+      "total": 32.65
+    },
+    "data_quality": {
+      "expected_bars_from_session_template": 572,
+      "max_participation_of_bar_volume": 0.001595405232929164,
+      "median_bar_volume": 18095.5,
+      "missing_bars": -836,
+      "order_qty": 100.0,
+      "rejections_by_reason": {
+        "BAR_NOT_ELIGIBLE": 2,
+        "ORDER_EXPIRED": 1
+      },
+      "slippage_cost_vs_bar_open": 51.99999999998681,
+      "unfillable_signals": 1,
+      "zero_volume_bars": 13
+    },
+    "descriptive_trade_stats": {
+      "average_loss": -121.07857142857144,
+      "average_win": 457.31666666666666,
+      "expectancy": 145.87307692307692,
+      "label": "DESCRIPTIVE_ONLY",
+      "losses": 7,
+      "net_pnl": 1896.35,
+      "payoff_ratio": 3.7770239710538216,
+      "profit_factor": 3.2374491180461327,
+      "trade_count": 13,
+      "win_rate": 0.46153846153846156,
+      "wins": 6
+    },
+    "exposure": 0.33735795454545453,
+    "fills": 26,
+    "gross_return_closed_trades": 0.01929,
+    "holding_period_bars_distribution": {
+      "buckets": {
+        "17-64": 6,
+        "5-16": 5,
+        "<=4": 0,
+        ">=65": 2
+      },
+      "count": 13,
+      "max": 127,
+      "mean": 36.53846153846154,
+      "median": 17,
+      "min": 6,
+      "overnight_trades": 6,
+      "unit": "Core 15m bars held (bar_end in (entry, exit])"
+    },
+    "m3a4_checks": {
+      "K00_ledger_is_fills": "PASS",
+      "K01_ledger_fields": "PASS",
+      "K02_ledger_cost_identities": "PASS",
+      "K03_round_trip_costs_equal_ledger": "PASS",
+      "P01_engine_git_sha": "PASS",
+      "P02_engine_version": "PASS",
+      "P03_available_at_policy": "PASS",
+      "P04_temporal_policy_sha256": "PASS",
+      "P05_temporal_policy_id": "PASS",
+      "P06_label_unknown": "PASS",
+      "P07_modeled_rule": "PASS",
+      "P08_research_only": "PASS",
+      "P09_cost_profile_sha256": "PASS",
+      "P10_cost_profile_version": "PASS",
+      "P11_cost_components_declared": "PASS",
+      "R01_rejection_codes_reviewed": "PASS",
+      "T01_no_lookahead": "PASS"
+    },
+    "max_drawdown": -0.0076319293552954415,
+    "max_drawdown_duration_bars": 485,
+    "multiple_testing": {
+      "deflated_sharpe": 0.9514640748326901,
+      "family_id": "UNASSIGNED",
+      "family_trials": 1,
+      "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+      "psr_vs_zero": 0.9514640748326901
+    },
+    "open_position_at_end": null,
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "rejections": 3,
+    "sample": {
+      "effective_net_pnl": 1896.35,
+      "invalidated_abs_pnl_share": 0.0,
+      "invalidated_fraction": 0.0,
+      "invalidated_net_pnl_for_reference": 0,
+      "invalidated_trades": 0,
+      "reasons": [
+        {
+          "code": "Q5-1",
+          "message": "valid trades 13 < 30 after invalidation"
+        }
+      ],
+      "status": "INSUFFICIENT",
+      "valid_trades": 13
+    },
+    "sample_minimum_trades": 30,
+    "sample_status": "INSUFFICIENT_SAMPLE",
+    "sessions": 22,
+    "sharpe_ratio": {
+      "annualised": 3.385241218983593,
+      "basis": "bar returns of Core equity, sqrt(6552) scaling, i.i.d. assumption",
+      "per_bar": 0.04182179567174303
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+      "bar_return": {
+        "cvar_95": -0.0006913329734380265,
+        "excess_kurtosis": 35.55152463251076,
+        "skew": 2.944589076145547,
+        "var_95": -0.00036450947094307393,
+        "worst": -0.0023611586828054007
+      },
+      "trades": {
+        "best_trade": 1078.51,
+        "extreme_losses_below_mean_minus_3sd": 0,
+        "max_consecutive_losses": 3,
+        "worst_trade": -212.49
+      },
+      "worst_session_return": -0.0030053542884189593
+    },
+    "total_return": 0.01896349999999933,
+    "trades": {
+      "average_loss": -121.07857142857142,
+      "average_win": 457.31666666666666,
+      "expectancy": 145.87307692307692,
+      "net_pnl": 1896.35,
+      "payoff_ratio": 3.777023971053822,
+      "profit_factor": 3.237449118046133,
+      "trade_count": 13,
+      "win_rate": 0.46153846153846156
+    },
+    "turnover_annualised": 24.892091170597677
+  },
+  "STRESS": {
+    "bars": 1408,
+    "by_holding_period_bars": {
+      "17-64": {
+        "average_loss": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": -96.0,
+        "payoff_ratio": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 2,
+        "win_rate": {
+          "reason": "2 valid round trips in 17-64 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      },
+      "5-16": {
+        "average_loss": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": -438.57,
+        "payoff_ratio": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 5,
+        "win_rate": {
+          "reason": "5 valid round trips in 5-16 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      },
+      ">=65": {
+        "average_loss": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "average_win": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "expectancy": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "net_pnl": 2298.92,
+        "payoff_ratio": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "profit_factor": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        },
+        "trade_count": 6,
+        "win_rate": {
+          "reason": "6 valid round trips in >=65 < 10",
+          "status": "NOT_EVALUABLE"
+        }
+      }
+    },
+    "by_parameter_set": {
+      "fast=5,slow=20": {
+        "average_loss": -115.00875,
+        "average_win": 536.884,
+        "expectancy": 135.71923076923076,
+        "net_pnl": 1764.35,
+        "payoff_ratio": 4.6682013325073095,
+        "profit_factor": 2.9176258328170683,
+        "trade_count": 13,
+        "win_rate": 0.38461538461538464
+      }
+    },
+    "by_regime": {
+      "reason": "no pre-registered regime definition in the spec; regimes are never labelled after seeing results",
+      "status": "NOT_EVALUABLE"
+    },
+    "by_symbol": {
+      "TSM": {
+        "average_loss": -115.00875,
+        "average_win": 536.884,
+        "expectancy": 135.71923076923076,
+        "net_pnl": 1764.35,
+        "payoff_ratio": 4.6682013325073095,
+        "profit_factor": 2.9176258328170683,
+        "trade_count": 13,
+        "win_rate": 0.38461538461538464
+      }
+    },
+    "by_year": {
+      "2024": {
+        "average_loss": -115.00875,
+        "average_win": 536.884,
+        "expectancy": 135.71923076923076,
+        "net_pnl": 1764.35,
+        "payoff_ratio": 4.6682013325073095,
+        "profit_factor": 2.9176258328170683,
+        "trade_count": 13,
+        "win_rate": 0.38461538461538464
+      }
+    },
+    "cost_adjusted_net_return": 0.0176435,
+    "cost_profile_sha256": "80c00d97c8dc333ba7d39e54782e3af123cc09a46ca5703331faef82e105c401",
+    "costs": {
+      "cost_share_of_gross": 0.01816917084028937,
+      "fees": 26.0,
+      "regulatory_fees": 6.6499999999999995,
+      "taxes": 0.0,
+      "total": 32.65
+    },
+    "data_quality": {
+      "expected_bars_from_session_template": 572,
+      "max_participation_of_bar_volume": 0.001595405232929164,
+      "median_bar_volume": 18095.5,
+      "missing_bars": -836,
+      "order_qty": 100.0,
+      "rejections_by_reason": {
+        "BAR_NOT_ELIGIBLE": 2,
+        "ORDER_EXPIRED": 1
+      },
+      "slippage_cost_vs_bar_open": 183.99999999999466,
+      "unfillable_signals": 1,
+      "zero_volume_bars": 13
+    },
+    "descriptive_trade_stats": {
+      "average_loss": -115.00875,
+      "average_win": 536.884,
+      "expectancy": 135.71923076923076,
+      "label": "DESCRIPTIVE_ONLY",
+      "losses": 8,
+      "net_pnl": 1764.35,
+      "payoff_ratio": 4.6682013325073095,
+      "profit_factor": 2.9176258328170683,
+      "trade_count": 13,
+      "win_rate": 0.38461538461538464,
+      "wins": 5
+    },
+    "exposure": 0.33735795454545453,
+    "fills": 26,
+    "gross_return_closed_trades": 0.01797,
+    "holding_period_bars_distribution": {
+      "buckets": {
+        "17-64": 6,
+        "5-16": 5,
+        "<=4": 0,
+        ">=65": 2
+      },
+      "count": 13,
+      "max": 127,
+      "mean": 36.53846153846154,
+      "median": 17,
+      "min": 6,
+      "overnight_trades": 6,
+      "unit": "Core 15m bars held (bar_end in (entry, exit])"
+    },
+    "m3a4_checks": {
+      "K00_ledger_is_fills": "PASS",
+      "K01_ledger_fields": "PASS",
+      "K02_ledger_cost_identities": "PASS",
+      "K03_round_trip_costs_equal_ledger": "PASS",
+      "P01_engine_git_sha": "PASS",
+      "P02_engine_version": "PASS",
+      "P03_available_at_policy": "PASS",
+      "P04_temporal_policy_sha256": "PASS",
+      "P05_temporal_policy_id": "PASS",
+      "P06_label_unknown": "PASS",
+      "P07_modeled_rule": "PASS",
+      "P08_research_only": "PASS",
+      "P09_cost_profile_sha256": "PASS",
+      "P10_cost_profile_version": "PASS",
+      "P11_cost_components_declared": "PASS",
+      "R01_rejection_codes_reviewed": "PASS",
+      "T01_no_lookahead": "PASS"
+    },
+    "max_drawdown": -0.008145635305713661,
+    "max_drawdown_duration_bars": 485,
+    "multiple_testing": {
+      "deflated_sharpe": 0.9378980888809261,
+      "family_id": "UNASSIGNED",
+      "family_trials": 1,
+      "note": "every attempt in the family counts (completed, failed, rejected) except governance/budget stops",
+      "psr_vs_zero": 0.9378980888809261
+    },
+    "open_position_at_end": null,
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "rejections": 3,
+    "sample": {
+      "effective_net_pnl": 1764.35,
+      "invalidated_abs_pnl_share": 0.0,
+      "invalidated_fraction": 0.0,
+      "invalidated_net_pnl_for_reference": 0,
+      "invalidated_trades": 0,
+      "reasons": [
+        {
+          "code": "Q5-1",
+          "message": "valid trades 13 < 30 after invalidation"
+        }
+      ],
+      "status": "INSUFFICIENT",
+      "valid_trades": 13
+    },
+    "sample_minimum_trades": 30,
+    "sample_status": "INSUFFICIENT_SAMPLE",
+    "sessions": 22,
+    "sharpe_ratio": {
+      "annualised": 3.148274315693198,
+      "basis": "bar returns of Core equity, sqrt(6552) scaling, i.i.d. assumption",
+      "per_bar": 0.03889426975282132
+    },
+    "symbol": "TSM",
+    "tail_risk": {
+      "bar_return": {
+        "cvar_95": -0.0006945070015316972,
+        "excess_kurtosis": 35.45817134806141,
+        "skew": 2.9374429668230904,
+        "var_95": -0.00037735415020355456,
+        "worst": -0.002361508634475912
+      },
+      "trades": {
+        "best_trade": 1068.51,
+        "extreme_losses_below_mean_minus_3sd": 0,
+        "max_consecutive_losses": 4,
+        "worst_trade": -222.49
+      },
+      "worst_session_return": -0.003154132099949344
+    },
+    "total_return": 0.01764349999999933,
+    "trades": {
+      "average_loss": -115.00875,
+      "average_win": 536.884,
+      "expectancy": 135.71923076923076,
+      "net_pnl": 1764.35,
+      "payoff_ratio": 4.6682013325073095,
+      "profit_factor": 2.9176258328170683,
+      "trade_count": 13,
+      "win_rate": 0.38461538461538464
+    },
+    "turnover_annualised": 24.90542762300665
+  }
+}

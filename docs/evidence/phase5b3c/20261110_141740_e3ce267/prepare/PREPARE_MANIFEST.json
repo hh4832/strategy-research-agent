@@ -1,0 +1,22 @@
+{
+  "APPROVE_TASK": "RESEARCH-APPROVAL v1 decision=APPROVE intent=APPROVE_TASK request=e458d0f7af8ffd3c1926d6cd4122ab22b2872008033cc785aad436ebce09e1de authorization=RA-IBKR_TSM-SMA520_P5B3C-0001 scope=ee993e1bf4a2e4e836092fdfd48fc3a37b42199f43f0cfe62a51096e6dab398e task=T-e458d0f7af8ffd3c1926 expires=2026-11-12T05:46:24Z",
+  "BIND_AUTHORIZATION": "RESEARCH-APPROVAL v1 decision=APPROVE intent=BIND_AUTHORIZATION request=4a814bd59c788485133df476e43467b33b4c2727ecfe4a27e95fa17741a2480c authorization=RA-IBKR_TSM-SMA520_P5B3C-0001 scope=ee993e1bf4a2e4e836092fdfd48fc3a37b42199f43f0cfe62a51096e6dab398e expires=2026-11-12T05:46:24Z",
+  "agent_commit": "75566f851f0ddc76efe62bd84754dc7bba584889",
+  "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+  "binding_written": false,
+  "bound_request_sha256": "e458d0f7af8ffd3c1926d6cd4122ab22b2872008033cc785aad436ebce09e1de",
+  "comments_posted_by_agent": false,
+  "consumed_batches": 0,
+  "executor_id": "colab-hh4832-exec-01",
+  "expires_utc": "2026-11-12T05:46:24Z",
+  "files_sha256": {
+    "completion.json": "69c358d15da40d64569a69bf6b984c350fe722d37952b3cf143abd01695fbdfc",
+    "proposal.json": "7eb57b9c07826b4e9291fcf52d7a009626a4ef84cd2cbb555575d33a24cce9e6",
+    "request.json": "c4f7955d157d1a0b0d1ee6a9d3df62512db8438099bb7ec260b0978eb6b76f70",
+    "request_provenance.json": "57729c46bcbd198e5d5f7bef690fbb663d62d426235435859df22a87e3f57fa9"
+  },
+  "kind": "PHASE5B3C_PREPARE_MANIFEST",
+  "prepared_at": "2026-11-10T13:46:24+08:00",
+  "source_request_sha256": "4a814bd59c788485133df476e43467b33b4c2727ecfe4a27e95fa17741a2480c",
+  "task_id": "T-e458d0f7af8ffd3c1926"
+}

@@ -1,0 +1,18 @@
+{
+  "archive_manifest_sha256": "c35e1a164f225fa8fdb4d66026eefc4c96131bfe1ee1fff35100464959536151",
+  "archive_path": "/content/phase5b3c_run/state/executions/T-e458d0f7af8ffd3c1926/attempt_1/20261110_141805_e3ce267",
+  "dir": "/content/phase5b3c_run/archive/evaluations/20261110_141909_e3ce267_fd3c1926_a1",
+  "evaluated_at": "2026-11-10T14:19:09+08:00",
+  "evaluator_commit": "e3ce26786054ff91d0d211e2f4dfd63a500e299f",
+  "files_sha256": {
+    "acceptance_checks.json": "348732cc5b1a7de68acfe236a112800d9186e927d325321b19ab584e2e317206",
+    "archive_contract_mapping.md": "6bebd48c583d07b5bcb46dc513ab2080cc3ddb598c15d91fddf72e79821d8bcc",
+    "evaluation.json": "6227d0230be85be5c74252b78e56876e0fec50f60ac50a010bf936ed0f9f63fd",
+    "evaluation_report.md": "50d2b72e9955ecd090e0446046febbd01b9fd9a0997117530177c22ee7cb588c",
+    "research_decision.json": "e8be90f7476183c4972802c00be5ee6904193d1e93d496c93834dcfd2cd9a159",
+    "risk_flags.json": "ecc46c4d54d2eb02a3ae441af49171d1d9ab28b35fb5571b0892161f4d662a32",
+    "robustness_matrix.csv": "1d15c50123fc7e2ce2c249dedf4a912408a849f562d186e0500c85a2fe9a05f7",
+    "run_info.txt": "f6d2542d6fc74ea63cb472cd90cb28711128eb300837b556e562ed65f48878b7"
+  },
+  "input_sha256": "112b647f7876ea1509ae0f6e52fe4be53a2e1fb8165206be1a0c16047ba10682"
+}

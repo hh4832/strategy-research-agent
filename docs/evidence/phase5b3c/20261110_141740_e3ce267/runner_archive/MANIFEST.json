@@ -1,0 +1,79 @@
+{
+  "files_sha256": {
+    "config.json": "c89ba955e26623eca6c5be89d8d0980040b2901237ab7ed852ca63128c69771e",
+    "config_canonical.json": "c581af2db020d182f2e12f46c23657b2c8cf8f4f156f17a7d220a01f30a851bf",
+    "cost_breakdown.csv": "a394e28358e5a3365470cbcbf361d2fac78ae26c21a4948d5548a681a38c8986",
+    "dataset_manifest.json": "70a02554e2764a3634883c9aa669ea639edcb847e449879f1f11faa4054bf02e",
+    "decisions.csv": "3b9ed78347bc91a33722c4e3aff57ad15ee4a69725b0d13d44995eed1a822275",
+    "equity_curve.csv": "6ad77e145119ea07eced929ffdaf97737c2ded0d518be82c5104b7e02596d9a7",
+    "execution_diagnostics.json": "7fefd33547563b384c2d5499906343ae09ae47dc085b5ac78886231d22375cfc",
+    "fills.csv": "73da1c2daf38113aa251b801e7a67fa8232c331aef8ea4c822367cd4800a7c97",
+    "metrics.json": "4655709b03b0f2b6f8ae7f82b3bfd6fdc8a73522667e3ca3be4b6ef12c2ddb7d",
+    "rejected_orders.csv": "938566d324a0a5d58559efb0f6a7bb06f27a60c62ab7c91caf59020bf27570ae",
+    "research_report.md": "298f282e7e46eedc0831aa748177d5ef1daf9ee1945bdcedcf4633e80bf9efcf",
+    "run_info.txt": "5d1bbdb114bfc92e9087ed28d270c5389d6e2ea9af811df771b0f6e57fb934c5",
+    "trades.csv": "676668f8899ca275ef44ec27f4d5ad8639ee126d56a91c4164237bf6bf7f7237"
+  },
+  "not": [
+    "formal strategy validation",
+    "Formal Market Eligibility (gate stays NO_GO)",
+    "out-of-sample, cross-year or cross-regime robustness",
+    "holdout evaluation",
+    "family promotion / FROZEN / deployment",
+    "account-verified (BROKER_ACTUAL) costs"
+  ],
+  "run_id": "20261110_141805_e3ce267",
+  "run_info": {
+    "agent_checkout_clean": true,
+    "agent_git_sha": "e3ce26786054ff91d0d211e2f4dfd63a500e299f",
+    "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+    "authorization_record_sha256": "47c0f440de7f2628d57438a929b152d422c22b8781e24c4a4d13d041f0847b82",
+    "authorization_use": {
+      "actor": "colab-hh4832-exec-01",
+      "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+      "prev_sha256": "f0d064930531716bcacb7b4d2442a813e1ac2ff9e3ec1dc1dfc6d4bf52584212",
+      "record_sha256": "c7fd92df24c789035c0a5825138185d1c98b228e080c9b4242507dffec43f232",
+      "reserved_at": "2026-11-10T14:18:05.995737+08:00",
+      "run_id": "20261110_141805_e3ce267",
+      "scenarios": [
+        "BASE",
+        "LOW",
+        "STRESS",
+        "CAT_STRESS"
+      ],
+      "seq": 1
+    },
+    "broker_api_called": false,
+    "canonical_config_path": "/content/phase5b3c_repo/configs/research_only/tsm_sma_5_20_p5b3c_2024_06_dev_18350b3adba8e28a7e5e.json",
+    "canonical_config_sha256": "8d03317ed7b6f5f67b33dfabe99d0699c06c2fd2ea402c6bf167b8752efcacfc",
+    "core_git_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "core_tree_dirty": null,
+    "cost_profile_sha256": {
+      "BASE": "ea2cb1932ba83eadcdc12720a56d7404d30686a03c6fe6ce10482cceca63c529",
+      "CAT_STRESS": "bd42c2661b3bf6dcf1b7d9f68b51762af2682ff13035384a49a340b1d574cbfc",
+      "LOW": "4111a7d0798162ff2c0cb6a8fd7f4e15f59d8f830e70f04da7b41e660efb101b",
+      "STRESS": "80c00d97c8dc333ba7d39e54782e3af123cc09a46ca5703331faef82e105c401"
+    },
+    "execution_finished_at_asia_taipei": "2026-11-10T14:19:09.146947+08:00",
+    "execution_started_at_asia_taipei": "2026-11-10T14:18:06.111633+08:00",
+    "formal_market_status": "NO_GO (unchanged)",
+    "holdout_accessed": false,
+    "integrity_receipt_sha256": "eb97079c7a4c7fecc505dd3b398cf98868f7babe1eed65484e8d981669835667",
+    "integrity_verification_ref": "DEVELOPMENT_RECEIPT_RENEWAL:fdd7a4c67817b3b77ca3ed1cf32be09f8a06c1de19c32a0b1076bb1346e75cc4",
+    "lineage_sha256": "3455f2b3d39f4fd05dda7ca9fed472c9ff0bcbf345f89f177e78eccbe5fd92a4",
+    "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "notebook": "PHASE5B3C_EXECUTION_v1",
+    "parquet_sha256": "239d5741d65cc0c7118f618a5ebb7b1dd946f385d843cae151a24edc1e0a8452",
+    "producer_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "run_id": "20261110_141805_e3ce267",
+    "scope": "RESEARCH_ONLY_EXPLORATORY",
+    "session_config_difference": "snapshot_binding.integrity_receipt + integrity_receipt_sha256 (Core renew_development_receipt; verification_ref DEVELOPMENT_RECEIPT_RENEWAL:fdd7a4c67817b3b77ca3ed1cf32be09f8a06c1de19c32a0b1076bb1346e75cc4)",
+    "session_config_sha256": "a57caa43a441e7396e51132daa1a6abdce83dd3e60f585ae34d9f18da4544106",
+    "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+    "strategy": "sma_crossover_tsm_15m_5_20 0.1.1 {'fast': 5, 'slow': 20}",
+    "temporal_policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "window": "warm-up 2024-05-29T00:00:00-04:00; [2024-06-03T00:00:00-04:00, 2024-06-29T00:00:00-04:00)"
+  },
+  "scope": "RESEARCH_ONLY_EXPLORATORY",
+  "status": "COMPLETED"
+}

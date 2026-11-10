@@ -1,0 +1,17 @@
+{
+  "engineering_status": "PASS",
+  "evidence_sufficiency": "UNDETERMINED",
+  "metadata": {
+    "evaluation_timestamp": "2026-11-10T14:46:45+08:00",
+    "evaluator_commit_sha": "3f6284f07a6c103fb003421b19bf0aadf59a74de",
+    "evaluator_version": "1.0.0",
+    "schema_version": "1.0.0",
+    "source_archive_path": "/content/drive/MyDrive/00Quant_Research/phase5b3c/RA-IBKR_TSM-SMA520_P5B3C-0001/runs/20261110_141740/state/executions/T-e458d0f7af8ffd3c1926/attempt_1/20261110_141805_e3ce267",
+    "source_commit_sha": "e3ce26786054ff91d0d211e2f4dfd63a500e299f",
+    "source_run_id": "20261110_141805_e3ce267"
+  },
+  "reasons": [
+    "INSUFFICIENT_SAMPLE; evidence sufficiency UNDETERMINED"
+  ],
+  "verdict": "RETEST"
+}

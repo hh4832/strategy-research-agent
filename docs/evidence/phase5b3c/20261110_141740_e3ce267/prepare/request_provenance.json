@@ -1,0 +1,17 @@
+{
+  "authorization_granted": false,
+  "batch_consumption": 0,
+  "contract_commit": "5d088c4de362add925344d8e48b36c2e9d728d96",
+  "execution_eligible": false,
+  "input_kind": "USER_HYPOTHESIS",
+  "pending_fields": [
+    "authorization_ref"
+  ],
+  "proposal_id": "PROP-e25da64052d23e9c4d18",
+  "proposal_sha256": "17778319b568680918c5dc1871ea1957741469c16f49bd285b3736b5259ef869",
+  "reference_checks": "FILE_SHA_AND_SPEC_COMPATIBILITY_ONLY; GOVERNANCE_NOT_EVALUATED",
+  "request_sha256": "4a814bd59c788485133df476e43467b33b4c2727ecfe4a27e95fa17741a2480c",
+  "request_submitted": false,
+  "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+  "status": "SCHEMA_VALID_PENDING_HUMAN_APPROVAL"
+}
