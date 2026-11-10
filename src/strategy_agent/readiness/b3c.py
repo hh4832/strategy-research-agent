@@ -359,9 +359,45 @@ def formal_authorization_state() -> dict:
     elif json.loads(cp.read_text(encoding="utf-8")) != derive_run_config(CANDIDATE_AUTHORIZATION_ID):
         why.append("RUN_CONFIG_NOT_DERIVED")
     used = sum(1 for u in _book_lines("uses_log") if u.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID)
+    run = execution_records()
+    if used == 0:
+        if run["ledger_exists"] or run["bindings"] or run["reservations"]:
+            why.append(f"RECORDS_WITHOUT_USE:{run}")
+    elif not (used == 1 and run["bindings"] == 1 and len(run["reservations"]) == 1 and not run["other_reservations"]
+              and run["reservations"][0]["state"] in ("CONSUMED", "RECONCILIATION_REQUIRED")):
+        why.append(f"USE_RECORDS_INCONSISTENT:{run}")
     state = "UNEXPECTED" if why else ("GRANTED_UNUSED" if used == 0 else "GRANTED_USED")
-    return {"state": state, "why": why, "uses": used,
+    return {"state": state, "why": why, "uses": used, "execution": run,
             "validity": {"issued_at": rec.get("issued_at"), "expires_at": rec.get("expires_at")}}
+
+
+def execution_records() -> dict:
+    """Read-only view of the governed execution records in the repository (pushed by the research lead's B3-C run):
+    binding records, budget-ledger reservations (hash chain verified) for the B3-C authorization."""
+    from strategy_agent.execution.budget import _fold, _verify  # noqa: PLC0415
+    lp = ROOT / "registry/research_budget_events.jsonl"
+    out = {"ledger_exists": lp.is_file(), "bindings": sum(1 for x in _book_lines("binding_log")
+                                                          if x.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID),
+           "reservations": [], "other_reservations": 0, "ledger_valid": True}
+    if lp.is_file():
+        ev = [json.loads(x) for x in lp.read_text(encoding="utf-8").splitlines() if x.strip()]
+        try:
+            _verify(ev, lp)
+            res = _fold(ev).values()
+        except Exception:  # noqa: BLE001 - a broken ledger is never sound
+            out["ledger_valid"], res = False, []
+        out["reservations"] = [{"reservation_id": r["reservation_id"], "state": r["state"], "task_id": r["task_id"]}
+                               for r in res if r.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID]
+        out["other_reservations"] = sum(1 for r in res if r.get("authorization_id") != CANDIDATE_AUTHORIZATION_ID)
+        if not out["ledger_valid"]:
+            out["other_reservations"] = -1
+    return out
+
+
+def governed_ledger_ok() -> bool:
+    """The repository budget ledger may exist ONLY as the pushed record of the one governed B3-C execution."""
+    exists = (ROOT / "registry/research_budget_events.jsonl").exists()
+    return not exists or formal_authorization_state()["state"] == "GRANTED_USED"
 
 
 def expected_eligible(now: datetime | None = None) -> list[str]:
@@ -421,17 +457,18 @@ def preflight(m: dict | None = None) -> dict:
     m = m or M.build(None)
     draft = build_draft(m)
     P = _prepared(m, draft)
+    used_state = P["B3C-01"]["authorization_state"]["state"]
+    executed = 1 if used_state == "GRANTED_USED" else 0
     sane = {
-        "B3C-01": P["B3C-01"]["draft_schema_dry_run"] == "PASS" and P["B3C-01"]["authorization_state"]["state"] in
-        ("NOT_GRANTED", "GRANTED_UNUSED"),
-        "B3C-02": P["B3C-02"]["binding_cli_present"] and P["B3C-02"]["binding_records_for_candidate"] == 0,
+        "B3C-01": P["B3C-01"]["draft_schema_dry_run"] == "PASS" and used_state != "UNEXPECTED",
+        "B3C-02": P["B3C-02"]["binding_cli_present"] and P["B3C-02"]["binding_records_for_candidate"] == executed,
         "B3C-03": P["B3C-03"]["manifest_fields_resolved"] and set(P["B3C-03"]["cross_checks"].values()) == {"PASS"}
         and P["B3C-03"]["spec_sha_on_disk"] == CANDIDATE["strategy_spec_sha256"]
         and P["B3C-03"]["derived_run_config_self_hash_and_pins"] is True,
         "B3C-04": P["B3C-04"]["holdout_lock_present"] and P["B3C-04"]["window_end_before_holdout"] is True,
-        "B3C-05": P["B3C-05"]["spent_dev_authorization_uses"] == 1 and P["B3C-05"]["b3c_uses"] == 0
+        "B3C-05": P["B3C-05"]["spent_dev_authorization_uses"] == 1 and P["B3C-05"]["b3c_uses"] == executed
         and P["B3C-05"]["eligible_authorizations_today"] == P["B3C-05"]["expected_eligible"]
-        and not P["B3C-05"]["budget_ledger_exists"],
+        and P["B3C-05"]["budget_ledger_exists"] == bool(executed),
         "B3C-06": P["B3C-06"]["REAL_EXECUTION_ENABLED"] is False,
     }
     gates = {}
@@ -445,10 +482,10 @@ def preflight(m: dict | None = None) -> dict:
                       else "formal authorization"}
     problems = [k for k, v in gates.items() if v["prepared_status"] == "PREPARATION_PROBLEM"]
     return {"kind": "PHASE5B3C_PREFLIGHT", "gates": gates, "preparation_problems": problems,
-            "preparation": "PREPARATION_PROBLEM" if problems else (
-                "READY_FOR_HUMAN_DECISION" if P["B3C-01"]["authorization_state"]["state"] == "NOT_GRANTED"
-                else "AUTHORIZED_AWAITING_GITHUB_APPROVALS"),
-            "real_execution": "NOT_PERFORMED", "authorization_state": P["B3C-01"]["authorization_state"]["state"],
+            "preparation": "PREPARATION_PROBLEM" if problems else {
+                "NOT_GRANTED": "READY_FOR_HUMAN_DECISION", "GRANTED_UNUSED": "AUTHORIZED_AWAITING_GITHUB_APPROVALS",
+                "GRANTED_USED": "EXECUTED_AWAITING_RESULT_ACCEPTANCE"}.get(used_state, "PREPARATION_PROBLEM"),
+            "real_execution": "PERFORMED_ONCE" if executed else "NOT_PERFORMED", "authorization_state": used_state,
             "research_authorization": "NOT_GRANTED" if not P["B3C-05"]["eligible_authorizations_today"] else "GRANTED",
             "real_research_pass": False,
             "meaning": "preparation only; every B3C gate is NOT_EXECUTED until the research lead authorizes and runs B3-C"}

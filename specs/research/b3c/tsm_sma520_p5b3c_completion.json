@@ -1,0 +1,245 @@
+{
+  "challenger_view": {
+    "failure_reason": "Could information shocks or trading frictions invalidate the proposed mechanism?",
+    "falsification": "Would net results indistinguishable from the unchanged baseline refute this hypothesis?",
+    "market_beta": "Would a matched market-beta exposure explain all apparent improvement?",
+    "regime_dependence": "Would the result disappear outside the pre-registered regime?",
+    "trade_concentration": "Would removing the largest-contributing trades eliminate the apparent effect?"
+  },
+  "hypothesis": {
+    "expected_direction": "CONDITIONAL",
+    "null_hypothesis": "The governed pipeline fails a governance, identity, archive or settlement check on real historical data.",
+    "purpose": "PIPELINE_ACCEPTANCE_ONLY. Not new statistical evidence about SMA 5/20 (the DEV window was already evaluated).",
+    "question": "Does the governed Phase 5 pipeline run the pre-registered SMA 5/20 TSM baseline once, end to end, on the validated real DEV snapshot with consistent, archived and settled evidence?",
+    "testable_claim": "One governed execution yields an evidence-verified, settled and reproducible archive; no performance claim is made or tested."
+  },
+  "market_mechanism": {
+    "category": "MOMENTUM",
+    "causal_logic": "Information is incorporated gradually (order splitting by large holders, ADR catching up with Taiwan-hours news), producing short-horizon serial correlation that a fast/slow moving-average crossing can detect. This is an untested hypothesis, not evidence that SMA is profitable.",
+    "failure_modes": [
+      "Range-bound sessions and whipsaw.",
+      "Transaction costs and overnight gaps.",
+      "Sample far below the pre-registered minimum trade count on a one-month window."
+    ]
+  },
+  "required_data": {
+    "additional_features": [],
+    "availability": "DECLARED_AVAILABLE_NOT_VERIFIED",
+    "coverage": {
+      "end": "2024-06-28",
+      "start": "2024-05-29"
+    },
+    "market": "IBKR",
+    "pit_requirements": [
+      "Use only fully completed bars and original timestamps.",
+      "Never access Holdout HOLDOUT-TSM-15M-v1; Development snapshot only."
+    ],
+    "pit_timing": "Signal at completed-bar available_at; fill strictly later on an eligible bar (CONSERVATIVE_LABEL_AGNOSTIC).",
+    "price_fields": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume"
+    ],
+    "source_ref": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+    "symbols": [
+      "TSM"
+    ],
+    "timeframe": "15m"
+  },
+  "research_variables": {
+    "changes": [
+      {
+        "baseline": "Phase 4-A direct ResearchOnlyRunner DEV smoke run 20261107_081300_9439f8c (spec 0.1.0)",
+        "core_variable": "execution path (strategy, parameters, data and costs unchanged)",
+        "expected_improvement": "Governed, evidence-verified, settled execution (pipeline acceptance); no performance change is expected or claimed.",
+        "potential_side_effects": "None on strategy results; any difference from the Phase 4-A run is a pipeline defect to investigate.",
+        "proposed_change": "Same pre-registered SMA 5/20 on the same DEV snapshot through the governed Phase 5 controlled path (spec 0.1.1: data binding re-pin only)"
+      }
+    ],
+    "parameter_search": {
+      "max_trials": 1,
+      "mode": "FIXED"
+    },
+    "prior_experiment_refs": [
+      "docs/evidence/phase4a_dev_smoke/20261107_081300_9439f8c"
+    ],
+    "selection_basis": "HYPOTHESIS_DRIVEN"
+  },
+  "strategy_rules": {
+    "entry_condition": "Enter long when the completed-bar SMA5 crosses above SMA20 while flat (spec v0.1.1).",
+    "execution_time": "STRICTLY_AFTER_SIGNAL_AVAILABILITY",
+    "exit_condition": "Exit long when the completed-bar SMA5 crosses below SMA20 (spec v0.1.1).",
+    "exit_policy": "Exits exactly as pre-registered in spec v0.1.1; no parameter or rule change.",
+    "holding_horizon": "Hours to several sessions.",
+    "position_sizing": "FIXED_UNITS 100 shares; initial capital 100000 USD.",
+    "signal_time": "BAR_AVAILABLE_AT",
+    "universe": {
+      "market": "IBKR",
+      "symbols": [
+        "TSM"
+      ],
+      "timeframe": "15m"
+    }
+  },
+  "strategy_spec_fragment": {
+    "execution": {
+      "convention": "oracle-execution-convention-v1",
+      "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+      "max_fill_delay_bars": 2,
+      "order_time": "SIGNAL_TIME",
+      "order_type": "MARKET",
+      "partial_fills": false,
+      "same_bar_reentry": false,
+      "signal_time": "BAR_AVAILABLE_AT",
+      "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END"
+    },
+    "parameters": {
+      "constraints": [
+        {
+          "left": "fast",
+          "op": "<",
+          "right": "slow"
+        }
+      ],
+      "search": {
+        "max_trials": 1,
+        "mode": "FIXED"
+      },
+      "values": {
+        "fast": {
+          "default": 5,
+          "description": "fast SMA length (bars); fixed baseline",
+          "max": 5,
+          "min": 5,
+          "step": 1,
+          "type": "integer"
+        },
+        "slow": {
+          "default": 20,
+          "description": "slow SMA length (bars); fixed baseline",
+          "max": 20,
+          "min": 20,
+          "step": 1,
+          "type": "integer"
+        }
+      }
+    },
+    "position_sizing": {
+      "initial_capital": 100000,
+      "max_units": 100,
+      "method": "FIXED_UNITS",
+      "units": 100
+    },
+    "risk_constraints": {
+      "allowed_directions": [
+        "LONG"
+      ],
+      "max_position_units": 100
+    },
+    "risk_exits": {
+      "stop_loss": {
+        "type": "NONE"
+      },
+      "take_profit": {
+        "type": "NONE"
+      },
+      "time_exit": {}
+    },
+    "signal": {
+      "entry_rules": [
+        {
+          "action": "ENTER_LONG",
+          "id": "golden_cross",
+          "when": {
+            "args": [
+              {
+                "left": {
+                  "ref": "sma_fast"
+                },
+                "op": "cross_above",
+                "right": {
+                  "ref": "sma_slow"
+                }
+              },
+              {
+                "op": "is_flat"
+              }
+            ],
+            "op": "and"
+          }
+        }
+      ],
+      "evaluation_time": "BAR_CLOSE",
+      "exit_rules": [
+        {
+          "action": "EXIT_LONG",
+          "id": "death_cross",
+          "when": {
+            "left": {
+              "ref": "sma_fast"
+            },
+            "op": "cross_below",
+            "right": {
+              "ref": "sma_slow"
+            }
+          }
+        }
+      ],
+      "indicators": [
+        {
+          "id": "sma_fast",
+          "input": "close",
+          "params": {
+            "period": {
+              "param": "fast"
+            }
+          },
+          "series_scope": "CONTINUOUS_ELIGIBLE_BARS",
+          "type": "SMA"
+        },
+        {
+          "id": "sma_slow",
+          "input": "close",
+          "params": {
+            "period": {
+              "param": "slow"
+            }
+          },
+          "series_scope": "CONTINUOUS_ELIGIBLE_BARS",
+          "type": "SMA"
+        }
+      ]
+    },
+    "universe": {
+      "aggregation": {
+        "closed": "left",
+        "label": "start",
+        "require_complete": true,
+        "session_anchored": true
+      },
+      "contract_policy": {
+        "continuous_inferred": false,
+        "indicator_series": "NOT_APPLICABLE",
+        "type": "NOT_APPLICABLE"
+      },
+      "market": "IBKR",
+      "sessions": {
+        "allowed": [
+          "RTH"
+        ],
+        "calendar_ref": "NYSE RTH 09:30-16:00 America/New_York (DST-aware; source timestamps are UTC)",
+        "exclude_closing_auction": true,
+        "no_overnight": false
+      },
+      "source_timeframe": "1m",
+      "symbols": [
+        "TSM"
+      ],
+      "timeframe": "15m",
+      "timezone": "America/New_York"
+    }
+  },
+  "title": "Phase 5-B3-C pipeline acceptance: pre-registered SMA 5/20 baseline, IBKR TSM 15m, DEV window"
+}

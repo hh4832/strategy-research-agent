@@ -180,8 +180,8 @@ def gates(A: dict, B: dict, tests: dict, *, cloud: bool, tests_rc: int | None) -
             evidence = {"layer_a_decision": {k: d.get(k) for k in ("acceptance_status", "strategy_verdict")},
                         "layer_b_acceptance": B.get("acceptance"), "layer_b_checks": B.get("acceptance_checks")}
         if gid == "B2-09":
-            extra_ok = not GV.REAL_EXECUTION_ENABLED and not AD.ResearchOnlyRunnerAdapter.enabled and \
-                not (ROOT / "registry/research_budget_events.jsonl").exists()
+            from strategy_agent.readiness.b3c import governed_ledger_ok  # noqa: PLC0415
+            extra_ok = not GV.REAL_EXECUTION_ENABLED and not AD.ResearchOnlyRunnerAdapter.enabled and governed_ledger_ok()
             evidence = {"REAL_EXECUTION_ENABLED": GV.REAL_EXECUTION_ENABLED,
                         "repo_budget_ledger_exists": (ROOT / "registry/research_budget_events.jsonl").exists()}
         if gid == "B2-10":

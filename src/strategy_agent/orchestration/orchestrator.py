@@ -582,12 +582,21 @@ class Orchestrator:
             "evaluation_reference.json": _dumps(ev["data"]["evaluation_reference"]),
             "research_decision.json": _dumps(ev["data"]["research_decision"]),
         }
+        # 5-B3-C: the run_info states what actually happened (a controlled execution has COMMITTED its batch before
+        # it can be archived; REAL_GATED + a non-synthetic backend is a real backtest). Other paths: 0 / false.
+        adapter = self.adapters[doc["execution_mode"]]
+        res = self.budget.for_task(task_id) if (self.budget is not None and getattr(adapter, "controlled", False)) else None
+        consumed = 1 if res and res.get("state") in ("COMMITTED", "CONSUMED") else 0
+        backend_kind = getattr(getattr(adapter, "backend", None), "kind", None)
+        real_bt = bool(consumed and getattr(adapter, "mode", "") == "REAL_GATED"
+                       and backend_kind == "RESEARCH_ONLY_RUNNER_REAL_SNAPSHOT")
         info = {"kind": "PHASE5A1_RESEARCH_TASK", "task_id": task_id, "request_id": doc["request_id"],
                 "request_hash": st.request_hash, "execution_mode": doc["execution_mode"], "test_mode": self.test_mode,
                 "orchestrator_git_sha": self.code["git_sha"], "orchestrator_dirty": self.code["dirty"],
                 "strategy_family": doc["strategy_family"]["family_id"], "dataset_snapshot_id": doc["dataset_snapshot_id"],
                 "authorization_ref": doc["authorization_ref"], "attempt": st.attempt, "archived_at": now.isoformat(),
-                "consumed_batches": 0, "real_backtest_executed": False, "broker_api_called": False,
+                "consumed_batches": consumed, "real_backtest_executed": real_bt,
+                "execution_backend": backend_kind or adapter.kind, "broker_api_called": False,
                 "formal_market_status": gov.get("formal_market_status"), "trading_permission": False}
         files["run_info.txt"] = "".join(f"{k}={v if isinstance(v, str) else json.dumps(v)}\n" for k, v in info.items()).encode()
         out.mkdir(parents=True, exist_ok=False)          # an existing archive is never reused or overwritten

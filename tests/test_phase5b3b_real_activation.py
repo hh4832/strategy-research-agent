@@ -118,7 +118,8 @@ def test_B3B_01_production_books_refuse_the_real_path_today(tmp_path):
                          approval_verifier=verifier, worker=R.EXECUTOR)
     assert AV.eligible_authorizations(ROOT, R.EXECUTOR, now) == expected_eligible(now)
     assert AV.eligible_authorizations(ROOT, "another-runtime", now) == []
-    assert A5.tree_fingerprint(ROOT) == before and not (ROOT / "registry/research_budget_events.jsonl").exists()
+    from strategy_agent.readiness.b3c import governed_ledger_ok
+    assert A5.tree_fingerprint(ROOT) == before and governed_ledger_ok()
     assert W["backend"].calls == 0
 
 
