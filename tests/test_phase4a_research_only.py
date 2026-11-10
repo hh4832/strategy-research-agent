@@ -128,6 +128,8 @@ def test_repository_governance_only_grows_by_lead_signatures():
         ("RA-IBKR_TSM-SMA520_SMOKE-0001", PROPOSAL),
         ("RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
          ROOT / "governance/proposals/RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e.json"),
+        # Phase 5-B3-C: the research lead's own approval of the governed candidate proposal (separate PR)
+        ("RA-IBKR_TSM-SMA520_P5B3C-0001", ROOT / "governance/proposals/RA-IBKR_TSM-SMA520_P5B3C-0001.json"),
     )
     assert len(auths) <= len(expected), "unexpected governance authorization appended"
     assert [a["authorization_id"] for a in auths] == [aid for aid, _ in expected[:len(auths)]]
@@ -144,10 +146,14 @@ def test_repository_governance_only_grows_by_lead_signatures():
         for k in ("authorization_id", "dataset", "temporal_policy", "costs", "strategy", "research_window",
                   "development_boundary", "holdout", "formal_gate_pin", "max_batches", "issued_at"):
             assert a[k] == prop[k], (aid, k)
-    if len(auths) == 2:
+    if len(auths) >= 2:
         assert auths[0]["dataset"]["snapshot_id"] == "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL"
         assert auths[1]["dataset"]["snapshot_id"] == "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
         assert auths[1]["max_batches"] == 1
+    if len(auths) == 3:   # the B3-C line must also be the exact governed one (proposal + derived run config)
+        from strategy_agent.readiness.b3c import formal_authorization_state
+        assert formal_authorization_state()["state"] in ("GRANTED_UNUSED", "GRANTED_USED")
+        assert auths[2]["max_batches"] == 1 and auths[2]["executor"]["executor_id"] == "colab-hh4832-exec-01"
 
 
 def test_proposal_is_unsigned_and_cannot_be_appended_as_is(tmp_path):

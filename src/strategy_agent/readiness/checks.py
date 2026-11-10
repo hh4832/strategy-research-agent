@@ -159,10 +159,14 @@ def governance_readiness(m: dict) -> dict:
     out["G2_template_authorization_spent_not_reusable"] = _c(
         a is not None and used >= int(a.get("max_batches", 0)) >= 1,
         {"authorization_id": CANDIDATE["template_authorization_id"], "used": used, "max_batches": (a or {}).get("max_batches")})
+    # Only the known spent authorizations, plus (after the research lead's own approval PR) the ONE governed B3-C
+    # authorization that b3c.formal_authorization_state() verifies against its committed proposal and run config.
+    from .b3c import formal_authorization_state  # noqa: PLC0415
+    fa = formal_authorization_state()
     out["G3_no_new_authorization_created"] = _c(
-        all(json.loads(x).get("authorization_id") in {"RA-IBKR_TSM-SMA520_SMOKE-0001", CANDIDATE["template_authorization_id"]}
-            for x in path("authorization_book").read_text().splitlines() if x.strip()),
-        {"book": [json.loads(x).get("authorization_id") for x in path("authorization_book").read_text().splitlines() if x.strip()]})
+        fa["state"] in ("NOT_GRANTED", "GRANTED_UNUSED", "GRANTED_USED"),
+        {"book": [json.loads(x).get("authorization_id") for x in path("authorization_book").read_text().splitlines() if x.strip()],
+         "b3c_authorization_state": fa})
     out["G4_new_authorization_is_a_human_decision"] = _c(
         all(m["fields"][k]["category"] == "HUMAN_DECISION" for k in
             ("authorization_id", "bound_request_hash", "budget_batch_limit", "executor_identity")),
