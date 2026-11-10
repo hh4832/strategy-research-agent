@@ -117,8 +117,8 @@ def smoke(runner, cpath, root, tmp, sess="s1"):
 def test_repository_dev_config_matches_signed_authorization():
     cfg = json.loads(DEV_CFG.read_text())
     assert cfg["provenance"]["config_sha256"] == canonical_sha(cfg)
-    auth = [json.loads(x) for x in (ROOT / "governance/research_authorizations.jsonl").read_text().splitlines()
-            if cfg["authorization_id"] in x]
+    auth = [a for a in (json.loads(x) for x in (ROOT / "governance/research_authorizations.jsonl").read_text().splitlines()
+                        if x.strip()) if a.get("authorization_id") == cfg["authorization_id"]]   # exact id, not a substring
     assert len(auth) == 1 and auth[0]["approved_by"] == "hh4832" and auth[0]["max_batches"] == 1
     assert auth[0]["dataset"] == cfg["dataset"] and auth[0]["strategy"]["parameters"] == {"fast": 5, "slow": 20}
     assert set(auth[0]["costs"]["scenarios"]) == {"BASE", "LOW", "STRESS", "CAT_STRESS"}
