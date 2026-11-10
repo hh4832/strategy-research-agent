@@ -71,7 +71,7 @@ def test_B3C_schema_dry_run_passes_in_memory_and_writes_nothing(draft):
     before = A5.tree_fingerprint(ROOT)
     assert b3c.schema_dry_run(draft) == {"status": "PASS", "placeholders_used_for": [], "written": False}
     assert A5.tree_fingerprint(ROOT) == before
-    assert b3c.formal_authorization_state()["state"] in ("NOT_GRANTED", "GRANTED_UNUSED")
+    assert b3c.formal_authorization_state()["state"] in ("NOT_GRANTED", "GRANTED_UNUSED", "GRANTED_USED")
 
 
 def test_B3C_raw_draft_is_not_admissible_as_an_authorization(draft):
@@ -138,18 +138,21 @@ def test_B3C_preflight_is_non_consuming_and_never_a_real_pass():
     assert A5.tree_fingerprint(ROOT) == before
     assert set(r["gates"]) == {f"B3C-{i:02d}" for i in range(1, 11)}
     assert all(g["status"] == "NOT_EXECUTED" for g in r["gates"].values())
-    assert r["real_research_pass"] is False and r["real_execution"] == "NOT_PERFORMED"
+    assert r["real_research_pass"] is False
     st = b3c.formal_authorization_state()["state"]
-    assert r["authorization_state"] == st and st in ("NOT_GRANTED", "GRANTED_UNUSED")
+    assert r["real_execution"] == ("PERFORMED_ONCE" if st == "GRANTED_USED" else "NOT_PERFORMED")
+    assert r["authorization_state"] == st and st in ("NOT_GRANTED", "GRANTED_UNUSED", "GRANTED_USED")
     assert r["research_authorization"] == ("GRANTED" if b3c.expected_eligible() else "NOT_GRANTED")
     assert r["preparation"] == {"NOT_GRANTED": "READY_FOR_HUMAN_DECISION",
-                                "GRANTED_UNUSED": "AUTHORIZED_AWAITING_GITHUB_APPROVALS"}[st], r["preparation_problems"]
+                                "GRANTED_UNUSED": "AUTHORIZED_AWAITING_GITHUB_APPROVALS",
+                                "GRANTED_USED": "EXECUTED_AWAITING_RESULT_ACCEPTANCE"}[st], r["preparation_problems"]
     for gid in ("B3C-07", "B3C-08", "B3C-09", "B3C-10"):
         assert r["gates"][gid]["prepared_status"] == "NOT_APPLICABLE_BEFORE_EXECUTION"
     assert r["gates"]["B3C-05"]["prepared_checks"]["spent_dev_authorization_uses"] == 1
     assert r["gates"]["B3C-06"]["prepared_checks"]["REAL_EXECUTION_ENABLED"] is False
-    assert r["gates"]["B3C-02"]["prepared_checks"]["binding_records_for_candidate"] == 0
-    assert not (ROOT / "registry/research_budget_events.jsonl").exists()
+    executed = 1 if st == "GRANTED_USED" else 0
+    assert r["gates"]["B3C-02"]["prepared_checks"]["binding_records_for_candidate"] == executed
+    assert (ROOT / "registry/research_budget_events.jsonl").exists() == bool(executed) and b3c.governed_ledger_ok()
 
 
 def test_B3C_preflight_out_is_exclusive(tmp_path):
@@ -237,8 +240,16 @@ def repo_copy(tmp_path, monkeypatch):
     bk = tmp_path / "governance/research_authorizations.jsonl"
     bk.write_text("".join(x + "\n" for x in bk.read_text().splitlines()
                           if x.strip() and json.loads(x)["authorization_id"] != b3c.CANDIDATE_AUTHORIZATION_ID))
-    for f in (tmp_path / b3c.PROPOSAL_PATH, tmp_path / b3c.B3C_RUN_CONFIG_PATH):
+    for f in (tmp_path / b3c.PROPOSAL_PATH, tmp_path / b3c.B3C_RUN_CONFIG_PATH,
+              tmp_path / "registry/research_budget_events.jsonl"):
         f.unlink(missing_ok=True)
+    for d in ("registry/bound_requests", "registry/approval_evidence", "docs/evidence/phase5b3c"):
+        shutil.rmtree(tmp_path / d, ignore_errors=True)
+    for f in ("registry/authorization_bindings.jsonl", "registry/research_authorization_uses.jsonl"):
+        p = tmp_path / f                              # the pre-B3C prefix of each chained log
+        if p.is_file():
+            p.write_text("".join(x + "\n" for x in p.read_text().splitlines()
+                                 if x.strip() and json.loads(x).get("authorization_id") != b3c.CANDIDATE_AUTHORIZATION_ID))
     monkeypatch.setattr(C, "ROOT", tmp_path)
     monkeypatch.setattr(b3c, "ROOT", tmp_path)
     return tmp_path
@@ -294,3 +305,58 @@ def test_B3C_any_deviation_from_the_governed_authorization_is_unexpected(repo_co
         ChainedLog(book).append(ev)
     assert b3c.formal_authorization_state()["state"] == "UNEXPECTED"
     assert b3c.expected_eligible() == []
+
+
+def _governed_run(root):
+    """The records a governed B3-C run leaves (isolated copy: marker, fixture approvals, mock backend; no Core)."""
+    import shutil
+    from strategy_agent.approval.testkit import FixtureApprovals
+    from strategy_agent.binding import testkit as K
+    from strategy_agent.evaluation import phase4c as C
+    from strategy_agent.execution import b3c_run as R
+    from strategy_agent.execution import identity as I
+    from strategy_agent.execution.real_testkit import MockRealRunnerBackend, _manifest_from_identity
+    from strategy_agent.orchestration.governance import ISOLATION_MARKER
+    import tempfile
+    w = Path(tempfile.mkdtemp(prefix="b3c_governed_run_"))
+    marker = root / ISOLATION_MARKER
+    shutil.copy(ROOT / "tests/fixtures/phase4c/governance_root/ISOLATED_TEST_GOVERNANCE_ROOT.json", marker)
+    old, C.EXECUTOR_MODULES = C.EXECUTOR_MODULES, ()
+    try:
+        m = R.prepare(w / "prep", artifact_root=root, governance_root=root, agent_commit="a" * 40)
+        src = json.loads((w / "prep/request.json").read_text())
+        ident = I.request_identity(dict(src, authorization_ref={"authorization_id": R.AUTHORIZATION_ID}))
+        fa = FixtureApprovals()
+        r = R.execute(w / "prep", bind_url=fa.comment(m["BIND_AUTHORIZATION"]),
+                      task_url=fa.comment(m["APPROVE_TASK"]), verifier=fa.verifier,
+                      backend=MockRealRunnerBackend(A5.FIX / A5.FIX_RUN, identity=ident), work_dir=w / "run",
+                      claim_dir=w / "claim", artifact_root=root, governance_root=root, production_books=False,
+                      readiness_manifest=lambda: _manifest_from_identity(ident), benchmark=K.synthetic_benchmark)
+    finally:
+        C.EXECUTOR_MODULES = old
+        marker.unlink()
+    return r
+
+
+def test_B3C_state_after_the_governed_run_is_granted_used_and_any_extra_record_is_unexpected(repo_copy):
+    from strategy_agent.registry.chain import ChainedLog
+    _lead_approves(repo_copy)
+    r = _governed_run(repo_copy)
+    assert r["settled"] is True
+    st = b3c.formal_authorization_state()
+    assert st["state"] == "GRANTED_USED" and st["uses"] == 1, st
+    assert st["execution"]["reservations"][0]["state"] == "CONSUMED" and st["execution"]["bindings"] == 1
+    assert b3c.governed_ledger_ok()
+    pf = b3c.preflight()
+    assert pf["preparation"] == "EXECUTED_AWAITING_RESULT_ACCEPTANCE" and pf["real_execution"] == "PERFORMED_ONCE"
+    assert pf["real_research_pass"] is False
+    uses = repo_copy / "registry/research_authorization_uses.jsonl"            # a second use => UNEXPECTED
+    last = json.loads(uses.read_text().splitlines()[-1])
+    ChainedLog(uses).append({k: v for k, v in last.items() if k not in b3c.CHAIN_FIELDS})
+    assert b3c.formal_authorization_state()["state"] == "UNEXPECTED" and not b3c.governed_ledger_ok()
+
+
+def test_B3C_a_ledger_without_a_governed_use_is_unexpected(repo_copy):
+    _lead_approves(repo_copy)
+    (repo_copy / "registry/research_budget_events.jsonl").write_text("")
+    assert b3c.formal_authorization_state()["state"] == "UNEXPECTED" and not b3c.governed_ledger_ok()

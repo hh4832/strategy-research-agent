@@ -363,7 +363,7 @@ jobs:
           assert r["gates"]["B3B-10"] == "BLOCKED" and r["layers"]["real_execution"] == "NOT_PERFORMED"
           from strategy_agent.readiness.b3c import expected_eligible, formal_authorization_state
           st = formal_authorization_state()["state"]
-          assert st in ("NOT_GRANTED", "GRANTED_UNUSED"), st      # only the ONE governed B3-C authorization
+          assert st in ("NOT_GRANTED", "GRANTED_UNUSED", "GRANTED_USED"), st      # only the ONE governed B3-C authorization
           assert r["layers"]["research_authorization"] == ("GRANTED" if expected_eligible() else "NOT_GRANTED")
           PY
           python -m strategy_agent.execution.real_acceptance --verify-archive "$RUNNER_TEMP/b3b/ci"
@@ -406,13 +406,39 @@ jobs:
           import json, os
           r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "b3c_preflight.json")))
           assert {g["status"] for g in r["gates"].values()} == {"NOT_EXECUTED"}, r["gates"]
-          assert r["real_research_pass"] is False and r["real_execution"] == "NOT_PERFORMED"
-          assert r["authorization_state"] in ("NOT_GRANTED", "GRANTED_UNUSED"), r["authorization_state"]
-          assert r["preparation"] in ("READY_FOR_HUMAN_DECISION", "AUTHORIZED_AWAITING_GITHUB_APPROVALS"), r
-          assert r["gates"]["B3C-02"]["prepared_checks"]["binding_records_for_candidate"] == 0
+          assert r["real_research_pass"] is False
+          st = r["authorization_state"]
+          assert st in ("NOT_GRANTED", "GRANTED_UNUSED", "GRANTED_USED"), st
+          assert r["real_execution"] == ("PERFORMED_ONCE" if st == "GRANTED_USED" else "NOT_PERFORMED")
+          assert not r["preparation_problems"], r["preparation_problems"]
+          from strategy_agent.readiness.b3c import governed_ledger_ok
+          assert governed_ledger_ok()
           PY
           git diff --exit-code -- registry governance configs specs
-          test ! -e registry/research_budget_events.jsonl
+
+  phase5b3c-execution:
+    # Phase 5-B3-C execution path: run 1 (prepare) on the repository books (non-consuming) + the full prepare ->
+    # execute flow on ISOLATED books with the existing runner + Core b16179a on a SYNTHETIC snapshot. The real run
+    # happens only in the research lead's Colab session; CI never consumes the real authorization.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    env:
+      MRC_SHA: b16179a7cc077c36046574769a32c367fa476cae
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}" pyarrow
+      - run: pytest -q -p no:cacheprovider tests/test_phase5b3c_execution*.py tests/test_phase5b3b_*.py tests/test_orchestrator_lifecycle.py
+      - name: Committed completion is the deterministic build; repository books untouched
+        run: |
+          python -m strategy_agent.execution.b3c_run emit-completion
+          git diff --exit-code -- specs registry governance configs
+          python -c "from strategy_agent.readiness.b3c import governed_ledger_ok as g; assert g()"
 
   phase5a3-integration:
     # Phase 5-A3: actual A2 export -> actual A1 orchestrator (SYNTHETIC_FIXTURE Route A + fixture archive replay).

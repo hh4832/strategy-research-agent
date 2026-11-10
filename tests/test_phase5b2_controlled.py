@@ -329,7 +329,8 @@ def test_B2_09_production_books_never_enable_controlled_execution(tmp_path, monk
         ad.enabled = True
     with pytest.raises(ValueError):
         Orchestrator(tmp_path / "s", tmp_path / "o", controlled_adapter=ad)
-    assert not (ROOT / "registry/research_budget_events.jsonl").exists()
+    from strategy_agent.readiness.b3c import governed_ledger_ok
+    assert governed_ledger_ok()          # absent, or only the pushed record of the ONE governed B3-C execution
 
 
 def test_B2_09_non_synthetic_backend_is_never_enabled(W):

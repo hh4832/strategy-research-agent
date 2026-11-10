@@ -534,8 +534,16 @@ class Orchestrator:
     def _evaluate(self, task_id, doc, st):
         ref = self._execution_reference(st)
         at = self.clock().isoformat(timespec="seconds")
-        acc = C.accept(ref["archive_path"], expected_manifest_sha256=ref["archive_manifest_sha256"],
-                       evaluator_commit_sha=self.code["git_sha"], evaluated_at=at, governance_root=self.governance_root)
+        adapter = self.adapters.get(doc.get("execution_mode"))
+        if getattr(adapter, "controlled", False) and getattr(adapter, "mode", "") == "REAL_GATED":
+            # 5-B3-C: the runner (and Core) are loaded in THIS process; C8 needs an evaluator process without them
+            from strategy_agent.evaluation import fresh_process as FP  # noqa: PLC0415
+            acc = FP.accept(ref["archive_path"], expected_manifest_sha256=ref["archive_manifest_sha256"],
+                            evaluator_commit_sha=self.code["git_sha"], evaluated_at=at,
+                            governance_root=self.governance_root)
+        else:
+            acc = C.accept(ref["archive_path"], expected_manifest_sha256=ref["archive_manifest_sha256"],
+                           evaluator_commit_sha=self.code["git_sha"], evaluated_at=at, governance_root=self.governance_root)
         name = f"{C.evaluation_dir_name(at, self.code['git_sha'])}_{task_id[-8:]}_a{st.attempt}"
         out = self.archive_root / ("test_evaluations" if self.test_mode else "evaluations") / name
         files = C.write_acceptance(acc, out, evaluator_commit_sha=self.code["git_sha"], evaluated_at=at)
@@ -582,12 +590,21 @@ class Orchestrator:
             "evaluation_reference.json": _dumps(ev["data"]["evaluation_reference"]),
             "research_decision.json": _dumps(ev["data"]["research_decision"]),
         }
+        # 5-B3-C: the run_info states what actually happened (a controlled execution has COMMITTED its batch before
+        # it can be archived; REAL_GATED + a non-synthetic backend is a real backtest). Other paths: 0 / false.
+        adapter = self.adapters[doc["execution_mode"]]
+        res = self.budget.for_task(task_id) if (self.budget is not None and getattr(adapter, "controlled", False)) else None
+        consumed = 1 if res and res.get("state") in ("COMMITTED", "CONSUMED") else 0
+        backend_kind = getattr(getattr(adapter, "backend", None), "kind", None)
+        real_bt = bool(consumed and getattr(adapter, "mode", "") == "REAL_GATED"
+                       and backend_kind == "RESEARCH_ONLY_RUNNER_REAL_SNAPSHOT")
         info = {"kind": "PHASE5A1_RESEARCH_TASK", "task_id": task_id, "request_id": doc["request_id"],
                 "request_hash": st.request_hash, "execution_mode": doc["execution_mode"], "test_mode": self.test_mode,
                 "orchestrator_git_sha": self.code["git_sha"], "orchestrator_dirty": self.code["dirty"],
                 "strategy_family": doc["strategy_family"]["family_id"], "dataset_snapshot_id": doc["dataset_snapshot_id"],
                 "authorization_ref": doc["authorization_ref"], "attempt": st.attempt, "archived_at": now.isoformat(),
-                "consumed_batches": 0, "real_backtest_executed": False, "broker_api_called": False,
+                "consumed_batches": consumed, "real_backtest_executed": real_bt,
+                "execution_backend": backend_kind or adapter.kind, "broker_api_called": False,
                 "formal_market_status": gov.get("formal_market_status"), "trading_permission": False}
         files["run_info.txt"] = "".join(f"{k}={v if isinstance(v, str) else json.dumps(v)}\n" for k, v in info.items()).encode()
         out.mkdir(parents=True, exist_ok=False)          # an existing archive is never reused or overwritten

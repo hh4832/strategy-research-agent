@@ -95,7 +95,7 @@ def production_state() -> dict:
     path_ok = bool(refused)
     ok = path_ok and elig == want and fa["state"] != "UNEXPECTED" and be.calls == 0 and unchanged \
         and GV.REAL_EXECUTION_ENABLED is False and legacy == "AdapterDisabled" \
-        and not (ROOT / "registry/research_budget_events.jsonl").exists()
+        and ((ROOT / "registry/research_budget_events.jsonl").exists() == (fa["state"] == "GRANTED_USED"))
     return {"status": "PASS" if ok else "FAIL", "real_gated_orchestrator_on_production_books": refused or "CONSTRUCTED",
             "eligible_authorizations": elig, "expected_eligible": want, "b3c_authorization_state": fa["state"],
             "probe_runner_calls": be.calls, "REAL_EXECUTION_ENABLED": GV.REAL_EXECUTION_ENABLED,
