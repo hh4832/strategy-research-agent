@@ -65,6 +65,34 @@ Job `phase5b3b-real-execution`，Python 3.11 與 3.12，Core `b16179a`：
 
 既有的回歸 job 照常執行（3.11／3.12）。
 
-## Colab／Drive
+## Colab／Drive：**`phase5b3b/20261110_091207_d9afac9` → SCOPED_GO**
 
-（待執行）
+- **環境：** notebook v1，全新 runtime，Python 3.13.18，`cloud=true`。pin `d9afac9`，checkout 乾淨；pin 之後只有 docs 與 notebook 變更。
+- **回歸測試（無 Core）：** 674 passed / 69 skipped，0 failed。比本機多 1 個 skipped，是環境條件造成的 skip，不是失敗。
+- **B3-B＋B2＋B1 suites（Core `b16179a`）：** 187 passed，0 failed，0 skipped，表示 Layer B 確實有跑。完整 junit 保存在封存中。
+- **Gates：** B3B-01..B3B-10 **全部 PASS**。
+- **判定：SCOPED_GO**，限制如下：
+  - SINGLE_EXECUTOR_ONLY；
+  - 只有 synthetic／mock／隔離帳本的證據；
+  - 真實 Runner 在核准授權前 DISABLED。
+- **四個層次：**
+  - Engineering Readiness = SCOPED_GO
+  - Research Authorization = **NOT_GRANTED**
+  - Real Execution = **NOT_PERFORMED**
+  - Research Result Acceptance = **NOT_APPLICABLE**
+- **正式帳本即時檢查：** PASS。
+  - REAL_GATED 無法在正式帳本上建構；
+  - 符合資格的授權為 0；
+  - probe runner 呼叫 0；
+  - `REAL_EXECUTION_ENABLED=False`；
+  - 舊 adapter 仍是 `AdapterDisabled`；
+  - 帳本前後不變。
+- **其他確認：** `authorization_created=false`、`market_data_read=false`、`holdout_read=false`、`new_backtest_executed=false`。
+- **封存：**
+  - Colab 端 `--verify-archive --zip` PASS；
+  - Claude 對上傳的 ZIP 重新核對，`ARCHIVE_INDEX.json` 列出的 5 個檔案 SHA 全部吻合，沒有額外檔案；
+  - ZIP sha256 為 `08a081cdaccf557d4872cb038ed2fef3a9b0dd556099557ddcb12569711fe37e`；
+  - GitHub 副本在 `docs/evidence/phase5b3b/20261110_091207_d9afac9/`，與 ZIP 內容相同；
+  - 沒有 `work/` tree。
+
+**此結果是工程驗收，不是真實市場 Runner 的正式實跑驗收。**

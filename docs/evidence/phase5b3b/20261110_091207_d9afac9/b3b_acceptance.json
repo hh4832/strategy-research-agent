@@ -1,0 +1,184 @@
+{
+  "authorization_created": false,
+  "cloud": true,
+  "code": {
+    "dirty": false,
+    "git_sha": "d9afac9d079d8cf5c3f3f2e1a3425bb1e3ff4e90",
+    "python": "3.13.18"
+  },
+  "gates": {
+    "B3B-01": {
+      "evidence": {
+        "production_books": {
+          "REAL_EXECUTION_ENABLED": false,
+          "eligible_authorizations": [],
+          "phase5a_adapter": "AdapterDisabled",
+          "probe_runner_calls": 0,
+          "real_gated_orchestrator_on_production_books": "REAL_GATED on production books requires the production (live GitHub) verifier",
+          "real_runner": "DISABLED",
+          "repository_books_unchanged": true,
+          "research_authorization": "NOT_GRANTED",
+          "status": "PASS"
+        },
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_01_expired_authorization_refused",
+          "tests.test_phase5b3b_real_activation::test_B3B_01_no_authorization_naming_this_executor_refuses_the_real_path",
+          "tests.test_phase5b3b_real_activation::test_B3B_01_production_books_refuse_the_real_path_today",
+          "tests.test_phase5b3b_real_activation::test_B3B_01_revoked_after_construction_blocks_before_runner",
+          "tests.test_phase5b3b_real_activation::test_B3B_01_spent_dev_authorization_is_never_eligible",
+          "tests.test_phase5b3b_real_activation::test_B3B_01_success_path_requires_and_records_everything",
+          "tests.test_phase5b3b_real_activation::test_B3B_01_synthetic_backend_or_missing_gate_is_never_real",
+          "tests.test_phase5b3b_real_activation::test_B3B_01_unapproved_draft_authorization_never_executes"
+        ]
+      },
+      "requirement": "Runner refuses without authorization",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-02": {
+      "evidence": {
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_02_runner_input_equals_the_authorized_request",
+          "tests.test_phase5b3b_real_activation::test_B3B_02_wrong_request_hash_is_blocked"
+        ]
+      },
+      "requirement": "Authorization / Bound Request consistency",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-03": {
+      "evidence": {
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_03_readiness_manifest_disagreeing_with_the_authorization_blocks",
+          "tests.test_phase5b3b_real_activation::test_B3B_03_runner_identity_mismatch_blocks_before_runner[core_commit-A06_core_commit]",
+          "tests.test_phase5b3b_real_activation::test_B3B_03_runner_identity_mismatch_blocks_before_runner[dataset_manifest_sha256-A05_dataset_snapshot_manifest]",
+          "tests.test_phase5b3b_real_activation::test_B3B_03_runner_identity_mismatch_blocks_before_runner[dataset_snapshot_id-A05_dataset_snapshot_manifest]",
+          "tests.test_phase5b3b_real_activation::test_B3B_03_runner_identity_mismatch_blocks_before_runner[strategy_spec_sha256-A04_strategy_spec_identity]",
+          "tests.test_phase5b3b_real_runner_core::test_B3B_03_layer_b_real_backend_without_the_signed_canonical_config_is_blocked",
+          "tests.test_phase5b3b_real_runner_core::test_B3B_03_layer_b_session_config_beyond_the_core_receipt_blocks_before_runner[<lambda>-RUNNER_RECEIPT_NOT_RENEWED_BY_CORE]",
+          "tests.test_phase5b3b_real_runner_core::test_B3B_03_layer_b_session_config_beyond_the_core_receipt_blocks_before_runner[<lambda>-RUNNER_SESSION_CONFIG_DIFFERS_BEYOND_RECEIPT]"
+        ]
+      },
+      "requirement": "Dataset / Core / Spec identity",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-04": {
+      "evidence": {
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_04_holdout_crossing_or_access_is_refused"
+        ]
+      },
+      "requirement": "Holdout exclusion",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-05": {
+      "evidence": {
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_05_replay_and_duplicate_dispatch_run_at_most_once",
+          "tests.test_phase5b3b_real_activation::test_B3B_05_second_use_of_the_same_budget_is_refused"
+        ]
+      },
+      "requirement": "Atomic budget reservation and replay protection",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-06": {
+      "evidence": {
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_06_executor_bound_to_the_adapter_must_equal_the_gate",
+          "tests.test_phase5b3b_real_activation::test_B3B_06_second_process_cannot_run_the_same_reservation",
+          "tests.test_phase5b3b_real_activation::test_B3B_06_unauthorized_executor_is_refused"
+        ]
+      },
+      "requirement": "Single-executor restriction",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-07": {
+      "evidence": {
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_07_missing_runner_receipt_never_settles",
+          "tests.test_phase5b3b_real_activation::test_B3B_07_receipt_carries_the_complete_execution_contract",
+          "tests.test_phase5b3b_real_activation::test_B3B_07_receipt_contract_modified_before_settlement_needs_reconciliation",
+          "tests.test_phase5b3b_real_activation::test_B3B_07_receipt_that_is_not_a_core_renewal_never_settles",
+          "tests.test_phase5b3b_real_activation::test_B3B_07_runner_result_inconsistent_with_the_receipt_never_settles",
+          "tests.test_phase5b3b_real_runner_core::test_B3B_07_layer_b_existing_runner_real_gated_with_core_receipt_renewal"
+        ]
+      },
+      "requirement": "Runner receipt consistent with the result",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-08": {
+      "evidence": {
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_08_archive_lost_or_modified_never_settles[archive_file_removed]",
+          "tests.test_phase5b3b_real_activation::test_B3B_08_archive_lost_or_modified_never_settles[task_request_modified]",
+          "tests.test_phase5b3b_real_activation::test_B3B_08_settles_once_and_writes_one_immutable_execution_record"
+        ]
+      },
+      "requirement": "Archive integrity and settlement",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-09": {
+      "evidence": {
+        "tests_failed": [],
+        "tests_passed": [
+          "tests.test_phase5b3b_real_activation::test_B3B_09_crash_after_start_is_never_rerun",
+          "tests.test_phase5b3b_real_activation::test_B3B_09_interrupted_dispatch_is_not_dispatched_again"
+        ]
+      },
+      "requirement": "Crash recovery / fail closed",
+      "status": "PASS",
+      "why": []
+    },
+    "B3B-10": {
+      "evidence": {
+        "cloud": true,
+        "code": {
+          "dirty": false,
+          "git_sha": "d9afac9d079d8cf5c3f3f2e1a3425bb1e3ff4e90",
+          "python": "3.13.18"
+        },
+        "tests_failed": [],
+        "tests_returncode": 0,
+        "tests_total": 187
+      },
+      "requirement": "GitHub CI / Colab reproducibility",
+      "status": "PASS",
+      "why": []
+    }
+  },
+  "generated_at": "2026-11-10T09:12:13+08:00",
+  "holdout_read": false,
+  "layers": {
+    "engineering_readiness": "SCOPED_GO",
+    "real_execution": "NOT_PERFORMED",
+    "research_authorization": "NOT_GRANTED",
+    "research_result_acceptance": "NOT_APPLICABLE"
+  },
+  "market_data_read": false,
+  "new_backtest_executed": false,
+  "real_runner": "DISABLED",
+  "verdict": {
+    "blockers": {},
+    "meaning": "engineering readiness for a SEPARATE research-authorization decision; not an authorization, not a real execution, not a research result",
+    "restrictions": [
+      "SINGLE_EXECUTOR_ONLY (one named executor per authorization; no cross-runtime atomicity)",
+      "synthetic / mock / isolated-books evidence only; no real-market run",
+      "real Runner DISABLED until an approved authorization names the executor"
+    ],
+    "verdict": "SCOPED_GO"
+  }
+}

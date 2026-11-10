@@ -13,7 +13,7 @@
 
 | 層次 | 目前狀態 | 由誰／如何改變 |
 |---|---|---|
-| 1. Engineering Readiness | B3B-01..10 的驗收結果（見驗收文件） | 本階段 |
+| 1. Engineering Readiness | **SCOPED_GO**：B3B-01..10 全部 PASS（Colab `phase5b3b/20261110_091207_d9afac9`） | 本階段 |
 | 2. Research Authorization | **NOT_GRANTED**：repo 正式帳本中沒有任何核准的授權指名 executor（由 `real_acceptance.production_state` 即時讀取） | 研究負責人以 `research_authorization_admin approve` 核准一份新授權，必須含 `executor`、spec 0.1.1 sha 等，並以 GitHub 正式核准完成 binding |
 | 3. Real Execution | **NOT_PERFORMED** | 只有層次 2 成立後、在另一個明確授權的階段（B3-C）才可能執行 |
 | 4. Research Result Acceptance | **NOT_APPLICABLE**（沒有真實結果） | 真實執行後由既有 Phase 4-C evaluator 評估、研究負責人判讀 |
