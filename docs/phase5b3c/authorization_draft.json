@@ -1,0 +1,318 @@
+{
+  "approval_requirements": [
+    "Research lead (allow-listed in governance/approvers.json) fills every HUMAN_DECISION_REQUIRED value and runs `python -m strategy_agent.readiness.b3c check-proposal` until it reports no problem",
+    "Proposal saved as governance/proposals/<authorization_id>.json in a SEPARATE authorization PR (not this one)",
+    "`python -m strategy_agent.governance.research_authorization_admin approve --proposal ... --approved-by hh4832 --approval-ref <PR/comment URL>` run BY THE RESEARCH LEAD; the line takes effect only once that PR is merged",
+    "executor.executor_id must name exactly ONE runtime (SINGLE_EXECUTOR_ONLY); the B3-C notebook refuses any other",
+    "max_batches is the whole budget of the authorization; it is never reset and the ID is never reused",
+    "expires_at must be after issued_at, short (proposed 7 days), and before any change of the pinned formal gates",
+    "No agent creates, approves, signs, posts or merges any of the above"
+  ],
+  "archive_location": {
+    "drive_root": {
+      "drive_root": "MyDrive/Quant_Research/strategy-research-agent/",
+      "immutable": true,
+      "run_id_format": "YYYYMMDD_HHMMSS_<git_commit>"
+    },
+    "evidence_in_repo": "docs/evidence/phase5b3c/<run_id>/",
+    "immutable": true,
+    "run_id_format": "YYYYMMDD_HHMMSS_<git_commit>"
+  },
+  "authorization_id": {
+    "decision": "HUMAN_DECISION_REQUIRED",
+    "proposed": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+    "rule": "new ID; schema pattern RA-<A>-<B>-NNNN; never RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e (SPENT 1/1, never reset or reused)"
+  },
+  "binding_procedure": [
+    {
+      "command": "python -m strategy_agent.governance.research_authorization_admin approve --proposal governance/proposals/RA-IBKR_TSM-SMA520_P5B3C-0001.json --approved-by hh4832 --approval-ref <URL>",
+      "produces": "one APPROVE line in governance/research_authorizations.jsonl (after merge)",
+      "step": 1,
+      "what": "Create the formal authorization (separate PR, admin tool)",
+      "who": "research lead"
+    },
+    {
+      "command": "python -m strategy_agent.readiness.b3c derive-run-config --authorization-id RA-IBKR_TSM-SMA520_P5B3C-0001 --out configs/research_only/tsm_sma_5_20_p5b3c_2024_06_dev_18350b3adba8e28a7e5e.json",
+      "produces": "canonical run config (self-hash verified)",
+      "step": 2,
+      "what": "Commit the canonical B3-C run config derived for this ID",
+      "who": "research lead"
+    },
+    {
+      "command": "python -m strategy_agent.proposal export-request --proposal P.json --output R.json --bindings B.json",
+      "produces": "R.json + R_provenance.json",
+      "step": 3,
+      "what": "Generate the Research Request from the A2 proposal",
+      "who": "notebook (B3-C cell)"
+    },
+    {
+      "command": "python -m strategy_agent.binding approval-line --request R.json --intent BIND_AUTHORIZATION --authorization RA-IBKR_TSM-SMA520_P5B3C-0001",
+      "produces": "RESEARCH-APPROVAL v1 decision=APPROVE intent=BIND_AUTHORIZATION request=<sha256> ...",
+      "step": 4,
+      "what": "Compute the request hash and the exact approval line",
+      "who": "tool (prints only)"
+    },
+    {
+      "command": "(GitHub UI; never posted by an agent)",
+      "produces": "comment URL = evidence_ref",
+      "step": 5,
+      "what": "Post that line as their OWN GitHub comment (formal evidence)",
+      "who": "research lead"
+    },
+    {
+      "command": "python -m strategy_agent.binding verify-approval --request R.json --intent BIND_AUTHORIZATION --authorization RA-IBKR_TSM-SMA520_P5B3C-0001 --evidence-ref <URL>",
+      "produces": "VERIFIED or refusal",
+      "step": 6,
+      "what": "Verify the approval evidence against the live GitHub source",
+      "who": "tool"
+    },
+    {
+      "command": "python -m strategy_agent.binding bind-authorization --request R.json --provenance R_provenance.json --proposal P.json --authorization-id RA-IBKR_TSM-SMA520_P5B3C-0001 --evidence-ref <URL> --dry-run  # then --write",
+      "produces": "bound request B.json + binding record",
+      "step": 7,
+      "what": "Bind authorization and request (dry run first, then write)",
+      "who": "tool"
+    },
+    {
+      "command": "python -m strategy_agent.binding validate-bound-request --request B.json && python -m strategy_agent.binding inspect-binding --bound-sha <sha>",
+      "produces": "PASS",
+      "step": 8,
+      "what": "Validate the bound request and inspect the binding",
+      "who": "tool"
+    },
+    {
+      "command": "RealActivationGate(executor_id=<executor_id>) A08 + eligible_authorizations()",
+      "produces": "authorization listed as eligible for this executor only",
+      "step": 9,
+      "what": "Verify the executor: worker == authorization executor_id == gate",
+      "who": "notebook"
+    },
+    {
+      "command": "RealActivationGate A07 + budget ledger state",
+      "produces": "remaining == max_batches",
+      "step": 10,
+      "what": "Verify the remaining budget (0 of max_batches used, no reservation)",
+      "who": "notebook"
+    },
+    {
+      "command": "python -m strategy_agent.binding approval-line --request B.json --intent APPROVE_TASK --authorization RA-IBKR_TSM-SMA520_P5B3C-0001 --task-id <T>; then Orchestrator.approve(task_id, evidence_ref=<URL>)",
+      "produces": "task APPROVED; only now may claim_execution grant the single batch",
+      "step": 11,
+      "what": "Approve the TASK (second GitHub comment, intent=APPROVE_TASK)",
+      "who": "research lead"
+    }
+  ],
+  "core_commit": "b16179a7cc077c36046574769a32c367fa476cae",
+  "cost_assumptions": {
+    "profile": "IBKR_PRO_FIXED",
+    "scenario_set": {
+      "model": "IBKR_PRO_FIXED",
+      "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+      "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+      "scenarios": [
+        "BASE",
+        "LOW",
+        "STRESS",
+        "CAT_STRESS"
+      ]
+    },
+    "scenarios": "4 scenarios of the pinned scenario set (no other)",
+    "slippage_bps_per_side": {
+      "half_spread_bps": 0,
+      "slippage_bps_per_side": {
+        "BASE": 2,
+        "CAT_STRESS": 2,
+        "LOW": 1,
+        "STRESS": 4
+      }
+    }
+  },
+  "dataset_and_period": {
+    "dataset": {
+      "dataset_id": "ibkr_tsm_1m_normalized",
+      "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+      "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+    },
+    "dataset_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "research_window": {
+      "end": "2024-06-29T00:00:00-04:00",
+      "interval": "[start,end)",
+      "start": "2024-05-29T00:00:00-04:00"
+    },
+    "trading_window": {
+      "end": "2024-06-29T00:00:00-04:00",
+      "start": "2024-06-03T00:00:00-04:00"
+    }
+  },
+  "executor": {
+    "consistency": "SINGLE_EXECUTOR_ONLY",
+    "executor_id": "HUMAN_DECISION_REQUIRED",
+    "proposed": "colab-hh4832-exec-01",
+    "rule": "one Colab runtime identity; the gate, the orchestrator worker and the authorization must all name it"
+  },
+  "expected_archive_destination": {
+    "drive_root": "MyDrive/Quant_Research/strategy-research-agent/",
+    "immutable": true,
+    "run_id_format": "YYYYMMDD_HHMMSS_<git_commit>"
+  },
+  "holdout_policy": {
+    "access": "NO_ACCESS",
+    "blindness": "BLINDNESS_UNVERIFIED",
+    "holdout": [
+      "2025-01-01T00:00:00-05:00",
+      "2026-10-17T00:00:00-04:00"
+    ],
+    "lock_id": "HOLDOUT-TSM-15M-v1"
+  },
+  "kind": "PHASE5B3C_AUTHORIZATION_DRAFT",
+  "market_instrument": {
+    "market_id": "IBKR_TSM",
+    "symbol": "TSM"
+  },
+  "max_research_batches": {
+    "decision": "HUMAN_DECISION_REQUIRED",
+    "proposed": 1
+  },
+  "proposal_fields": {
+    "authorization_id": "HUMAN_DECISION_REQUIRED",
+    "contract": "research-only-authorization-v1",
+    "costs": {
+      "model": "IBKR_PRO_FIXED",
+      "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+      "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+      "scenarios": [
+        "BASE",
+        "LOW",
+        "STRESS",
+        "CAT_STRESS"
+      ]
+    },
+    "dataset": {
+      "dataset_id": "ibkr_tsm_1m_normalized",
+      "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+      "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+    },
+    "development_boundary": {
+      "end": "2025-01-01T00:00:00-05:00",
+      "interval": "[start,end)",
+      "start": "2016-10-19T00:00:00-04:00"
+    },
+    "does_not_authorize": [
+      "a second batch, a re-run, or reuse of this authorization ID after it is spent",
+      "any executor other than the named single executor",
+      "any formal gate PASS",
+      "any market, symbol, window, spec, Core or cost profile other than the pinned ones",
+      "any symbol other than TSM",
+      "any window outside 2024-05-29..2024-06-28",
+      "enabling the real Runner outside the governed Phase 5 controlled path",
+      "holdout access for warm-up, signals, fills, metrics or tuning",
+      "live or paper trading",
+      "more than 1 batch (BASE/LOW/STRESS + CAT_STRESS)",
+      "more than the approved max_batches",
+      "parameter search or any parameters other than SMA 5/20",
+      "reading HOLDOUT-TSM-15M-v1 or any data at or after its start",
+      "reuse or reset of RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+      "treating RESEARCH_ONLY costs as account-verified or BROKER_ACTUAL",
+      "use of results for family promotion, FROZEN status or deployment"
+    ],
+    "executor": {
+      "consistency": "SINGLE_EXECUTOR_ONLY",
+      "executor_id": "HUMAN_DECISION_REQUIRED"
+    },
+    "expires_at": "HUMAN_DECISION_REQUIRED",
+    "formal_gate_pin": {
+      "gate_version": "2026-11-05.4",
+      "gates": {
+        "COST_APPROVAL": "FAIL",
+        "COST_MODEL_COMPATIBILITY": "PASS",
+        "DATA_QUALITY": "PASS",
+        "FORMAL_EXECUTION_ELIGIBILITY": "FAIL",
+        "HOLDOUT_APPROVAL": "FAIL",
+        "TEMPORAL_SAFETY": "UNKNOWN"
+      },
+      "gates_sha256": "11837b368e65efddc31f26f7237e881b5e9a80120ed2f22af76dcb4089b9ea32",
+      "market_status": "NO_GO"
+    },
+    "holdout": {
+      "blindness": "BLINDNESS_UNVERIFIED",
+      "end": "2026-10-17T00:00:00-04:00",
+      "lock_id": "HOLDOUT-TSM-15M-v1",
+      "start": "2025-01-01T00:00:00-05:00"
+    },
+    "issued_at": "HUMAN_DECISION_REQUIRED",
+    "market_id": "IBKR_TSM",
+    "max_batches": "HUMAN_DECISION_REQUIRED",
+    "research_window": {
+      "end": "2024-06-29T00:00:00-04:00",
+      "interval": "[start,end)",
+      "start": "2024-05-29T00:00:00-04:00"
+    },
+    "scope": "RESEARCH_ONLY_EXPLORATORY",
+    "strategy": {
+      "parameters": {
+        "fast": 5,
+        "slow": 20
+      },
+      "spec_file_sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34",
+      "spec_path": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
+      "strategy_id": "sma_crossover_tsm_15m_5_20",
+      "version": "0.1.1"
+    },
+    "symbol": "TSM",
+    "temporal_policy": {
+      "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+      "scope": "RESEARCH_ONLY",
+      "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+      "version": "1.0.0"
+    }
+  },
+  "research_purpose": {
+    "decision": "HUMAN_DECISION_REQUIRED",
+    "hypothesis": "Pre-registered baseline only: SMA 5/20 on TSM 15m (spec hypothesis unchanged). Re-running the already-evaluated DEV window adds pipeline evidence, NOT new statistical evidence about SMA",
+    "purpose": "First real research execution through the governed Phase 5 pipeline (A2 request -> verified binding -> atomic budget ledger -> existing ResearchOnlyRunner -> evidence-verified settlement)"
+  },
+  "run_config": {
+    "changes": [
+      "authorization_id",
+      "run_config_id",
+      "strategy.spec_path/spec_file_sha256/version -> spec 0.1.1",
+      "purpose",
+      "provenance (config_sha256 recomputed)"
+    ],
+    "derived_from": "configs/research_only/tsm_sma_5_20_smoke_2024_06_dev_18350b3adba8e28a7e5e.json",
+    "path_after_authorization": "configs/research_only/tsm_sma_5_20_p5b3c_2024_06_dev_18350b3adba8e28a7e5e.json",
+    "run_config_id": "tsm_sma_5_20_p5b3c_2024_06_dev_18350b3adba8e28a7e5e"
+  },
+  "status": "DRAFT_NOT_APPROVED",
+  "strategy_specification": {
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "pinned": {
+      "path": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
+      "sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34",
+      "version": "0.1.1"
+    },
+    "spec": {
+      "change": "data_requirements re-pinned to the DEV snapshot only (research lead decision 2026-11-08); rules / parameters unchanged",
+      "parent": {
+        "path": "specs/research/sma_crossover_tsm_15m_5_20.json",
+        "sha256": "b358416e4764801a6fd80512d665be27cdf85b7b9f5f3c118bd8934e6fd44123"
+      },
+      "path": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
+      "rules_unchanged_check": "PASS",
+      "sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34"
+    },
+    "spec_decision": "DECIDED (re-pinned spec)",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.1"
+  },
+  "validity_period": {
+    "constraint": "issued_at < expires_at; expire before any change of the pinned formal gates",
+    "expires_at": "HUMAN_DECISION_REQUIRED",
+    "issued_at": "HUMAN_DECISION_REQUIRED",
+    "proposed_length_days": 7
+  },
+  "warning": "NOT an authorization, not a proposal file, not in governance/. It grants nothing. Creating it is the research lead's own action in a separate PR after every HUMAN_DECISION_REQUIRED is decided."
+}
