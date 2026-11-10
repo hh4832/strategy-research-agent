@@ -1,0 +1,169 @@
+{
+  "metadata": {
+    "evaluation_timestamp": "2026-11-10T14:46:45+08:00",
+    "evaluator_commit_sha": "3f6284f07a6c103fb003421b19bf0aadf59a74de",
+    "evaluator_version": "1.0.0",
+    "schema_version": "1.0.0",
+    "source_archive_path": "/content/drive/MyDrive/00Quant_Research/phase5b3c/RA-IBKR_TSM-SMA520_P5B3C-0001/runs/20261110_141740/state/executions/T-e458d0f7af8ffd3c1926/attempt_1/20261110_141805_e3ce267",
+    "source_commit_sha": "e3ce26786054ff91d0d211e2f4dfd63a500e299f",
+    "source_run_id": "20261110_141805_e3ce267"
+  },
+  "risk_flags": [
+    {
+      "code": "BLINDNESS_UNVERIFIED",
+      "evidence": {
+        "lock_id": "HOLDOUT-TSM-15M-v1",
+        "meaning": "holdout period was touched before the lock; any later holdout result is not a blind test"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "INSUFFICIENT_SAMPLE",
+      "evidence": {
+        "effective_net_pnl": 1844.35,
+        "invalidated_abs_pnl_share": 0.0,
+        "invalidated_fraction": 0.0,
+        "invalidated_net_pnl_for_reference": 0,
+        "invalidated_trades": 0,
+        "reasons": [
+          {
+            "code": "Q5-1",
+            "message": "valid trades 13 < 30 after invalidation"
+          }
+        ],
+        "status": "INSUFFICIENT",
+        "valid_trades": 13
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "in_sample_vs_out_of_sample",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "LESS_THAN_ONE_YEAR_OBSERVED",
+      "evidence": {
+        "elapsed_days": 31.0
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "LOOK_AHEAD_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "evidence": {
+          "observed_fill_timing": "PASS"
+        },
+        "group": "look_ahead",
+        "reason": "observed fills strictly after signal availability; signal calculation itself not verified",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+      "evidence": {
+        "reason": "no pre-registered regime labels; regime coverage cannot be assessed"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "MULTIPLE_TESTING_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "multiple_testing",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "NET_PROFIT_COVERED_BY_TOP_TRADES",
+      "evidence": {
+        "meaning": "smallest k whose combined net PnL is at least the total; descriptive, no threshold",
+        "remaining_net_pnl": -1.6200000000000223,
+        "top_k": 2,
+        "top_k_net_pnl": 1845.97,
+        "total_net_pnl": 1844.35,
+        "valid_trades": 13
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "PARAMETER_STABILITY_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "parameter_stability",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SELECTION_BIAS_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "selection_bias",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SINGLE_CALENDAR_YEAR_COVERS_ALL_NET_PROFIT",
+      "evidence": {
+        "dimension": "calendar_year",
+        "group": "2024",
+        "net_pnl": 1844.35,
+        "status": "INSUFFICIENT_SAMPLE",
+        "trade_count": 13
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SINGLE_SYMBOL_COVERS_ALL_NET_PROFIT",
+      "evidence": {
+        "dimension": "symbol",
+        "group": "TSM",
+        "net_pnl": 1844.35,
+        "status": "INSUFFICIENT_SAMPLE",
+        "trade_count": 13
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "SURVIVORSHIP_BIAS_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "survivorship_bias",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "TAIL_RISK_NOT_ESTABLISHED",
+      "evidence": {
+        "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+        "status": "NOT_AVAILABLE"
+      },
+      "severity": "REVIEW"
+    },
+    {
+      "code": "TEMPORAL_STABILITY_NOT_TESTED",
+      "evidence": {
+        "dimension": "robustness",
+        "group": "temporal_stability",
+        "reason": "required evidence absent",
+        "status": "NOT_TESTED"
+      },
+      "severity": "REVIEW"
+    }
+  ]
+}

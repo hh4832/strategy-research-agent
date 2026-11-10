@@ -1,0 +1,1268 @@
+{
+  "archive_root": "/content/drive/MyDrive/00Quant_Research/phase5b3c/RA-IBKR_TSM-SMA520_P5B3C-0001/runs/20261110_141740/state/executions/T-e458d0f7af8ffd3c1926/attempt_1/20261110_141805_e3ce267",
+  "checks": {
+    "C1_archive_identity": {
+      "agent_sha": "e3ce26786054ff91d0d211e2f4dfd63a500e299f",
+      "agreement": {
+        "canonical_config_sha_matches": true,
+        "config_authorization_matches": true,
+        "config_json_sha_matches": true,
+        "dataset_manifest_is_not_archive_manifest": true,
+        "full_shas": true,
+        "loader_provenance_matches": true,
+        "manifest_run_info_equals_run_info_txt": true,
+        "run_id_equals_run_info": true
+      },
+      "archive_manifest_sha256": "c35e1a164f225fa8fdb4d66026eefc4c96131bfe1ee1fff35100464959536151",
+      "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+      "canonical_config_sha256": "8d03317ed7b6f5f67b33dfabe99d0699c06c2fd2ea402c6bf167b8752efcacfc",
+      "core_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+      "dataset_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+      "run_id": "20261110_141805_e3ce267",
+      "session_config_sha256": "a57caa43a441e7396e51132daa1a6abdce83dd3e60f585ae34d9f18da4544106",
+      "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+      "status": "PASS"
+    },
+    "C2_archive_integrity": {
+      "contract_files_exact": true,
+      "files_verified": 13,
+      "manifest_sha256_pinned": "c35e1a164f225fa8fdb4d66026eefc4c96131bfe1ee1fff35100464959536151",
+      "source_unchanged_during_evaluation": true,
+      "status": "PASS",
+      "symlinks": [],
+      "unlisted_entries": []
+    },
+    "C3_trade_integrity": {
+      "scenarios": {
+        "BASE": {
+          "allocated_trade_costs": 32.64999999999999,
+          "fill_ledger_explicit_costs": 32.65,
+          "fills": 26,
+          "orders_filled": 26,
+          "orders_submitted": 28,
+          "orders_without_fill_or_rejection_record": 1,
+          "problems": [],
+          "rejected_orders": [
+            "0019-CROSS_ABOVE"
+          ],
+          "rejection_rows": 3,
+          "status": "PASS",
+          "terminal_rejections": [
+            "0019-CROSS_ABOVE"
+          ],
+          "trades": 13,
+          "trades_matched_to_entry_and_exit_fills": 13
+        },
+        "CAT_STRESS": {
+          "allocated_trade_costs": 32.90999999999987,
+          "fill_ledger_explicit_costs": 32.910000000000004,
+          "fills": 26,
+          "orders_filled": 26,
+          "orders_submitted": 28,
+          "orders_without_fill_or_rejection_record": 1,
+          "problems": [],
+          "rejected_orders": [
+            "0019-CROSS_ABOVE"
+          ],
+          "rejection_rows": 3,
+          "status": "PASS",
+          "terminal_rejections": [
+            "0019-CROSS_ABOVE"
+          ],
+          "trades": 13,
+          "trades_matched_to_entry_and_exit_fills": 13
+        },
+        "LOW": {
+          "allocated_trade_costs": 32.64999999999999,
+          "fill_ledger_explicit_costs": 32.65,
+          "fills": 26,
+          "orders_filled": 26,
+          "orders_submitted": 28,
+          "orders_without_fill_or_rejection_record": 1,
+          "problems": [],
+          "rejected_orders": [
+            "0019-CROSS_ABOVE"
+          ],
+          "rejection_rows": 3,
+          "status": "PASS",
+          "terminal_rejections": [
+            "0019-CROSS_ABOVE"
+          ],
+          "trades": 13,
+          "trades_matched_to_entry_and_exit_fills": 13
+        },
+        "STRESS": {
+          "allocated_trade_costs": 32.65,
+          "fill_ledger_explicit_costs": 32.65,
+          "fills": 26,
+          "orders_filled": 26,
+          "orders_submitted": 28,
+          "orders_without_fill_or_rejection_record": 1,
+          "problems": [],
+          "rejected_orders": [
+            "0019-CROSS_ABOVE"
+          ],
+          "rejection_rows": 3,
+          "status": "PASS",
+          "terminal_rejections": [
+            "0019-CROSS_ABOVE"
+          ],
+          "trades": 13,
+          "trades_matched_to_entry_and_exit_fills": 13
+        }
+      },
+      "status": "PASS"
+    },
+    "C4_performance_consistency": {
+      "scenarios": {
+        "BASE": {
+          "engineering_status": "PASS",
+          "rows": {
+            "expectancy": {
+              "core_upstream": 141.87307692307692,
+              "evaluator": 141.87307692307692,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "explicit_cost_vs_metrics": {
+              "core_upstream": 32.65,
+              "evaluator": "32.650",
+              "match": true
+            },
+            "max_drawdown": {
+              "core_upstream": -0.00782950773686697,
+              "evaluator": -0.00782950773686697,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "net_pnl": {
+              "core_upstream": 1844.35,
+              "evaluator": 1844.35,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "net_return": {
+              "core_upstream": 0.018443499999999998,
+              "evaluator": 0.018443499999999998,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "payoff_ratio": {
+              "core_upstream": 3.624255230045876,
+              "evaluator": 3.624255230045876,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "profit_factor": {
+              "core_upstream": 3.106504482896465,
+              "evaluator": 3.106504482896465,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "total_cost": {
+              "core_upstream": "136.6500",
+              "evaluator": null,
+              "match": true,
+              "note": "cost ledger identity explicit_cost + price_adjustment_cost = total_cost (Core)"
+            },
+            "total_return": {
+              "core_upstream": 0.018443499999999332,
+              "evaluator": 0.01844349999999939,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "trade_count": {
+              "core_upstream": 13,
+              "evaluator": 13,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "win_rate": {
+              "core_upstream": 0.46153846153846156,
+              "evaluator": 0.46153846153846156,
+              "match": true,
+              "verification": "MATCH"
+            }
+          },
+          "status": "PASS"
+        },
+        "CAT_STRESS": {
+          "engineering_status": "PASS",
+          "rows": {
+            "expectancy": {
+              "core_upstream": 141.85307692307694,
+              "evaluator": 141.85307692307694,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "explicit_cost_vs_metrics": {
+              "core_upstream": 32.91,
+              "evaluator": "32.910",
+              "match": true
+            },
+            "max_drawdown": {
+              "core_upstream": -0.007830495919687541,
+              "evaluator": -0.007830495919687541,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "net_pnl": {
+              "core_upstream": 1844.0900000000001,
+              "evaluator": 1844.0900000000001,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "net_return": {
+              "core_upstream": 0.018440900000000003,
+              "evaluator": 0.018440900000000003,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "payoff_ratio": {
+              "core_upstream": 3.6235159321982287,
+              "evaluator": 3.6235159321982287,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "profit_factor": {
+              "core_upstream": 3.1058707990270533,
+              "evaluator": 3.1058707990270533,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "total_cost": {
+              "core_upstream": "136.9100",
+              "evaluator": null,
+              "match": true,
+              "note": "cost ledger identity explicit_cost + price_adjustment_cost = total_cost (Core)"
+            },
+            "total_return": {
+              "core_upstream": 0.018440900000000548,
+              "evaluator": 0.018440900000000537,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "trade_count": {
+              "core_upstream": 13,
+              "evaluator": 13,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "win_rate": {
+              "core_upstream": 0.46153846153846156,
+              "evaluator": 0.46153846153846156,
+              "match": true,
+              "verification": "MATCH"
+            }
+          },
+          "status": "PASS"
+        },
+        "LOW": {
+          "engineering_status": "PASS",
+          "rows": {
+            "expectancy": {
+              "core_upstream": 145.87307692307692,
+              "evaluator": 145.87307692307692,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "explicit_cost_vs_metrics": {
+              "core_upstream": 32.65,
+              "evaluator": "32.650",
+              "match": true
+            },
+            "max_drawdown": {
+              "core_upstream": -0.0076319293552954415,
+              "evaluator": -0.0076319293552954415,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "net_pnl": {
+              "core_upstream": 1896.35,
+              "evaluator": 1896.35,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "net_return": {
+              "core_upstream": 0.018963499999999998,
+              "evaluator": 0.018963499999999998,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "payoff_ratio": {
+              "core_upstream": 3.777023971053822,
+              "evaluator": 3.777023971053822,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "profit_factor": {
+              "core_upstream": 3.237449118046133,
+              "evaluator": 3.237449118046133,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "total_cost": {
+              "core_upstream": "84.6500",
+              "evaluator": null,
+              "match": true,
+              "note": "cost ledger identity explicit_cost + price_adjustment_cost = total_cost (Core)"
+            },
+            "total_return": {
+              "core_upstream": 0.01896349999999933,
+              "evaluator": 0.018963499999999245,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "trade_count": {
+              "core_upstream": 13,
+              "evaluator": 13,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "win_rate": {
+              "core_upstream": 0.46153846153846156,
+              "evaluator": 0.46153846153846156,
+              "match": true,
+              "verification": "MATCH"
+            }
+          },
+          "status": "PASS"
+        },
+        "STRESS": {
+          "engineering_status": "PASS",
+          "rows": {
+            "expectancy": {
+              "core_upstream": 135.71923076923076,
+              "evaluator": 135.71923076923076,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "explicit_cost_vs_metrics": {
+              "core_upstream": 32.65,
+              "evaluator": "32.650",
+              "match": true
+            },
+            "max_drawdown": {
+              "core_upstream": -0.008145635305713661,
+              "evaluator": -0.008145635305713661,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "net_pnl": {
+              "core_upstream": 1764.35,
+              "evaluator": 1764.35,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "net_return": {
+              "core_upstream": 0.0176435,
+              "evaluator": 0.0176435,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "payoff_ratio": {
+              "core_upstream": 4.6682013325073095,
+              "evaluator": 4.6682013325073095,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "profit_factor": {
+              "core_upstream": 2.9176258328170683,
+              "evaluator": 2.9176258328170683,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "total_cost": {
+              "core_upstream": "216.6500",
+              "evaluator": null,
+              "match": true,
+              "note": "cost ledger identity explicit_cost + price_adjustment_cost = total_cost (Core)"
+            },
+            "total_return": {
+              "core_upstream": 0.01764349999999933,
+              "evaluator": 0.017643499999999257,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "trade_count": {
+              "core_upstream": 13,
+              "evaluator": 13,
+              "match": true,
+              "verification": "MATCH"
+            },
+            "win_rate": {
+              "core_upstream": 0.38461538461538464,
+              "evaluator": 0.38461538461538464,
+              "match": true,
+              "verification": "MATCH"
+            }
+          },
+          "status": "PASS"
+        }
+      },
+      "status": "PASS",
+      "tolerance": "rel/abs 1e-09 (QUANT_EVALUATION_PROTOCOL \u91cd\u73fe\u6027 < 1e-9)"
+    },
+    "C5_temporal_safety": {
+      "holdout": {
+        "evaluator_read_holdout": false,
+        "holdout_start": "2025-01-01T00:00:00-05:00",
+        "last_native_timestamp": "2024-06-28T23:59:00+00:00",
+        "lock_id": "HOLDOUT-TSM-15M-v1",
+        "not_accessed": true
+      },
+      "limitation": "signal computation look-ahead is guaranteed structurally (pure SMA over Core modeled_available_at) and checked at the fill level; it is not independently re-verified here",
+      "scenarios": {
+        "BASE": {
+          "diagnostic_status": "PASS",
+          "fills_on_later_bar_than_signal": true,
+          "fills_strictly_after_signal_available_at": true,
+          "m3a4_T01_no_lookahead": "PASS",
+          "next_eligible_bar_open": true,
+          "order_time_equals_signal_time": true,
+          "status": "PASS"
+        },
+        "CAT_STRESS": {
+          "diagnostic_status": "PASS",
+          "fills_on_later_bar_than_signal": true,
+          "fills_strictly_after_signal_available_at": true,
+          "m3a4_T01_no_lookahead": "PASS",
+          "next_eligible_bar_open": true,
+          "order_time_equals_signal_time": true,
+          "status": "PASS"
+        },
+        "LOW": {
+          "diagnostic_status": "PASS",
+          "fills_on_later_bar_than_signal": true,
+          "fills_strictly_after_signal_available_at": true,
+          "m3a4_T01_no_lookahead": "PASS",
+          "next_eligible_bar_open": true,
+          "order_time_equals_signal_time": true,
+          "status": "PASS"
+        },
+        "STRESS": {
+          "diagnostic_status": "PASS",
+          "fills_on_later_bar_than_signal": true,
+          "fills_strictly_after_signal_available_at": true,
+          "m3a4_T01_no_lookahead": "PASS",
+          "next_eligible_bar_open": true,
+          "order_time_equals_signal_time": true,
+          "status": "PASS"
+        }
+      },
+      "status": "PASS"
+    },
+    "C6_research_evaluation": {
+      "BLINDNESS_UNVERIFIED": true,
+      "INSUFFICIENT_SAMPLE": true,
+      "concentrated_profits": true,
+      "cost_sensitivity_observed": true,
+      "evidence_sufficiency": "UNDETERMINED",
+      "less_than_one_year": true,
+      "limited_regime_coverage": true,
+      "missing_oos": true,
+      "status": "PASS",
+      "verdict": "RETEST",
+      "verdict_not_keep": true
+    },
+    "C7_reproducibility": {
+      "different_time_only_metadata_differs": true,
+      "input_sha256": "9cf3fb5f5264c7ed4530bca3eb0fdb99946076078e1e759163052775763f6ba2",
+      "non_deterministic_metadata": [
+        "metadata.evaluation_timestamp",
+        "metadata.source_archive_path"
+      ],
+      "payload_sha256": "1e6d7d3ec881820ed1564934828aa429921e2884beed321cee80952cddc0d457",
+      "same_input_same_time_identical": true,
+      "status": "PASS"
+    },
+    "C8_governance_isolation": {
+      "authorization_spent": true,
+      "authorization_uses": "1/1",
+      "broker_api_called": false,
+      "evaluation_batch_consumption": 0,
+      "executor_modules_loaded": [],
+      "formal_gates_match_authorization_pin": true,
+      "formal_market_status": "NO_GO",
+      "governance_and_registry_unchanged": true,
+      "holdout_lock_present_unchanged": true,
+      "new_backtest_executed": false,
+      "status": "PASS",
+      "use_record_matches_run": true
+    }
+  },
+  "evaluator_process": {
+    "executor_modules_loaded": [],
+    "fresh": true
+  },
+  "identity": {
+    "agent_sha": "e3ce26786054ff91d0d211e2f4dfd63a500e299f",
+    "archive_manifest_sha256": "c35e1a164f225fa8fdb4d66026eefc4c96131bfe1ee1fff35100464959536151",
+    "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+    "canonical_config_sha256": "8d03317ed7b6f5f67b33dfabe99d0699c06c2fd2ea402c6bf167b8752efcacfc",
+    "core_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "dataset_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+    "run_id": "20261110_141805_e3ce267",
+    "session_config_sha256": "a57caa43a441e7396e51132daa1a6abdce83dd3e60f585ae34d9f18da4544106",
+    "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+  },
+  "mapping": [
+    {
+      "field": "source.run_id",
+      "mapping": "Direct",
+      "source": "MANIFEST.json run_id (= directory name)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "source.commit_sha / core_sha",
+      "mapping": "Direct; cross-checked with MANIFEST.run_info and loader provenance core_git_sha",
+      "source": "run_info.txt agent_git_sha / core_git_sha",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "source.dataset_snapshot / manifest_sha256",
+      "mapping": "Direct; cross-checked with dataset_manifest.json loader_provenance",
+      "source": "run_info.txt snapshot_id / manifest_sha256 (DATASET manifest)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "source.strategy_id / parameter_family",
+      "mapping": "Direct (fixed parameters, no search)",
+      "source": "config.json strategy",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "source.timeframe",
+      "mapping": "Constant '15m'",
+      "source": "config.json temporal_policy + Core conservative 15m",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "source.sample_period",
+      "mapping": "Core equity is observed from the warm-up start; trading window [start,end) is narrower and recorded separately",
+      "source": "config.json windows warmup_start / end",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "source.currency",
+      "mapping": "Constant 'USD'",
+      "source": "spec position_sizing (USD account)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "initial_capital",
+      "mapping": "Direct when the first observation is flat; else MISSING",
+      "source": "equity_curve.csv first Core observation (flat, equity == cash)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "holdout",
+      "mapping": "NOT_ACCESSED only when all four agree; blindness copied from the authorization",
+      "source": "governance/holdout_locks.jsonl + research_authorizations.jsonl holdout + run_info holdout_accessed + execution_diagnostics max_native_timestamp_before_holdout",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "trades",
+      "mapping": "Direct; trade_id = scenario:entry_ts:exit_ts (content-derived, so duplicates collide); invalidated -> status",
+      "source": "trades.csv (Core round_trips, per scenario)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "fills",
+      "mapping": "Direct; fill_id = order_id@exec_ts; notional not exported by Core (turnover therefore NOT_AVAILABLE, not computed)",
+      "source": "fills.csv (Core fill ledger)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "equity_curve",
+      "mapping": "Direct",
+      "source": "equity_curve.csv (Core equity, every 15m bar incl. warm-up)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "cost_breakdown",
+      "mapping": "explicit_total = explicit_cost; components commission/SEC/TAF/CAT; slippage = price_adjustment_cost (embedded in fill prices, informational)",
+      "source": "cost_breakdown.csv (Core tsm_cost_diagnostics totals)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "rejections",
+      "mapping": "Direct, one row per Core rejection event (bar-level + terminal); unique rejected orders counted separately",
+      "source": "rejected_orders.csv (Core rejection rows)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "execution_diagnostics",
+      "mapping": "PASS only if temporal PASS and every M3-A.4 check PASS; lookahead_checked NOT asserted (fill chronology is verified, signal computation is not independently re-verified)",
+      "source": "execution_diagnostics.json temporal[scenario] + metrics.json m3a4_checks + decisions.orders",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "data_quality",
+      "mapping": "PASS only when the formal DATA_QUALITY gate is PASS and loader provenance matches the dataset pins",
+      "source": "market_readiness DATA_QUALITY (FINAL GATE parent) + dataset_manifest.json loader provenance",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "metrics",
+      "mapping": "Direct; preserved as upstream",
+      "source": "metrics.json[scenario] (M3-B evaluator over Core report)",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "budget_consumption",
+      "mapping": "Copy of the SOURCE run's single consumption; evaluation consumes 0",
+      "source": "registry/research_authorization_uses.jsonl (signed, pushed d456fed) vs run_info authorization_use",
+      "status": "VERIFIED"
+    },
+    {
+      "field": "cost_scenarios",
+      "mapping": "cost_multiplier = observed total cost / BASE total cost (factual ratio; no scenario is declared '2x')",
+      "source": "cost_breakdown.csv + trades.csv (same run, same decisions/orders for all scenarios)",
+      "status": "VERIFIED"
+    }
+  ],
+  "per_scenario": {
+    "BASE": {
+      "engineering_status": "PASS",
+      "evidence_sufficiency": "UNDETERMINED",
+      "input_sha256": "9cf3fb5f5264c7ed4530bca3eb0fdb99946076078e1e759163052775763f6ba2",
+      "metrics": {
+        "annualized_return": {
+          "reason": "needs >=365.2425 elapsed days and explicit zero external cash flows",
+          "status": "INSUFFICIENT_SAMPLE"
+        },
+        "average_loss": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": -125.07857142857142,
+          "verification": "MATCH"
+        },
+        "average_win": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 453.31666666666666,
+          "verification": "MATCH"
+        },
+        "cost_to_gross_profit": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/cost_to_gross_profit",
+          "status": "AVAILABLE",
+          "value": 0.011937842778793418
+        },
+        "drawdown_duration_seconds": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/max_drawdown",
+          "status": "AVAILABLE",
+          "value": 897300.0
+        },
+        "expectancy": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 141.87307692307692,
+          "verification": "MATCH"
+        },
+        "exposure": {
+          "authority": "UPSTREAM_EXECUTION_DIAGNOSTIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/exposure",
+          "status": "AVAILABLE",
+          "value": 0.33735795454545453
+        },
+        "holding_period_seconds": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/holding_period",
+          "status": "AVAILABLE",
+          "value": {
+            "max": 344700.0,
+            "mean": 61684.61538461538,
+            "min": 5400.0
+          }
+        },
+        "max_drawdown": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/max_drawdown",
+          "status": "AVAILABLE",
+          "value": -0.00782950773686697,
+          "verification": "MATCH"
+        },
+        "net_pnl": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 1844.35,
+          "verification": "MATCH"
+        },
+        "net_return": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/net_return",
+          "status": "AVAILABLE",
+          "value": 0.018443499999999998,
+          "verification": "MATCH"
+        },
+        "payoff_ratio": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 3.624255230045876,
+          "verification": "MATCH"
+        },
+        "profit_factor": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 3.106504482896465,
+          "verification": "MATCH"
+        },
+        "rejection_rate": {
+          "reason": "required observations or context not supplied",
+          "status": "NOT_AVAILABLE"
+        },
+        "tail_loss": {
+          "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+          "status": "NOT_AVAILABLE"
+        },
+        "total_return": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/total_return",
+          "status": "AVAILABLE",
+          "value": 0.01844349999999939,
+          "verification": "MATCH"
+        },
+        "trade_count": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 13,
+          "verification": "MATCH"
+        },
+        "turnover": {
+          "reason": "required observations or context not supplied",
+          "status": "NOT_AVAILABLE"
+        },
+        "volatility": {
+          "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+          "status": "NOT_AVAILABLE"
+        },
+        "win_rate": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 0.46153846153846156,
+          "verification": "MATCH"
+        },
+        "worst_trade": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": -216.49
+        }
+      },
+      "risk_flags": [
+        "BLINDNESS_UNVERIFIED",
+        "INSUFFICIENT_SAMPLE",
+        "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+        "LESS_THAN_ONE_YEAR_OBSERVED",
+        "LOOK_AHEAD_NOT_TESTED",
+        "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+        "MULTIPLE_TESTING_NOT_TESTED",
+        "NET_PROFIT_COVERED_BY_TOP_TRADES",
+        "PARAMETER_STABILITY_NOT_TESTED",
+        "SELECTION_BIAS_NOT_TESTED",
+        "SINGLE_CALENDAR_YEAR_COVERS_ALL_NET_PROFIT",
+        "SINGLE_SYMBOL_COVERS_ALL_NET_PROFIT",
+        "SURVIVORSHIP_BIAS_NOT_TESTED",
+        "TAIL_RISK_NOT_ESTABLISHED",
+        "TEMPORAL_STABILITY_NOT_TESTED"
+      ],
+      "strategy_verdict": "RETEST"
+    },
+    "CAT_STRESS": {
+      "engineering_status": "PASS",
+      "evidence_sufficiency": "UNDETERMINED",
+      "input_sha256": "a13c3e6e4216946a3be87aae0dbd0fc5ceab8f395cebb4a0a93cdc88d97537cc",
+      "metrics": {
+        "annualized_return": {
+          "reason": "needs >=365.2425 elapsed days and explicit zero external cash flows",
+          "status": "INSUFFICIENT_SAMPLE"
+        },
+        "average_loss": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": -125.09857142857142,
+          "verification": "MATCH"
+        },
+        "average_win": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 453.2966666666667,
+          "verification": "MATCH"
+        },
+        "cost_to_gross_profit": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/cost_to_gross_profit",
+          "status": "AVAILABLE",
+          "value": 0.012032906764168188
+        },
+        "drawdown_duration_seconds": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/max_drawdown",
+          "status": "AVAILABLE",
+          "value": 897300.0
+        },
+        "expectancy": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 141.85307692307694,
+          "verification": "MATCH"
+        },
+        "exposure": {
+          "authority": "UPSTREAM_EXECUTION_DIAGNOSTIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/exposure",
+          "status": "AVAILABLE",
+          "value": 0.33735795454545453
+        },
+        "holding_period_seconds": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/holding_period",
+          "status": "AVAILABLE",
+          "value": {
+            "max": 344700.0,
+            "mean": 61684.61538461538,
+            "min": 5400.0
+          }
+        },
+        "max_drawdown": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/max_drawdown",
+          "status": "AVAILABLE",
+          "value": -0.007830495919687541,
+          "verification": "MATCH"
+        },
+        "net_pnl": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 1844.0900000000001,
+          "verification": "MATCH"
+        },
+        "net_return": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/net_return",
+          "status": "AVAILABLE",
+          "value": 0.018440900000000003,
+          "verification": "MATCH"
+        },
+        "payoff_ratio": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 3.6235159321982287,
+          "verification": "MATCH"
+        },
+        "profit_factor": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 3.1058707990270533,
+          "verification": "MATCH"
+        },
+        "rejection_rate": {
+          "reason": "required observations or context not supplied",
+          "status": "NOT_AVAILABLE"
+        },
+        "tail_loss": {
+          "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+          "status": "NOT_AVAILABLE"
+        },
+        "total_return": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/total_return",
+          "status": "AVAILABLE",
+          "value": 0.018440900000000537,
+          "verification": "MATCH"
+        },
+        "trade_count": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 13,
+          "verification": "MATCH"
+        },
+        "turnover": {
+          "reason": "required observations or context not supplied",
+          "status": "NOT_AVAILABLE"
+        },
+        "volatility": {
+          "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+          "status": "NOT_AVAILABLE"
+        },
+        "win_rate": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 0.46153846153846156,
+          "verification": "MATCH"
+        },
+        "worst_trade": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": -216.51
+        }
+      },
+      "risk_flags": [
+        "BLINDNESS_UNVERIFIED",
+        "INSUFFICIENT_SAMPLE",
+        "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+        "LESS_THAN_ONE_YEAR_OBSERVED",
+        "LOOK_AHEAD_NOT_TESTED",
+        "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+        "MULTIPLE_TESTING_NOT_TESTED",
+        "NET_PROFIT_COVERED_BY_TOP_TRADES",
+        "PARAMETER_STABILITY_NOT_TESTED",
+        "SELECTION_BIAS_NOT_TESTED",
+        "SINGLE_CALENDAR_YEAR_COVERS_ALL_NET_PROFIT",
+        "SINGLE_SYMBOL_COVERS_ALL_NET_PROFIT",
+        "SURVIVORSHIP_BIAS_NOT_TESTED",
+        "TAIL_RISK_NOT_ESTABLISHED",
+        "TEMPORAL_STABILITY_NOT_TESTED"
+      ],
+      "strategy_verdict": "RETEST"
+    },
+    "LOW": {
+      "engineering_status": "PASS",
+      "evidence_sufficiency": "UNDETERMINED",
+      "input_sha256": "7cd71fea49c6371d4a764f8e65c810b97d2f1c17705b80cf7e1ddeb2034dfdb8",
+      "metrics": {
+        "annualized_return": {
+          "reason": "needs >=365.2425 elapsed days and explicit zero external cash flows",
+          "status": "INSUFFICIENT_SAMPLE"
+        },
+        "average_loss": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": -121.07857142857142,
+          "verification": "MATCH"
+        },
+        "average_win": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 457.31666666666666,
+          "verification": "MATCH"
+        },
+        "cost_to_gross_profit": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/cost_to_gross_profit",
+          "status": "AVAILABLE",
+          "value": 0.01183399782529902
+        },
+        "drawdown_duration_seconds": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/max_drawdown",
+          "status": "AVAILABLE",
+          "value": 897300.0
+        },
+        "expectancy": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 145.87307692307692,
+          "verification": "MATCH"
+        },
+        "exposure": {
+          "authority": "UPSTREAM_EXECUTION_DIAGNOSTIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/exposure",
+          "status": "AVAILABLE",
+          "value": 0.33735795454545453
+        },
+        "holding_period_seconds": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/holding_period",
+          "status": "AVAILABLE",
+          "value": {
+            "max": 344700.0,
+            "mean": 61684.61538461538,
+            "min": 5400.0
+          }
+        },
+        "max_drawdown": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/max_drawdown",
+          "status": "AVAILABLE",
+          "value": -0.0076319293552954415,
+          "verification": "MATCH"
+        },
+        "net_pnl": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 1896.35,
+          "verification": "MATCH"
+        },
+        "net_return": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/net_return",
+          "status": "AVAILABLE",
+          "value": 0.018963499999999998,
+          "verification": "MATCH"
+        },
+        "payoff_ratio": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 3.777023971053822,
+          "verification": "MATCH"
+        },
+        "profit_factor": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 3.237449118046133,
+          "verification": "MATCH"
+        },
+        "rejection_rate": {
+          "reason": "required observations or context not supplied",
+          "status": "NOT_AVAILABLE"
+        },
+        "tail_loss": {
+          "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+          "status": "NOT_AVAILABLE"
+        },
+        "total_return": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/total_return",
+          "status": "AVAILABLE",
+          "value": 0.018963499999999245,
+          "verification": "MATCH"
+        },
+        "trade_count": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 13,
+          "verification": "MATCH"
+        },
+        "turnover": {
+          "reason": "required observations or context not supplied",
+          "status": "NOT_AVAILABLE"
+        },
+        "volatility": {
+          "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+          "status": "NOT_AVAILABLE"
+        },
+        "win_rate": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 0.46153846153846156,
+          "verification": "MATCH"
+        },
+        "worst_trade": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": -212.49
+        }
+      },
+      "risk_flags": [
+        "BLINDNESS_UNVERIFIED",
+        "INSUFFICIENT_SAMPLE",
+        "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+        "LESS_THAN_ONE_YEAR_OBSERVED",
+        "LOOK_AHEAD_NOT_TESTED",
+        "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+        "MULTIPLE_TESTING_NOT_TESTED",
+        "NET_PROFIT_COVERED_BY_TOP_TRADES",
+        "PARAMETER_STABILITY_NOT_TESTED",
+        "SELECTION_BIAS_NOT_TESTED",
+        "SINGLE_CALENDAR_YEAR_COVERS_ALL_NET_PROFIT",
+        "SINGLE_SYMBOL_COVERS_ALL_NET_PROFIT",
+        "SURVIVORSHIP_BIAS_NOT_TESTED",
+        "TAIL_RISK_NOT_ESTABLISHED",
+        "TEMPORAL_STABILITY_NOT_TESTED"
+      ],
+      "strategy_verdict": "RETEST"
+    },
+    "STRESS": {
+      "engineering_status": "PASS",
+      "evidence_sufficiency": "UNDETERMINED",
+      "input_sha256": "a0f40bda0c5e61bfd5c224da0495e28f3dee0b9a39fc04b7c5967bf87e38ea11",
+      "metrics": {
+        "annualized_return": {
+          "reason": "needs >=365.2425 elapsed days and explicit zero external cash flows",
+          "status": "INSUFFICIENT_SAMPLE"
+        },
+        "average_loss": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": -115.00875,
+          "verification": "MATCH"
+        },
+        "average_win": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 536.884,
+          "verification": "MATCH"
+        },
+        "cost_to_gross_profit": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/cost_to_gross_profit",
+          "status": "AVAILABLE",
+          "value": 0.01210155670867309
+        },
+        "drawdown_duration_seconds": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/max_drawdown",
+          "status": "AVAILABLE",
+          "value": 897300.0
+        },
+        "expectancy": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 135.71923076923076,
+          "verification": "MATCH"
+        },
+        "exposure": {
+          "authority": "UPSTREAM_EXECUTION_DIAGNOSTIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/exposure",
+          "status": "AVAILABLE",
+          "value": 0.33735795454545453
+        },
+        "holding_period_seconds": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/holding_period",
+          "status": "AVAILABLE",
+          "value": {
+            "max": 344700.0,
+            "mean": 61684.61538461538,
+            "min": 5400.0
+          }
+        },
+        "max_drawdown": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/max_drawdown",
+          "status": "AVAILABLE",
+          "value": -0.008145635305713661,
+          "verification": "MATCH"
+        },
+        "net_pnl": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 1764.35,
+          "verification": "MATCH"
+        },
+        "net_return": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/net_return",
+          "status": "AVAILABLE",
+          "value": 0.0176435,
+          "verification": "MATCH"
+        },
+        "payoff_ratio": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 4.6682013325073095,
+          "verification": "MATCH"
+        },
+        "profit_factor": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 2.9176258328170683,
+          "verification": "MATCH"
+        },
+        "rejection_rate": {
+          "reason": "required observations or context not supplied",
+          "status": "NOT_AVAILABLE"
+        },
+        "tail_loss": {
+          "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+          "status": "NOT_AVAILABLE"
+        },
+        "total_return": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/total_return",
+          "status": "AVAILABLE",
+          "value": 0.017643499999999257,
+          "verification": "MATCH"
+        },
+        "trade_count": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 13,
+          "verification": "MATCH"
+        },
+        "turnover": {
+          "reason": "required observations or context not supplied",
+          "status": "NOT_AVAILABLE"
+        },
+        "volatility": {
+          "reason": "irregular or unknown equity intervals; no assumed daily frequency",
+          "status": "NOT_AVAILABLE"
+        },
+        "win_rate": {
+          "authority": "UPSTREAM_METRIC",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": 0.38461538461538464,
+          "verification": "MATCH"
+        },
+        "worst_trade": {
+          "authority": "AGGREGATE_OF_CORE_RECORDS",
+          "definition_ref": "RESEARCH_EVALUATOR_INPUT_SCHEMA.json#/$defs/metric_definitions/trade_statistics",
+          "status": "AVAILABLE",
+          "value": -222.49
+        }
+      },
+      "risk_flags": [
+        "BLINDNESS_UNVERIFIED",
+        "INSUFFICIENT_SAMPLE",
+        "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+        "LESS_THAN_ONE_YEAR_OBSERVED",
+        "LOOK_AHEAD_NOT_TESTED",
+        "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+        "MULTIPLE_TESTING_NOT_TESTED",
+        "NET_PROFIT_COVERED_BY_TOP_TRADES",
+        "PARAMETER_STABILITY_NOT_TESTED",
+        "SELECTION_BIAS_NOT_TESTED",
+        "SINGLE_CALENDAR_YEAR_COVERS_ALL_NET_PROFIT",
+        "SINGLE_SYMBOL_COVERS_ALL_NET_PROFIT",
+        "SURVIVORSHIP_BIAS_NOT_TESTED",
+        "TAIL_RISK_NOT_ESTABLISHED",
+        "TEMPORAL_STABILITY_NOT_TESTED"
+      ],
+      "strategy_verdict": "RETEST"
+    }
+  },
+  "source_fingerprint": {
+    "MANIFEST.json": "c35e1a164f225fa8fdb4d66026eefc4c96131bfe1ee1fff35100464959536151",
+    "config.json": "c89ba955e26623eca6c5be89d8d0980040b2901237ab7ed852ca63128c69771e",
+    "config_canonical.json": "c581af2db020d182f2e12f46c23657b2c8cf8f4f156f17a7d220a01f30a851bf",
+    "cost_breakdown.csv": "a394e28358e5a3365470cbcbf361d2fac78ae26c21a4948d5548a681a38c8986",
+    "dataset_manifest.json": "70a02554e2764a3634883c9aa669ea639edcb847e449879f1f11faa4054bf02e",
+    "decisions.csv": "3b9ed78347bc91a33722c4e3aff57ad15ee4a69725b0d13d44995eed1a822275",
+    "equity_curve.csv": "6ad77e145119ea07eced929ffdaf97737c2ded0d518be82c5104b7e02596d9a7",
+    "execution_diagnostics.json": "7fefd33547563b384c2d5499906343ae09ae47dc085b5ac78886231d22375cfc",
+    "fills.csv": "73da1c2daf38113aa251b801e7a67fa8232c331aef8ea4c822367cd4800a7c97",
+    "metrics.json": "4655709b03b0f2b6f8ae7f82b3bfd6fdc8a73522667e3ca3be4b6ef12c2ddb7d",
+    "rejected_orders.csv": "938566d324a0a5d58559efb0f6a7bb06f27a60c62ab7c91caf59020bf27570ae",
+    "research_report.md": "298f282e7e46eedc0831aa748177d5ef1daf9ee1945bdcedcf4633e80bf9efcf",
+    "run_info.txt": "5d1bbdb114bfc92e9087ed28d270c5389d6e2ea9af811df771b0f6e57fb934c5",
+    "trades.csv": "676668f8899ca275ef44ec27f4d5ad8639ee126d56a91c4164237bf6bf7f7237"
+  },
+  "status": "PASS"
+}

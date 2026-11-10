@@ -1,0 +1,12 @@
+{
+  "b3c_acceptance_v2.json": "6ad01a3fa9a49ab9182a95689ecfab6e5f160a8c75424771432f801540c79400",
+  "evaluation/acceptance_checks.json": "d63812df1f2b4f8c515541a7629c5b185b7409a12e818657a72df92f9e648328",
+  "evaluation/archive_contract_mapping.md": "6bebd48c583d07b5bcb46dc513ab2080cc3ddb598c15d91fddf72e79821d8bcc",
+  "evaluation/evaluation.json": "97723e9964b60c1e49568aa090624223adffcc2c7c69520f053afe0bb2dfdd8e",
+  "evaluation/evaluation_report.md": "e63fcf6051d25b52cd62e1dd9f40258f99bcf458f2438db3856d470dc4a440f8",
+  "evaluation/research_decision.json": "ab80b722e3a0666291c36f3d6e91bee388936bc5301ce2681b76dbb6bc053506",
+  "evaluation/risk_flags.json": "dcb4f66203d681ad2d1a86365e880f989ffc47c71f43588464e3f50264a8e418",
+  "evaluation/robustness_matrix.csv": "038b926170987692fc76426b233e40bf01e8d0b85a7cf097a7f9608ea899dace",
+  "evaluation/run_info.txt": "19cd96e4fc68b18b4508b623ffa572f9863a1757912f2b37174898aafc7a357f",
+  "reevaluation.json": "8a95c5edb6e795c8727a349c52248f49a4ed6be82c5d7333ae4e5c88073a03c0"
+}

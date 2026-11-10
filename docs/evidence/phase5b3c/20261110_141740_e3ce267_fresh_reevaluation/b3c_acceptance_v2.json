@@ -1,0 +1,111 @@
+{
+  "failed": [],
+  "gates": {
+    "B3C-01": {
+      "evidence": {
+        "authorization_record_sha256": "47c0f440de7f2628d57438a929b152d422c22b8781e24c4a4d13d041f0847b82"
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-02": {
+      "evidence": {
+        "binding_id": "AB-12103e95fef3a534492af832",
+        "trust": "PRODUCTION"
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-03": {
+      "evidence": {
+        "core_commit": [
+          "b16179a7cc077c36046574769a32c367fa476cae",
+          "b16179a7cc077c36046574769a32c367fa476cae"
+        ],
+        "dataset_snapshot_id": [
+          "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+          "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+        ],
+        "strategy_spec_sha256": [
+          "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34",
+          "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34"
+        ]
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-04": {
+      "evidence": {
+        "gate": "A09 at precheck and dispatch",
+        "holdout_lock": "HOLDOUT-TSM-15M-v1"
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-05": {
+      "evidence": {
+        "executor_id": "colab-hh4832-exec-01",
+        "uses": 1
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-06": {
+      "evidence": {
+        "execution_mode": "REAL_GATED"
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-07": {
+      "evidence": {
+        "verification_ref_prefix": "DEVELOPMENT_RECEIPT_RENEWAL:fdd7a4c67817"
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-08": {
+      "evidence": {
+        "evaluator_acceptance": "PASS",
+        "evaluator_checks": {
+          "C1_archive_identity": "PASS",
+          "C2_archive_integrity": "PASS",
+          "C3_trade_integrity": "PASS",
+          "C4_performance_consistency": "PASS",
+          "C5_temporal_safety": "PASS",
+          "C6_research_evaluation": "PASS",
+          "C7_reproducibility": "PASS",
+          "C8_governance_isolation": "PASS"
+        },
+        "scenarios": [
+          "BASE",
+          "CAT_STRESS",
+          "LOW",
+          "STRESS"
+        ],
+        "source": "fresh_reevaluation"
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-09": {
+      "evidence": {
+        "cloud": true,
+        "task_archive": "/content/phase5b3c_run/archive/tasks/20261110_141910_e3ce267_T-e458d0f7af8ffd3c1926"
+      },
+      "status": "PASS",
+      "why": []
+    },
+    "B3C-10": {
+      "evidence": {
+        "budget_state": "CONSUMED",
+        "research_result_acceptance": "PENDING_RESEARCH_LEAD_DECISION"
+      },
+      "status": "PENDING_RESEARCH_LEAD_DECISION",
+      "why": []
+    }
+  },
+  "kind": "PHASE5B3C_ACCEPTANCE",
+  "meaning": "a PASS shows the governed pipeline ran once on real data; it says nothing about SMA 5/20 profitability",
+  "verdict": "EXECUTED_PENDING_RESULT_ACCEPTANCE"
+}
