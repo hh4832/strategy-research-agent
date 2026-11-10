@@ -1,0 +1,98 @@
+{
+  "approval_instructions": "see docs/PHASE5B3C_AUTHORIZATION_PROPOSAL.md",
+  "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+  "contract": "research-only-authorization-v1",
+  "costs": {
+    "model": "IBKR_PRO_FIXED",
+    "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+    "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+    "scenarios": [
+      "BASE",
+      "LOW",
+      "STRESS",
+      "CAT_STRESS"
+    ]
+  },
+  "dataset": {
+    "dataset_id": "ibkr_tsm_1m_normalized",
+    "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae",
+    "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+  },
+  "development_boundary": {
+    "end": "2025-01-01T00:00:00-05:00",
+    "interval": "[start,end)",
+    "start": "2016-10-19T00:00:00-04:00"
+  },
+  "does_not_authorize": [
+    "a second batch, a re-run, or reuse of this authorization ID after it is spent",
+    "any executor other than the named single executor",
+    "any formal gate PASS",
+    "any market, symbol, window, spec, Core or cost profile other than the pinned ones",
+    "any symbol other than TSM",
+    "any window outside 2024-05-29..2024-06-28",
+    "enabling the real Runner outside the governed Phase 5 controlled path",
+    "holdout access for warm-up, signals, fills, metrics or tuning",
+    "live or paper trading",
+    "more than 1 batch (BASE/LOW/STRESS + CAT_STRESS)",
+    "more than the approved max_batches",
+    "parameter search or any parameters other than SMA 5/20",
+    "reading HOLDOUT-TSM-15M-v1 or any data at or after its start",
+    "reuse or reset of RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e",
+    "treating RESEARCH_ONLY costs as account-verified or BROKER_ACTUAL",
+    "use of results for family promotion, FROZEN status or deployment"
+  ],
+  "executor": {
+    "consistency": "SINGLE_EXECUTOR_ONLY",
+    "executor_id": "colab-hh4832-exec-01"
+  },
+  "expires_at": "HUMAN_DECISION_REQUIRED",
+  "formal_gate_pin": {
+    "gate_version": "2026-11-05.4",
+    "gates": {
+      "COST_APPROVAL": "FAIL",
+      "COST_MODEL_COMPATIBILITY": "PASS",
+      "DATA_QUALITY": "PASS",
+      "FORMAL_EXECUTION_ELIGIBILITY": "FAIL",
+      "HOLDOUT_APPROVAL": "FAIL",
+      "TEMPORAL_SAFETY": "UNKNOWN"
+    },
+    "gates_sha256": "11837b368e65efddc31f26f7237e881b5e9a80120ed2f22af76dcb4089b9ea32",
+    "market_status": "NO_GO"
+  },
+  "holdout": {
+    "blindness": "BLINDNESS_UNVERIFIED",
+    "end": "2026-10-17T00:00:00-04:00",
+    "lock_id": "HOLDOUT-TSM-15M-v1",
+    "start": "2025-01-01T00:00:00-05:00"
+  },
+  "issued_at": "HUMAN_DECISION_REQUIRED",
+  "market_id": "IBKR_TSM",
+  "max_batches": 1,
+  "notes": "Purpose PIPELINE_ACCEPTANCE_ONLY: one governed Phase 5 controlled execution of the pre-registered SMA 5/20 baseline on the validated DEV snapshot (window 2024-05-29..2024-06-28 ET), to accept the pipeline. NOT new statistical evidence about SMA 5/20. Single executor colab-hh4832-exec-01; max_batches 1; issued_at = the research lead's formal approval time; expires_at = issued_at + 7 days. Holdout HOLDOUT-TSM-15M-v1 NO_ACCESS. RA-IBKR_TSM-SMA520_DEV-18350b3adba8e28a7e5e stays spent and is not reused.",
+  "proposal_status": "CANDIDATE_UNSIGNED; research lead must personally decide and approve",
+  "proposed_at": "2026-11-10T00:00:00+08:00",
+  "proposed_by": "strategy-research-agent-b3c-proposal-only",
+  "research_window": {
+    "end": "2024-06-29T00:00:00-04:00",
+    "interval": "[start,end)",
+    "start": "2024-05-29T00:00:00-04:00"
+  },
+  "scope": "RESEARCH_ONLY_EXPLORATORY",
+  "strategy": {
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "spec_file_sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34",
+    "spec_path": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.1"
+  },
+  "symbol": "TSM",
+  "temporal_policy": {
+    "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+    "scope": "RESEARCH_ONLY",
+    "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "version": "1.0.0"
+  }
+}

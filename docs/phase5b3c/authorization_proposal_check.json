@@ -1,0 +1,24 @@
+{
+  "as_proposed": {
+    "ok": false,
+    "problems": [
+      "HUMAN_DECISION_REQUIRED_LEFT",
+      "VALIDITY_PERIOD"
+    ],
+    "schema": {
+      "status": "NOT_RUN",
+      "why": "HUMAN_DECISION_REQUIRED values left",
+      "written": false
+    }
+  },
+  "illustrative_validity": {
+    "issued_at": "2026-11-11T09:00:00+08:00",
+    "note": "example time only, NOT a decision",
+    "ok": true,
+    "problems": [],
+    "schema": {
+      "status": "PASS",
+      "written": false
+    }
+  }
+}

@@ -152,3 +152,67 @@ def test_B3C_preflight_out_is_exclusive(tmp_path):
     with pytest.raises(FileExistsError):
         b3c.main(["preflight", "--out", str(out)])
     assert out.read_text() == "x"
+
+
+# ---------------------------------------------------------------- candidate authorization proposal
+def test_B3C_proposal_is_a_candidate_never_an_approval():
+    p = b3c.build_proposal()
+    for k in ("action", "approved_by", "approval_ref", "approved_at"):
+        assert k not in p
+    assert p["authorization_id"] == "RA-IBKR_TSM-SMA520_P5B3C-0001" and p["max_batches"] == 1
+    assert p["executor"] == {"executor_id": "colab-hh4832-exec-01", "consistency": "SINGLE_EXECUTOR_ONLY"}
+    assert p["issued_at"] == HDR and p["expires_at"] == HDR          # fixed only at formal approval
+    assert "PIPELINE_ACCEPTANCE_ONLY" in p["notes"] and p["strategy"]["spec_file_sha256"] == SPEC_SHA
+    r = b3c.check(p)
+    assert r["ok"] is False and set(r["problems"]) == {"HUMAN_DECISION_REQUIRED_LEFT", "VALIDITY_PERIOD"}
+    assert r["schema"]["status"] == "NOT_RUN"
+
+
+def test_B3C_committed_proposal_and_check_match_fresh_build():
+    d = ROOT / "docs/phase5b3c"
+    assert json.loads((d / "authorization_proposal_RA-IBKR_TSM-SMA520_P5B3C-0001.json").read_text()) == \
+        json.loads(b3c._dumps(b3c.build_proposal()))                  # noqa: SLF001
+    c = json.loads((d / "authorization_proposal_check.json").read_text())
+    assert c["illustrative_validity"]["ok"] is True and c["illustrative_validity"]["schema"]["status"] == "PASS"
+
+
+def test_B3C_decided_proposal_passes_schema_and_check_with_7_day_validity():
+    p = b3c.build_proposal(issued_at="2026-11-11T09:00:00+08:00")
+    assert p["expires_at"] == "2026-11-18T09:00:00+08:00"
+    assert b3c.check(p) == {"problems": [], "schema": {"status": "PASS", "written": False}, "ok": True}
+    with pytest.raises(ValueError):
+        b3c.build_proposal(issued_at="2026-11-11T09:00:00")
+    q = copy.deepcopy(p)
+    q["formal_gate_pin"]["gate_version"] = "changed"
+    assert "RA10_FORMAL_GATES_CHANGED" in b3c.check(q)["problems"]
+
+
+def test_B3C_propose_cli_is_exclusive_and_touches_no_book(tmp_path):
+    before = A5.tree_fingerprint(ROOT)
+    out = tmp_path / "P.json"
+    assert b3c.main(["propose", "--issued-at", "2026-11-11T09:00:00+08:00", "--out", str(out)]) == 0
+    assert b3c.check(json.loads(out.read_text()))["ok"] is True
+    with pytest.raises(FileExistsError):
+        b3c.main(["propose", "--issued-at", "2026-11-11T09:00:00+08:00", "--out", str(out)])
+    assert A5.tree_fingerprint(ROOT) == before
+
+
+def test_B3C_proposal_after_admin_approve_in_an_isolated_copy_is_eligible_for_the_named_executor_only(tmp_path):
+    """Isolated copy of governance/: proves the shape the research lead will approve yields exactly one eligible
+    authorization for exactly the named executor. The repository books are never touched."""
+    import shutil
+    from strategy_agent.execution.activation import eligible_authorizations
+    from strategy_agent.governance import research_authorization_admin as ADM
+    before = A5.tree_fingerprint(ROOT)
+    shutil.copytree(ROOT / "governance", tmp_path / "governance")
+    shutil.copytree(ROOT / "registry", tmp_path / "registry")
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    p = b3c.build_proposal(issued_at=now.isoformat())
+    ADM.approve(tmp_path / "governance/research_authorizations.jsonl", tmp_path / "governance/approvers.json", p,
+                approved_by="hh4832", approval_ref="https://example.invalid/ISOLATED_TEST_NOT_AN_APPROVAL")
+    assert eligible_authorizations(tmp_path, "colab-hh4832-exec-01", now + timedelta(hours=1)) == \
+        ["RA-IBKR_TSM-SMA520_P5B3C-0001"]
+    assert eligible_authorizations(tmp_path, "another-runtime", now + timedelta(hours=1)) == []
+    assert eligible_authorizations(tmp_path, "colab-hh4832-exec-01", now + timedelta(days=7, seconds=1)) == []
+    assert eligible_authorizations(ROOT, "colab-hh4832-exec-01", now) == []
+    assert A5.tree_fingerprint(ROOT) == before
