@@ -1,0 +1,370 @@
+{
+  "bias_risk_checklist": [
+    {
+      "required_check": "Review LOOK_AHEAD_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "LOOK_AHEAD_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SURVIVORSHIP_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SURVIVORSHIP_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SELECTION_BIAS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SELECTION_BIAS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review DATA_SNOOPING under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "DATA_SNOOPING",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review TRANSACTION_COSTS under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "TRANSACTION_COSTS",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SLIPPAGE under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SLIPPAGE",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review LIQUIDITY under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "LIQUIDITY",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review SAMPLE_SIZE under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "SAMPLE_SIZE",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review CONCENTRATED_PROFIT under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "CONCENTRATED_PROFIT",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "required_check": "Review HOLDOUT_CONTAMINATION under existing Quant Evaluation Protocol before any request can be executed.",
+      "risk": "HOLDOUT_CONTAMINATION",
+      "status": "NOT_VERIFIED"
+    }
+  ],
+  "draft": {
+    "challenger_view": {
+      "failure_reason": "Could information shocks or trading frictions invalidate the proposed mechanism?",
+      "falsification": "Would net results indistinguishable from the unchanged baseline refute this hypothesis?",
+      "market_beta": "Would a matched market-beta exposure explain all apparent improvement?",
+      "regime_dependence": "Would the result disappear outside the pre-registered regime?",
+      "trade_concentration": "Would removing the largest-contributing trades eliminate the apparent effect?"
+    },
+    "hypothesis": {
+      "expected_direction": "CONDITIONAL",
+      "null_hypothesis": "Net returns of crossover trades are no better than random-entry long trades with the same holding-time distribution (DRIFT-MATCHED-v1 mean excess <= 0), or net expectancy <= 0 after BASE/STRESS costs.",
+      "purpose": "PRE_REGISTERED_HYPOTHESIS_TEST on Development data only; Holdout never read.",
+      "question": "On IBKR TSM 15-minute RTH bars, a completed-bar SMA5 crossing above SMA20 identifies short-horizon up-moves that continue long enough to earn a positive net return per round trip AFTER costs and BEYOND TSM's unconditional upward drift over the same holding time, consistently across the 2017-2024 development years.",
+      "testable_claim": "Pre-registered success requires ALL of: (1) >= 30 valid round trips; (2) BASE and STRESS net expectancy > 0 and STRESS profit factor > 1; (3) DRIFT-MATCHED-v1 mean excess per trade > 0 under BASE (timing beyond beta); (4) net PnL > 0 in at least 5 of the 8 calendar years and in both halves 2017-2020 and 2021-2024; (5) no single calendar year provides more than 50% of total net PnL. Any failure = hypothesis not supported on Development data."
+    },
+    "market_mechanism": {
+      "category": "MOMENTUM",
+      "causal_logic": "Information about TSM reaches the US ADR gradually: Taiwan-session news and semiconductor-sector flows are absorbed by US participants over hours, and large holders split orders over the session. Gradual incorporation creates short-horizon positive autocorrelation of 15m returns; the counterparties are liquidity providers and slower participants who trade against the move. Long-only by construction.",
+      "failure_modes": [
+        "range-bound regimes with frequent whipsaws",
+        "cost drag from frequent crossings",
+        "overnight gaps (positions may be held overnight)",
+        "ADR reaction to Taiwan-hours information outside RTH",
+        "profit is long-only market beta from TSM's 2017-2024 rise rather than timing (tested by DRIFT-MATCHED-v1)",
+        "edge concentrated in one regime or year (tested by pre-registered year / half / regime decomposition)"
+      ]
+    },
+    "required_data": {
+      "additional_features": [],
+      "availability": "DECLARED_AVAILABLE_NOT_VERIFIED",
+      "coverage": {
+        "end": "2024-12-31",
+        "start": "2016-10-19"
+      },
+      "market": "IBKR",
+      "pit_requirements": [
+        "Use only fully completed bars and original timestamps.",
+        "Regime labels use completed sessions strictly before the entry session.",
+        "Never access Holdout HOLDOUT-TSM-15M-v1; Development data only."
+      ],
+      "pit_timing": "Signal at completed-bar available_at; fill strictly later on an eligible bar (CONSERVATIVE_LABEL_AGNOSTIC).",
+      "price_fields": [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "source_ref": "PENDING_TSM_DEV_1M_20161019_20241231",
+      "symbols": [
+        "TSM"
+      ],
+      "timeframe": "15m"
+    },
+    "research_variables": {
+      "changes": [
+        {
+          "baseline": "one Development month 2024-05-29..2024-06-28 (13 trades, INSUFFICIENT_SAMPLE)",
+          "core_variable": "evaluation window (rules, parameters, costs unchanged)",
+          "expected_improvement": "an interpretable sample (hundreds of trades, 8 years, several regimes) to test the pre-registered hypothesis; no performance improvement claimed",
+          "potential_side_effects": "includes the already-seen month (disclosed; reported with and without it); one symbol only (survivorship); RESEARCH_ONLY costs",
+          "proposed_change": "all complete Development calendar years [2017-01-01, 2025-01-01), chosen by rule before any result on them"
+        }
+      ],
+      "parameter_search": {
+        "max_trials": 1,
+        "mode": "FIXED"
+      },
+      "prior_experiment_refs": [
+        "docs/evidence/phase4a_dev_smoke/20261107_081300_9439f8c",
+        "docs/evidence/phase5b3c/20261110_141740_e3ce267"
+      ],
+      "selection_basis": "HYPOTHESIS_DRIVEN"
+    },
+    "strategy_rules": {
+      "entry_condition": "Enter long when the completed-bar SMA5 crosses above SMA20 while flat (spec 0.2.0 = 0.1.1 rules).",
+      "execution_time": "STRICTLY_AFTER_SIGNAL_AVAILABILITY",
+      "exit_condition": "Exit long when the completed-bar SMA5 crosses below SMA20.",
+      "exit_policy": "Opposite crossover only; no stop, take-profit or time exit; overnight holding allowed.",
+      "holding_horizon": "several 15-minute bars to a few sessions",
+      "position_sizing": "FIXED_UNITS 100 shares; initial capital 100000 USD.",
+      "signal_time": "BAR_AVAILABLE_AT",
+      "universe": {
+        "market": "IBKR",
+        "symbols": [
+          "TSM"
+        ],
+        "timeframe": "15m"
+      }
+    },
+    "strategy_spec_fragment": {
+      "execution": {
+        "convention": "oracle-execution-convention-v1",
+        "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+        "max_fill_delay_bars": 2,
+        "order_time": "SIGNAL_TIME",
+        "order_type": "MARKET",
+        "partial_fills": false,
+        "same_bar_reentry": false,
+        "signal_time": "BAR_AVAILABLE_AT",
+        "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END"
+      },
+      "parameters": {
+        "constraints": [
+          {
+            "left": "fast",
+            "op": "<",
+            "right": "slow"
+          }
+        ],
+        "search": {
+          "max_trials": 1,
+          "mode": "FIXED"
+        },
+        "values": {
+          "fast": {
+            "default": 5,
+            "description": "fast SMA length (bars); fixed baseline",
+            "max": 5,
+            "min": 5,
+            "step": 1,
+            "type": "integer"
+          },
+          "slow": {
+            "default": 20,
+            "description": "slow SMA length (bars); fixed baseline",
+            "max": 20,
+            "min": 20,
+            "step": 1,
+            "type": "integer"
+          }
+        }
+      },
+      "position_sizing": {
+        "initial_capital": 100000,
+        "max_units": 100,
+        "method": "FIXED_UNITS",
+        "units": 100
+      },
+      "risk_constraints": {
+        "allowed_directions": [
+          "LONG"
+        ],
+        "max_position_units": 100
+      },
+      "risk_exits": {
+        "stop_loss": {
+          "type": "NONE"
+        },
+        "take_profit": {
+          "type": "NONE"
+        },
+        "time_exit": {}
+      },
+      "signal": {
+        "entry_rules": [
+          {
+            "action": "ENTER_LONG",
+            "id": "golden_cross",
+            "when": {
+              "args": [
+                {
+                  "left": {
+                    "ref": "sma_fast"
+                  },
+                  "op": "cross_above",
+                  "right": {
+                    "ref": "sma_slow"
+                  }
+                },
+                {
+                  "op": "is_flat"
+                }
+              ],
+              "op": "and"
+            }
+          }
+        ],
+        "evaluation_time": "BAR_CLOSE",
+        "exit_rules": [
+          {
+            "action": "EXIT_LONG",
+            "id": "death_cross",
+            "when": {
+              "left": {
+                "ref": "sma_fast"
+              },
+              "op": "cross_below",
+              "right": {
+                "ref": "sma_slow"
+              }
+            }
+          }
+        ],
+        "indicators": [
+          {
+            "id": "sma_fast",
+            "input": "close",
+            "params": {
+              "period": {
+                "param": "fast"
+              }
+            },
+            "series_scope": "CONTINUOUS_ELIGIBLE_BARS",
+            "type": "SMA"
+          },
+          {
+            "id": "sma_slow",
+            "input": "close",
+            "params": {
+              "period": {
+                "param": "slow"
+              }
+            },
+            "series_scope": "CONTINUOUS_ELIGIBLE_BARS",
+            "type": "SMA"
+          }
+        ]
+      },
+      "universe": {
+        "aggregation": {
+          "closed": "left",
+          "label": "start",
+          "require_complete": true,
+          "session_anchored": true
+        },
+        "contract_policy": {
+          "continuous_inferred": false,
+          "indicator_series": "NOT_APPLICABLE",
+          "type": "NOT_APPLICABLE"
+        },
+        "market": "IBKR",
+        "sessions": {
+          "allowed": [
+            "RTH"
+          ],
+          "calendar_ref": "NYSE RTH 09:30-16:00 America/New_York (DST-aware; source timestamps are UTC)",
+          "exclude_closing_auction": true,
+          "no_overnight": false
+        },
+        "source_timeframe": "1m",
+        "symbols": [
+          "TSM"
+        ],
+        "timeframe": "15m",
+        "timezone": "America/New_York"
+      }
+    },
+    "title": "Phase 5-C1: does SMA 5/20 on TSM 15m time trends beyond drift and costs on Development 2017-2024?"
+  },
+  "evaluation_plan": {
+    "metrics": [
+      "Trade Count",
+      "Win Rate",
+      "Payoff Ratio",
+      "Expectancy",
+      "Profit Factor",
+      "Maximum Drawdown",
+      "Tail Risk",
+      "Cost Sensitivity",
+      "Market Regime",
+      "Annual Performance",
+      "Symbol Concentration",
+      "Holding Duration",
+      "Parameter Robustness"
+    ],
+    "protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
+    "threshold_policy": "USE_EXISTING_PROTOCOL_ONLY; NO_NEW_THRESHOLDS"
+  },
+  "execution_policy": "PENDING_HUMAN_REVIEW; NEVER_EXECUTE_OR_AUTHORIZE",
+  "fingerprints": {
+    "hypothesis": "73d8f6851f6b3127da8b7a561990a1db5ac88ff02582664fc3ba5aa5fe3c1764",
+    "method": "EXISTING_CANONICAL_STRUCTURE",
+    "parameter_values": "4f44729f89f04478e89259ad612ac1e2ae17bebb3479aae09710840f661a5b20",
+    "strategy_family": "1b859060b49645e9cc39644cfedb0b52a6e5c3e523bb226e19f8643c9d4ac4c0"
+  },
+  "holdout_policy": "NO_ACCESS; PROPOSAL_ONLY; NO_AUTHORIZATION",
+  "origin": {
+    "adapter_id": "CLAUDE_AUTHORED_P5C1_COMPLETION_FILE",
+    "agent_commit_sha": "0440c7a428ffa7756d76651b5c50f88640bdad98",
+    "created_at": "2026-11-10T16:00:00+08:00",
+    "draft_sha256": "5909e17e593108a2eaf8e229ef7e6cff57a01d84d26e241f80908a000970fdae",
+    "input_kind": "USER_HYPOTHESIS",
+    "user_hypothesis": "On IBKR TSM 15-minute RTH bars, a completed-bar SMA5 crossing above SMA20 identifies short-horizon up-moves that continue long enough to earn a positive net return per round trip AFTER costs and BEYOND TSM's unconditional upward drift over the same holding time, consistently across the 2017-2024 development years."
+  },
+  "prior_proposal_refs": [],
+  "proposal_id": "PROP-019ffdf4b010430fa384",
+  "proposal_sha256": "6fe4b1bfa08a47cd858817be976caa583bf19afc8358ad968658a97651da1197",
+  "request_contract": "PINNED_SHARED_SCHEMA; BINDINGS_AND_HUMAN_APPROVAL_REQUIRED",
+  "request_contract_pin": {
+    "commit_sha": "5d088c4de362add925344d8e48b36c2e9d728d96",
+    "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+    "status": "PINNED_SCHEMA_ONLY; NOT_AUTHORIZATION"
+  },
+  "research_change_record": [
+    {
+      "baseline": "one Development month 2024-05-29..2024-06-28 (13 trades, INSUFFICIENT_SAMPLE)",
+      "core_variable": "evaluation window (rules, parameters, costs unchanged)",
+      "expected_improvement": "an interpretable sample (hundreds of trades, 8 years, several regimes) to test the pre-registered hypothesis; no performance improvement claimed",
+      "potential_side_effects": "includes the already-seen month (disclosed; reported with and without it); one symbol only (survivorship); RESEARCH_ONLY costs",
+      "proposed_change": "all complete Development calendar years [2017-01-01, 2025-01-01), chosen by rule before any result on them"
+    }
+  ],
+  "review_status": "NEEDS_REVIEW",
+  "schema_version": "1.0.0",
+  "status": "PROPOSED",
+  "validation": {
+    "blockers": [],
+    "risk_flags": [
+      {
+        "code": "DATA_AND_CAUSAL_MECHANISM_NOT_VERIFIED",
+        "message": "Design assertions are not data approval or evidence of strategy effect."
+      }
+    ],
+    "schema_valid": true
+  }
+}

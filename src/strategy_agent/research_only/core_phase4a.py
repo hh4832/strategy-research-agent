@@ -301,10 +301,41 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict, spe
                                               policy=core.CONSERVATIVE_POLICY, core_sha=core_sha)
         report = A.core_result_to_report(result, request, core_sha, cost_profile=profile)
         diag = core_costs.tsm_cost_diagnostics(result, profile)
+        exp = spec.get("experiment") or {}
+        extra = {}                       # 5-C1: only when the spec pre-registers it (older specs: unchanged output)
+        if "family_trials_including_this" in exp:
+            extra.update(family_id=exp.get("trial_family_id", "UNASSIGNED"),
+                         family_trials=int(exp["family_trials_including_this"]))
         metrics = evaluate(report, rows, initial_capital=cash, bar_minutes=15, bars_per_year=252 * 26,
-                           parameters=parameters, symbol="TSM", order_qty=qty)
+                           parameters=parameters, symbol="TSM", order_qty=qty, **extra)
+        metrics.update(preregistered_decompositions(report, rows, exp))
         out["scenarios"][name] = {"profile_sha256": profile.sha256, "result": result, "report": report,
                                   "m3a4_checks": checks, "cost_diagnostics": diag, "metrics": metrics}
+    return out
+
+
+def preregistered_decompositions(report, rows, experiment: dict) -> dict:
+    """5-C1: the spec's pre-registered regime decomposition and drift-matched control (``evaluation.regimes`` /
+    ``evaluation.controls``), added next to the M3-B metrics (which stay byte-identical). Nothing for older specs."""
+    from zoneinfo import ZoneInfo  # noqa: PLC0415
+
+    from strategy_agent.evaluation import controls as CT  # noqa: PLC0415
+    from strategy_agent.evaluation import regimes as RG  # noqa: PLC0415
+    from strategy_agent.evaluation.research import trade_stats  # noqa: PLC0415
+    out: dict = {}
+    trips = [dict(t) for t in report.round_trips]
+    if experiment.get("regime_definition"):
+        ny = ZoneInfo("America/New_York")
+
+        def session_of(t):
+            ts = t["entry_ts"] if isinstance(t["entry_ts"], datetime) else datetime.fromisoformat(str(t["entry_ts"]))
+            return ts.astimezone(ny).date().isoformat()
+        out["by_regime"] = RG.decompose(trips, rows, experiment["regime_definition"], stats_fn=trade_stats,
+                                        session_of=session_of)
+    if experiment.get("drift_control"):
+        if experiment["drift_control"] != CT.VERSION:
+            raise Phase4ABindingError(f"unknown drift control {experiment['drift_control']!r}")
+        out["drift_control"] = CT.drift_matched(trips, rows)
     return out
 
 

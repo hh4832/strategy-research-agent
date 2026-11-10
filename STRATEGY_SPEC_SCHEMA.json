@@ -771,6 +771,29 @@
           "type": "string",
           "description": "Groups all variants that count toward the same multiple-testing family."
         },
+        "family_trials_including_this": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Pre-registered count of every execution in trial_family_id including this one (multiple-testing N; never lowered)."
+        },
+        "drift_control": {
+          "const": "DRIFT-MATCHED-v1",
+          "description": "Pre-registered long-only control: each trade's net PnL vs the unconditional drift over its holding span (evaluation.controls)."
+        },
+        "regime_definition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "trend", "volatility"],
+          "description": "Pre-registered, point-in-time market-regime labels for trade decomposition (evaluation.regimes). Fixed before any result is seen.",
+          "properties": {
+            "version": {"const": "REGIME-DAILY-v1"},
+            "trend": {"type": "object", "additionalProperties": false, "required": ["lookback_sessions"],
+                      "properties": {"lookback_sessions": {"type": "integer", "minimum": 2}}},
+            "volatility": {"type": "object", "additionalProperties": false, "required": ["window_sessions", "reference_sessions"],
+                           "properties": {"window_sessions": {"type": "integer", "minimum": 2},
+                                          "reference_sessions": {"type": "integer", "minimum": 2}}}
+          }
+        },
         "compute_budget": {
           "type": "object",
           "additionalProperties": false,
