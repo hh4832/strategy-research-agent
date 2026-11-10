@@ -12,6 +12,7 @@ Nothing here creates, approves, binds or consumes anything:
 
   python -m strategy_agent.readiness.b3c emit-docs
   python -m strategy_agent.readiness.b3c preflight [--out FILE]
+  python -m strategy_agent.readiness.b3c propose --issued-at <ISO+offset> --out governance/proposals/<ID>.json
   python -m strategy_agent.readiness.b3c check-proposal --proposal P.json     (research lead, before admin approve)
 """
 from __future__ import annotations
@@ -208,12 +209,75 @@ def proposal_problems(p: dict) -> list[str]:
             bad.append("VALIDITY_PERIOD")
     except Exception:  # noqa: BLE001
         bad.append("VALIDITY_PERIOD")
+    try:   # RA10: the pinned formal gates must equal today's market readiness, or the authorization is void at once
+        from strategy_agent.governance.research_authorization import gates_sha256  # noqa: PLC0415
+        mk = json.loads(path("market_readiness").read_text(encoding="utf-8"))["markets"][p.get("market_id")]
+        pin = p.get("formal_gate_pin") or {}
+        if (mk.get("status"), mk.get("gate_version"), gates_sha256(mk.get("gates", {}))) != \
+                (pin.get("market_status"), pin.get("gate_version"), pin.get("gates_sha256")):
+            bad.append("RA10_FORMAL_GATES_CHANGED")
+    except Exception:  # noqa: BLE001
+        bad.append("RA10_FORMAL_GATES_UNREADABLE")
     ref = build_draft()["proposal_fields"]
     for k in ("market_id", "symbol", "dataset", "temporal_policy", "costs", "research_window", "holdout",
               "formal_gate_pin", "scope", "contract"):
         if p.get(k) != ref.get(k):
             bad.append(f"PIN_CHANGED:{k}")
     return bad
+
+
+# ---------------------------------------------------------------- candidate proposal (for the research lead)
+ILLUSTRATIVE_ISSUED_AT = "2026-11-11T09:00:00+08:00"   # docs example only; the real value is set at approval
+PROPOSAL_ONLY_FIELDS = ("proposal_status", "proposed_by", "proposed_at", "approval_instructions")
+PURPOSE = "PIPELINE_ACCEPTANCE_ONLY"
+VALIDITY_RULE = f"issued_at = the research lead's formal approval time; expires_at = issued_at + {PROPOSED_VALIDITY_DAYS} days"
+
+
+def build_proposal(*, authorization_id: str = CANDIDATE_AUTHORIZATION_ID, executor_id: str = PROPOSED_EXECUTOR,
+                   issued_at: str | None = None, m: dict | None = None) -> dict:
+    """The research lead's CANDIDATE proposal (governance/proposals format). Never an APPROVE: no action, approver,
+    approval_ref or approved_at. Without ``issued_at`` the validity stays HUMAN_DECISION_REQUIRED (it can only be
+    fixed at the moment of formal approval)."""
+    from datetime import timedelta  # noqa: PLC0415
+    p = copy.deepcopy(build_draft(m)["proposal_fields"])
+    if issued_at is None:
+        iss = exp = HDR
+    else:
+        i = datetime.fromisoformat(issued_at)
+        if i.tzinfo is None:
+            raise ValueError("issued_at needs an explicit UTC offset")
+        iss, exp = i.isoformat(timespec="seconds"), (i + timedelta(days=PROPOSED_VALIDITY_DAYS)).isoformat(timespec="seconds")
+    p.update(authorization_id=authorization_id, max_batches=PROPOSED_MAX_BATCHES, issued_at=iss, expires_at=exp)
+    p["executor"] = {"executor_id": executor_id, "consistency": "SINGLE_EXECUTOR_ONLY"}
+    p["notes"] = (f"Purpose {PURPOSE}: one governed Phase 5 controlled execution of the pre-registered SMA 5/20 "
+                  f"baseline on the validated DEV snapshot (window 2024-05-29..2024-06-28 ET), to accept the pipeline. "
+                  f"NOT new statistical evidence about SMA 5/20. Single executor {executor_id}; max_batches 1; "
+                  f"{VALIDITY_RULE}. Holdout HOLDOUT-TSM-15M-v1 NO_ACCESS. {SPENT_DEV} stays spent and is not reused.")
+    return {"proposal_status": "CANDIDATE_UNSIGNED; research lead must personally decide and approve",
+            "proposed_by": "strategy-research-agent-b3c-proposal-only",
+            "proposed_at": "2026-11-10T00:00:00+08:00",
+            "approval_instructions": "see docs/PHASE5B3C_AUTHORIZATION_PROPOSAL.md",
+            **p}
+
+
+def schema_check(proposal: dict) -> dict:
+    """Real schema + book validation IN MEMORY with clearly fake approval fields; nothing is written."""
+    from strategy_agent.governance.research_authorization import validate_events  # noqa: PLC0415
+    if HDR in json.dumps(proposal):
+        return {"status": "NOT_RUN", "why": "HUMAN_DECISION_REQUIRED values left", "written": False}
+    ev = {k: v for k, v in proposal.items() if k not in PROPOSAL_ONLY_FIELDS}
+    ev.update(action="APPROVE", approved_by="dry-run-not-an-approver",
+              approval_ref="https://example.invalid/DRY_RUN_NOT_AN_APPROVAL", approved_at=ev["issued_at"])
+    try:
+        validate_events([ev], {"dry-run-not-an-approver"})
+        return {"status": "PASS", "written": False}
+    except Exception as e:  # noqa: BLE001
+        return {"status": "FAIL", "error": f"{type(e).__name__}: {e}"[:600], "written": False}
+
+
+def check(proposal: dict) -> dict:
+    bad = proposal_problems({k: v for k, v in proposal.items() if k not in PROPOSAL_ONLY_FIELDS})
+    return {"problems": bad, "schema": schema_check(proposal), "ok": not bad and schema_check(proposal)["status"] == "PASS"}
 
 
 # ---------------------------------------------------------------- run config (in memory)
@@ -311,7 +375,14 @@ def emit_docs() -> list[str]:
     m = M.build(None)
     draft = build_draft(m)
     DOCS.mkdir(parents=True, exist_ok=True)
-    out = {"authorization_draft.json": draft, "authorization_draft_schema_dry_run.json": schema_dry_run(draft)}
+    prop = build_proposal(m=m)
+    illus = build_proposal(m=m, issued_at=ILLUSTRATIVE_ISSUED_AT)
+    out = {"authorization_draft.json": draft, "authorization_draft_schema_dry_run.json": schema_dry_run(draft),
+           f"authorization_proposal_{CANDIDATE_AUTHORIZATION_ID}.json": prop,
+           "authorization_proposal_check.json": {
+               "as_proposed": check(prop),
+               "illustrative_validity": {"issued_at": ILLUSTRATIVE_ISSUED_AT, "note": "example time only, NOT a decision",
+                                         **check(illus)}}}
     for n, o in out.items():
         (DOCS / n).write_bytes(_dumps(o))
     return sorted(out)
@@ -323,6 +394,9 @@ def main(argv=None) -> int:
     sub.add_parser("emit-docs")
     p = sub.add_parser("preflight"); p.add_argument("--out", type=Path)
     c = sub.add_parser("check-proposal"); c.add_argument("--proposal", type=Path, required=True)
+    q = sub.add_parser("propose"); q.add_argument("--authorization-id", default=CANDIDATE_AUTHORIZATION_ID)
+    q.add_argument("--executor-id", default=PROPOSED_EXECUTOR); q.add_argument("--issued-at", required=True)
+    q.add_argument("--out", type=Path, required=True)
     r = sub.add_parser("derive-run-config"); r.add_argument("--authorization-id", required=True)
     r.add_argument("--out", type=Path, required=True)
     a = ap.parse_args(argv)
@@ -338,9 +412,15 @@ def main(argv=None) -> int:
         sys.stdout.write(b.decode())
         return 0 if res["preparation"] == "READY_FOR_HUMAN_DECISION" else 1
     if a.cmd == "check-proposal":
-        bad = proposal_problems(json.loads(a.proposal.read_text(encoding="utf-8")))
-        print(json.dumps({"problems": bad, "ok": not bad}, indent=2))
-        return 0 if not bad else 1
+        res = check(json.loads(a.proposal.read_text(encoding="utf-8")))
+        print(json.dumps(res, indent=2))
+        return 0 if res["ok"] else 1
+    if a.cmd == "propose":   # writes a CANDIDATE proposal file only (O_EXCL); never the book, never an APPROVE
+        prop = build_proposal(authorization_id=a.authorization_id, executor_id=a.executor_id, issued_at=a.issued_at)
+        with open(a.out, "xb") as f:
+            f.write(_dumps(prop))
+        print(json.dumps(check(prop), indent=2))
+        return 0
     # derive-run-config: refuses unless the ID is a formal, active APPROVE in the merged book
     ids = {x.get("authorization_id") for x in _book_lines("authorization_book") if x.get("action") == "APPROVE"}
     if a.authorization_id not in ids:
