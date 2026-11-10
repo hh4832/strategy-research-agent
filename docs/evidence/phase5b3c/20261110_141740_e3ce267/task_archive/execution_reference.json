@@ -1,0 +1,15 @@
+{
+  "adapter": "CONTROLLED_RESEARCH_ONLY",
+  "archive_manifest_sha256": "c35e1a164f225fa8fdb4d66026eefc4c96131bfe1ee1fff35100464959536151",
+  "archive_path": "/content/phase5b3c_run/state/executions/T-e458d0f7af8ffd3c1926/attempt_1/20261110_141805_e3ce267",
+  "backend": "RESEARCH_ONLY_RUNNER_REAL_SNAPSHOT",
+  "consumed_batches": 1,
+  "evidence": "CONTROLLED_EXECUTION",
+  "execution_mode": "REAL_GATED",
+  "receipt_path": "/content/phase5b3c_run/state/executions/T-e458d0f7af8ffd3c1926/attempt_1/EXECUTION_RECEIPT.json",
+  "receipt_sha256": "a98946b5c45bbb6b07142e988b8a5302a3781cf6acd6a468c1f716d99f1c17cc",
+  "reservation_id": "BR-174ffee2ef6df52245e78888",
+  "run_id": "20261110_141805_e3ce267",
+  "strategy_executed": true,
+  "synthetic": false
+}

@@ -1,0 +1,100 @@
+{
+  "checks": [
+    {
+      "detail": "valid",
+      "id": "G1_REQUEST_SCHEMA",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "errors": [],
+        "file_sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34",
+        "identity_matches": true,
+        "matches_request": true
+      },
+      "id": "G2_STRATEGY_SPEC",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "dataset_id": "ibkr_tsm_1m_normalized",
+        "manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+        "snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e"
+      },
+      "id": "G3_DATASET",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "benchmark": {
+          "status": "BENCHMARK_PASS",
+          "why": "all 12 cases, G16 acceptance and oracle probes G17/G14b PASS on the real Core"
+        },
+        "core_commit": "b16179a7cc077c36046574769a32c367fa476cae",
+        "cost_set": {
+          "file_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+          "unknown_scenarios": []
+        }
+      },
+      "id": "G4_CORE_COST",
+      "status": "PASS"
+    },
+    {
+      "detail": "approved, not revoked",
+      "id": "G5_AUTHORIZATION",
+      "status": "PASS"
+    },
+    {
+      "detail": "RA03-RA08, RA10, RA12 PASS",
+      "id": "G6_AUTHORIZATION_SCOPE",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "uses": "0/1"
+      },
+      "id": "G7_BUDGET",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "blindness": "BLINDNESS_UNVERIFIED",
+        "lock_id": "HOLDOUT-TSM-15M-v1",
+        "ra09": "PASS"
+      },
+      "id": "G8_HOLDOUT",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "formal_market_status": "NO_GO",
+        "meaning": "recorded only; NO_GO stays NO_GO and is never read as a trading permission",
+        "trading_permission": false
+      },
+      "id": "G9_FORMAL_GATE",
+      "status": "PASS"
+    },
+    {
+      "detail": "REAL_GATED: every request must pass the activation gate A01-A10 at precheck and at execute",
+      "id": "G10_EXECUTION_MODE",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "approval_trust": "PRODUCTION",
+        "binding_id": "AB-12103e95fef3a534492af832",
+        "evidence_path": "registry/approval_evidence/fe0a53b0281b008cf8e461729a42dd2ee3d5d5f0001e2a6e89a0bf6815aef74b.json",
+        "problems": [],
+        "seq": 0
+      },
+      "id": "G11_AUTHORIZATION_BINDING",
+      "status": "PASS"
+    }
+  ],
+  "consumes_budget": true,
+  "formal_market_status": "NO_GO",
+  "mode": "RESEARCH_ONLY_REAL",
+  "note": "RESEARCH-ONLY governance. A PASS permits a read-only/research-only task, never trading; Formal Market Eligibility is not evaluated or changed here.",
+  "status": "PASS",
+  "trading_permission": false
+}

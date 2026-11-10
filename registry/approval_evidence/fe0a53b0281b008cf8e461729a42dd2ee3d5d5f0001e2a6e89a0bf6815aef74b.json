@@ -1,0 +1,63 @@
+{
+  "approval_source": {
+    "kind": "GITHUB_REST_API",
+    "transport": "LIVE",
+    "trust": "PRODUCTION"
+  },
+  "author": {
+    "author_association": "OWNER",
+    "id": 269247281,
+    "login": "hh4832",
+    "performed_via_github_app": null,
+    "type": "User"
+  },
+  "comment": {
+    "body_sha256": "63fab7031b76c404210314353d427ba323ee30858485d0ec7fd6ee256154b99d",
+    "created_at": "2026-11-10T05:52:45Z",
+    "edited": false,
+    "id": 6760177070,
+    "issue_number": 19,
+    "token_line": "RESEARCH-APPROVAL v1 decision=APPROVE intent=BIND_AUTHORIZATION request=4a814bd59c788485133df476e43467b33b4c2727ecfe4a27e95fa17741a2480c authorization=RA-IBKR_TSM-SMA520_P5B3C-0001 scope=ee993e1bf4a2e4e836092fdfd48fc3a37b42199f43f0cfe62a51096e6dab398e expires=2026-11-12T05:46:24Z",
+    "updated_at": "2026-11-10T05:52:45Z",
+    "url": "https://github.com/hh4832/strategy-research-agent/pull/19#issuecomment-6760177070"
+  },
+  "decision": "APPROVE",
+  "evidence_id": "AE-GH-6760177070",
+  "evidence_version": "1.0.0",
+  "expires_at": "2026-11-12T05:46:24Z",
+  "intent": "BIND_AUTHORIZATION",
+  "repository": {
+    "full_name": "hh4832/strategy-research-agent",
+    "id": 1443253343
+  },
+  "revocation": {
+    "revoked_by_comments": [],
+    "status": "NOT_REVOKED"
+  },
+  "subject": {
+    "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001",
+    "request_sha256": "4a814bd59c788485133df476e43467b33b4c2727ecfe4a27e95fa17741a2480c",
+    "scope_sha256": "ee993e1bf4a2e4e836092fdfd48fc3a37b42199f43f0cfe62a51096e6dab398e",
+    "task_id": null
+  },
+  "verification": {
+    "checks": {
+      "V01": "PASS",
+      "V02": "PASS",
+      "V03": "PASS",
+      "V04": "PASS",
+      "V05": "PASS",
+      "V06": "PASS",
+      "V07": "PASS",
+      "V08": "PASS",
+      "V09": "PASS"
+    },
+    "code": null,
+    "result": "PASS"
+  },
+  "verified_at": "2026-11-10T06:17:53Z",
+  "verifier": {
+    "name": "strategy_agent.approval.verifier",
+    "version": "1.0.0"
+  }
+}

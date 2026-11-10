@@ -1,0 +1,73 @@
+{
+  "authorization_ref": {
+    "authorization_id": "RA-IBKR_TSM-SMA520_P5B3C-0001"
+  },
+  "core_commit": "b16179a7cc077c36046574769a32c367fa476cae",
+  "cost_profile_ref": {
+    "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+    "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+    "scenarios": [
+      "BASE",
+      "LOW",
+      "STRESS",
+      "CAT_STRESS"
+    ]
+  },
+  "dataset_manifest_sha256": "8b6fc838b72ae3015f6eb418c3a77115e53a86f185e05c2249e9dcd58192cfc5",
+  "dataset_ref": {
+    "dataset_id": "ibkr_tsm_1m_normalized",
+    "producer_commit_sha": "b16179a7cc077c36046574769a32c367fa476cae"
+  },
+  "dataset_snapshot_id": "TSM_DEV_1M_20240529_20240628_18350b3adba8e28a7e5e",
+  "execution_mode": "RESEARCH_ONLY_REAL",
+  "execution_time_rule": {
+    "rule": "NEXT_ELIGIBLE_BAR_OPEN"
+  },
+  "holdout_policy": {
+    "access": "NO_ACCESS",
+    "lock_id": "HOLDOUT-TSM-15M-v1"
+  },
+  "hypothesis": "Does the governed Phase 5 pipeline run the pre-registered SMA 5/20 TSM baseline once, end to end, on the validated real DEV snapshot with consistent, archived and settled evidence?\nHypothesis: One governed execution yields an evidence-verified, settled and reproducible archive; no performance claim is made or tested.\nNull: The governed pipeline fails a governance, identity, archive or settlement check on real historical data.",
+  "market": {
+    "market_id": "IBKR_TSM",
+    "symbol": "TSM"
+  },
+  "market_mechanism": "Information is incorporated gradually (order splitting by large holders, ADR catching up with Taiwan-hours news), producing short-horizon serial correlation that a fast/slow moving-average crossing can detect. This is an untested hypothesis, not evidence that SMA is profitable.",
+  "request_id": "RR-PROP-E25DA64052D23E9C4D18",
+  "requested_change": {
+    "description": "Phase 4-A direct ResearchOnlyRunner DEV smoke run 20261107_081300_9439f8c (spec 0.1.0) → Same pre-registered SMA 5/20 on the same DEV snapshot through the governed Phase 5 controlled path (spec 0.1.1: data binding re-pin only)",
+    "kind": "REPLAY_EXISTING"
+  },
+  "requested_outputs": [
+    "RESEARCH_EVALUATION",
+    "RESEARCH_DECISION",
+    "RISK_FLAGS",
+    "ROBUSTNESS_MATRIX"
+  ],
+  "research_budget": {
+    "batches_requested": 1
+  },
+  "research_window": {
+    "end": "2024-06-29T00:00:00-04:00",
+    "start": "2024-06-03T00:00:00-04:00",
+    "warmup_start": "2024-05-29T00:00:00-04:00"
+  },
+  "schema_version": "1.0.0",
+  "signal_time_rule": {
+    "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+    "policy_sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "policy_version": "1.0.0",
+    "signal_time": "CORE_MODELED_AVAILABLE_AT"
+  },
+  "strategy_family": {
+    "family_id": "sma-crossover-tsm",
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.1.1"
+  },
+  "strategy_spec_ref": "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json",
+  "strategy_spec_sha256": "f4f60b447013062324b7dc10aa0a569aebbd542796bef6ccfd2e723d0f5cff34"
+}

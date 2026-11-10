@@ -1,0 +1,36 @@
+{
+  "acceptance_checks": {
+    "C1_archive_identity": "PASS",
+    "C2_archive_integrity": "PASS",
+    "C3_trade_integrity": "PASS",
+    "C4_performance_consistency": "PASS",
+    "C5_temporal_safety": "PASS",
+    "C6_research_evaluation": "PASS",
+    "C7_reproducibility": "PASS",
+    "C8_governance_isolation": "FAIL"
+  },
+  "acceptance_status": "FAIL",
+  "blocked_reason": null,
+  "engineering_status": "PASS",
+  "evidence": "CONTROLLED_EXECUTION",
+  "evidence_sufficiency": "UNDETERMINED",
+  "risk_flags": [
+    "BLINDNESS_UNVERIFIED",
+    "INSUFFICIENT_SAMPLE",
+    "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED",
+    "LESS_THAN_ONE_YEAR_OBSERVED",
+    "LOOK_AHEAD_NOT_TESTED",
+    "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED",
+    "MULTIPLE_TESTING_NOT_TESTED",
+    "NET_PROFIT_COVERED_BY_TOP_TRADES",
+    "PARAMETER_STABILITY_NOT_TESTED",
+    "SELECTION_BIAS_NOT_TESTED",
+    "SINGLE_CALENDAR_YEAR_COVERS_ALL_NET_PROFIT",
+    "SINGLE_SYMBOL_COVERS_ALL_NET_PROFIT",
+    "SURVIVORSHIP_BIAS_NOT_TESTED",
+    "TAIL_RISK_NOT_ESTABLISHED",
+    "TEMPORAL_STABILITY_NOT_TESTED"
+  ],
+  "strategy_verdict": "RETEST",
+  "test_mode": false
+}

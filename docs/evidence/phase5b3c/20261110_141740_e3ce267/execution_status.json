@@ -1,0 +1,109 @@
+{
+  "claim": "/content/drive/MyDrive/00Quant_Research/phase5b3c/RA-IBKR_TSM-SMA520_P5B3C-0001/CLAIM.json",
+  "settled": true,
+  "status": {
+    "attempt": 1,
+    "budget_state": "CONSUMED",
+    "history": [
+      {
+        "actor": "hh4832",
+        "actor_kind": "HUMAN",
+        "at": "2026-11-10T14:17:56.448079+08:00",
+        "from": null,
+        "reason": null,
+        "seq": 0,
+        "to": "PROPOSED"
+      },
+      {
+        "actor": "orchestrator",
+        "actor_kind": "SYSTEM",
+        "at": "2026-11-10T14:17:56.454871+08:00",
+        "from": "PROPOSED",
+        "reason": null,
+        "seq": 1,
+        "to": "VALIDATED"
+      },
+      {
+        "actor": "orchestrator",
+        "actor_kind": "SYSTEM",
+        "at": "2026-11-10T14:17:58.274522+08:00",
+        "from": "VALIDATED",
+        "reason": null,
+        "seq": 2,
+        "to": "PENDING_APPROVAL"
+      },
+      {
+        "actor": "hh4832",
+        "actor_kind": "HUMAN",
+        "at": "2026-11-10T14:18:01.316530+08:00",
+        "from": "PENDING_APPROVAL",
+        "reason": null,
+        "seq": 3,
+        "to": "APPROVED"
+      },
+      {
+        "actor": "orchestrator",
+        "actor_kind": "SYSTEM",
+        "at": "2026-11-10T14:18:01.397084+08:00",
+        "from": "APPROVED",
+        "reason": null,
+        "seq": 4,
+        "to": "QUEUED"
+      },
+      {
+        "actor": "orchestrator",
+        "actor_kind": "SYSTEM",
+        "at": "2026-11-10T14:18:06.004529+08:00",
+        "from": "QUEUED",
+        "reason": null,
+        "seq": 5,
+        "to": "RUNNING"
+      },
+      {
+        "actor": "orchestrator",
+        "actor_kind": "SYSTEM",
+        "at": "2026-11-10T14:19:09.415306+08:00",
+        "from": "RUNNING",
+        "reason": null,
+        "seq": 6,
+        "to": "EVALUATING"
+      },
+      {
+        "actor": "orchestrator",
+        "actor_kind": "SYSTEM",
+        "at": "2026-11-10T14:19:10.373476+08:00",
+        "from": "EVALUATING",
+        "reason": null,
+        "seq": 7,
+        "to": "EVALUATED"
+      },
+      {
+        "actor": "orchestrator",
+        "actor_kind": "SYSTEM",
+        "at": "2026-11-10T14:19:10.386809+08:00",
+        "from": "EVALUATED",
+        "reason": null,
+        "seq": 8,
+        "to": "ARCHIVED"
+      }
+    ],
+    "last_data": {
+      "files_sha256": {
+        "evaluation_reference.json": "dc60ceba009d01c6e9dd78a10e63ac47a8e4599a6ee8d29441b5a3b5ebecf073",
+        "execution_reference.json": "0891761abdf33eb03d4f6422a77f529013c88cdf78a084d57b2b1d97ac15f307",
+        "governance_decision.json": "f74c3f9dd4497d758228f440abbbe4d1a8b26b7c3fa69017d428955d8622c2c9",
+        "research_decision.json": "dcfc1af599a27805b5414018170b638eb29bb260c43b6ebb8630f6106c81f9e7",
+        "research_request.json": "7a52e7f0331ac297b37154cc021dcb61f690e51bc0af998ceaf6af9a68e0e67f",
+        "run_info.txt": "1c5d6ba5987b4b68b0801027ea3c2cebb8e7380eaad68ab411ef51af99e941ef",
+        "task_events.jsonl": "f6788d6cb0262c3709d22a2e1ee503518a64e69c171b82aabce3883d95bcdf34"
+      },
+      "task_archive": "/content/phase5b3c_run/archive/tasks/20261110_141910_e3ce267_T-e458d0f7af8ffd3c1926"
+    },
+    "lease_expires_at": null,
+    "lease_owner": null,
+    "request_hash": "e458d0f7af8ffd3c1926d6cd4122ab22b2872008033cc785aad436ebce09e1de",
+    "state": "ARCHIVED",
+    "task_id": "T-e458d0f7af8ffd3c1926"
+  },
+  "task_id": "T-e458d0f7af8ffd3c1926"
+}
