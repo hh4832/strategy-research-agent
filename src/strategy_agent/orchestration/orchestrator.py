@@ -534,8 +534,16 @@ class Orchestrator:
     def _evaluate(self, task_id, doc, st):
         ref = self._execution_reference(st)
         at = self.clock().isoformat(timespec="seconds")
-        acc = C.accept(ref["archive_path"], expected_manifest_sha256=ref["archive_manifest_sha256"],
-                       evaluator_commit_sha=self.code["git_sha"], evaluated_at=at, governance_root=self.governance_root)
+        adapter = self.adapters.get(doc.get("execution_mode"))
+        if getattr(adapter, "controlled", False) and getattr(adapter, "mode", "") == "REAL_GATED":
+            # 5-B3-C: the runner (and Core) are loaded in THIS process; C8 needs an evaluator process without them
+            from strategy_agent.evaluation import fresh_process as FP  # noqa: PLC0415
+            acc = FP.accept(ref["archive_path"], expected_manifest_sha256=ref["archive_manifest_sha256"],
+                            evaluator_commit_sha=self.code["git_sha"], evaluated_at=at,
+                            governance_root=self.governance_root)
+        else:
+            acc = C.accept(ref["archive_path"], expected_manifest_sha256=ref["archive_manifest_sha256"],
+                           evaluator_commit_sha=self.code["git_sha"], evaluated_at=at, governance_root=self.governance_root)
         name = f"{C.evaluation_dir_name(at, self.code['git_sha'])}_{task_id[-8:]}_a{st.attempt}"
         out = self.archive_root / ("test_evaluations" if self.test_mode else "evaluations") / name
         files = C.write_acceptance(acc, out, evaluator_commit_sha=self.code["git_sha"], evaluated_at=at)

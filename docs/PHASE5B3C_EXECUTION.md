@@ -109,3 +109,21 @@ The task archive's `run_info.txt` now states the truth:
 | 10 | The ledger is CONSUMED; the result itself is `PENDING_RESEARCH_LEAD_DECISION` |
 
 Any FAIL means NO_GO, and the batch stays consumed.
+
+## Incident 2026-11-10: in-process evaluation failed C8 (fixed; no re-run)
+
+The real run (`docs/evidence/phase5b3c/20261110_141740_e3ce267`, result branch commit `444cfcd`) has these results:
+- It executed once, ARCHIVED and CONSUMED.
+- Its metrics, cost breakdown and rejected orders are byte-identical to the Phase 4-A DEV run. Its 52 trades are identical except `experiment_id`.
+
+However, the Phase 4-C evaluator ran **in the dispatching process**, where the runner and Core were loaded. Its C8 governance-isolation check therefore failed, and the recorded `acceptance_status` was FAIL (C1–C7 PASS).
+
+`b3c_run.acceptance` B3C-08 did not look at the evaluator status, so it reported PASS. That was an agent defect.
+
+Fixes:
+- The `Orchestrator._evaluate` of a REAL_GATED controlled execution runs the existing evaluator in a fresh interpreter (`evaluation/fresh_process.py`).
+- B3C-08 now requires all of the evaluator's C1–C8 checks to PASS, in addition to the 4 scenarios.
+- `b3c_run.reevaluate` re-evaluates an already executed run read-only, in a fresh process, from the Drive copy of the runner archive. The archive's MANIFEST sha must equal the execution record. It uses 0 batches and does not re-run anything.
+- `notebooks/Phase5B3C_Fresh_Process_Reevaluation.ipynb` runs that re-evaluation for the real run. It installs no Core and appends `…_fresh_reevaluation/` (8 evaluator files + `b3c_acceptance_v2.json`) to the result branch.
+
+The original evidence is never modified.

@@ -334,7 +334,8 @@ def execute(prepared_dir: Path, *, bind_url: str, task_url: str, verifier, backe
 
 # ------------------------------------------------------------------------------------------- B3C-01..10 (post-run)
 def acceptance(result: dict, *, governance_root: Path = ROOT, cloud: bool, production: bool,
-               authorization_id: str = AUTHORIZATION_ID, executor_id: str = EXECUTOR, max_batches: int = 1) -> dict:
+               authorization_id: str = AUTHORIZATION_ID, executor_id: str = EXECUTOR, max_batches: int = 1,
+               evaluation: dict | None = None) -> dict:
     """Evidence-based statuses after the real run. B3C-10 needs the research lead's written result decision, so the
     overall verdict is at most EXECUTED_PENDING_RESULT_ACCEPTANCE."""
     G: dict = {}
@@ -366,7 +367,16 @@ def acceptance(result: dict, *, governance_root: Path = ROOT, cloud: bool, produ
     put("B3C-07", str(rr).startswith("DEVELOPMENT_RECEIPT_RENEWAL:") and bool(rec.get("runner_receipt_sha256")),
         ["runner receipt"], {"verification_ref_prefix": str(rr)[:40]})
     sc = (k.get("execution_result") or {}).get("scenarios") or []
-    put("B3C-08", sorted(sc) == sorted(auth["costs"]["scenarios"]), ["scenarios"], {"scenarios": sc})
+    if evaluation is None:          # the evaluation recorded by the orchestrator (fresh process for REAL_GATED)
+        rd = json.loads((Path(rec["task_archive"]) / "research_decision.json").read_text("utf-8")) if rec else {}
+        ev_status, ev_checks, ev_src = rd.get("acceptance_status"), rd.get("acceptance_checks") or {}, "task_archive"
+    else:                           # an explicit fresh-process re-evaluation of the same runner archive
+        ev_status, ev_checks, ev_src = evaluation.get("status"), evaluation.get("checks") or {}, "fresh_reevaluation"
+    ev_ok = ev_status == "PASS" and len(ev_checks) == 8 and set(ev_checks.values()) == {"PASS"}
+    put("B3C-08", sorted(sc) == sorted(auth["costs"]["scenarios"]) and ev_ok,
+        (["scenarios"] if sorted(sc) != sorted(auth["costs"]["scenarios"]) else []) +
+        ([] if ev_ok else [f"evaluator acceptance {ev_status}: {[c for c, v in ev_checks.items() if v != 'PASS']}"]),
+        {"scenarios": sc, "evaluator_acceptance": ev_status, "evaluator_checks": ev_checks, "source": ev_src})
     put("B3C-09", bool(rec.get("task_archive")) and cloud, ["archive / cloud"],
         {"task_archive": rec.get("task_archive"), "cloud": cloud})
     settled = (rec.get("budget_settlement") or {}).get("state") == "CONSUMED"
@@ -379,6 +389,33 @@ def acceptance(result: dict, *, governance_root: Path = ROOT, cloud: bool, produ
             "verdict": "NO_GO" if fail else "EXECUTED_PENDING_RESULT_ACCEPTANCE", "failed": fail,
             "meaning": "a PASS shows the governed pipeline ran once on real data; it says nothing about SMA 5/20 "
                        "profitability"}
+
+
+def reevaluate(execution_record: Path, out_dir: Path, *, governance_root: Path, evaluator_commit: str,
+               archive_prefix_map: tuple[str, str] | None = None, evaluated_at: str | None = None) -> dict:
+    """Read-only re-evaluation of an ALREADY executed run: the existing Phase 4-C evaluator, in a fresh process, on the
+    runner archive named by the execution record (its MANIFEST sha must match the record). 0 batches, no re-run.
+    ``archive_prefix_map`` maps the runtime path recorded at execution to where the same bytes live now (Drive copy)."""
+    from strategy_agent.evaluation import fresh_process as FP  # noqa: PLC0415
+    from strategy_agent.evaluation import phase4c as C  # noqa: PLC0415
+    rec = json.loads(Path(execution_record).read_text("utf-8"))
+    arch = rec["runner_archive"]
+    if archive_prefix_map:
+        old, new = archive_prefix_map
+        if not arch.startswith(old):
+            raise B3CStopped("ARCHIVE_PATH_NOT_MAPPED", {"recorded": arch, "prefix": old})
+        arch = new + arch[len(old):]
+    at = evaluated_at or datetime.now(TPE).isoformat(timespec="seconds")
+    acc = FP.accept(arch, expected_manifest_sha256=rec["runner_archive_manifest_sha256"],
+                    evaluator_commit_sha=evaluator_commit, evaluated_at=at, governance_root=governance_root)
+    files = C.write_acceptance(acc, out_dir, evaluator_commit_sha=evaluator_commit, evaluated_at=at)
+    ev = acc.get("evaluation") or {}
+    return {"status": acc["status"], "checks": {c: v["status"] for c, v in (acc.get("checks") or {}).items()},
+            "evaluator_process": acc.get("evaluator_process"), "error": acc.get("error"), "runner_archive": arch,
+            "runner_archive_manifest_sha256": rec["runner_archive_manifest_sha256"], "evaluated_at": at,
+            "evaluator_commit": evaluator_commit, "output_dir": str(out_dir), "files_sha256": files,
+            "strategy_verdict": ev.get("strategy_verdict"), "evidence_sufficiency": ev.get("evidence_sufficiency"),
+            "engineering_status": ev.get("engineering_status"), "consumed_batches": 0, "strategy_re_run": False}
 
 
 RUNNER_EVIDENCE = ("run_info.txt", "MANIFEST.json", "metrics.json", "cost_breakdown.csv", "research_report.md",

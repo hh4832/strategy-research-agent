@@ -26,7 +26,9 @@ AID = "RA-IBKR_TSM-SMA520_B3CTEST-0001"
 def L(tmp_path, monkeypatch):
     monkeypatch.setattr(C, "EXECUTOR_MODULES", ())
     before = A5.tree_fingerprint(R.ROOT)
-    w = CW.build(tmp_path / "w", authorization_id=AID, executor_id=R.EXECUTOR, max_batches=2)
+    w = CW.build(tmp_path / "w", authorization_id=AID, executor_id=R.EXECUTOR, max_batches=1)
+    # the world's own demo binding would hold the single batch: keep the books as the real B3-C ones (no binding yet)
+    (w["gov"] / "registry/authorization_bindings.jsonl").write_text("")
     auth = R._authorization(w["gov"], AID)                                 # noqa: SLF001
     comp = R.expected_completion(w["art"], auth["strategy"]["spec_path"])
     m = R.prepare(tmp_path / "prep", artifact_root=w["art"], governance_root=w["gov"], authorization_id=AID,
@@ -71,11 +73,24 @@ def test_B3C_execute_once_end_to_end_settles_and_archives(L):
     assert rec["contract"]["request_sha256"] == m["bound_request_sha256"]
     info = (Path(rec["task_archive"]) / "run_info.txt").read_text()
     assert "consumed_batches=1" in info and "real_backtest_executed=true" in info
-    acc = R.acceptance(r, governance_root=w["gov"], cloud=True, production=False, authorization_id=AID,
-                         max_batches=2)
+    acc = R.acceptance(r, governance_root=w["gov"], cloud=True, production=False, authorization_id=AID)
     assert acc["verdict"] == "EXECUTED_PENDING_RESULT_ACCEPTANCE", acc["failed"]
     assert acc["gates"]["B3C-10"]["status"] == "PENDING_RESEARCH_LEAD_DECISION"
     assert all(acc["gates"][f"B3C-{i:02d}"]["status"] == "PASS" for i in range(1, 10))
+    ev = acc["gates"]["B3C-08"]["evidence"]                   # fresh-process evaluator: C1-C8 all PASS
+    assert ev["evaluator_acceptance"] == "PASS" and set(ev["evaluator_checks"].values()) == {"PASS"}, ev
+    import shutil
+    shutil.copytree(tmp / "run", tmp / "drive_copy")          # the notebook re-evaluates the Drive copy of the run
+    re_ = R.reevaluate(tmp / "drive_copy/archive/execution_records" / Path(r["execution_record"]).name, tmp / "reeval",
+                       governance_root=w["gov"], evaluator_commit=G40,
+                       archive_prefix_map=(str(tmp / "run"), str(tmp / "drive_copy")))
+    assert re_["runner_archive"].startswith(str(tmp / "drive_copy"))
+    assert re_["status"] == "PASS" and re_["evaluator_process"]["executor_modules_loaded"] == [] and re_["consumed_batches"] == 0
+    assert R.acceptance(r, governance_root=w["gov"], cloud=True, production=False, authorization_id=AID,
+                        evaluation=re_)["verdict"] == "EXECUTED_PENDING_RESULT_ACCEPTANCE"
+    bad = R.acceptance(r, governance_root=w["gov"], cloud=True, production=False, authorization_id=AID,
+                       evaluation={"status": "FAIL", "checks": {**re_["checks"], "C8_governance_isolation": "FAIL"}})
+    assert bad["gates"]["B3C-08"]["status"] == "FAIL" and bad["verdict"] == "NO_GO"
     idx = R.evidence_bundle(r, tmp / "prep", tmp / "evidence", acceptance_doc=acc)
     for n in ("prepare/PREPARE_MANIFEST.json", "execution_record.json", "task_archive/run_info.txt",
               "runner_archive/metrics.json", "runner_archive/MANIFEST.json", "runner_receipt.json", "b3c_acceptance.json"):
