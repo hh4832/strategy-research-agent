@@ -107,12 +107,17 @@ def test_B3B_01_production_books_refuse_the_real_path_today(tmp_path):
                               readiness_manifest=lambda: R.world_manifest(W))
     ad = ControlledRunnerAdapter(W["backend"], governance_root=ROOT, activation=g)
     assert ad.mode == "REAL_GATED"
+    from strategy_agent.readiness.b3c import expected_eligible
     before = A5.tree_fingerprint(ROOT)
+    now = A5.StepClock()()
+    # refused in both repository states: a test / fixture verifier (or none) is never accepted on production books,
+    # and before the B3-C approval nothing is eligible at all
     for verifier in (None, W["fa"].verifier):
         with pytest.raises(ValueError):
             Orchestrator(tmp_path / "s", tmp_path / "o", root=ROOT, governance_root=ROOT, controlled_adapter=ad,
                          approval_verifier=verifier, worker=R.EXECUTOR)
-    assert AV.eligible_authorizations(ROOT, R.EXECUTOR, A5.StepClock()()) == []
+    assert AV.eligible_authorizations(ROOT, R.EXECUTOR, now) == expected_eligible(now)
+    assert AV.eligible_authorizations(ROOT, "another-runtime", now) == []
     assert A5.tree_fingerprint(ROOT) == before and not (ROOT / "registry/research_budget_events.jsonl").exists()
     assert W["backend"].calls == 0
 

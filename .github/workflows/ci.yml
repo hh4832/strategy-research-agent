@@ -361,7 +361,10 @@ jobs:
           print(r["verdict"]["verdict"], r["gates"], r["layers"])
           assert all(r["gates"][f"B3B-0{i}"] == "PASS" for i in range(1, 10)), r["gates"]
           assert r["gates"]["B3B-10"] == "BLOCKED" and r["layers"]["real_execution"] == "NOT_PERFORMED"
-          assert r["layers"]["research_authorization"] == "NOT_GRANTED"
+          from strategy_agent.readiness.b3c import expected_eligible, formal_authorization_state
+          st = formal_authorization_state()["state"]
+          assert st in ("NOT_GRANTED", "GRANTED_UNUSED"), st      # only the ONE governed B3-C authorization
+          assert r["layers"]["research_authorization"] == ("GRANTED" if expected_eligible() else "NOT_GRANTED")
           PY
           python -m strategy_agent.execution.real_acceptance --verify-archive "$RUNNER_TEMP/b3b/ci"
           git diff --exit-code -- registry governance configs specs
@@ -391,7 +394,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}" pyarrow
-      - run: pytest -q -p no:cacheprovider tests/test_phase5b3c_preparation.py tests/test_phase5b3a_readiness.py
+      - run: pytest -q -p no:cacheprovider tests/test_phase5b3c_preparation.py tests/test_phase5b3a_readiness.py tests/test_phase4a_research_only.py
       - name: Committed draft is the deterministic output
         run: |
           python -m strategy_agent.readiness.b3c emit-docs
@@ -403,8 +406,10 @@ jobs:
           import json, os
           r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "b3c_preflight.json")))
           assert {g["status"] for g in r["gates"].values()} == {"NOT_EXECUTED"}, r["gates"]
-          assert r["real_research_pass"] is False and r["research_authorization"] == "NOT_GRANTED"
-          assert r["preparation"] == "READY_FOR_HUMAN_DECISION", r["preparation_problems"]
+          assert r["real_research_pass"] is False and r["real_execution"] == "NOT_PERFORMED"
+          assert r["authorization_state"] in ("NOT_GRANTED", "GRANTED_UNUSED"), r["authorization_state"]
+          assert r["preparation"] in ("READY_FOR_HUMAN_DECISION", "AUTHORIZED_AWAITING_GITHUB_APPROVALS"), r
+          assert r["gates"]["B3C-02"]["prepared_checks"]["binding_records_for_candidate"] == 0
           PY
           git diff --exit-code -- registry governance configs specs
           test ! -e registry/research_budget_events.jsonl

@@ -83,12 +83,22 @@ def production_state() -> dict:
         legacy = "NOT_REFUSED"
     except AD.AdapterDisabled:
         legacy = "AdapterDisabled"
-    elig = eligible_authorizations(ROOT, "colab-hh4832-exec-01", datetime.now(TPE))
+    from strategy_agent.readiness.b3c import expected_eligible, formal_authorization_state  # noqa: PLC0415
+    now = datetime.now(TPE)
+    elig, want, fa = eligible_authorizations(ROOT, "colab-hh4832-exec-01", now), expected_eligible(now), \
+        formal_authorization_state()
     unchanged = A5.tree_fingerprint(ROOT) == before
-    ok = bool(refused) and not elig and be.calls == 0 and unchanged and GV.REAL_EXECUTION_ENABLED is False \
-        and legacy == "AdapterDisabled" and not (ROOT / "registry/research_budget_events.jsonl").exists()
+    # Without the production (live GitHub) verifier the real path is never constructed on production books: before
+    # the research lead's B3-C approval there is nothing eligible at all; with the ONE governed B3-C authorization
+    # active it is still refused here (no live verifier), and every request still needs a verified binding, an
+    # approved task and budget. Nothing ran and nothing was written.
+    path_ok = bool(refused)
+    ok = path_ok and elig == want and fa["state"] != "UNEXPECTED" and be.calls == 0 and unchanged \
+        and GV.REAL_EXECUTION_ENABLED is False and legacy == "AdapterDisabled" \
+        and not (ROOT / "registry/research_budget_events.jsonl").exists()
     return {"status": "PASS" if ok else "FAIL", "real_gated_orchestrator_on_production_books": refused or "CONSTRUCTED",
-            "eligible_authorizations": elig, "probe_runner_calls": be.calls, "REAL_EXECUTION_ENABLED": GV.REAL_EXECUTION_ENABLED,
+            "eligible_authorizations": elig, "expected_eligible": want, "b3c_authorization_state": fa["state"],
+            "probe_runner_calls": be.calls, "REAL_EXECUTION_ENABLED": GV.REAL_EXECUTION_ENABLED,
             "phase5a_adapter": legacy, "repository_books_unchanged": unchanged,
             "research_authorization": "GRANTED" if elig else "NOT_GRANTED",
             "real_runner": "DISABLED" if not elig else "GATED_BY_AN_APPROVED_AUTHORIZATION"}

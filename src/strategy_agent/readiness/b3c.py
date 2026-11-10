@@ -40,6 +40,10 @@ PROPOSED_MAX_BATCHES = 1
 PROPOSED_VALIDITY_DAYS = 7
 SPENT_DEV = CANDIDATE["template_authorization_id"]
 RUN_CONFIG_ID = "tsm_sma_5_20_p5b3c_2024_06_dev_18350b3adba8e28a7e5e"
+# The governed B3-C authorization's spec pin, frozen at import (the research lead's decision; never re-read from a
+# mutable candidate record when classifying the books).
+B3C_SPEC_PATH = CANDIDATE["strategy_spec"]
+B3C_SPEC_SHA256 = CANDIDATE["strategy_spec_sha256"]
 B3C_RUN_CONFIG_PATH = f"configs/research_only/{RUN_CONFIG_ID}.json"
 AUTH_ID_RE = re.compile(r"^(?:RA-[A-Z0-9_]+-[A-Z0-9_]+-\d{4}|RA-IBKR_TSM-SMA520_DEV-[0-9a-f]{20})$")
 EXECUTOR_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{2,63}$")
@@ -80,7 +84,7 @@ def _dumps(o) -> bytes:
 
 
 def _book_lines(key: str) -> list[dict]:
-    p = path(key)
+    p = ROOT / "registry/authorization_bindings.jsonl" if key == "binding_log" else path(key)
     return [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()] if p.is_file() else []
 
 
@@ -181,7 +185,13 @@ def schema_dry_run(draft: dict) -> dict:
     return D.schema_dry_run({"proposal_fields": ev})
 
 
-def proposal_problems(p: dict) -> list[str]:
+def pre_authorization_book() -> list[dict]:
+    """The book as it was when the proposal was made (the governed B3-C line excluded). Used for proposal-time checks
+    and the committed check document, so they stay identical before and after the research lead's approval."""
+    return [x for x in _book_lines("authorization_book") if x.get("authorization_id") != CANDIDATE_AUTHORIZATION_ID]
+
+
+def proposal_problems(p: dict, *, book: list[dict] | None = None) -> list[str]:
     """For the research lead before ``research_authorization_admin approve``: any leftover HDR, wrong pin or reuse."""
     bad = []
     blob = json.dumps(p)
@@ -190,7 +200,8 @@ def proposal_problems(p: dict) -> list[str]:
     aid = p.get("authorization_id")
     if not isinstance(aid, str) or not AUTH_ID_RE.match(aid):
         bad.append("AUTHORIZATION_ID_PATTERN")
-    if aid == SPENT_DEV or aid in {x.get("authorization_id") for x in _book_lines("authorization_book")}:
+    book = _book_lines("authorization_book") if book is None else book
+    if aid == SPENT_DEV or aid in {x.get("authorization_id") for x in book}:
         bad.append("AUTHORIZATION_ID_ALREADY_USED")
     ex = (p.get("executor") or {}).get("executor_id")
     if not isinstance(ex, str) or not EXECUTOR_RE.match(ex) or ex == HDR:
@@ -200,8 +211,8 @@ def proposal_problems(p: dict) -> list[str]:
     if p.get("max_batches") != PROPOSED_MAX_BATCHES:
         bad.append("MAX_BATCHES_NOT_1")
     st = p.get("strategy") or {}
-    if st.get("spec_path") != CANDIDATE["strategy_spec"] or st.get("spec_file_sha256") != CANDIDATE["strategy_spec_sha256"] \
-            or _sha_file(ROOT / CANDIDATE["strategy_spec"]) != CANDIDATE["strategy_spec_sha256"]:
+    if st.get("spec_path") != B3C_SPEC_PATH or st.get("spec_file_sha256") != B3C_SPEC_SHA256 \
+            or _sha_file(ROOT / B3C_SPEC_PATH) != B3C_SPEC_SHA256:
         bad.append("SPEC_PIN")
     try:
         i, e = datetime.fromisoformat(p["issued_at"]), datetime.fromisoformat(p["expires_at"])
@@ -275,8 +286,8 @@ def schema_check(proposal: dict) -> dict:
         return {"status": "FAIL", "error": f"{type(e).__name__}: {e}"[:600], "written": False}
 
 
-def check(proposal: dict) -> dict:
-    bad = proposal_problems({k: v for k, v in proposal.items() if k not in PROPOSAL_ONLY_FIELDS})
+def check(proposal: dict, *, book: list[dict] | None = None) -> dict:
+    bad = proposal_problems({k: v for k, v in proposal.items() if k not in PROPOSAL_ONLY_FIELDS}, book=book)
     return {"problems": bad, "schema": schema_check(proposal), "ok": not bad and schema_check(proposal)["status"] == "PASS"}
 
 
@@ -287,10 +298,10 @@ def derive_run_config(authorization_id: str) -> dict:
     if not AUTH_ID_RE.match(authorization_id or "") or authorization_id == SPENT_DEV:
         raise ValueError(f"refused authorization id {authorization_id!r}")
     cfg = json.loads(path("run_config").read_text(encoding="utf-8"))
-    spec = json.loads((ROOT / CANDIDATE["strategy_spec"]).read_text(encoding="utf-8"))
+    spec = json.loads((ROOT / B3C_SPEC_PATH).read_text(encoding="utf-8"))
     cfg["authorization_id"] = authorization_id
     cfg["run_config_id"] = RUN_CONFIG_ID
-    cfg["strategy"].update(spec_path=CANDIDATE["strategy_spec"], spec_file_sha256=CANDIDATE["strategy_spec_sha256"],
+    cfg["strategy"].update(spec_path=B3C_SPEC_PATH, spec_file_sha256=B3C_SPEC_SHA256,
                            version=spec["version"])
     cfg["purpose"] = ("Phase 5-B3-C first real research execution through the governed Phase 5 controlled path; "
                       "pipeline evidence on the already-evaluated DEV window, NOT new evidence that SMA works")
@@ -302,6 +313,66 @@ def derive_run_config(authorization_id: str) -> dict:
     return cfg
 
 
+# ---------------------------------------------------------------- the ONE governed authorization (state-aware)
+KNOWN_SPENT = ("RA-IBKR_TSM-SMA520_SMOKE-0001", SPENT_DEV)
+CHAIN_FIELDS = ("seq", "prev_sha256", "record_sha256")
+APPROVAL_FIELDS = ("action", "approved_by", "approval_ref", "approved_at")
+PROPOSAL_PATH = f"governance/proposals/{CANDIDATE_AUTHORIZATION_ID}.json"
+
+
+def formal_authorization_state() -> dict:
+    """Read-only classification of the repository books with respect to B3-C. Exactly one of:
+
+    NOT_GRANTED     only the known (spent) authorizations exist;
+    GRANTED_UNUSED  exactly one APPROVE for the candidate ID, signed by an allow-listed lead, byte-equal to the
+                    committed proposal (which passes every proposal-time check), with the committed canonical run
+                    config derived for it, and 0 uses;
+    GRANTED_USED    the same, with uses recorded (after the B3-C run);
+    UNEXPECTED      anything else (an unknown authorization, a second B3-C line, a mismatch). Always a failure.
+
+    Never creates, approves or consumes anything; downstream checks accept GRANTED_* only through this function."""
+    book, why = _book_lines("authorization_book"), []
+    other = [x.get("authorization_id") for x in book if x.get("authorization_id") not in (*KNOWN_SPENT, CANDIDATE_AUTHORIZATION_ID)]
+    if other:
+        why.append(f"UNKNOWN_AUTHORIZATIONS:{other}")
+    mine = [x for x in book if x.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID]
+    if not mine:
+        return {"state": "UNEXPECTED" if why else "NOT_GRANTED", "why": why}
+    rec = mine[0]
+    if len(mine) != 1 or rec.get("action") != "APPROVE":
+        why.append("B3C_AUTHORIZATION_NOT_A_SINGLE_APPROVE")
+    approvers = set(json.loads(path("approvers").read_text(encoding="utf-8"))["research_leads"])
+    if rec.get("approved_by") not in approvers or not str(rec.get("approval_ref", "")).startswith("https://github.com/"):
+        why.append("APPROVER_OR_APPROVAL_REF")
+    pp = ROOT / PROPOSAL_PATH
+    prop = json.loads(pp.read_text(encoding="utf-8")) if pp.is_file() else None
+    if prop is None:
+        why.append("PROPOSAL_FILE_MISSING")
+    else:
+        if {k: v for k, v in rec.items() if k not in (*CHAIN_FIELDS, *APPROVAL_FIELDS)} != \
+                {k: v for k, v in prop.items() if k not in PROPOSAL_ONLY_FIELDS}:
+            why.append("RECORD_DIFFERS_FROM_PROPOSAL")
+        why += [f"PROPOSAL:{x}" for x in check(prop, book=pre_authorization_book())["problems"]]
+    cp = ROOT / B3C_RUN_CONFIG_PATH
+    if not cp.is_file():
+        why.append("RUN_CONFIG_MISSING")
+    elif json.loads(cp.read_text(encoding="utf-8")) != derive_run_config(CANDIDATE_AUTHORIZATION_ID):
+        why.append("RUN_CONFIG_NOT_DERIVED")
+    used = sum(1 for u in _book_lines("uses_log") if u.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID)
+    state = "UNEXPECTED" if why else ("GRANTED_UNUSED" if used == 0 else "GRANTED_USED")
+    return {"state": state, "why": why, "uses": used,
+            "validity": {"issued_at": rec.get("issued_at"), "expires_at": rec.get("expires_at")}}
+
+
+def expected_eligible(now: datetime | None = None) -> list[str]:
+    """What eligible_authorizations() must return for the proposed executor in a sound repository state."""
+    st = formal_authorization_state()       # mirrors activation.eligible_authorizations (budget is not standing)
+    if st["state"] not in ("GRANTED_UNUSED", "GRANTED_USED"):
+        return []
+    now = now or datetime.now(TPE)
+    return [CANDIDATE_AUTHORIZATION_ID] if now < datetime.fromisoformat(st["validity"]["expires_at"]) else []
+
+
 # ---------------------------------------------------------------- preflight (non-consuming)
 def _prepared(m: dict, draft: dict) -> dict:
     from strategy_agent.execution.activation import eligible_authorizations  # noqa: PLC0415
@@ -311,6 +382,7 @@ def _prepared(m: dict, draft: dict) -> dict:
     uses = [u for u in _book_lines("uses_log") if u.get("authorization_id") == SPENT_DEV]
     locks = [x for x in _book_lines("holdout_book") if x.get("lock_id") == "HOLDOUT-TSM-15M-v1"]
     approved = [x for x in book if x.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID]
+    state = formal_authorization_state()
     try:
         cfg = derive_run_config(CANDIDATE_AUTHORIZATION_ID)
         from strategy_agent.research_only.development_run import canonical_sha  # noqa: PLC0415
@@ -318,12 +390,16 @@ def _prepared(m: dict, draft: dict) -> dict:
             CANDIDATE["strategy_spec_sha256"] and cfg["dataset"]["snapshot_id"] == F["dataset_snapshot_id"]["value"]
     except Exception as e:  # noqa: BLE001
         cfg_ok = f"{type(e).__name__}: {e}"
-    elig = eligible_authorizations(ROOT, PROPOSED_EXECUTOR, datetime.now(TPE))
+    now = datetime.now(TPE)
+    elig, want = eligible_authorizations(ROOT, PROPOSED_EXECUTOR, now), expected_eligible(now)
     return {
         "B3C-01": {"draft_schema_dry_run": schema_dry_run(draft)["status"],
-                   "candidate_id_unused_in_book": not approved, "draft_written_to_governance": False},
+                   "candidate_id_unused_in_book": not approved, "authorization_state": state,
+                   "draft_written_to_governance": False},
         "B3C-02": {"binding_cli_present": (ROOT / "src/strategy_agent/binding/__main__.py").is_file(),
-                   "binding_records_for_candidate": 0, "binding_procedure_steps": len(draft["binding_procedure"])},
+                   "binding_records_for_candidate": sum(1 for x in _book_lines("binding_log")
+                                                        if x.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID),
+                   "binding_procedure_steps": len(draft["binding_procedure"])},
         "B3C-03": {"manifest_fields_resolved": all(F[k]["status"] == "RESOLVED" for k in (
                        "dataset_snapshot_id", "dataset_manifest_sha256", "core_commit_sha", "strategy_spec_sha256",
                        "trading_cost_profile", "research_window")),
@@ -334,8 +410,10 @@ def _prepared(m: dict, draft: dict) -> dict:
                    "window_end_before_holdout": (F["holdout_exclusion"]["value"] or {}).get("window_end_before_holdout"),
                    "holdout_read": False},
         "B3C-05": {"spent_dev_authorization_uses": len(uses), "eligible_authorizations_today": elig,
+                   "expected_eligible": want, "b3c_uses": state.get("uses", 0),
                    "budget_ledger_exists": (ROOT / "registry/research_budget_events.jsonl").exists()},
-        "B3C-06": {"REAL_EXECUTION_ENABLED": GV.REAL_EXECUTION_ENABLED, "real_runner": "DISABLED" if not elig else "GATED"},
+        "B3C-06": {"REAL_EXECUTION_ENABLED": GV.REAL_EXECUTION_ENABLED,
+                   "real_runner": "DISABLED" if not elig else "GATED_BY_THE_B3C_AUTHORIZATION"},
     }
 
 
@@ -344,15 +422,17 @@ def preflight(m: dict | None = None) -> dict:
     draft = build_draft(m)
     P = _prepared(m, draft)
     sane = {
-        "B3C-01": P["B3C-01"]["draft_schema_dry_run"] == "PASS" and P["B3C-01"]["candidate_id_unused_in_book"],
-        "B3C-02": P["B3C-02"]["binding_cli_present"],
+        "B3C-01": P["B3C-01"]["draft_schema_dry_run"] == "PASS" and P["B3C-01"]["authorization_state"]["state"] in
+        ("NOT_GRANTED", "GRANTED_UNUSED"),
+        "B3C-02": P["B3C-02"]["binding_cli_present"] and P["B3C-02"]["binding_records_for_candidate"] == 0,
         "B3C-03": P["B3C-03"]["manifest_fields_resolved"] and set(P["B3C-03"]["cross_checks"].values()) == {"PASS"}
         and P["B3C-03"]["spec_sha_on_disk"] == CANDIDATE["strategy_spec_sha256"]
         and P["B3C-03"]["derived_run_config_self_hash_and_pins"] is True,
         "B3C-04": P["B3C-04"]["holdout_lock_present"] and P["B3C-04"]["window_end_before_holdout"] is True,
-        "B3C-05": P["B3C-05"]["spent_dev_authorization_uses"] == 1 and not P["B3C-05"]["eligible_authorizations_today"]
+        "B3C-05": P["B3C-05"]["spent_dev_authorization_uses"] == 1 and P["B3C-05"]["b3c_uses"] == 0
+        and P["B3C-05"]["eligible_authorizations_today"] == P["B3C-05"]["expected_eligible"]
         and not P["B3C-05"]["budget_ledger_exists"],
-        "B3C-06": P["B3C-06"]["REAL_EXECUTION_ENABLED"] is False and P["B3C-06"]["real_runner"] == "DISABLED",
+        "B3C-06": P["B3C-06"]["REAL_EXECUTION_ENABLED"] is False,
     }
     gates = {}
     for gid, req in GATES.items():
@@ -365,9 +445,12 @@ def preflight(m: dict | None = None) -> dict:
                       else "formal authorization"}
     problems = [k for k, v in gates.items() if v["prepared_status"] == "PREPARATION_PROBLEM"]
     return {"kind": "PHASE5B3C_PREFLIGHT", "gates": gates, "preparation_problems": problems,
-            "preparation": "READY_FOR_HUMAN_DECISION" if not problems else "PREPARATION_PROBLEM",
-            "real_execution": "NOT_PERFORMED", "research_authorization": "NOT_GRANTED" if not P["B3C-05"][
-                "eligible_authorizations_today"] else "GRANTED", "real_research_pass": False,
+            "preparation": "PREPARATION_PROBLEM" if problems else (
+                "READY_FOR_HUMAN_DECISION" if P["B3C-01"]["authorization_state"]["state"] == "NOT_GRANTED"
+                else "AUTHORIZED_AWAITING_GITHUB_APPROVALS"),
+            "real_execution": "NOT_PERFORMED", "authorization_state": P["B3C-01"]["authorization_state"]["state"],
+            "research_authorization": "NOT_GRANTED" if not P["B3C-05"]["eligible_authorizations_today"] else "GRANTED",
+            "real_research_pass": False,
             "meaning": "preparation only; every B3C gate is NOT_EXECUTED until the research lead authorizes and runs B3-C"}
 
 
@@ -377,12 +460,14 @@ def emit_docs() -> list[str]:
     DOCS.mkdir(parents=True, exist_ok=True)
     prop = build_proposal(m=m)
     illus = build_proposal(m=m, issued_at=ILLUSTRATIVE_ISSUED_AT)
+    pre = pre_authorization_book()
     out = {"authorization_draft.json": draft, "authorization_draft_schema_dry_run.json": schema_dry_run(draft),
            f"authorization_proposal_{CANDIDATE_AUTHORIZATION_ID}.json": prop,
            "authorization_proposal_check.json": {
-               "as_proposed": check(prop),
+               "checked_against": "the authorization book before the B3-C approval",
+               "as_proposed": check(prop, book=pre),
                "illustrative_validity": {"issued_at": ILLUSTRATIVE_ISSUED_AT, "note": "example time only, NOT a decision",
-                                         **check(illus)}}}
+                                         **check(illus, book=pre)}}}
     for n, o in out.items():
         (DOCS / n).write_bytes(_dumps(o))
     return sorted(out)
@@ -410,7 +495,7 @@ def main(argv=None) -> int:
             with open(a.out, "xb") as f:   # O_EXCL: never overwrite evidence
                 f.write(b)
         sys.stdout.write(b.decode())
-        return 0 if res["preparation"] == "READY_FOR_HUMAN_DECISION" else 1
+        return 0 if not res["preparation_problems"] else 1
     if a.cmd == "check-proposal":
         res = check(json.loads(a.proposal.read_text(encoding="utf-8")))
         print(json.dumps(res, indent=2))
