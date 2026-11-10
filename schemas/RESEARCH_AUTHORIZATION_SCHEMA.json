@@ -70,7 +70,12 @@
         "approval_ref": {"type": "string", "pattern": "^https://"},
         "approved_at": {"$ref": "#/$defs/iso"},
         "does_not_authorize": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-        "notes": {"type": "string"}
+        "notes": {"type": "string"},
+        "executor": {
+          "description": "Phase 5-B3-B: the ONE executor allowed to run this authorization (SINGLE_EXECUTOR_ONLY). Optional for older records; REQUIRED by the real-execution activation gate.",
+          "type": "object", "additionalProperties": false, "required": ["executor_id", "consistency"],
+          "properties": {"executor_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{2,63}$"},
+                         "consistency": {"const": "SINGLE_EXECUTOR_ONLY"}}}
       }
     },
     "revoke": {

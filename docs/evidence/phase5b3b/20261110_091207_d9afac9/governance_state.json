@@ -1,0 +1,11 @@
+{
+  "REAL_EXECUTION_ENABLED": false,
+  "eligible_authorizations": [],
+  "phase5a_adapter": "AdapterDisabled",
+  "probe_runner_calls": 0,
+  "real_gated_orchestrator_on_production_books": "REAL_GATED on production books requires the production (live GitHub) verifier",
+  "real_runner": "DISABLED",
+  "repository_books_unchanged": true,
+  "research_authorization": "NOT_GRANTED",
+  "status": "PASS"
+}

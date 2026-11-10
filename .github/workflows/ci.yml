@@ -328,6 +328,53 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  phase5b3b-real-execution:
+    # Phase 5-B3-B: REAL_GATED controlled execution engineering (activation gate A01-A10). Isolated books, mock runner
+    # and the existing runner on a Core-produced SYNTHETIC snapshot only; no real data, no authorization, Runner DISABLED.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    env:
+      MRC_SHA: b16179a7cc077c36046574769a32c367fa476cae
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@${MRC_SHA}" pyarrow
+      - name: B3-B + B2 + B1 suites (junit; Layer B uses Core)
+        run: |
+          rc=0
+          pytest -q -p no:cacheprovider tests/test_phase5b3b_*.py tests/test_phase5b2_*.py tests/test_phase5b1*.py \
+            --junitxml "$RUNNER_TEMP/b3b.xml" || rc=$?
+          echo "TESTS_RC=$rc" >> "$GITHUB_ENV"
+          test "$rc" = 0
+      - name: B3B-01..B3B-10 (CI is not cloud evidence => B3B-10 BLOCKED; B3B-01..09 must PASS)
+        run: |
+          python -m strategy_agent.execution.real_acceptance --out-dir "$RUNNER_TEMP/b3b/ci" \
+            --junit "$RUNNER_TEMP/b3b.xml" --tests-rc "$TESTS_RC" | tee "$RUNNER_TEMP/b3b_result.json"
+          python - <<'PY'
+          import json, os
+          r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "b3b_result.json")))
+          print(r["verdict"]["verdict"], r["gates"], r["layers"])
+          assert all(r["gates"][f"B3B-0{i}"] == "PASS" for i in range(1, 10)), r["gates"]
+          assert r["gates"]["B3B-10"] == "BLOCKED" and r["layers"]["real_execution"] == "NOT_PERFORMED"
+          assert r["layers"]["research_authorization"] == "NOT_GRANTED"
+          PY
+          python -m strategy_agent.execution.real_acceptance --verify-archive "$RUNNER_TEMP/b3b/ci"
+          git diff --exit-code -- registry governance configs specs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase5b3b-real-execution-py${{ matrix.python-version }}
+          path: |
+            ${{ runner.temp }}/b3b.xml
+            ${{ runner.temp }}/b3b/ci
+          if-no-files-found: warn
+          retention-days: 30
+
   phase5a3-integration:
     # Phase 5-A3: actual A2 export -> actual A1 orchestrator (SYNTHETIC_FIXTURE Route A + fixture archive replay).
     # No Core, no market data, no batch, no Holdout. Real archive replay runs only in Colab (notebook).

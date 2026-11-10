@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -65,11 +66,25 @@ class ControlledRunnerAdapter(ExecutionAdapter):
     evidence = "CONTROLLED_EXECUTION"
 
     def __init__(self, backend, *, governance_root: Path, ledger=None, artifact_root: Path | None = None,
-                 approvals=None, worker_id: str | None = None, clock=None):
+                 approvals=None, worker_id: str | None = None, clock=None, activation=None):
         self.backend = backend
         self.governance_root = Path(governance_root)
         self.isolated = is_isolated_test_root(governance_root)
-        self._enabled = bool(self.isolated and getattr(backend, "synthetic", False) is True)
+        synthetic = getattr(backend, "synthetic", False) is True
+        # 5-B3-B modes (no switch other than these facts; never an environment variable):
+        #   ISOLATED_SYNTHETIC  isolated test books + synthetic backend (5-B2, unchanged)
+        #   REAL_GATED          non-synthetic backend + RealActivationGate whose books match this root; every request
+        #                       must pass all ten activation conditions (precheck AND execute)
+        #   DISABLED            anything else (synthetic backend on production books, real backend without a gate, ...)
+        self.activation = activation
+        if self.isolated and synthetic and activation is None:
+            self.mode = "ISOLATED_SYNTHETIC"
+        elif (not synthetic and activation is not None and Path(activation.governance_root) == self.governance_root
+              and activation.production_books == (not self.isolated)):
+            self.mode = "REAL_GATED"
+        else:
+            self.mode = "DISABLED"
+        self._enabled = self.mode != "DISABLED"
         self._ledger, self._approvals, self._worker = None, None, None
         self.artifact_root = Path(artifact_root) if artifact_root is not None else None
         self.clock = clock or (lambda: datetime.now().astimezone())
@@ -107,12 +122,23 @@ class ControlledRunnerAdapter(ExecutionAdapter):
         return I.verify_request(doc, governance_root=self.governance_root, artifact_root=self.artifact_root,
                                 backend=self.backend, now=self.clock())
 
+    def gate(self, doc: dict, *, at_execute: bool = False) -> list[str]:
+        """REAL_GATED only: the ten activation conditions. At execute time the budget condition (A07) is the ledger's
+        own claim (the batch is already committed), every other condition is re-evaluated from the records."""
+        if self.mode != "REAL_GATED":
+            return []
+        g = self.activation.evaluate(doc, self.backend)
+        failed = [k for k in g["failed"] if not (at_execute and k.startswith("A07_"))]
+        if self._worker is not None and self._worker != self.activation.executor_id:
+            failed.append("A08_authorized_executor:BOUND_WORKER_DIFFERS")
+        return [f"ACTIVATION_GATE:{k}" for k in failed]
+
     def precheck(self, doc: dict) -> list[str]:
         """Full identity binding BEFORE any budget is reserved. Any mismatch => BLOCKED (never 'use latest data')."""
         if not self.enabled:
             return ["CONTROLLED_EXECUTION_DISABLED: production books or non-synthetic backend"]
         bad = [f"REQUEST_FIELD_MISSING:{k}" for k in PIN_FIELDS if not doc.get(k) or doc.get(k) == "PENDING"]
-        return sorted(set(bad + self.verify_identity(doc)["problems"] + self.backend.precheck(doc)))
+        return sorted(set(bad + self.gate(doc) + self.verify_identity(doc)["problems"] + self.backend.precheck(doc)))
 
     def execute(self, doc: dict, out_dir: Path, *, reservation_id: str | None = None, task_id: str | None = None,
                 attempt_id: str | None = None, started_at: datetime | None = None, **caller_objects) -> dict:
@@ -128,7 +154,7 @@ class ControlledRunnerAdapter(ExecutionAdapter):
             raise ExecutionFailed("NO_COMMITTED_RESERVATION", "reservation_id, task_id and attempt_id are required")
         from strategy_agent.execution.budget import BudgetRefused  # noqa: PLC0415
         v = self.verify_identity(doc)                               # P0-3: before the claim, before the runner
-        problems = v["problems"]                 # (the runner's own budget probe is pre-reservation only: precheck)
+        problems = v["problems"] + self.gate(doc, at_execute=True)  # 5-B3-B: all activation conditions, again
         if problems:
             raise ExecutionFailed("IDENTITY_VERIFICATION_FAILED", "; ".join(problems)[:800])
         approval = self._approvals(task_id, reservation_id)
@@ -156,6 +182,11 @@ class ControlledRunnerAdapter(ExecutionAdapter):
         bad = I.archive_problems(archive, doc=doc, use=use, run_id=r["planned_run_id"])
         if bad:
             raise ExecutionFailed("RUNNER_RESULT_INCONSISTENT", "; ".join(bad)[:800])
+        contract = execution_contract(doc, archive=archive, run_id=r["planned_run_id"], executor_id=self._worker,
+                                      backend=self.backend, artifact_root=self.artifact_root, mode=self.mode)
+        cbad = contract_problems(contract, doc=doc, reservation=r)
+        if cbad:
+            raise ExecutionFailed("EXECUTION_CONTRACT_INCOMPLETE", "; ".join(cbad)[:800])
         receipt = {"kind": "EXECUTION_RECEIPT", "reservation_id": reservation_id, "task_id": r["task_id"],
                    "attempt_id": r["attempt_id"], "request_sha256": r["request_sha256"],
                    "authorization_id": r["authorization_id"], "binding_id": r["binding_id"],
@@ -165,15 +196,17 @@ class ControlledRunnerAdapter(ExecutionAdapter):
                    "backend": self.backend.kind, "backend_identity": res.get("identity", {}),
                    "started_at": started.isoformat(timespec="seconds"),
                    "finished_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-                   "archive_path": str(arch), "output_manifest_sha256": manifest_sha, "synthetic": True,
-                   "consumed_batches": 1}
+                   "archive_path": str(arch), "output_manifest_sha256": manifest_sha,
+                   "synthetic": self.backend.synthetic is True, "execution_mode": self.mode,
+                   "execution_contract": contract, "consumed_batches": 1}
         rp, rsha = write_receipt(out_dir, receipt)
         self._ledger.record_completion(reservation_id, worker_id=self._worker, receipt_sha256=rsha,
                                        output_manifest_sha256=manifest_sha, receipt_path=str(rp))
         return {"adapter": self.kind, "evidence": self.evidence, "archive_path": str(arch),
                 "archive_manifest_sha256": manifest_sha, "receipt_path": str(rp), "receipt_sha256": rsha,
                 "run_id": r["planned_run_id"], "consumed_batches": 1, "strategy_executed": True,
-                "backend": self.backend.kind, "synthetic": True, "reservation_id": reservation_id}
+                "backend": self.backend.kind, "synthetic": self.backend.synthetic is True, "execution_mode": self.mode,
+                "reservation_id": reservation_id}
 
     def verify_evidence(self, reservation_id: str, *, doc: dict, evaluation_reference: dict | None = None,
                         archive_ref: str | None = None, archived_files: dict | None = None, record: bool = False) -> dict:
@@ -183,7 +216,74 @@ class ControlledRunnerAdapter(ExecutionAdapter):
             return {"ok": False, "problems": ["LEDGER_UNBOUND"]}
         return verify_execution_evidence(self._ledger, reservation_id, doc=doc, evaluation_reference=evaluation_reference,
                                          archive_ref=archive_ref, archived_files=archived_files, record=record,
-                                         worker_id=self._worker, governance_root=self.governance_root)
+                                         worker_id=self._worker, governance_root=self.governance_root,
+                                         expected_mode=self.mode)
+
+
+CONTRACT_KEYS = ("authorization_id", "request_sha256", "strategy_spec_sha256", "dataset_snapshot_id",
+                 "dataset_manifest_sha256", "core_commit", "agent_git_sha", "signal_time_rule", "execution_time_rule",
+                 "cost_profile", "slippage_bps_per_side", "executor_id", "run_id", "runner_receipt", "execution_result",
+                 "execution_mode")
+
+
+def execution_contract(doc: dict, *, archive: dict, run_id: str, executor_id: str | None, backend, artifact_root,
+                       mode: str) -> dict:
+    """5-B3-B execution contract: every field is READ from the request, the runner's own archive / config and the cost
+    file on disk (never typed in); ``contract_problems`` fails closed on anything missing or contradictory."""
+    info = I.raw_run_info(archive["files"]["run_info.txt"])
+    cfg = json.loads(archive["files"]["config_canonical.json"])
+    cp = doc.get("cost_profile_ref") or {}
+    slip = None
+    try:
+        cset = json.loads((Path(artifact_root) / cp["scenario_set_path"]).read_text(encoding="utf-8"))
+        slip = {k: v.get("slippage_bps") for k, v in (cset.get("scenarios") or {}).items()}
+    except (OSError, KeyError, TypeError, ValueError):
+        slip = None
+    try:
+        metrics = json.loads(archive["files"].get("metrics.json") or b"{}")
+    except ValueError:
+        metrics = {}
+    try:
+        rr = backend.runner_receipt()
+    except Exception as e:  # noqa: BLE001 - no receipt => contract incomplete, never a fabricated one
+        rr = {"error": f"{type(e).__name__}: {e}"}
+    return {"authorization_id": info.get("authorization_id"), "request_sha256": Q.request_hash(doc),
+            "strategy_spec_sha256": (cfg.get("strategy") or {}).get("spec_file_sha256"),
+            "dataset_snapshot_id": info.get("snapshot_id"), "dataset_manifest_sha256": info.get("manifest_sha256"),
+            "core_commit": info.get("core_git_sha"), "agent_git_sha": info.get("agent_git_sha"),
+            "signal_time_rule": (doc.get("signal_time_rule") or {}).get("signal_time"),
+            "execution_time_rule": (doc.get("execution_time_rule") or {}).get("rule"),
+            "cost_profile": {"scenario_set_sha256": cp.get("scenario_set_sha256"), "scenarios": cp.get("scenarios"),
+                             "core_profile_sha256": info.get("cost_profile_sha256")},
+            "slippage_bps_per_side": slip, "executor_id": executor_id, "run_id": run_id, "runner_receipt": rr,
+            "execution_result": {"archive_run_id": archive["manifest"].get("run_id"), "files": len(archive["files"]),
+                                 "scenarios": sorted(metrics) if isinstance(metrics, dict) else None},
+            "execution_mode": mode}
+
+
+def contract_problems(contract, *, doc: dict, reservation: dict) -> list[str]:
+    if not isinstance(contract, dict):
+        return ["CONTRACT_MISSING"]
+    bad = [f"CONTRACT_FIELD_MISSING:{k}" for k in CONTRACT_KEYS if contract.get(k) in (None, "", {}, [])]
+    rid = I.request_identity(doc)
+    for k, want in (("authorization_id", reservation.get("authorization_id")),
+                    ("request_sha256", reservation.get("request_sha256")),
+                    ("strategy_spec_sha256", rid["strategy_spec_sha256"]), ("dataset_snapshot_id", rid["dataset_snapshot_id"]),
+                    ("dataset_manifest_sha256", rid["dataset_manifest_sha256"]), ("core_commit", rid["core_commit"]),
+                    ("run_id", reservation.get("planned_run_id")), ("executor_id", reservation.get("worker_id"))):
+        if contract.get(k) is not None and contract.get(k) != want:
+            bad.append(f"CONTRACT_CONTRADICTION:{k}")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(contract.get("agent_git_sha") or "")):
+        bad.append("CONTRACT_AGENT_GIT_SHA_NOT_FULL")
+    rr = contract.get("runner_receipt") or {}
+    if "error" in rr:
+        bad.append("CONTRACT_RUNNER_RECEIPT_UNAVAILABLE")
+    if contract.get("execution_mode") == "REAL_GATED" and not str(rr.get("verification_ref", "")).startswith(
+            "DEVELOPMENT_RECEIPT_RENEWAL:"):
+        bad.append("CONTRACT_RUNNER_RECEIPT_NOT_A_CORE_RENEWAL")
+    if (contract.get("cost_profile") or {}).get("scenario_set_sha256") != (doc.get("cost_profile_ref") or {}).get("scenario_set_sha256"):
+        bad.append("CONTRACT_CONTRADICTION:cost_profile")
+    return bad
 
 
 TASK_ARCHIVE_FILES = ("research_request.json", "task_events.jsonl", "governance_decision.json", "execution_reference.json",
@@ -263,7 +363,8 @@ def task_archive_problems(task_archive: str | Path, *, r: dict, done: dict, arch
 def verify_execution_evidence(ledger, reservation_id: str, *, doc: dict, evaluation_reference: dict | None,
                               archive_ref: str | None, record: bool, worker_id: str | None,
                               archived_files: dict | None = None, governance_root: Path | None = None,
-                              reservation: dict | None = None, use: dict | None = None) -> dict:
+                              reservation: dict | None = None, use: dict | None = None,
+                              expected_mode: str = "ISOLATED_SYNTHETIC") -> dict:
     """``reservation`` / ``use`` are passed only by ``BudgetLedger.settle`` from INSIDE its critical section (the
     ledger's own folded state); every other caller reads them from the ledger here."""
     bad: list[str] = []
@@ -292,8 +393,10 @@ def verify_execution_evidence(ledger, reservation_id: str, *, doc: dict, evaluat
             "binding_id": r["binding_id"], "approval_evidence_sha256": r["approval_evidence_sha256"],
             "run_id": r["planned_run_id"], "use_record_sha256": r.get("use_record_sha256"),
             "execution_started_event_sha256": started.get("record_sha256"),
-            "output_manifest_sha256": done.get("output_manifest_sha256"), "consumed_batches": 1, "synthetic": True}
+            "output_manifest_sha256": done.get("output_manifest_sha256"), "consumed_batches": 1,
+            "synthetic": expected_mode == "ISOLATED_SYNTHETIC", "execution_mode": expected_mode}
     bad += [f"RECEIPT_FIELD_MISMATCH:{k}" for k, val in want.items() if rc.get(k) != val]
+    bad += [f"RECEIPT_CONTRACT:{p}" for p in contract_problems(rc.get("execution_contract"), doc=doc, reservation=r)]
     arch = Path(rc.get("archive_path") or "")
     try:
         archive = C.read_archive(arch, expected_manifest_sha256=done.get("output_manifest_sha256") or "")
@@ -364,6 +467,9 @@ class SyntheticFixtureBackend:
     def execution_identity(self) -> tuple[dict, list[str]]:
         return _fixture_identity(self.fixture), []
 
+    def runner_receipt(self) -> dict:
+        return {"kind": "SYNTHETIC_FIXTURE_NO_CORE_RECEIPT", "verification_ref": "NONE:SYNTHETIC_FIXTURE"}
+
     def planned_run_id(self, task_id: str, now: datetime) -> str:
         """The fixture's own run id (its MANIFEST binds it): one synthetic execution per ledger (RUN_ID_ALREADY_USED)."""
         return json.loads((self.fixture / "MANIFEST.json").read_text(encoding="utf-8"))["run_id"]
@@ -398,11 +504,13 @@ class SyntheticStubBackend:
     synthetic = True
 
     def __init__(self, fixture_archive: Path, *, identity: dict, fail_with: str | None = None,
-                 drop_file: str | None = None, stamp: dict | None = None, calls_file: Path | None = None):
+                 drop_file: str | None = None, stamp: dict | None = None, calls_file: Path | None = None,
+                 agent_git_sha: str = "5" * 40):
         self.fixture, self.identity = Path(fixture_archive), dict(identity)
         self.fail_with, self.drop_file, self.stamp = fail_with, drop_file, dict(stamp or {})
         self.calls_file = Path(calls_file) if calls_file else None
         self._calls = 0
+        self.agent_git_sha = agent_git_sha
 
     @property
     def calls(self) -> int:
@@ -420,6 +528,9 @@ class SyntheticStubBackend:
 
     def execution_identity(self) -> tuple[dict, list[str]]:
         return dict(self.identity), []
+
+    def runner_receipt(self) -> dict:
+        return {"kind": "SYNTHETIC_STUB_NO_CORE_RECEIPT", "verification_ref": "NONE:SYNTHETIC_STUB"}
 
     def planned_run_id(self, task_id: str, now: datetime) -> str:
         return "SYNSTUB_" + _sha(task_id.encode())[:16]
@@ -440,6 +551,7 @@ class SyntheticStubBackend:
                      "manifest_sha256": q(idn["dataset_manifest_sha256"]),
                      "temporal_policy_sha256": q(idn["temporal_policy_sha256"]),
                      "authorization_use": json.dumps(use, sort_keys=True), "holdout_accessed": "false",
+                     "agent_git_sha": q(self.agent_git_sha),
                      "notebook": "SYNTHETIC_STUB", "synthetic_stub": "true"}
         lines, seen = [], set()
         for ln in (dst / "run_info.txt").read_text(encoding="utf-8").splitlines():
@@ -474,10 +586,17 @@ class ResearchOnlyRunnerBackend:
     kind = "RESEARCH_ONLY_RUNNER_SYNTHETIC_SNAPSHOT"
 
     def __init__(self, runner, *, config_path: Path, snapshot_root: Path, git_commit: str, synthetic_snapshot: bool,
-                 run_context: dict | None = None, core=None, core_costs=None, core_native=None):
+                 run_context: dict | None = None, core=None, core_costs=None, core_native=None,
+                 canonical_config_path: Path | None = None):
         self.runner, self.config_path, self.snapshot_root = runner, Path(config_path), Path(snapshot_root)
         self.git_commit, self.run_context = git_commit, dict(run_context or {})
         self.synthetic = bool(synthetic_snapshot)
+        if not self.synthetic:
+            self.kind = "RESEARCH_ONLY_RUNNER_REAL_SNAPSHOT"
+        # 5-B3-B real snapshot: ``config_path`` is the SESSION config produced by the existing Core receipt renewal
+        # (research_only.development_run.session_config) and must differ from the signed canonical config ONLY in
+        # the integrity receipt; a hand-made receipt never passes.
+        self.canonical_config_path = Path(canonical_config_path) if canonical_config_path else None
         self.core, self.core_costs, self.core_native = core, core_costs, core_native
         self.calls = 0
 
@@ -511,6 +630,8 @@ class ResearchOnlyRunnerBackend:
             bad.append("RUNNER_SNAPSHOT_MANIFEST_SHA")                    # the snapshot actually read, never 'latest'
         if self.snapshot_root.name != cfg["dataset"].get("snapshot_id"):
             bad.append("RUNNER_SNAPSHOT_ROOT_ID")
+        if not self.synthetic:
+            bad += self._session_config_problems(cfg)
         self._core()
         installed = self.core_native.core_code_identity().get("core_git_sha")
         if installed != cfg["core"].get("phase4a_sha"):
@@ -521,6 +642,32 @@ class ResearchOnlyRunnerBackend:
                  "dataset_snapshot_id": cfg["dataset"].get("snapshot_id"), "dataset_manifest_sha256": man_sha,
                  "cost_profile_sha256": cost_sha, "temporal_policy_sha256": (cfg.get("temporal_policy") or {}).get("sha256"),
                  "research_window": cfg.get("windows")}, bad)
+
+    def _session_config_problems(self, cfg: dict) -> list[str]:
+        from strategy_agent.research_only.development_run import _strip, canonical_sha  # noqa: PLC0415
+        if self.canonical_config_path is None or not self.canonical_config_path.is_file():
+            return ["RUNNER_CANONICAL_CONFIG_REQUIRED"]
+        canon = json.loads(self.canonical_config_path.read_text(encoding="utf-8"))
+        bad = []
+        if canon["provenance"].get("config_sha256") != canonical_sha(canon):
+            bad.append("RUNNER_CANONICAL_CONFIG_SELF_HASH")
+        if cfg["provenance"].get("config_sha256") != canonical_sha(cfg):
+            bad.append("RUNNER_SESSION_CONFIG_SELF_HASH")
+        if _strip(cfg) != _strip(canon):
+            bad.append("RUNNER_SESSION_CONFIG_DIFFERS_BEYOND_RECEIPT")
+        ref = str(((cfg.get("snapshot_binding") or {}).get("integrity_receipt") or {}).get("verification_ref", ""))
+        if not ref.startswith("DEVELOPMENT_RECEIPT_RENEWAL:"):
+            bad.append("RUNNER_RECEIPT_NOT_RENEWED_BY_CORE")
+        return bad
+
+    def runner_receipt(self) -> dict:
+        """The Core integrity receipt the runner will rely on (from its own config; never fabricated)."""
+        cfg, _ = self.runner.load_config(self.config_path)
+        sb = cfg.get("snapshot_binding") or {}
+        r = sb.get("integrity_receipt") or {}
+        return {"verification_ref": r.get("verification_ref"), "parquet_sha256": r.get("parquet_sha256"),
+                "manifest_sha256": r.get("manifest_sha256"), "integrity_receipt_sha256": sb.get("integrity_receipt_sha256"),
+                "config_sha256": (cfg.get("provenance") or {}).get("config_sha256")}
 
     def precheck(self, doc: dict) -> list[str]:
         """The runner's own preflight/probe (before any budget). Identity is compared by ``identity.verify_request``

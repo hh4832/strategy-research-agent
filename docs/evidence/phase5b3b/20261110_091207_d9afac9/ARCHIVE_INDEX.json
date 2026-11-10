@@ -1,0 +1,26 @@
+{
+  "files": {
+    "b3b_acceptance.json": {
+      "bytes": 8098,
+      "sha256": "216735aecdad58775650c2fa4e351f1b549be1b1b06b13dbb4119de68c7e01d1"
+    },
+    "b3b_junit.xml": {
+      "bytes": 27911,
+      "sha256": "a90a98654fb57f95f7a64cd8e3b33e2cfc9e050278e95a910a545f5eaec5dcdd"
+    },
+    "governance_state.json": {
+      "bytes": 398,
+      "sha256": "b609ef8ac2356bff2c6b2c807faf05b366b72e5059ae61cfb5fb6c0353bfde5c"
+    },
+    "notebook_context.json": {
+      "bytes": 1443,
+      "sha256": "1130a0f310471f084fc07c40a3120b31a8aa5a25dc732c2a9236ade4de850f17"
+    },
+    "run_info.txt": {
+      "bytes": 610,
+      "sha256": "073b1c6081d2ab0b63932d90f9537e90f56a93ce6dc7a56af9ad11750063e069"
+    }
+  },
+  "kind": "PHASE5B3B_ARCHIVE_INDEX",
+  "work_tree": "NONE (B3-B acceptance writes no work/ tree)"
+}
