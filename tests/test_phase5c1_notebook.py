@@ -20,7 +20,7 @@ def test_first_cell_contains_all_manual_operations_and_safe_default():
                 'APPROVE_TASK_URL','CONFIRM_SETTINGS','DRIVE_OUTPUT_PARENT'):
         assert key in first
     assert "MODE = 'PREPARE_ONLY'" in first and 'REVIEWED_DATA_PINS = None' in first
-    assert "AGENT_SHA = 'FETCH_BRANCH_HEAD'" in first and 'AGENT_BRANCH' in first
+    assert "AGENT_SHA = '9e92c0f4f35f909aec93dbab70946b0174b599c4'" in first and 'AGENT_BRANCH' in first
     assert "ZoneInfo('Asia/Taipei')" in first
     rest='\n'.join(code[1:]);calls=set()
     for source in code:
