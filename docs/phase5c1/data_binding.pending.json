@@ -1,0 +1,23 @@
+{
+  "status": "PENDING_REAL_ARCHIVE_AND_INDEPENDENT_PIN_REVIEW",
+  "snapshot_id": "TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211",
+  "producer_sha": "7bcc61813a6cf2956c6df69ea796bf1c7f2b495f",
+  "plan_sha256": "4dd605385229b1b062fccbe5900b097cff3525fe13f66964273f8e63166f286a",
+  "reader_core_sha": "bc0592984a09d806ebb9ef78ce377db78b404f86",
+  "conversion_approval_ref": "https://github.com/hh4832/market-research-core/pull/4#issuecomment-6768321310",
+  "file_pins": {
+    "binding_sha256": null,
+    "lineage_sha256": null,
+    "manifest_sha256": null,
+    "marker_sha256": null,
+    "parquet_sha256": null,
+    "recovery_provenance_sha256": null
+  },
+  "recovery_core_sha": null,
+  "user_reported_recovery": "LOCAL_PREFLIGHT_PASS_ARCHIVE_READBACK_PASS",
+  "formal_research": "NOT_EXECUTED",
+  "ready_to_submit_formal_authorization": false,
+  "blockers": [
+    "CORE_CROSS_RATE_UNSUPPORTED: pinned Core has one SEC/TAF interval, no cross-rate switching; no stitched backtest or 2024-rate extrapolation permitted"
+  ]
+}

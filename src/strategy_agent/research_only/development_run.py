@@ -35,7 +35,7 @@ def _strip(cfg: dict) -> dict:
     return c
 
 
-def session_config(canonical_path: Path, snapshot_root: Path, out_dir: Path, *, renew=None) -> dict:
+def session_config(canonical_path: Path, snapshot_root: Path, out_dir: Path, *, renew=None, runtime_bundle: dict | None = None) -> dict:
     canonical_path, snapshot_root = Path(canonical_path), Path(snapshot_root)
     cfg = json.loads(canonical_path.read_text(encoding="utf-8"))
     if cfg["provenance"]["config_sha256"] != canonical_sha(cfg):
@@ -43,8 +43,10 @@ def session_config(canonical_path: Path, snapshot_root: Path, out_dir: Path, *, 
     sb = cfg["snapshot_binding"]
     if snapshot_root.name != cfg["dataset"]["snapshot_id"] or sb.get("snapshot_pin", {}).get("snapshot_id") != snapshot_root.name:
         raise SmokeStopped("SNAPSHOT_ID: snapshot root does not match the signed dataset")
-    src = json.loads((snapshot_root / "binding.json").read_text(encoding="utf-8"))
-    for k in ("snapshot_pin", "manifest_sha256", "integrity_receipt_sha256", "manifest_relative_path", "layout"):
+    src = runtime_bundle if runtime_bundle is not None else json.loads((snapshot_root / "binding.json").read_text(encoding="utf-8"))
+    keys=("snapshot_pin", "manifest_sha256", "manifest_relative_path", "layout")
+    if runtime_bundle is None:keys+=("integrity_receipt_sha256",)
+    for k in keys:
         if src.get(k) != sb.get(k):
             raise SmokeStopped(f"BINDING_MISMATCH: snapshot binding.json {k} differs from the signed config")
     if Path(src["snapshot_root"]).resolve() != snapshot_root.resolve():

@@ -274,6 +274,8 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict, spe
     rows, sbars = conservative_rows_and_bars(frame)
     decs = sma_crossover(sbars, int(parameters["fast"]), int(parameters["slow"]))
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
+    if spec.get("version")=="0.2.0" and sum(b.eligible and b.available_at<ws for b in sbars)<int(spec['data_requirements']['warmup_bars']):
+        raise Phase4ABindingError('insufficient eligible pre-window warm-up bars')
     kept = [d for d in decs if ws <= d.decision_ts < we]
     if any(not any(b.available_at == d.decision_ts for b in sbars) for d in kept):
         raise Phase4ABindingError("decision not at a Core modeled_available_at")
@@ -336,6 +338,8 @@ def preregistered_decompositions(report, rows, experiment: dict) -> dict:
         if experiment["drift_control"] != CT.VERSION:
             raise Phase4ABindingError(f"unknown drift control {experiment['drift_control']!r}")
         out["drift_control"] = CT.drift_matched(trips, rows)
+        if experiment.get("family_trials_including_this")==3:
+            out.update(CT.c1_decompositions(trips,rows))
     return out
 
 
@@ -374,3 +378,68 @@ def native_snapshot_options(binding: SnapshotBinding) -> dict:
     from strategy_agent.adapters.mrc_phase4a import core_development
     development,_=core_development()
     return {'snapshot_pin':development.DevelopmentSnapshotPin(**binding.snapshot_pin)}
+
+
+def load_continuous_native(core_native, snapshot_root, binding, *, dates, research_window, holdout):
+    """Bounded IO only. Concatenate before SMA/orders/ONE engine call per scenario; never stitch backtests.
+
+    Daily footer row counts prove every native record in the requested interval
+    was returned exactly once. Queries partition New York dates (DST aware in Core).
+    """
+    from datetime import timedelta
+    from types import SimpleNamespace
+    import pandas as pd
+    import pyarrow.parquet as pq
+    DW=core_native.DateWindow
+    kwargs=dict(manifest_relative_path=binding.manifest_relative_path,
+        expected_manifest_sha256=binding.manifest_sha256,layout=core_native.ManifestLayout(**binding.layout),
+        integrity_receipt=core_native.FileIntegrityReceipt(**binding.integrity_receipt),
+        expected_receipt_sha256=binding.integrity_receipt_sha256,symbol='TSM',research_window=DW(*research_window),
+        holdout=tuple(DW(*h) for h in holdout),**native_snapshot_options(binding))
+    start,end=map(date.fromisoformat,dates)
+    if not DW(*research_window).contains(DW(*dates)) or any(DW(*dates).overlaps(DW(*h)) for h in holdout):
+        raise Phase4ABindingError("requested interval reaches Holdout or exceeds research window")
+    if (end-start).days<31:
+        return core_native.load_native_tsm(snapshot_root,dates=DW(*dates),**kwargs)
+    if not binding.snapshot_pin:
+        raise Phase4ABindingError('long reads require an explicit Development snapshot pin')
+    root=Path(snapshot_root).resolve(strict=True)
+    mp=(root/binding.manifest_relative_path).resolve(strict=True)
+    if not mp.is_relative_to(root) or hashlib.sha256(mp.read_bytes()).hexdigest()!=binding.manifest_sha256:
+        raise Phase4ABindingError('manifest pin mismatch')
+    doc=json.loads(mp.read_text())
+    p=(root/doc['parquet_path']).resolve(strict=True)
+    if not p.is_relative_to(root):raise Phase4ABindingError('unsafe Parquet path')
+    pf=pq.ParquetFile(p);idx=pf.schema.names.index(doc['columns']['timestamp']);daily={}
+    for i in range(pf.num_row_groups):
+        g=pf.metadata.row_group(i);st=g.column(idx).statistics
+        if st is None or not st.has_min_max:raise Phase4ABindingError('unknown daily boundary')
+        a,b=pd.Timestamp(st.min),pd.Timestamp(st.max)
+        if a.tzinfo is None or b.tzinfo is None:raise Phase4ABindingError('naive boundary')
+        day=_date(a)
+        if day!=_date(b) or not (binding.snapshot_pin['start']<=day<=binding.snapshot_pin['end']) or any(h[0]<=day<=h[1] for h in holdout):
+            raise Phase4ABindingError('unsafe Development row group')
+        daily[day]=daily.get(day,0)+g.num_rows
+    chunks=[];queries=[];cursor=start
+    while cursor<=end:
+        last=min(cursor+timedelta(days=30),end)
+        expected=sum(n for day,n in daily.items() if cursor.isoformat()<=day<=last.isoformat())
+        if expected:
+            result=core_native.load_native_tsm(root,dates=DW(cursor.isoformat(),last.isoformat()),**kwargs)
+            if len(result.native)!=expected:raise Phase4ABindingError('chunk row count differs from footer')
+            chunks.append(result)
+        queries.append({'start':cursor.isoformat(),'end':last.isoformat(),'native_rows':expected})
+        cursor=last+timedelta(days=1)
+    if not chunks:raise Phase4ABindingError('empty long research window')
+    native=pd.concat([r.native for r in chunks],ignore_index=True)
+    source=pd.concat([r.source_1m for r in chunks],ignore_index=True)
+    bars=pd.concat([r.conservative_15m for r in chunks],ignore_index=True)
+    ts=native[doc['columns']['timestamp']]
+    if ts.duplicated().any() or not ts.is_monotonic_increasing:
+        raise Phase4ABindingError('duplicate or unordered chunk records')
+    if bars.source_timestamp.duplicated().any() or not bars.source_timestamp.is_monotonic_increasing:
+        raise Phase4ABindingError('duplicate or unordered conservative buckets')
+    provenance=dict(chunks[0].provenance,requested_dates={'start':dates[0],'end':dates[1]},
+                    native_rows=len(native),conservative_buckets=len(bars),bounded_read_windows=queries,
+                    execution_partitioning='NONE_ONE_CONTINUOUS_SMA_AND_ENGINE_RUN_PER_SCENARIO')
+    return SimpleNamespace(native=native,source_1m=source,conservative_15m=bars,provenance=provenance)

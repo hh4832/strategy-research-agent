@@ -61,10 +61,10 @@
     },
     "hypothesis": {
       "expected_direction": "CONDITIONAL",
-      "null_hypothesis": "Net returns of crossover trades are no better than random-entry long trades with the same holding-time distribution (DRIFT-MATCHED-v1 mean excess <= 0), or net expectancy <= 0 after BASE/STRESS costs.",
+      "null_hypothesis": "SMA5/20 net performance does not exceed the deterministic in-sample unconditional-drift baseline for the same holding durations (DRIFT-MATCHED-v1 mean excess <= 0), or net expectancy <= 0 after BASE/STRESS costs.",
       "purpose": "PRE_REGISTERED_HYPOTHESIS_TEST on Development data only; Holdout never read.",
       "question": "On IBKR TSM 15-minute RTH bars, a completed-bar SMA5 crossing above SMA20 identifies short-horizon up-moves that continue long enough to earn a positive net return per round trip AFTER costs and BEYOND TSM's unconditional upward drift over the same holding time, consistently across the 2017-2024 development years.",
-      "testable_claim": "Pre-registered success requires ALL of: (1) >= 30 valid round trips; (2) BASE and STRESS net expectancy > 0 and STRESS profit factor > 1; (3) DRIFT-MATCHED-v1 mean excess per trade > 0 under BASE (timing beyond beta); (4) net PnL > 0 in at least 5 of the 8 calendar years and in both halves 2017-2020 and 2021-2024; (5) no single calendar year provides more than 50% of total net PnL. Any failure = hypothesis not supported on Development data."
+      "testable_claim": "Pre-registered success requires ALL of: (1) >= 30 valid round trips; (2) BASE and STRESS net expectancy > 0 and STRESS profit factor > 1; (3) DRIFT-MATCHED-v1 mean excess per trade > 0 under BASE (descriptive excess over the in-sample drift baseline); (4) net PnL > 0 in at least 5 of the 8 calendar years and in both halves 2017-2020 and 2021-2024; (5) no single calendar year provides more than 50% of total net PnL. Any failure = hypothesis not supported on Development data."
     },
     "market_mechanism": {
       "category": "MOMENTUM",
@@ -99,7 +99,7 @@
         "close",
         "volume"
       ],
-      "source_ref": "PENDING_TSM_DEV_1M_20161019_20241231",
+      "source_ref": "TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211",
       "symbols": [
         "TSM"
       ],
@@ -332,13 +332,13 @@
     "adapter_id": "CLAUDE_AUTHORED_P5C1_COMPLETION_FILE",
     "agent_commit_sha": "0440c7a428ffa7756d76651b5c50f88640bdad98",
     "created_at": "2026-11-10T16:00:00+08:00",
-    "draft_sha256": "5909e17e593108a2eaf8e229ef7e6cff57a01d84d26e241f80908a000970fdae",
+    "draft_sha256": "64bd5cd6cb971aab43cfc1f26aeb649949f19ab3d8e0eaac1258ec797903b97c",
     "input_kind": "USER_HYPOTHESIS",
     "user_hypothesis": "On IBKR TSM 15-minute RTH bars, a completed-bar SMA5 crossing above SMA20 identifies short-horizon up-moves that continue long enough to earn a positive net return per round trip AFTER costs and BEYOND TSM's unconditional upward drift over the same holding time, consistently across the 2017-2024 development years."
   },
   "prior_proposal_refs": [],
-  "proposal_id": "PROP-019ffdf4b010430fa384",
-  "proposal_sha256": "6fe4b1bfa08a47cd858817be976caa583bf19afc8358ad968658a97651da1197",
+  "proposal_id": "PROP-3a8bcb14c2f791ca14b8",
+  "proposal_sha256": "0dceaf17e64baf7a2867efc03f2b2c811a3c5f23bac0ac0317e86f0f6d62aba5",
   "request_contract": "PINNED_SHARED_SCHEMA; BINDINGS_AND_HUMAN_APPROVAL_REQUIRED",
   "request_contract_pin": {
     "commit_sha": "5d088c4de362add925344d8e48b36c2e9d728d96",

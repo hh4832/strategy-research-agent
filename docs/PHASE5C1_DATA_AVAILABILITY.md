@@ -1,3 +1,5 @@
+> Update 2026-11-11: the user reports a recovered long Development snapshot. Real Agent file pins remain PENDING; see [integration status and Core cost blocker](PHASE5C1_INTEGRATION.md). Earlier gap assessment below is historical.
+
 # Phase 5-C1 — Development data availability (TSM)
 
 ## Conclusion

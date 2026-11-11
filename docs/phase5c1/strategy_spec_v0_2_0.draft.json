@@ -1,14 +1,14 @@
 {
   "spec_version": "1.0.0",
   "strategy_id": "sma_crossover_tsm_15m_5_20",
-  "name": "SMA crossover 5/20 — TSM ADR, 15-minute RTH bars, long only (M3-B fixed baseline)",
+  "name": "SMA crossover 5/20 \u2014 TSM ADR, 15-minute RTH bars, long only (M3-B fixed baseline)",
   "version": "0.2.0",
   "status": "DRAFT",
   "hypothesis": {
     "statement": "On IBKR TSM 15-minute RTH bars, a completed-bar SMA5 crossing above SMA20 identifies short-horizon up-moves that continue long enough to earn a positive net return per round trip AFTER costs and BEYOND TSM's unconditional upward drift over the same holding time, consistently across the 2017-2024 development years.",
     "mechanism": "Information about TSM reaches the US ADR gradually: Taiwan-session news and semiconductor-sector flows are absorbed by US participants over hours, and large holders split orders over the session. Gradual incorporation creates short-horizon positive autocorrelation of 15m returns; the counterparties are liquidity providers and slower participants who trade against the move. Long-only by construction.",
-    "falsifiable_prediction": "Pre-registered success requires ALL of: (1) >= 30 valid round trips; (2) BASE and STRESS net expectancy > 0 and STRESS profit factor > 1; (3) DRIFT-MATCHED-v1 mean excess per trade > 0 under BASE (timing beyond beta); (4) net PnL > 0 in at least 5 of the 8 calendar years and in both halves 2017-2020 and 2021-2024; (5) no single calendar year provides more than 50% of total net PnL. Any failure = hypothesis not supported on Development data.",
-    "null_hypothesis": "Net returns of crossover trades are no better than random-entry long trades with the same holding-time distribution (DRIFT-MATCHED-v1 mean excess <= 0), or net expectancy <= 0 after BASE/STRESS costs.",
+    "falsifiable_prediction": "Pre-registered success requires ALL of: (1) >= 30 valid round trips; (2) BASE and STRESS net expectancy > 0 and STRESS profit factor > 1; (3) DRIFT-MATCHED-v1 mean excess per trade > 0 under BASE (descriptive excess over the in-sample drift baseline); (4) net PnL > 0 in at least 5 of the 8 calendar years and in both halves 2017-2020 and 2021-2024; (5) no single calendar year provides more than 50% of total net PnL. Any failure = hypothesis not supported on Development data.",
+    "null_hypothesis": "SMA5/20 net performance does not exceed the deterministic in-sample unconditional-drift baseline for the same holding durations (DRIFT-MATCHED-v1 mean excess <= 0), or net expectancy <= 0 after BASE/STRESS costs.",
     "rationale_category": "TREND_FOLLOWING",
     "expected_holding_period": "several 15-minute bars to a few sessions",
     "known_failure_modes": [
@@ -56,12 +56,12 @@
     "datasets": [
       {
         "dataset_id": "ibkr_tsm_1m_normalized",
-        "snapshot_id": "PENDING_TSM_DEV_1M_20161019_20241231",
-        "producer_commit_sha": "UNRESOLVED",
+        "snapshot_id": "TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211",
+        "producer_commit_sha": "7bcc61813a6cf2956c6df69ea796bf1c7f2b495f",
         "manifest_sha256": "UNRESOLVED",
         "verdict": "GO",
         "usage_scope": "BACKTEST",
-        "access_contract": "PENDING: TSM Development Snapshot Contract v1.2 (Core window generalisation; see PHASE5C1_DATA_AVAILABILITY.md)"
+        "access_contract": "Core v1.2 bc0592984a09d806ebb9ef78ce377db78b404f86; real byte pins PENDING independent review"
       }
     ],
     "warmup_bars": 60,
@@ -258,6 +258,6 @@
     "created_by": "strategy-research-agent (Phase 5-C1 pre-registration draft)",
     "parent_spec_id": "sma_crossover_tsm_15m_5_20@0.1.1",
     "spec_sha256": null,
-    "notes": "DRAFT (docs/, not specs/): rules, parameters, sizing, execution and costs identical to 0.1.1. Changes: hypothesis wording + pre-registered success criteria, data binding (PENDING longer Development snapshot), experiment (family N, drift control, regime definition). Becomes a spec only after the snapshot exists (data pins filled, nothing else changed)."
+    "notes": "DRAFT (docs/, not specs/): rules, parameters, sizing, execution and costs identical to 0.1.1. Changes: hypothesis wording + pre-registered success criteria, data binding (PENDING longer Development snapshot), experiment (family N, drift control, regime definition). Becomes a spec only after the snapshot exists (data pins filled, nothing else changed). Methodology correction: H0 describes deterministic in-sample drift only; formula and every numeric success threshold unchanged. User-reported Recovery PASS is data evidence, not research execution."
   }
 }

@@ -109,3 +109,5 @@ python -m strategy_agent.phase5a acceptance      --out-dir OUT                  
 身分取自 GitHub API 的作者（login + 數字 id），經 GitHub App（AI agent）發出的留言一律拒絕。
 授權綁定：`python -m strategy_agent.binding approval-line | verify-approval | bind-authorization（預設 dry-run）| validate-bound-request | inspect-binding`。
 真實 Research-only Runner 維持 DISABLED，不讀 Holdout，不含任何券商 API。
+
+Phase 5-C1 長期資料接入與授權準備：[整合與阻擋項目](docs/PHASE5C1_INTEGRATION.md)。真實 Data Pins PENDING；固定 Core 跨費率成本尚未支援，正式研究 NOT_EXECUTED。

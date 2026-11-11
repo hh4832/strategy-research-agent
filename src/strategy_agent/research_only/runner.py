@@ -273,14 +273,8 @@ class ResearchOnlyRunner:
         from . import core_phase4a as P  # noqa: PLC0415
         b = P.SnapshotBinding.from_config(cfg)
         DW = core_native.DateWindow
-        loaded = core_native.load_native_tsm(
-            dc["snapshot_root"], manifest_relative_path=b.manifest_relative_path,
-            expected_manifest_sha256=b.manifest_sha256,
-            layout=core_native.ManifestLayout(**b.layout),
-            integrity_receipt=core_native.FileIntegrityReceipt(**b.integrity_receipt),
-            expected_receipt_sha256=b.integrity_receipt_sha256, symbol="TSM", dates=DW(*dc["dates"]),
-            research_window=DW(*dc["research_window"]), holdout=tuple(DW(*h) for h in dc["holdout"]),
-            **P.native_snapshot_options(b))
+        loaded = P.load_continuous_native(core_native,dc["snapshot_root"],b,
+            dates=dc["dates"],research_window=dc["research_window"],holdout=dc["holdout"])
         spec = json.loads((self.root / cfg["strategy"]["spec_path"]).read_text(encoding="utf-8"))
         batch = P.execute_batch(core, core_costs, frame=loaded.conservative_15m, core_sha=ident["core_git_sha"],
                                 profiles=dc["profiles"], spec=spec, parameters=dict(cfg["strategy"]["parameters"]),

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Status | PRE-REGISTERED DRAFT, fixed before any result on this window exists. Not authorized, not executed. |
-| Proposal (A2, PROPOSED) | `docs/phase5c1/research_proposal.json` (`PROP-019ffdf4b010430fa384`), deterministic from `proposal_completion.json` (`python -m strategy_agent.execution.c1_proposal emit`). One declared change: the evaluation window. |
+| Proposal (A2, PROPOSED) | `docs/phase5c1/research_proposal.json` (current deterministic content hash), deterministic from `proposal_completion.json` (`python -m strategy_agent.execution.c1_proposal emit`). One declared change: the evaluation window. |
 | Spec | `docs/phase5c1/strategy_spec_v0_2_0.draft.json`. Rules are identical to spec 0.1.1; only the hypothesis, data binding (PENDING) and experiment fields differ. |
 | Baseline | SMA 5/20 on 15m RTH bars, long-only, 100 shares. Fixed since M3-B. **Not re-selected** after the June 2024 result. |
 | Family | `FAM-SMA-TSM`. This is trial **3** (Phase 4-A smoke and Phase 5-B3-C both ran on 2024-05-29..06-28). |
@@ -20,9 +20,9 @@ This gradual incorporation should produce short-horizon positive autocorrelation
 
 ## 2. Null hypothesis
 
-H0: crossover trades are no better than random-entry long trades with the same holding-time distribution, or their net expectancy is ≤ 0 after BASE or STRESS costs.
+H0: SMA5/20 net performance does not exceed the deterministic in-sample unconditional-drift baseline for the same holding durations, or net expectancy is ≤ 0 after BASE or STRESS costs.
 
-H0 is tested directly with the pre-registered **DRIFT-MATCHED-v1** control (`evaluation/controls.py`). Each trade's net PnL is compared with `qty·entry_price·(e^{μh}−1)`, where:
+H0 is operationalized descriptively with the pre-registered **DRIFT-MATCHED-v1** control (`evaluation/controls.py`). Each trade's net PnL is compared with `qty·entry_price·(e^{μh}−1)`, where:
 - μ is the mean 15m log return over the evaluated bars;
 - h is the number of bars held.
 
@@ -170,3 +170,18 @@ Not done, to stay minimal:
 Before this authorization, two prerequisites must be met:
 1. the Core v1.2 PR is merged;
 2. the research lead has signed the conversion plan in Colab and produced the snapshot.
+
+## Methodology amendment — 2026-11-11 (before long-period strategy execution)
+
+Corrected the earlier random-entry interpretation to match DRIFT-MATCHED-v1's
+actual deterministic formula. There is no random-entry simulation, independent
+sample test, p-value or statistically significant timing-alpha claim. μ is
+in-sample on the supplied Core bars, including supplied warm-up. A positive excess
+is descriptive relative to that baseline only. Formula, strategy rules, Family
+N=3, all five success conditions and every numeric threshold remain unchanged.
+The proposal and spec H0 now match the implemented method. No result was used
+for this correction. Existing research outputs remain unchanged.
+
+User-reported Recovery local preflight / archive read-back PASS is accepted as
+provided data evidence. Actual Agent byte pins remain PENDING; see
+PHASE5C1_INTEGRATION.md for the archive inspection and Core cross-rate blocker.

@@ -184,7 +184,7 @@ def approval_lines(source: dict, authorization_id: str, *, expires_utc: str) -> 
 
 def prepare(out_dir: Path, *, artifact_root: Path = ROOT, governance_root: Path = ROOT,
             authorization_id: str = AUTHORIZATION_ID, canonical_config: Path | None = None, agent_commit: str,
-            now: datetime | None = None, completion: dict | None = None, hours: int = APPROVAL_HOURS) -> dict:
+            now: datetime | None = None, completion: dict | None = None, hours: int = APPROVAL_HOURS, hypothesis: str = HYPOTHESIS, adapter_id: str = ADAPTER_ID, manifest_kind: str = "PHASE5B3C_PREPARE_MANIFEST") -> dict:
     """Run 1 (non-consuming). ``out_dir`` must not exist; every file is written once."""
     from strategy_agent.phase5a.integration import proposal_to_request  # noqa: PLC0415
     from strategy_agent.proposal import FileDraftAdapter, draft_proposal  # noqa: PLC0415
@@ -199,7 +199,7 @@ def prepare(out_dir: Path, *, artifact_root: Path = ROOT, governance_root: Path 
         raise B3CStopped("RUN_CONFIG_AUTHORIZATION", {"config": cfg.get("authorization_id")})
     comp = completion if completion is not None else json.loads((Path(artifact_root) / COMPLETION_PATH).read_text("utf-8"))
     _write_once(out / "completion.json", _dumps(comp))
-    P = draft_proposal(HYPOTHESIS, FileDraftAdapter(out / "completion.json", adapter_id=ADAPTER_ID),
+    P = draft_proposal(hypothesis, FileDraftAdapter(out / "completion.json", adapter_id=adapter_id),
                        agent_commit_sha=agent_commit, created_at=now.isoformat(timespec="seconds"))
     if P["status"] != "PROPOSED":
         raise B3CStopped("PROPOSAL_NOT_PROPOSED", P["validation"]["blockers"])
@@ -209,7 +209,7 @@ def prepare(out_dir: Path, *, artifact_root: Path = ROOT, governance_root: Path 
         raise B3CStopped("A2_EXPORT", r)
     src = json.loads((out / "request.json").read_text(encoding="utf-8"))
     lines = approval_lines(src, authorization_id, expires_utc=_z(now + timedelta(hours=hours)))
-    m = {"kind": "PHASE5B3C_PREPARE_MANIFEST", "authorization_id": authorization_id, "executor_id": EXECUTOR,
+    m = {"kind": manifest_kind, "authorization_id": authorization_id, "executor_id": EXECUTOR,
          "agent_commit": agent_commit, "prepared_at": now.isoformat(timespec="seconds"),
          "files_sha256": {n: _sha((out / n).read_bytes()) for n in FILES}, **lines,
          "consumed_batches": 0, "binding_written": False, "comments_posted_by_agent": False}
@@ -233,16 +233,17 @@ def load_prepared(d: Path) -> tuple[dict, dict]:
 
 
 # ------------------------------------------------------------------------------------------- run 2: execute
-def production_backend(*, root: Path, snapshot_root: Path, session_dir: Path, git_commit: str, context: dict):
+def production_backend(*, root: Path, snapshot_root: Path, session_dir: Path, git_commit: str, context: dict, canonical_config: Path | None = None,
+                       authorization_id: str = AUTHORIZATION_ID):
     """The existing ResearchOnlyRunner on the REAL snapshot, with Core's own receipt renewal (never hand-made)."""
     from strategy_agent.execution.controlled import ResearchOnlyRunnerBackend  # noqa: PLC0415
     from strategy_agent.readiness.b3c import B3C_RUN_CONFIG_PATH  # noqa: PLC0415
     from strategy_agent.research_only import development_run as DR  # noqa: PLC0415
     from strategy_agent.research_only.runner import ResearchOnlyRunner  # noqa: PLC0415
-    canon = Path(root) / B3C_RUN_CONFIG_PATH
+    canon = Path(canonical_config) if canonical_config else Path(root) / B3C_RUN_CONFIG_PATH
     runner = ResearchOnlyRunner(root=Path(root))
     sc = DR.session_config(canon, Path(snapshot_root), Path(session_dir))
-    auth = _authorization(root, AUTHORIZATION_ID)
+    auth = _authorization(root, authorization_id)
     ctx = dict(context) | {"canonical_config_path": str(canon), "canonical_config_sha256": sc["canonical_config_sha256"],
                            "canonical_config": sc["canonical_config"], "session_config_difference": sc["difference"],
                            "authorization_record_sha256": auth["record_sha256"], "agent_git_sha": git_commit}

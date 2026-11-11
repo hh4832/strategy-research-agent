@@ -8,10 +8,10 @@
   },
   "hypothesis": {
     "expected_direction": "CONDITIONAL",
-    "null_hypothesis": "Net returns of crossover trades are no better than random-entry long trades with the same holding-time distribution (DRIFT-MATCHED-v1 mean excess <= 0), or net expectancy <= 0 after BASE/STRESS costs.",
+    "null_hypothesis": "SMA5/20 net performance does not exceed the deterministic in-sample unconditional-drift baseline for the same holding durations (DRIFT-MATCHED-v1 mean excess <= 0), or net expectancy <= 0 after BASE/STRESS costs.",
     "purpose": "PRE_REGISTERED_HYPOTHESIS_TEST on Development data only; Holdout never read.",
     "question": "On IBKR TSM 15-minute RTH bars, a completed-bar SMA5 crossing above SMA20 identifies short-horizon up-moves that continue long enough to earn a positive net return per round trip AFTER costs and BEYOND TSM's unconditional upward drift over the same holding time, consistently across the 2017-2024 development years.",
-    "testable_claim": "Pre-registered success requires ALL of: (1) >= 30 valid round trips; (2) BASE and STRESS net expectancy > 0 and STRESS profit factor > 1; (3) DRIFT-MATCHED-v1 mean excess per trade > 0 under BASE (timing beyond beta); (4) net PnL > 0 in at least 5 of the 8 calendar years and in both halves 2017-2020 and 2021-2024; (5) no single calendar year provides more than 50% of total net PnL. Any failure = hypothesis not supported on Development data."
+    "testable_claim": "Pre-registered success requires ALL of: (1) >= 30 valid round trips; (2) BASE and STRESS net expectancy > 0 and STRESS profit factor > 1; (3) DRIFT-MATCHED-v1 mean excess per trade > 0 under BASE (descriptive excess over the in-sample drift baseline); (4) net PnL > 0 in at least 5 of the 8 calendar years and in both halves 2017-2020 and 2021-2024; (5) no single calendar year provides more than 50% of total net PnL. Any failure = hypothesis not supported on Development data."
   },
   "market_mechanism": {
     "category": "MOMENTUM",
@@ -46,7 +46,7 @@
       "close",
       "volume"
     ],
-    "source_ref": "PENDING_TSM_DEV_1M_20161019_20241231",
+    "source_ref": "TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211",
     "symbols": [
       "TSM"
     ],
