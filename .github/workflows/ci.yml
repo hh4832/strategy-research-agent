@@ -569,9 +569,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Checkout pinned Core source assets
+        run: |
+          git clone https://github.com/hh4832/market-research-core.git market-research-core
+          git -C market-research-core checkout --detach 50ea3bfa42df7708dd3a1b21f17798c206be054e
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@50ea3bfa42df7708dd3a1b21f17798c206be054e"
+      - run: pip install -e '.[test,research]' -e ./market-research-core
       - run: pytest -q -p no:cacheprovider tests/test_phase5c1*.py tests/test_phase5b3c_execution.py tests/test_phase4a_research_only.py
       - run: git diff --exit-code -- governance registry configs specs docs/evidence
