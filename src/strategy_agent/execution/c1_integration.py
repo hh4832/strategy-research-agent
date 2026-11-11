@@ -31,6 +31,18 @@ PIN_KEYS={'marker_sha256','recovery_provenance_sha256','binding_sha256','manifes
 COST_BLOCKER='CORE_CROSS_RATE_UNSUPPORTED: pinned Core has one SEC/TAF interval, no cross-rate switching; no stitched backtest or 2024-rate extrapolation permitted'
 
 
+def is_original_approval_url(reference: str) -> bool:
+    """Match only the pinned HTTPS comment, optionally with one literal utm_source.
+
+    Tracking values are 1–128 ASCII unreserved characters. Other parameters,
+    duplicates, escapes and URL identity changes are refused. Evidence dictionaries
+    remain untouched and must still match lineage/provenance in full.
+    """
+    if not isinstance(reference,str):return False
+    permalink,fragment=APPROVAL.split('#',1)
+    return re.fullmatch(re.escape(permalink)+r'(?:\?utm_source=[A-Za-z0-9._~-]{1,128})?#'+re.escape(fragment),reference) is not None
+
+
 def sha(path):
     h=hashlib.sha256()
     with Path(path).open('rb') as f:
@@ -83,7 +95,7 @@ def inspect_archive(archive_root, *, conversion_approval: dict, trusted_pins: di
     line=json.loads(inside(sr,doc['lineage_path']).read_text())
     if line['plan_sha256']!=PLAN:raise ValueError('lineage plan mismatch')
     dev._validate_approval(line['producer_plan'],conversion_approval)
-    if (conversion_approval.get('approval_ref')!=APPROVAL
+    if (not is_original_approval_url(conversion_approval.get('approval_ref'))
             or conversion_approval!=line.get('conversion_approval')
             or conversion_approval!=rec.get('conversion_approval')):
         raise ValueError('original conversion approval evidence differs')

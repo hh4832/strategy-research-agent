@@ -58,7 +58,7 @@ def archived_template(tmp_path_factory):
     mp=parent/'final_gate_manifest.json';mp.write_text(json.dumps({'results':[{'symbol':'TSM','published_sha256':D.file_sha(data)}]}))
     plan=D.plan_conversion([{'path':str(data),'expected_sha256':D.file_sha(data),'lineage_ref':'SYNTHETIC_ONLY'}],
         parent_manifest_path=mp,expected_parent_manifest_sha256=D.file_sha(mp),window=D.LONG_WINDOW)
-    approval=dict(status='APPROVED',approved_by='hh4832',approval_ref=C.APPROVAL,plan_sha256=plan['plan_sha256'],
+    approval=dict(status='APPROVED',approved_by='hh4832',approval_ref=C.APPROVAL.replace('#','?utm_source=chatgpt.com#'),plan_sha256=plan['plan_sha256'],
                   allow_full_source_opaque_hash=True,allow_holdout_decode_for_conversion_only=True,allow_strategy_run=False)
     bundle=D.produce_development_snapshot(plan,tmp_path/'outputs',producer_sha=C.PRODUCER,approval=approval)
     monkeypatch.setattr(C,'SNAPSHOT',bundle['snapshot_pin']['snapshot_id']);monkeypatch.setattr(C,'PLAN',plan['plan_sha256'])
@@ -215,3 +215,71 @@ def test_real_multiyear_cost_window_stays_fail_closed():
     costs=CostSet(C.ROOT/'configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json',root=C.ROOT)
     with pytest.raises(CostSetError,match='rate changes'):
         costs.check_window(date(2016,10,19),date(2024,12,31))
+
+
+@pytest.mark.parametrize('reference,accepted',[
+    (C.APPROVAL,True),
+    (C.APPROVAL.replace('#','?utm_source=chatgpt.com#'),True),
+    (C.APPROVAL.replace('#','?utm_source=review-note_1~2#'),True),
+    (C.APPROVAL.replace('6768321310','6768321311'),False),
+    (C.APPROVAL.replace('/pull/4','/pull/5'),False),
+    (C.APPROVAL.replace('github.com','github.com.example.com'),False),
+    (C.APPROVAL.replace('https://','http://'),False),
+    (C.APPROVAL.replace('github.com','user@github.com'),False),
+    (C.APPROVAL.replace('github.com','github.com:443'),False),
+    (C.APPROVAL.replace('#','?redirect=https://evil.example#'),False),
+    (C.APPROVAL.replace('#','?utm_medium=chatgpt.com#'),False),
+    (C.APPROVAL.replace('#','?utm_source=chatgpt.com&redirect=x#'),False),
+    (C.APPROVAL.replace('#','?utm_source=x&utm_source=y#'),False),
+    (C.APPROVAL.replace('#','?utm_source=chatgpt%2ecom#'),False),
+    (C.APPROVAL.replace('#','?utm_source=#'),False),
+    (C.APPROVAL+'?utm_source=chatgpt.com',False),
+    (' '+C.APPROVAL,False),
+    (C.APPROVAL+'\n',False),
+    (None,False),
+])
+def test_original_approval_url_only_ignores_allowlisted_tracking(reference,accepted):
+    assert C.is_original_approval_url(reference) is accepted
+
+
+@pytest.mark.parametrize('change',[
+    {'approval_ref':C.APPROVAL}, # Same canonical comment, but not the original evidence bytes/content.
+    {'approval_ref':C.APPROVAL.replace('#','?utm_source=other#')},
+    {'note':'tampered evidence'},
+])
+def test_url_matching_never_relaxes_original_approval_content(archived,change):
+    archive,approval,_=archived
+    assert '?utm_source=chatgpt.com#' in approval['approval_ref']
+    before=json.dumps(approval,sort_keys=True)
+    evidence_before={str(p.relative_to(archive)):C.sha(p) for p in archive.rglob('*') if p.is_file()}
+    assert C.inspect_archive(archive,conversion_approval=approval)['status']=='OBSERVED_NOT_TRUSTED'
+    with pytest.raises(ValueError,match='original conversion approval evidence differs'):
+        C.inspect_archive(archive,conversion_approval={**approval,**change})
+    assert json.dumps(approval,sort_keys=True)==before
+    assert evidence_before=={str(p.relative_to(archive)):C.sha(p) for p in archive.rglob('*') if p.is_file()}
+
+
+def test_notebook_prepare_only_accepts_original_tracking_url_without_execution(archived,tmp_path,monkeypatch):
+    from strategy_agent.research_only import core_phase4a as P
+    from strategy_agent.research_only.runner import ResearchOnlyRunner
+    archive,approval,_=archived
+    notebook=json.loads((C.ROOT/'notebooks/Phase5C1_Long_Development_Readiness.ipynb').read_text())
+    code=[''.join(c['source']) for c in notebook['cells'] if c['cell_type']=='code']
+    def forbidden(*a,**kw):raise AssertionError('PREPARE_ONLY must not execute strategy or authorized mode')
+    monkeypatch.setattr(P,'execute_batch',forbidden)
+    monkeypatch.setattr(ResearchOnlyRunner,'run',forbidden)
+    monkeypatch.setattr(C,'execute_authorized',forbidden)
+    books_before={str(p.relative_to(C.ROOT)):C.sha(p) for base in ('governance','registry') for p in (C.ROOT/base).rglob('*') if p.is_file()}
+    context=dict(C=C,Path=Path,json=json,shutil=shutil,
+        ORIGINAL_APPROVAL_EVIDENCE_PATH=archive/'recovery_provenance.json',APPROVAL_IS_IN_RECOVERY_RECORD=True,
+        ORIGINAL_CONVERSION_APPROVAL_REF=C.APPROVAL,RECOVERY_ARCHIVE=archive,REVIEWED_DATA_PINS=None,
+        LOCAL_SESSION=tmp_path/'notebook-session',MODE='PREPARE_ONLY',AGENT_SHA='a'*40,CORE_SHA=C.CORE,
+        AGENT_ROOT=C.ROOT,SNAPSHOT_ID=C.SNAPSHOT,PIN_REVIEW_EVIDENCE_REF='',DRIVE_OUTPUT=tmp_path/'evidence-archive')
+    # Execute the actual validation/staging and preparation/archive cells, not a parallel notebook implementation.
+    exec(compile(code[2],'notebook-archive-cell','exec'),context)
+    exec(compile(code[3],'notebook-prepare-cell','exec'),context)
+    result=context['result']
+    assert result['mode']=='PREPARE_ONLY' and result['execution']=='NOT_EXECUTED' and result['consumed_batches']==0
+    assert context['approval']==approval and '?utm_source=chatgpt.com#' in context['approval']['approval_ref']
+    assert (context['DRIVE_OUTPUT']/'ARCHIVE_INDEX.json').is_file()
+    assert books_before=={str(p.relative_to(C.ROOT)):C.sha(p) for base in ('governance','registry') for p in (C.ROOT/base).rglob('*') if p.is_file()}
