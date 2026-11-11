@@ -49,7 +49,7 @@ def archived_template(tmp_path_factory):
         if day.weekday()<5 and day.isoformat() not in ('2024-06-19','2024-07-04'):
             t=pd.Timestamp(str(day)+' 09:30',tz='America/New_York')
             for i in range(390):
-                price=100+3*math.sin((k*390+i)/900)
+                price=100+3*math.sin((k*390+i)/900+math.pi)
                 rows.append(dict(timestamp_utc=(t+pd.Timedelta(minutes=i)).tz_convert('UTC'),open=price,
                     high=price+.1,low=price-.1,close=price,volume=10000.))
             k+=1
@@ -172,6 +172,9 @@ def test_monthly_reads_preserve_native_bars_sma_positions_equity_and_costs(archi
     a=P.execute_batch(core,costs,frame=loaded.conservative_15m,**kw)
     ref=P.execute_batch(core,costs,frame=reference,**kw)
     assert a['decisions']==ref['decisions'] and a['orders']==ref['orders']
+    boundary=pd.Timestamp('2024-06-29',tz='America/New_York')
+    assert any(pd.Timestamp(t['entry_ts'])<boundary<pd.Timestamp(t['exit_ts'])
+               for t in a['scenarios']['BASE']['report'].round_trips), 'fixture must carry a position over the chunk boundary'
     for name in profiles:
         for field in ('fills','equity_curve'):
             av=getattr(a['scenarios'][name]['result'],field);bv=getattr(ref['scenarios'][name]['result'],field)

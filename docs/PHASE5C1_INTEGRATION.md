@@ -125,3 +125,33 @@ copies under the existing Quant_Research structure.
 Status vocabulary: synthetic tests = engineering evidence; real Agent binding =
 PENDING until actual archive checks and pin review; formal research = NOT_EXECUTED;
 ready to submit formal authorization = **NO** while the cost blocker remains.
+
+### Concrete GitHub approval handoff (only after the blockers above are resolved)
+
+The generated `authorization.DRAFT_NOT_APPROVED.json` wraps `proposal_fields`;
+it is not itself an APPROVE record. The lead reviews the exact generated spec,
+canonical config, six reviewed file pins, original conversion scope and proposed
+one-batch/seven-day validity. Preserve the original producer separately from
+reader/recovery SHA. Publish the exact reviewed spec/config with their hashes in
+the lead's separate authorization change, then personally fill the issuance and
+expiry decisions and save the proposal fields to
+`governance/proposals/RA-IBKR_TSM-SMA520_P5C1-0001.json`.
+
+The existing human-only command remains:
+
+```bash
+python -m strategy_agent.governance.research_authorization_admin approve \
+  --proposal governance/proposals/RA-IBKR_TSM-SMA520_P5C1-0001.json \
+  --approved-by hh4832 --approval-ref <human-approval-evidence-URL>
+```
+
+This task never runs it or merges that separate change. With authoritative
+APPROVE books available, `c1_integration.prepare_governed_request(...)` reuses the
+A2 exporter and B3-C exact-line generation. Review the immutable
+`PREPARE_MANIFEST.json`: the lead posts its `BIND_AUTHORIZATION` line and its
+`APPROVE_TASK` line as two personal GitHub comments, each bound to the actual
+source/bound request hashes, task id and expiry. The live production verifier,
+binding service, REAL_GATED A01–A10, executor identity, atomic budget ledger,
+CLAIM marker, fresh evaluator and evidence settlement remain mandatory. Printing
+a line grants no authorization. The current C1 capability gate still stops before
+dispatch; a GitHub comment cannot waive unsupported dated costs.
