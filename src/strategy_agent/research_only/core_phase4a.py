@@ -309,8 +309,12 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
     scenario_inputs = dated_schedules if dated_schedules is not None else profiles
     for name, scenario_cost in scenario_inputs.items():
         profile = scenario_cost.base_profile if dated_schedules is not None else scenario_cost
-        result = core.ExecutionEngine().run(frame, orders, cost_profile=profile, config=cfg,
-                                            cost_schedule=scenario_cost if dated_schedules is not None else None)
+        if dated_schedules is None:
+            # Preserve compatibility with the pre-dated Core used by existing B3-C single-window runs.
+            result = core.ExecutionEngine().run(frame, orders, cost_profile=profile, config=cfg)
+        else:
+            result = core.ExecutionEngine().run(frame, orders, cost_profile=profile, config=cfg,
+                                                cost_schedule=scenario_cost)
         A.guard_known_divergences(result, orders, frame, unsupported)
         checks = validate_conservative_result(result, orders=orders, cost_profile=profile,
                                               policy=core.CONSERVATIVE_POLICY, core_sha=core_sha)
