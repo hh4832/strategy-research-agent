@@ -230,7 +230,9 @@ def test_official_dated_schedule_covers_all_years_and_rejects_sha_or_source_drif
         C.load_dated_schedules(core_repository_root(),expected_sha256='0'*64)
     copied=tmp_path/'core';shutil.copytree(core_repository_root()/'configs',copied/'configs')
     shutil.copytree(core_repository_root()/C.SCHEDULE_SOURCES,copied/C.SCHEDULE_SOURCES)
-    source=next((copied/C.SCHEDULE_SOURCES).iterdir())
+    copied_doc=json.loads((copied/C.SCHEDULE).read_text())
+    digest=copied_doc['sec_rates'][0]['source_document_sha256']
+    source=next((copied/C.SCHEDULE_SOURCES).glob(digest+'.*'))
     source.write_bytes(source.read_bytes()+b' tamper')
     with pytest.raises(ValueError,match='source document SHA mismatch'):
         C.load_dated_schedules(copied)
