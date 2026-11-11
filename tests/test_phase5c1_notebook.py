@@ -20,7 +20,7 @@ def test_first_cell_contains_all_manual_operations_and_safe_default():
                 'APPROVE_TASK_URL','CONFIRM_SETTINGS','DRIVE_OUTPUT_PARENT'):
         assert key in first
     assert "MODE = 'PREPARE_ONLY'" in first and 'REVIEWED_DATA_PINS = None' in first
-    assert re.search(r'AGENT_SHA = "[0-9a-f]{40}"',first)
+    assert "AGENT_SHA = 'FETCH_BRANCH_HEAD'" in first and 'AGENT_BRANCH' in first
     assert "ZoneInfo('Asia/Taipei')" in first
     rest='\n'.join(code[1:]);calls=set()
     for source in code:
@@ -28,9 +28,10 @@ def test_first_cell_contains_all_manual_operations_and_safe_default():
             if isinstance(n,ast.Call):calls.add(n.func.attr if isinstance(n.func,ast.Attribute) else getattr(n.func,'id',''))
     assert {'inspect_archive','stage_archive','prepare','execute_authorized'}<=calls
     assert not {'produce_development_snapshot','plan_conversion','signoff','consume','run_backtest'} & calls
-    assert 'OBSERVED_NOT_TRUSTED' in notebook['cells'][0]['source'].__str__() or 'NOT automatically trusted' in rest
+    assert ('OBSERVED_NOT_TRUSTED' in rest or 'never become reviewed pins automatically' in first)
     assert "if MODE=='PREPARE_ONLY':" in rest and 'PREVIOUS_PREPARATION_DIRECTORY' in rest
-    assert 'copytree(OUTPUT,DRIVE_OUTPUT)' in rest and 'ARCHIVE_INDEX.json' in rest
+    assert "copytree(OUTPUT,DRIVE_OUTPUT/'notebook_output')" in rest and 'ARCHIVE_INDEX.json' in rest
+    assert 'CORE_SHA = ' in first and 'SCHEDULE_SHA256 = ' in first
     for source in code[1:]:
         for n in ast.walk(ast.parse(source)):
             if isinstance(n,ast.Assign):

@@ -119,7 +119,19 @@ class ResearchOnlyRunner:
                 b.append(("CO03", "cost scenario set file sha differs from the run config"))
             first = datetime.fromisoformat(cfg["windows"]["warmup_start"]).date()
             last = datetime.fromisoformat(cfg["windows"]["end"]).date() - timedelta(days=1)
-            gov["cost_window"] = cost_set.check_window(first, last)
+            if cfg.get("core_costs", {}).get("dated_schedule_sha256"):
+                from strategy_agent.execution.c1_integration import load_dated_schedules, SCHEDULE_SHA256
+                if cfg["core_costs"]["dated_schedule_sha256"] != SCHEDULE_SHA256:
+                    raise CostSetError("dated schedule SHA does not match the reviewed C1 pin")
+                schedules = load_dated_schedules(self.root, expected_sha256=cfg["core_costs"]["dated_schedule_sha256"])
+                first = datetime.fromisoformat(cfg["windows"]["start"]).date()
+                for schedule in schedules.values():
+                    schedule.require_coverage(first.isoformat(), last.isoformat())
+                gov["cost_window"] = {"status": "PASS", "kind": "OFFICIAL_DATED_SCHEDULE",
+                                      "start": first.isoformat(), "end": last.isoformat(),
+                                      "schedule_sha256": SCHEDULE_SHA256}
+            else:
+                gov["cost_window"] = cost_set.check_window(first, last)
         except CostSetError as e:
             b.append(("CO", str(e)))
 
@@ -173,21 +185,36 @@ class ResearchOnlyRunner:
             b.append(("RO05", f"installed Core {core_identity} != pinned {pin} (clean)"))
         cc = cfg["core_costs"]
         profiles = {}
+        dated_schedules = None
+        gov_compat = None
         try:
-            profiles = P.research_profiles(core_costs, sec_config=self.root / cc["sec_config_path"],
-                                           sec_sha=cc["sec_configuration_sha256"],
-                                           taf_record=self.root / cc["taf_record_path"], taf_sha=cc["taf_record_sha256"],
-                                           scenarios=list(cfg["costs"]["scenarios"] + cfg["costs"]["sensitivity"]))
+            if cc.get("dated_schedule_sha256"):
+                from strategy_agent.execution.c1_integration import (load_dated_schedules,
+                    validate_cost_scenario_compatibility)
+                dated_schedules = load_dated_schedules(self.root, expected_sha256=cc["dated_schedule_sha256"])
+                compat = validate_cost_scenario_compatibility(self.root, dated_schedules)
+                gov_compat = compat
+                for schedule in dated_schedules.values():
+                    schedule.require_coverage(*(
+                        datetime.fromisoformat(cfg["windows"]["start"]).date().isoformat(),
+                        (datetime.fromisoformat(cfg["windows"]["end"]).date() - timedelta(days=1)).isoformat()))
+            else:
+                profiles = P.research_profiles(core_costs, sec_config=self.root / cc["sec_config_path"],
+                                               sec_sha=cc["sec_configuration_sha256"],
+                                               taf_record=self.root / cc["taf_record_path"], taf_sha=cc["taf_record_sha256"],
+                                               scenarios=list(cfg["costs"]["scenarios"] + cfg["costs"]["sensitivity"]))
+                gov_compat = None
         except (ValueError, KeyError, OSError) as e:
-            b.append(("CO", f"Core build_tsm_research_profile refused: {e}"))
+            b.append(("CO", f"Core dated/profile cost validation refused: {e}"))
         cost_set = CostSet(self.root / cfg["costs"]["scenario_set_path"], root=self.root)
         taf = json.loads((self.root / cc["taf_record_path"]).read_text(encoding="utf-8"))
-        b += P.cost_set_consistency(cost_set, core_costs, taf, datetime.fromisoformat(cfg["windows"]["start"]).date())
+        if not cc.get("dated_schedule_sha256"):
+            b += P.cost_set_consistency(cost_set, core_costs, taf, datetime.fromisoformat(cfg["windows"]["start"]).date())
         auth = self._guard(cfg).book.get(cfg["authorization_id"])
         if auth is None:
             b.append(('RA01','new derived snapshot requires its own research-lead-approved authorization'))
             return {'blockers':b,'probe':P.ProbeResult('BLOCKED',[('RA01','unsigned authorization')],{}),
-                    'snapshot_root':Path(snapshot_root),'profiles':profiles}
+                    'snapshot_root':Path(snapshot_root),'profiles':profiles,'dated_schedules':dated_schedules}
         derived=cfg.get('snapshot_binding',{}).get('snapshot_pin')
         if derived and (derived.get('snapshot_id')!=cfg['dataset']['snapshot_id'] or derived.get('producer_sha')!=cfg['dataset']['producer_commit_sha']):
             b.append(('RO05','derived binding differs from authorized dataset identity'))
@@ -199,7 +226,8 @@ class ResearchOnlyRunner:
         probe = P.probe_snapshot(snapshot_root, P.SnapshotBinding.from_config(cfg), dates=dates, research_window=win,
                                  holdout=hold)
         b += probe.blockers
-        return {"blockers": b, "probe": probe, "snapshot_root": Path(snapshot_root), "profiles": profiles, "dates": dates, "research_window": win,
+        return {"blockers": b, "probe": probe, "snapshot_root": Path(snapshot_root), "profiles": profiles,
+                "dated_schedules": dated_schedules, "cost_compatibility": gov_compat, "dates": dates, "research_window": win,
                 "holdout": hold}
 
     def probe(self, config_path: Path, *, snapshot_root: Path, core_costs=None, core_native=None) -> dict:
@@ -217,7 +245,9 @@ class ResearchOnlyRunner:
         return {"status": "COMPATIBLE_READY_TO_CONSUME" if not blockers else "BLOCKED_BEFORE_CONSUMPTION",
                 "slot_consumed": False, "preflight": pf.as_dict(), "core_identity": ident,
                 "blockers": [{"code": c, "message": m} for c, m in blockers], "probe": dc["probe"].as_dict(),
-                "profiles": {k: v.sha256 for k, v in dc["profiles"].items()}}
+                "profiles": {k: v.sha256 for k, v in dc["profiles"].items()},
+                "dated_schedules": {k: v.sha256 for k, v in (dc.get("dated_schedules") or {}).items()},
+                "cost_compatibility": dc.get("cost_compatibility")}
 
     def run(self, config_path: Path, *, snapshot_root: Path | None = None, archive_root: Path | None = None,
             git_commit: str | None = None, actor: str | None = None, core=None, core_costs=None,
@@ -276,8 +306,10 @@ class ResearchOnlyRunner:
         loaded = P.load_continuous_native(core_native,dc["snapshot_root"],b,
             dates=dc["dates"],research_window=dc["research_window"],holdout=dc["holdout"])
         spec = json.loads((self.root / cfg["strategy"]["spec_path"]).read_text(encoding="utf-8"))
+        cost_kw = ({"dated_schedules": dc["dated_schedules"]} if dc.get("dated_schedules") is not None
+                   else {"profiles": dc["profiles"]})
         batch = P.execute_batch(core, core_costs, frame=loaded.conservative_15m, core_sha=ident["core_git_sha"],
-                                profiles=dc["profiles"], spec=spec, parameters=dict(cfg["strategy"]["parameters"]),
+                                **cost_kw, spec=spec, parameters=dict(cfg["strategy"]["parameters"]),
                                 window_start=cfg["windows"]["start"], window_end=cfg["windows"]["end"],
                                 warmup_start=cfg["windows"]["warmup_start"], dataset=dict(cfg["dataset"]))
         ctx = dict(run_context or {})

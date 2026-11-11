@@ -260,9 +260,15 @@ def conservative_rows_and_bars(frame, symbol: str = "TSM"):
     return rows, sbars
 
 
-def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict, spec: dict, parameters: dict,
+def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | None = None,
+                  dated_schedules: dict | None = None, spec: dict, parameters: dict,
                   window_start: str, window_end: str, warmup_start: str, dataset: dict, seed: int = 0) -> dict:
-    """Run every authorized scenario on the SAME Core-prepared bars and the SAME orders (M3-B mapping reused)."""
+    """Run each authorized scenario on the same bars and orders in one continuous Core execution.
+
+    The optional dated path is used only by Phase 5-C1. It still computes SMA signals and the order list once,
+    then passes a pinned Core DatedCostSchedule into one full-window ExecutionEngine run per scenario. Existing
+    B3-C single-window callers keep their historical ``profiles`` path unchanged.
+    """
     from strategy_agent.adapters import mrc_adapter as A  # noqa: PLC0415
     from strategy_agent.adapters.m3a4_contract import validate_conservative_result  # noqa: PLC0415
     from strategy_agent.evaluation.research import evaluate  # noqa: PLC0415
@@ -293,16 +299,33 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict, spe
     orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
                                  strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16], core=core)
     cfg = A.core_config(request, sem, core_sha, core=core)
+    if (profiles is None) == (dated_schedules is None):
+        raise Phase4ABindingError("exactly one of profiles or dated_schedules is required")
+    if dated_schedules is not None and set(dated_schedules) != {"BASE", "LOW", "STRESS", "CAT_STRESS"}:
+        raise Phase4ABindingError("dated cost scenarios must be the fixed four-scenario set")
     out = {"decisions": [(d.decision_ts.isoformat(), d.target, d.reason) for d in kept],
            "decisions_total": len(decs), "orders": len(orders), "rows": rows, "scenarios": {}}
     unsupported = A.unsupported_divergences(core)
-    for name, profile in profiles.items():
-        result = core.ExecutionEngine().run(frame, orders, cost_profile=profile, config=cfg)
+    scenario_inputs = dated_schedules if dated_schedules is not None else profiles
+    for name, scenario_cost in scenario_inputs.items():
+        profile = scenario_cost.base_profile if dated_schedules is not None else scenario_cost
+        result = core.ExecutionEngine().run(frame, orders, cost_profile=profile, config=cfg,
+                                            cost_schedule=scenario_cost if dated_schedules is not None else None)
         A.guard_known_divergences(result, orders, frame, unsupported)
         checks = validate_conservative_result(result, orders=orders, cost_profile=profile,
                                               policy=core.CONSERVATIVE_POLICY, core_sha=core_sha)
         report = A.core_result_to_report(result, request, core_sha, cost_profile=profile)
-        diag = core_costs.tsm_cost_diagnostics(result, profile)
+        if dated_schedules is not None:
+            from strategy_agent.adapters.mrc_phase4a import core_dated_costs  # noqa: PLC0415
+            dated_costs = core_dated_costs()
+            diag = dated_costs.dated_tsm_cost_diagnostics(result, scenario_cost)
+            diag["model"].update(slippage_bps=scenario_cost.document["scenarios"][name]["slippage_bps"],
+                                 cat_rate_usd_per_share=scenario_cost.document["scenarios"][name]["cat_per_share"],
+                                 taf_rate_usd_per_share="DATED_PER_FILL", sec_rate="DATED_PER_FILL",
+                                 sec_fill_date_convention="RESEARCH_ONLY_NOT_BROKER_ACTUAL")
+            diag["sec_mapping_sensitivity"] = sec_fill_date_mapping_sensitivity(result, scenario_cost)
+        else:
+            diag = core_costs.tsm_cost_diagnostics(result, profile)
         exp = spec.get("experiment") or {}
         extra = {}                       # 5-C1: only when the spec pre-registers it (older specs: unchanged output)
         if "family_trials_including_this" in exp:
@@ -311,9 +334,63 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict, spe
         metrics = evaluate(report, rows, initial_capital=cash, bar_minutes=15, bars_per_year=252 * 26,
                            parameters=parameters, symbol="TSM", order_qty=qty, **extra)
         metrics.update(preregistered_decompositions(report, rows, exp))
-        out["scenarios"][name] = {"profile_sha256": profile.sha256, "result": result, "report": report,
+        out["scenarios"][name] = {"profile_sha256": profile.sha256,
+                                  "cost_schedule_sha256": scenario_cost.sha256 if dated_schedules is not None else None,
+                                  "result": result, "report": report,
                                   "m3a4_checks": checks, "cost_diagnostics": diag, "metrics": metrics}
     return out
+
+
+def sec_fill_date_mapping_sensitivity(result, schedule) -> dict:
+    """Predeclared diagnostic: compare SEC debit using fill date vs the next calendar date.
+
+    The second mapping is a fixed diagnostic proxy only. It is not an asserted settlement-date rule, does not
+    change the Core result, does not re-run SMA or orders, and cannot select a preferred strategy result.
+    """
+    from decimal import Decimal, ROUND_HALF_UP  # noqa: PLC0415
+    import pandas as pd  # noqa: PLC0415
+    from strategy_agent.adapters.mrc_phase4a import core_dated_costs  # noqa: PLC0415
+    new_york_fill_date = core_dated_costs().new_york_fill_date
+    cent = Decimal("0.01")
+    base_total = Decimal("0")
+    shifted_total = Decimal("0")
+    evaluated = 0
+    unavailable = []
+    transition_fills = 0
+    rates = schedule.document["sec_rates"]
+
+    def rate_on(day):
+        hits = [r for r in rates if r["effective_from"] <= day <= r["effective_to"]]
+        if len(hits) != 1:
+            return None
+        return Decimal(str(hits[0]["rate"]))
+
+    for fill in result.fills.to_dict("records"):
+        if str(fill["side"]).upper() != "SELL":
+            continue
+        ts = pd.Timestamp(fill["exec_ts"])
+        fill_day = new_york_fill_date(ts)
+        next_day = new_york_fill_date(ts + pd.Timedelta(days=1))
+        p = Decimal(str(fill["fill_price"]))
+        q = Decimal(str(fill["qty"]))
+        base_rate, shifted_rate = rate_on(fill_day), rate_on(next_day)
+        if base_rate is None or shifted_rate is None:
+            unavailable.append({"fill_date": fill_day, "diagnostic_date": next_day})
+            continue
+        base_fee = (p * q * base_rate).quantize(cent, rounding=ROUND_HALF_UP)
+        shifted_fee = (p * q * shifted_rate).quantize(cent, rounding=ROUND_HALF_UP)
+        base_total += base_fee
+        shifted_total += shifted_fee
+        evaluated += 1
+        transition_fills += int(base_rate != shifted_rate)
+    return {"status": "DIAGNOSTIC_ONLY", "baseline_mapping": "NEW_YORK_FILL_DATE",
+            "alternative_mapping": "NEXT_CALENDAR_DATE_PROXY_NOT_SETTLEMENT_ASSERTION",
+            "sell_fills_evaluated": evaluated, "fills_with_different_sec_rate": transition_fills,
+            "baseline_sec_fee_usd": str(base_total), "alternative_sec_fee_usd": str(shifted_total),
+            "alternative_minus_baseline_usd": str(shifted_total - base_total),
+            "uncovered_mapping_count": len(unavailable), "uncovered_examples": unavailable[:10],
+            "selection_rule": "PREDECLARED; NEVER_SELECTED_BY_PERFORMANCE",
+            "strategy_execution_uses_baseline_only": True}
 
 
 def preregistered_decompositions(report, rows, experiment: dict) -> dict:

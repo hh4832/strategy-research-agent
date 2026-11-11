@@ -558,6 +558,8 @@ jobs:
       - run: python -m strategy_agent.governance.append_only_guard --base origin/${{ github.base_ref }}
 
   phase5c1-integration:
+    # Phase 5-C1: exact Core commit carrying the official 2017-2024 Dated Cost Schedule. CI remains synthetic-only;
+    # no real Development archive or formal strategy backtest, Holdout access, authorization or batch is used.
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -570,6 +572,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@bc0592984a09d806ebb9ef78ce377db78b404f86"
+      - run: pip install -e '.[test,research]' "market-research-core @ git+https://github.com/hh4832/market-research-core@50ea3bfa42df7708dd3a1b21f17798c206be054e"
       - run: pytest -q -p no:cacheprovider tests/test_phase5c1*.py tests/test_phase5b3c_execution.py tests/test_phase4a_research_only.py
       - run: git diff --exit-code -- governance registry configs specs docs/evidence

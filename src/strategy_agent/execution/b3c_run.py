@@ -234,16 +234,23 @@ def load_prepared(d: Path) -> tuple[dict, dict]:
 
 # ------------------------------------------------------------------------------------------- run 2: execute
 def production_backend(*, root: Path, snapshot_root: Path, session_dir: Path, git_commit: str, context: dict, canonical_config: Path | None = None,
-                       authorization_id: str = AUTHORIZATION_ID):
+                       authorization_id: str = AUTHORIZATION_ID, runner_root: Path | None = None,
+                       governance_root: Path | None = None):
     """The existing ResearchOnlyRunner on the REAL snapshot, with Core's own receipt renewal (never hand-made)."""
     from strategy_agent.execution.controlled import ResearchOnlyRunnerBackend  # noqa: PLC0415
     from strategy_agent.readiness.b3c import B3C_RUN_CONFIG_PATH  # noqa: PLC0415
     from strategy_agent.research_only import development_run as DR  # noqa: PLC0415
     from strategy_agent.research_only.runner import ResearchOnlyRunner  # noqa: PLC0415
     canon = Path(canonical_config) if canonical_config else Path(root) / B3C_RUN_CONFIG_PATH
-    runner = ResearchOnlyRunner(root=Path(root))
+    gov = Path(governance_root) if governance_root else Path(root)
+    rr = Path(runner_root) if runner_root else Path(root)
+    runner = ResearchOnlyRunner(root=rr, locks_path=gov / "governance/holdout_locks.jsonl",
+                                authorizations_path=gov / "governance/research_authorizations.jsonl",
+                                uses_path=gov / "registry/research_authorization_uses.jsonl",
+                                approvers_path=gov / "governance/approvers.json",
+                                readiness_path=gov / "governance/market_readiness.json")
     sc = DR.session_config(canon, Path(snapshot_root), Path(session_dir))
-    auth = _authorization(root, authorization_id)
+    auth = _authorization(gov, authorization_id)
     ctx = dict(context) | {"canonical_config_path": str(canon), "canonical_config_sha256": sc["canonical_config_sha256"],
                            "canonical_config": sc["canonical_config"], "session_config_difference": sc["difference"],
                            "authorization_record_sha256": auth["record_sha256"], "agent_git_sha": git_commit}

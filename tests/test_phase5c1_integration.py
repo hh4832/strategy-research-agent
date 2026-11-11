@@ -23,7 +23,8 @@ def test_prepared_request_requires_reviewed_pins_and_formal_authorization(tmp_pa
     C.save(tmp_path/'readiness.json',{'data_binding':'OBSERVED_NOT_TRUSTED'})
     with pytest.raises(ValueError,match='reviewed real data pins'):
         C.prepare_governed_request(tmp_path,governance_root=C.ROOT,agent_commit='a'*40)
-    (tmp_path/'readiness.json').write_text(json.dumps({'data_binding':'REVIEWED_PINS_VERIFIED','artifact_root':str(C.ROOT),'config_path':str(tmp_path/'none.json')}))
+    (tmp_path/'readiness.json').write_text(json.dumps({'data_binding':'REVIEWED_PINS_VERIFIED','artifact_root':str(C.ROOT),
+        'config_path':str(tmp_path/'none.json'),'ready_to_submit_formal_authorization':True,'cost_schedule_sha256':C.SCHEDULE_SHA256}))
     with pytest.raises(Exception,match='AUTHORIZATION_NOT_UNIQUE'):
         C.prepare_governed_request(tmp_path,governance_root=C.ROOT,agent_commit='a'*40)
     with pytest.raises(Exception,match='AUTHORIZATION_NOT_UNIQUE'):
@@ -95,7 +96,8 @@ def test_archive_observations_are_not_trusted_and_runtime_receipt_is_local(archi
     monkeypatch.setattr(P,'execute_batch',no_strategy)
     prep=C.prepare(staged,tmp_path/'prepared',agent_commit='a'*40)
     assert prep['consumed_batches']==0 and prep['execution']=='NOT_EXECUTED'
-    assert prep['ready_to_submit_formal_authorization'] is False and C.COST_BLOCKER in prep['blockers']
+    assert prep['ready_to_submit_formal_authorization'] is True
+    assert prep['cost_scenario_compatibility']['status']=='PASS'
     cfg=json.loads(Path(prep['config_path']).read_text())
     assert cfg['windows']==C.WINDOW and cfg['authorization_id']==C.AUTHORIZATION
     assert cfg['dataset']['producer_commit_sha']==C.PRODUCER and cfg['core']['phase4a_sha']==C.CORE
@@ -183,13 +185,13 @@ def test_monthly_reads_preserve_native_bars_sma_positions_equity_and_costs(archi
         assert a['scenarios'][name]['cost_diagnostics']==ref['scenarios'][name]['cost_diagnostics']
 
 
-def test_core_cost_blocker_cannot_be_approved_away_or_consume_a_batch(tmp_path,monkeypatch):
+def test_unauthorized_execution_cannot_dispatch_or_consume_a_batch(tmp_path,monkeypatch):
     C.save(tmp_path/'readiness.json',{'data_binding':'REVIEWED_PINS_VERIFIED'})
     monkeypatch.setattr(C.B,'_authorization',lambda *a:{'max_batches':1,'executor':{'executor_id':C.B.EXECUTOR}})
-    def forbidden(*a,**kw):raise AssertionError('No dispatch/budget before dated-cost capability')
+    def forbidden(*a,**kw):raise AssertionError('B3-C dispatch must not start without its complete authorization inputs')
     monkeypatch.setattr(C.B,'execute',forbidden)
     before=(C.ROOT/'registry/research_authorization_uses.jsonl').read_bytes()
-    with pytest.raises(ValueError,match='CORE_CROSS_RATE_UNSUPPORTED'):
+    with pytest.raises(ValueError,match='P5C1_READINESS_NOT_COMPLETE'):
         C.execute_authorized(tmp_path,governance_root=C.ROOT)
     assert before==(C.ROOT/'registry/research_authorization_uses.jsonl').read_bytes()
 
@@ -215,6 +217,33 @@ def test_real_multiyear_cost_window_stays_fail_closed():
     costs=CostSet(C.ROOT/'configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json',root=C.ROOT)
     with pytest.raises(CostSetError,match='rate changes'):
         costs.check_window(date(2016,10,19),date(2024,12,31))
+
+
+def test_official_dated_schedule_covers_all_years_and_rejects_sha_or_source_drift(tmp_path):
+    from strategy_agent.adapters.mrc_phase4a import core_repository_root
+    schedules=C.load_dated_schedules(core_repository_root())
+    assert set(schedules)=={'BASE','LOW','STRESS','CAT_STRESS'}
+    for schedule in schedules.values():
+        schedule.require_coverage('2017-01-01','2024-12-31')
+        assert schedule.sha256==C.SCHEDULE_SHA256
+    with pytest.raises(ValueError,match='canonical SHA mismatch'):
+        C.load_dated_schedules(core_repository_root(),expected_sha256='0'*64)
+    copied=tmp_path/'core';shutil.copytree(core_repository_root()/'configs',copied/'configs')
+    shutil.copytree(core_repository_root()/C.SCHEDULE_SOURCES,copied/C.SCHEDULE_SOURCES)
+    source=next((copied/C.SCHEDULE_SOURCES).iterdir())
+    source.write_bytes(source.read_bytes()+b' tamper')
+    with pytest.raises(ValueError,match='source document SHA mismatch'):
+        C.load_dated_schedules(copied)
+
+
+def test_dated_profile_is_selected_by_each_fill_date_across_rate_boundaries():
+    from strategy_agent.adapters.mrc_phase4a import core_repository_root
+    schedule=C.load_dated_schedules(core_repository_root())['BASE']
+    dates=[r['effective_from'] for r in schedule.document['sec_rates']]
+    selected={day:schedule.profile_for(day+'T15:00:00Z').configuration_metadata['phase4a_cost_model']['sec_rate_record_sha256']
+              for day in dates}
+    assert len(set(selected.values()))==len(dates)
+    assert schedule.profile_for('2024-12-31T15:00:00Z').configuration_metadata['phase4a_cost_model']['sec_rate_record_sha256']==selected[dates[-1]]
 
 
 @pytest.mark.parametrize('reference,accepted',[
@@ -273,7 +302,7 @@ def test_notebook_prepare_only_accepts_original_tracking_url_without_execution(a
     context=dict(C=C,Path=Path,json=json,shutil=shutil,
         ORIGINAL_APPROVAL_EVIDENCE_PATH=archive/'recovery_provenance.json',APPROVAL_IS_IN_RECOVERY_RECORD=True,
         ORIGINAL_CONVERSION_APPROVAL_REF=C.APPROVAL,RECOVERY_ARCHIVE=archive,REVIEWED_DATA_PINS=None,
-        LOCAL_SESSION=tmp_path/'notebook-session',MODE='PREPARE_ONLY',AGENT_SHA='a'*40,CORE_SHA=C.CORE,
+        LOCAL_SESSION=tmp_path/'notebook-session',MODE='PREPARE_ONLY',AGENT_SHA='FETCH_BRANCH_HEAD',FETCHED_AGENT_SHA='a'*40,CORE_SHA=C.CORE,
         AGENT_ROOT=C.ROOT,SNAPSHOT_ID=C.SNAPSHOT,PIN_REVIEW_EVIDENCE_REF='',DRIVE_OUTPUT=tmp_path/'evidence-archive')
     # Execute the actual validation/staging and preparation/archive cells, not a parallel notebook implementation.
     exec(compile(code[2],'notebook-archive-cell','exec'),context)
