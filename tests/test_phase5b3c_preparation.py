@@ -216,17 +216,17 @@ def test_B3C_proposal_after_admin_approve_in_an_isolated_copy_is_eligible_for_th
     shutil.copytree(ROOT / "governance", tmp_path / "governance")
     shutil.copytree(ROOT / "registry", tmp_path / "registry")
     bk = tmp_path / "governance/research_authorizations.jsonl"          # the pre-approval prefix of the chain
-    bk.write_text("".join(x + "\n" for x in bk.read_text().splitlines()
-                          if x.strip() and json.loads(x)["authorization_id"] != b3c.CANDIDATE_AUTHORIZATION_ID))
+    from governance_fixtures import pre_b3c_book
+    bk.write_bytes(pre_b3c_book())
     now = datetime.now(timezone.utc).replace(microsecond=0)
     p = b3c.build_proposal(issued_at=now.isoformat())
     ADM.approve(tmp_path / "governance/research_authorizations.jsonl", tmp_path / "governance/approvers.json", p,
                 approved_by="hh4832", approval_ref="https://example.invalid/ISOLATED_TEST_NOT_AN_APPROVAL")
-    assert eligible_authorizations(tmp_path, "colab-hh4832-exec-01", now + timedelta(hours=1)) == \
+    assert eligible_authorizations(tmp_path, "colab-hh4832-exec-01", now + timedelta(hours=1), authorization_id=b3c.CANDIDATE_AUTHORIZATION_ID) == \
         ["RA-IBKR_TSM-SMA520_P5B3C-0001"]
     assert eligible_authorizations(tmp_path, "another-runtime", now + timedelta(hours=1)) == []
     assert eligible_authorizations(tmp_path, "colab-hh4832-exec-01", now + timedelta(days=7, seconds=1)) == []
-    assert eligible_authorizations(ROOT, "colab-hh4832-exec-01", now) == b3c.expected_eligible(now)
+    assert eligible_authorizations(ROOT, "colab-hh4832-exec-01", now, authorization_id=b3c.CANDIDATE_AUTHORIZATION_ID) == b3c.expected_eligible(now)
     assert A5.tree_fingerprint(ROOT) == before
 
 
@@ -238,8 +238,8 @@ def repo_copy(tmp_path, monkeypatch):
     shutil.copytree(ROOT, tmp_path, dirs_exist_ok=True,
                     ignore=shutil.ignore_patterns(".git", "__pycache__", "*.egg-info", ".pytest_cache"))
     bk = tmp_path / "governance/research_authorizations.jsonl"
-    bk.write_text("".join(x + "\n" for x in bk.read_text().splitlines()
-                          if x.strip() and json.loads(x)["authorization_id"] != b3c.CANDIDATE_AUTHORIZATION_ID))
+    from governance_fixtures import pre_b3c_book
+    bk.write_bytes(pre_b3c_book())
     for f in (tmp_path / b3c.PROPOSAL_PATH, tmp_path / b3c.B3C_RUN_CONFIG_PATH,
               tmp_path / "registry/research_budget_events.jsonl"):
         f.unlink(missing_ok=True)

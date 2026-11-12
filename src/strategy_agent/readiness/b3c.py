@@ -331,8 +331,13 @@ def formal_authorization_state() -> dict:
     UNEXPECTED      anything else (an unknown authorization, a second B3-C line, a mismatch). Always a failure.
 
     Never creates, approves or consumes anything; downstream checks accept GRANTED_* only through this function."""
-    book, why = _book_lines("authorization_book"), []
-    other = [x.get("authorization_id") for x in book if x.get("authorization_id") not in (*KNOWN_SPENT, CANDIDATE_AUTHORIZATION_ID)]
+    from strategy_agent.governance.authorization_contracts import verified_contracts, C1
+    try:
+        _, book = verified_contracts(ROOT)
+    except Exception as error:
+        return {"state": "UNEXPECTED", "why": [f"INVALID_AUTHORIZATION_BOOK:{error}"]}
+    why = []
+    other = [x.get("authorization_id") for x in book if x.get("authorization_id") not in (*KNOWN_SPENT, CANDIDATE_AUTHORIZATION_ID, C1)]
     if other:
         why.append(f"UNKNOWN_AUTHORIZATIONS:{other}")
     mine = [x for x in book if x.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID]
@@ -427,7 +432,7 @@ def _prepared(m: dict, draft: dict) -> dict:
     except Exception as e:  # noqa: BLE001
         cfg_ok = f"{type(e).__name__}: {e}"
     now = datetime.now(TPE)
-    elig, want = eligible_authorizations(ROOT, PROPOSED_EXECUTOR, now), expected_eligible(now)
+    elig, want = eligible_authorizations(ROOT, PROPOSED_EXECUTOR, now, authorization_id=CANDIDATE_AUTHORIZATION_ID), expected_eligible(now)
     return {
         "B3C-01": {"draft_schema_dry_run": schema_dry_run(draft)["status"],
                    "candidate_id_unused_in_book": not approved, "authorization_state": state,

@@ -27,12 +27,15 @@ def L(tmp_path, monkeypatch):
     monkeypatch.setattr(C, "EXECUTOR_MODULES", ())
     before = A5.tree_fingerprint(R.ROOT)
     w = CW.build(tmp_path / "w", authorization_id=AID, executor_id=R.EXECUTOR, max_batches=1)
+    w["fa"].clock = lambda: CW.NOW
+    w["fa"].verifier.clock = lambda: CW.NOW
     # the world's own demo binding would hold the single batch: keep the books as the real B3-C ones (no binding yet)
     (w["gov"] / "registry/authorization_bindings.jsonl").write_text("")
     auth = R._authorization(w["gov"], AID)                                 # noqa: SLF001
     comp = R.expected_completion(w["art"], auth["strategy"]["spec_path"])
     m = R.prepare(tmp_path / "prep", artifact_root=w["art"], governance_root=w["gov"], authorization_id=AID,
-                  canonical_config=w["canonical_config_path"], agent_commit=G40, completion=comp)
+                  canonical_config=w["canonical_config_path"], agent_commit=G40, completion=comp,
+                  manifest_kind=R.TEST_MANIFEST, now=CW.NOW)
     yield w, m, tmp_path
     assert A5.tree_fingerprint(R.ROOT) == before                            # repository books never touched
 
@@ -55,7 +58,8 @@ def _run(w, m, tmp, *, bind_url=None, task_url=None, name="run", be=None):
     return R.execute(tmp / "prep", bind_url=bind_url or b, task_url=task_url or t, verifier=w["fa"].verifier,
                      backend=be, work_dir=tmp / name, claim_dir=tmp / "drive_claim", artifact_root=w["art"],
                      governance_root=w["gov"], production_books=False,
-                     readiness_manifest=lambda: CW.readiness_manifest(w), benchmark=K.synthetic_benchmark), be
+                     readiness_manifest=lambda: CW.readiness_manifest(w), benchmark=K.synthetic_benchmark,
+                     clock=lambda: CW.NOW), be
 
 
 def _uses(w):

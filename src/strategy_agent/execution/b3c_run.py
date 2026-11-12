@@ -135,12 +135,48 @@ def expected_completion(artifact_root: Path = ROOT, spec_path: str | None = None
     return build_completion(spec, challenger_view=fx["llm_draft"]["challenger_view"])   # review prompts only
 
 
+TEST_AUTHORIZATION_ID = "RA-IBKR_TSM-SMA520_B3CTEST-0001"
+TEST_MANIFEST = "ISOLATED_TEST_PHASE5B3C_PREPARE_MANIFEST"
+
+
+def _isolated_core_fixture(root, authorization_id):
+    from strategy_agent.orchestration.governance import is_isolated_test_root
+    return root is not None and authorization_id == TEST_AUTHORIZATION_ID and is_isolated_test_root(root)
+
+
+def _manifest_contract(kind, authorization_id, governance_root):
+    from strategy_agent.governance.authorization_contracts import B3C, C1
+    known = {"PHASE5B3C_PREPARE_MANIFEST": B3C, "PHASE5C1_PREPARE_MANIFEST": C1}
+    return ((kind in known and known[kind] == authorization_id)
+            or (kind == TEST_MANIFEST and _isolated_core_fixture(governance_root, authorization_id)))
+
+
 def _authorization(governance_root: Path, authorization_id: str) -> dict:
-    p = Path(governance_root) / "governance/research_authorizations.jsonl"
-    recs = [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+    from strategy_agent.governance.authorization_contracts import verified_contracts, contract_id
+    try:
+        if _isolated_core_fixture(governance_root, authorization_id):
+            from strategy_agent.registry.chain import ChainedLog
+            from strategy_agent.governance.research_authorization import validate_events
+            g = Path(governance_root)/"governance"
+            recs = ChainedLog(g/"research_authorizations.jsonl").verify()
+            active = validate_events(recs, set(json.loads((g/"approvers.json").read_text())["research_leads"]))
+        else:
+            active, recs = verified_contracts(governance_root)
+    except Exception as error:
+        raise B3CStopped("AUTHORIZATION_INVALID", str(error)) from None
     hit = [r for r in recs if r.get("authorization_id") == authorization_id and r.get("action") == "APPROVE"]
     if len(hit) != 1:
         raise B3CStopped("AUTHORIZATION_NOT_UNIQUE", {"authorization_id": authorization_id, "found": len(hit)})
+    if active.get(authorization_id) is None:
+        raise B3CStopped("AUTHORIZATION_INACTIVE", {"authorization_id": authorization_id})
+    try:
+        if _isolated_core_fixture(governance_root, authorization_id):
+            if not hit[0].get("notes", "").startswith("SYNTHETIC_FIXTURE"):
+                raise ValueError("Missing synthetic fixture label")
+        else:
+            contract_id(hit[0])
+    except ValueError as error:
+        raise B3CStopped("AUTHORIZATION_CONTRACT_MISMATCH", str(error)) from None
     return hit[0]
 
 
@@ -189,6 +225,8 @@ def prepare(out_dir: Path, *, artifact_root: Path = ROOT, governance_root: Path 
     from strategy_agent.phase5a.integration import proposal_to_request  # noqa: PLC0415
     from strategy_agent.proposal import FileDraftAdapter, draft_proposal  # noqa: PLC0415
     from strategy_agent.readiness.b3c import B3C_RUN_CONFIG_PATH  # noqa: PLC0415
+    if not _manifest_contract(manifest_kind, authorization_id, governance_root):
+        raise B3CStopped("AUTHORIZATION_CONTRACT_MISMATCH")
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=False)
     now = now or datetime.now(TPE)
@@ -217,9 +255,11 @@ def prepare(out_dir: Path, *, artifact_root: Path = ROOT, governance_root: Path 
     return m
 
 
-def load_prepared(d: Path) -> tuple[dict, dict]:
+def load_prepared(d: Path, *, governance_root=None) -> tuple[dict, dict]:
     d = Path(d)
     m = json.loads((d / MANIFEST).read_text(encoding="utf-8"))
+    if not _manifest_contract(m.get("kind"), m.get("authorization_id"), governance_root):
+        raise B3CStopped("AUTHORIZATION_CONTRACT_MISMATCH")
     bad = [n for n in FILES if not (d / n).is_file() or _sha((d / n).read_bytes()) != m["files_sha256"].get(n)]
     if bad:
         raise B3CStopped("PREPARED_FILES_CHANGED", bad)
@@ -269,7 +309,7 @@ def execute(prepared_dir: Path, *, bind_url: str, task_url: str, verifier, backe
     from strategy_agent.execution.activation import RealActivationGate  # noqa: PLC0415
     from strategy_agent.execution.controlled import ControlledRunnerAdapter  # noqa: PLC0415
     from strategy_agent.orchestration.orchestrator import Orchestrator  # noqa: PLC0415
-    m, src = load_prepared(prepared_dir)
+    m, src = load_prepared(prepared_dir, governance_root=governance_root)
     aid, tid = m["authorization_id"], m["task_id"]
     claim = Path(claim_dir) / CLAIM
     if claim.exists():
@@ -305,7 +345,7 @@ def execute(prepared_dir: Path, *, bind_url: str, task_url: str, verifier, backe
         def readiness_manifest():
             return RM.build(None)
     gate = RealActivationGate(governance_root=governance_root, artifact_root=artifact_root, executor_id=executor_id,
-                              production_books=production_books, readiness_manifest=readiness_manifest)
+                              production_books=production_books, readiness_manifest=readiness_manifest, authorization_id=aid, clock=clock)
     ad = ControlledRunnerAdapter(backend, governance_root=governance_root, activation=gate)
     if ad.mode != "REAL_GATED":
         raise B3CStopped("NOT_REAL_GATED", ad.mode)

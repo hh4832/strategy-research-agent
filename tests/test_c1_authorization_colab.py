@@ -40,8 +40,8 @@ def metadata():
         spec=dict(strategy_id=p['strategy']['strategy_id'],universe={'timeframe':'15m','sessions':{'allowed':['RTH']}},position_sizing={'units':100,'initial_capital':100000}),scenario={},schedule=dict(schedule_sha256=A.SCHEDULE))
 
 
-def test_legacy_book_and_new_unsigned_preview_schema():
-    assert len(ResearchAuthorizationBook().active)==3
+def test_legacy_book_and_new_unsigned_preview_schema(pre_c1_root):
+    assert len(ResearchAuthorizationBook(pre_c1_root/'governance/research_authorizations.jsonl', pre_c1_root/'governance/approvers.json').active)==3
     p=A.source_proposal();p.update(issued_at=NOW.isoformat(),expires_at='2026-11-19T10:00:00+08:00')
     assert A.unsigned_errors(p)==[]
     for field in ('dated_schedule_path','dated_schedule_sha256'):
@@ -77,11 +77,11 @@ def test_runner_preflight_and_run_refuse_dated_mismatch_before_any_consumption(t
     assert 'RA06' not in codes(runner.preflight(path))
 
 
-def test_validate_only_metadata_boundary_has_no_admin_or_ledger_writes(monkeypatch):
+def test_validate_only_metadata_boundary_has_no_admin_or_ledger_writes(monkeypatch,pre_c1_root):
     protected={p:p.read_bytes() for base in ('governance','registry') for p in (ROOT/base).rglob('*') if p.is_file()}
     def forbidden(*a,**k):raise AssertionError('No subprocess/admin in validation')
     monkeypatch.setattr(A.subprocess,'run',forbidden)
-    result=A.validate(settings(),metadata=metadata(),now=NOW)
+    result=A.validate(settings(),root=pre_c1_root,metadata=metadata(),now=NOW)
     assert result['status']=='PASS' and result['authorization_status']=='VALIDATED_UNSIGNED'
     assert result['validity_preview']['not_an_approval'] is True
     assert all(p.read_bytes()==b for p,b in protected.items())
@@ -202,7 +202,7 @@ def test_final_runner_guard_rechecks_dated_pin_before_atomic_reservation(tmp_pat
     assert (g/'uses.jsonl').read_bytes()==before
 
 
-def test_fresh_runtime_validate_only_runs_all_seven_cells_without_approval(tmp_path,monkeypatch):
+def test_fresh_runtime_validate_only_runs_all_seven_cells_without_approval(tmp_path,monkeypatch,pre_c1_root):
     """Execute actual cells, mocking Colab/network provisioning and the private-Drive input boundary only."""
     import sys
     from types import ModuleType
@@ -223,6 +223,8 @@ def test_fresh_runtime_validate_only_runs_all_seven_cells_without_approval(tmp_p
     def forbidden(*a,**k):raise AssertionError('Run All must never call approve')
     monkeypatch.setattr(A,'approve',forbidden)
     monkeypatch.setattr(A,'archive_metadata',lambda *a,**k:metadata())
+    from functools import partial
+    monkeypatch.setattr(A,'validate',partial(A.validate,root=pre_c1_root))
     import shutil
     monkeypatch.setattr(shutil,'which',lambda n:'/synthetic/python3.11')
     def fake_run(args,**kwargs):

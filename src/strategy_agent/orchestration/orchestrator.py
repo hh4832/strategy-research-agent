@@ -96,7 +96,8 @@ class Orchestrator:
                     raise ValueError("REAL_GATED: the orchestrator worker is not the activation gate's executor")
                 if self.gov.production_books and (approval_verifier is None or not approval_verifier.production):
                     raise ValueError("REAL_GATED on production books requires the production (live GitHub) verifier")
-                if not eligible_authorizations(self.governance_root, worker, self.clock()):
+                if not eligible_authorizations(self.governance_root, worker, self.clock(),
+                                               authorization_id=controlled_adapter.activation.authorization_id):
                     raise ValueError("REAL_GATED: no approved, active, unexpired authorization names this executor "
                                      "(real Runner stays DISABLED)")
             from strategy_agent.execution.budget import BudgetLedger  # noqa: PLC0415
