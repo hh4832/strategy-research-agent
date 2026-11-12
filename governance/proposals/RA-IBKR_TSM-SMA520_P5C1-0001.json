@@ -1,0 +1,85 @@
+{
+  "authorization_id": "RA-IBKR_TSM-SMA520_P5C1-0001",
+  "contract": "research-only-authorization-v1",
+  "costs": {
+    "dated_schedule_path": "configs/research/tsm_official_dated_costs_2017_2024.json",
+    "dated_schedule_sha256": "43b6045758760a40ad88d741b1a97a73cfb0b6cf6b2a4a7f1f3b31d5085a4216",
+    "model": "IBKR_PRO_FIXED",
+    "scenario_set_path": "configs/research_only/ibkr_pro_fixed_tsm_research_only_costs_v1.json",
+    "scenario_set_sha256": "bf4f2365b42f1ede92954f7a9915fe730f59bd4c73d6e4783007eb07e1749cd3",
+    "scenarios": [
+      "BASE",
+      "LOW",
+      "STRESS",
+      "CAT_STRESS"
+    ]
+  },
+  "dataset": {
+    "dataset_id": "ibkr_tsm_1m_normalized",
+    "producer_commit_sha": "7bcc61813a6cf2956c6df69ea796bf1c7f2b495f",
+    "snapshot_id": "TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211"
+  },
+  "development_boundary": {
+    "end": "2025-01-01T00:00:00-05:00",
+    "interval": "[start,end)",
+    "start": "2016-10-19T00:00:00-04:00"
+  },
+  "does_not_authorize": [
+    "Holdout access",
+    "any second batch or retry",
+    "formal GO",
+    "any change of rules/costs/pins",
+    "any executor other than colab-hh4832-exec-01",
+    "BROKER_ACTUAL costs or any alternative SEC date mapping"
+  ],
+  "executor": {
+    "consistency": "SINGLE_EXECUTOR_ONLY",
+    "executor_id": "colab-hh4832-exec-01"
+  },
+  "expires_at": "HUMAN_DECISION_REQUIRED",
+  "formal_gate_pin": {
+    "gate_version": "2026-11-05.4",
+    "gates": {
+      "COST_APPROVAL": "FAIL",
+      "COST_MODEL_COMPATIBILITY": "PASS",
+      "DATA_QUALITY": "PASS",
+      "FORMAL_EXECUTION_ELIGIBILITY": "FAIL",
+      "HOLDOUT_APPROVAL": "FAIL",
+      "TEMPORAL_SAFETY": "UNKNOWN"
+    },
+    "gates_sha256": "11837b368e65efddc31f26f7237e881b5e9a80120ed2f22af76dcb4089b9ea32",
+    "market_status": "NO_GO"
+  },
+  "holdout": {
+    "blindness": "BLINDNESS_UNVERIFIED",
+    "end": "2026-10-17T00:00:00-04:00",
+    "lock_id": "HOLDOUT-TSM-15M-v1",
+    "start": "2025-01-01T00:00:00-05:00"
+  },
+  "issued_at": "HUMAN_DECISION_REQUIRED",
+  "market_id": "IBKR_TSM",
+  "max_batches": 1,
+  "research_window": {
+    "end": "2025-01-01T00:00:00-05:00",
+    "interval": "[start,end)",
+    "start": "2016-10-19T00:00:00-04:00"
+  },
+  "scope": "RESEARCH_ONLY_EXPLORATORY",
+  "strategy": {
+    "parameters": {
+      "fast": 5,
+      "slow": 20
+    },
+    "spec_file_sha256": "0aa5c293842e1b3ff29212bcfbd07a01a49b1311dfc96047ea9b8347f77d394b",
+    "spec_path": "specs/research/c1/tsm_sma520_v0_2_0.json",
+    "strategy_id": "sma_crossover_tsm_15m_5_20",
+    "version": "0.2.0"
+  },
+  "symbol": "TSM",
+  "temporal_policy": {
+    "policy_id": "CONSERVATIVE_LABEL_AGNOSTIC",
+    "scope": "RESEARCH_ONLY",
+    "sha256": "7fa3cdcaf501651f749dbc72c31b362fcb9e10cc55920191cef87c1a050059c4",
+    "version": "1.0.0"
+  }
+}
