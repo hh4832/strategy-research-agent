@@ -147,3 +147,13 @@ def test_gate_rejects_cross_contract_and_corrupted_uses_without_runner(world):
     p.write_text('{"seq":9,"authorization_id":"'+C1+'"}\n')
     result=gate.evaluate(doc,backend)
     assert result['status']=='BLOCKED' and 'A07_budget_not_consumed' in result['failed']
+
+
+def test_core_fixture_manifest_is_never_a_production_contract(tmp_path):
+    assert not b3c_run._manifest_contract(b3c_run.TEST_MANIFEST, b3c_run.TEST_AUTHORIZATION_ID, tmp_path)
+    (tmp_path/'ISOLATED_TEST_GOVERNANCE_ROOT.json').write_text('{"kind":"ISOLATED_TEST_GOVERNANCE_ROOT"}')
+    assert b3c_run._manifest_contract(b3c_run.TEST_MANIFEST, b3c_run.TEST_AUTHORIZATION_ID, tmp_path)
+    assert not b3c_run._manifest_contract('PHASE5B3C_PREPARE_MANIFEST', b3c_run.TEST_AUTHORIZATION_ID, tmp_path)
+    assert not b3c_run._manifest_contract(b3c_run.TEST_MANIFEST, C1, tmp_path)
+    assert not b3c_run._manifest_contract(b3c_run.TEST_MANIFEST, 'UNKNOWN', tmp_path)
+    assert not b3c_run._manifest_contract(None, None, tmp_path)

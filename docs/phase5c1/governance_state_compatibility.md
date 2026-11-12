@@ -51,9 +51,15 @@ The approved Proposal/Ledger were copied byte-for-byte only into a disposable in
 | Suite | Python | Passed | Failed | Skipped |
 |---|---|---:|---:|---:|
 | Generic without Core, before final two added negative cases | 3.12.14 | 762 | 0 | 78 |
-| C1 / authorization / Phase4A / B3-C non-consuming + 16 contract regressions, pinned Core 50ea3bfa42df7708dd3a1b21f17798c206be054e | 3.11.17 | 141 | 0 | 5 |
-| Same pinned-Core suite | 3.12.14 | 141 | 0 | 5 |
+| C1 / authorization / Phase4A / B3-C non-consuming + 17 contract regressions, pinned Core 50ea3bfa42df7708dd3a1b21f17798c206be054e | 3.11.17 | 142 | 0 | 5 |
+| Same pinned-Core suite | 3.12.14 | 142 | 0 | 5 |
 
 The five skips are the pre-existing tests requiring the historical B3-C authorization to be UNUSED; the checked-in B3-C history is already GRANTED_USED. All C1 integration tests and the new contract regressions executed. The generic Core-dependent skips are covered separately by the existing pinned-Core CI jobs; no CI test is disabled by this change.
 
 Approved Proposal SHA256 remains `7c7b4dd7bd6e55e647453a8026f03b5107dbcd69c16d2ace13c53b78102808b0`; approved Ledger SHA256 remains `6272e0785d8e5bab4ad1195b05f128bd962214d3c48c2d7d0636ea3c19965264`.
+
+## Isolated Core fixture compatibility
+
+The first fix-CI iteration exposed the existing synthetic B3-C Core E2E ID `RA-IBKR_TSM-SMA520_B3CTEST-0001`. It must not be treated as a production B3-C/C1 authorization. The fixture now uses `ISOLATED_TEST_PHASE5B3C_PREPARE_MANIFEST` and its fixed synthetic clock. Only that exact fixture ID, with the existing isolation marker and synthetic label, is admitted by the test path. Production manifest kinds still reject it, test manifests reject C1/unknown IDs and unmarked roots, and full chain/schema/approver/revocation checks remain required. No test expectation or production refusal is removed.
+
+Additional historical Core B3-C E2E + contract isolation suite on Core b16179a7cc077c36046574769a32c367fa476cae: Python 3.11.17 and 3.12.14 each 22 passed, 0 failed, 0 skipped. The fixture clock is fixed for preview, evidence verification and activation; production uses its normal current clock. Existing historical-record reads remain possible after expiry, while eligibility/A01/RA02 prevent new expired execution.
