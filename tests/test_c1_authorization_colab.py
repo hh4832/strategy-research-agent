@@ -264,3 +264,28 @@ def test_fresh_runtime_validate_only_runs_all_seven_cells_without_approval(tmp_p
         b=(archive/relative).read_bytes()
         assert sha256(b).hexdigest()==h and b'SYNTHETIC_TOKEN_MUST_NOT_BE_ARCHIVED' not in b
     assert all(p.read_bytes()==b for p,b in protected.items())
+
+
+@pytest.mark.parametrize('mutation', ['valid', 'partial', 'duration', 'naive', 'scope', 'signature', 'pin'])
+def test_source_proposal_accepts_only_strict_unsigned_time_preview(tmp_path, mutation):
+    import shutil
+    for relative in (A.SOURCE, 'schemas'):
+        shutil.copytree(ROOT/relative, tmp_path/relative)
+    original = json.loads((tmp_path/A.SOURCE/'authorization.DRAFT_NOT_APPROVED.json').read_text())['proposal_fields']
+    candidate = copy.deepcopy(original)
+    path = tmp_path/A.PROPOSAL
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(candidate))
+    assert A.source_proposal(tmp_path) == original
+    candidate.update(issued_at='2026-11-12T10:00:00+08:00', expires_at='2026-11-19T10:00:00+08:00')
+    if mutation == 'partial': candidate['expires_at'] = 'HUMAN_DECISION_REQUIRED'
+    if mutation == 'duration': candidate['expires_at'] = '2026-11-20T10:00:00+08:00'
+    if mutation == 'naive': candidate['issued_at'] = '2026-11-12T10:00:00'
+    if mutation == 'scope': candidate['max_batches'] = 2
+    if mutation == 'signature': candidate['approval_ref'] = 'https://github.com/example'
+    if mutation == 'pin': candidate['costs']['dated_schedule_sha256'] = '0'*64
+    path.write_text(json.dumps(candidate))
+    if mutation == 'valid':
+        assert A.source_proposal(tmp_path) == original
+    else:
+        with pytest.raises(ValueError): A.source_proposal(tmp_path)
