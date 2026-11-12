@@ -85,7 +85,7 @@ def production_state() -> dict:
         legacy = "AdapterDisabled"
     from strategy_agent.readiness.b3c import expected_eligible, formal_authorization_state  # noqa: PLC0415
     now = datetime.now(TPE)
-    elig, want, fa = eligible_authorizations(ROOT, "colab-hh4832-exec-01", now), expected_eligible(now), \
+    elig, want, fa = eligible_authorizations(ROOT, "colab-hh4832-exec-01", now, authorization_id="RA-IBKR_TSM-SMA520_P5B3C-0001"), expected_eligible(now), \
         formal_authorization_state()
     unchanged = A5.tree_fingerprint(ROOT) == before
     # Without the production (live GitHub) verifier the real path is never constructed on production books: before
