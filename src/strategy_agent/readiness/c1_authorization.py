@@ -72,7 +72,20 @@ def source_proposal(root=ROOT):
     require(digest(draft)==DRAFT_SHA and draft.stat().st_size==3036, 'Original draft bytes/SHA mismatch')
     require(digest(index)==INDEX_SHA, 'Original archive index SHA mismatch')
     original = json.loads(draft.read_text())['proposal_fields']
-    require(json.loads((root/PROPOSAL).read_text())==original, 'Proposal differs from original archived fields')
+    proposal = json.loads((root/PROPOSAL).read_text())
+    if proposal != original:
+        # The independent PR carries a schema-valid unsigned validity preview.
+        # Only its two human-time fields may differ; never normalize scope/evidence.
+        time_fields = {'issued_at', 'expires_at'}
+        require({k:v for k,v in proposal.items() if k not in time_fields} ==
+                {k:v for k,v in original.items() if k not in time_fields},
+                'Proposal differs from original archived fields')
+        require(not unsigned_errors(proposal, root), 'Invalid unsigned proposal preview')
+        issued = datetime.fromisoformat(proposal['issued_at'])
+        expires = datetime.fromisoformat(proposal['expires_at'])
+        require(issued.tzinfo is not None and expires.tzinfo is not None and
+                expires - issued == timedelta(days=7),
+                'Unsigned preview requires timezone-aware seven-day validity')
     return original
 
 
