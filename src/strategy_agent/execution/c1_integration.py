@@ -329,5 +329,5 @@ def prepare_governed_request(preparation_directory, *, governance_root,agent_com
     return B.prepare(out/'governed_request',artifact_root=out/'artifacts',governance_root=Path(governance_root),
         authorization_id=AUTHORIZATION,canonical_config=out/'artifacts'/CONFIG,agent_commit=agent_commit,
         completion=json.loads((out/'completion.json').read_text()),
-        hypothesis=json.loads((out/'proposal.json').read_text())['hypothesis']['question'],
+        hypothesis=json.loads((out/'proposal.json').read_text())['draft']['hypothesis']['question'],
         adapter_id='CLAUDE_AUTHORED_P5C1_COMPLETION_FILE',manifest_kind='PHASE5C1_PREPARE_MANIFEST')
