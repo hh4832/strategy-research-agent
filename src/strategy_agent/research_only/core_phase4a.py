@@ -260,9 +260,15 @@ def conservative_rows_and_bars(frame, symbol: str = "TSM"):
     return rows, sbars
 
 
-def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict, spec: dict, parameters: dict,
+def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | None = None,
+                  dated_schedules: dict | None = None, spec: dict, parameters: dict,
                   window_start: str, window_end: str, warmup_start: str, dataset: dict, seed: int = 0) -> dict:
-    """Run every authorized scenario on the SAME Core-prepared bars and the SAME orders (M3-B mapping reused)."""
+    """Run each authorized scenario on the same bars and orders in one continuous Core execution.
+
+    The optional dated path is used only by Phase 5-C1. It still computes SMA signals and the order list once,
+    then passes a pinned Core DatedCostSchedule into one full-window ExecutionEngine run per scenario. Existing
+    B3-C single-window callers keep their historical ``profiles`` path unchanged.
+    """
     from strategy_agent.adapters import mrc_adapter as A  # noqa: PLC0415
     from strategy_agent.adapters.m3a4_contract import validate_conservative_result  # noqa: PLC0415
     from strategy_agent.evaluation.research import evaluate  # noqa: PLC0415
@@ -274,6 +280,8 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict, spe
     rows, sbars = conservative_rows_and_bars(frame)
     decs = sma_crossover(sbars, int(parameters["fast"]), int(parameters["slow"]))
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
+    if spec.get("version")=="0.2.0" and sum(b.eligible and b.available_at<ws for b in sbars)<int(spec['data_requirements']['warmup_bars']):
+        raise Phase4ABindingError('insufficient eligible pre-window warm-up bars')
     kept = [d for d in decs if ws <= d.decision_ts < we]
     if any(not any(b.available_at == d.decision_ts for b in sbars) for d in kept):
         raise Phase4ABindingError("decision not at a Core modeled_available_at")
@@ -291,20 +299,128 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict, spe
     orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
                                  strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16], core=core)
     cfg = A.core_config(request, sem, core_sha, core=core)
+    if (profiles is None) == (dated_schedules is None):
+        raise Phase4ABindingError("exactly one of profiles or dated_schedules is required")
+    if dated_schedules is not None and set(dated_schedules) != {"BASE", "LOW", "STRESS", "CAT_STRESS"}:
+        raise Phase4ABindingError("dated cost scenarios must be the fixed four-scenario set")
     out = {"decisions": [(d.decision_ts.isoformat(), d.target, d.reason) for d in kept],
            "decisions_total": len(decs), "orders": len(orders), "rows": rows, "scenarios": {}}
     unsupported = A.unsupported_divergences(core)
-    for name, profile in profiles.items():
-        result = core.ExecutionEngine().run(frame, orders, cost_profile=profile, config=cfg)
+    scenario_inputs = dated_schedules if dated_schedules is not None else profiles
+    for name, scenario_cost in scenario_inputs.items():
+        profile = scenario_cost.base_profile if dated_schedules is not None else scenario_cost
+        if dated_schedules is None:
+            # Preserve compatibility with the pre-dated Core used by existing B3-C single-window runs.
+            result = core.ExecutionEngine().run(frame, orders, cost_profile=profile, config=cfg)
+        else:
+            result = core.ExecutionEngine().run(frame, orders, cost_profile=profile, config=cfg,
+                                                cost_schedule=scenario_cost)
         A.guard_known_divergences(result, orders, frame, unsupported)
         checks = validate_conservative_result(result, orders=orders, cost_profile=profile,
                                               policy=core.CONSERVATIVE_POLICY, core_sha=core_sha)
         report = A.core_result_to_report(result, request, core_sha, cost_profile=profile)
-        diag = core_costs.tsm_cost_diagnostics(result, profile)
+        if dated_schedules is not None:
+            from strategy_agent.adapters.mrc_phase4a import core_dated_costs  # noqa: PLC0415
+            dated_costs = core_dated_costs()
+            diag = dated_costs.dated_tsm_cost_diagnostics(result, scenario_cost)
+            diag["model"].update(slippage_bps=scenario_cost.document["scenarios"][name]["slippage_bps"],
+                                 cat_rate_usd_per_share=scenario_cost.document["scenarios"][name]["cat_per_share"],
+                                 taf_rate_usd_per_share="DATED_PER_FILL", sec_rate="DATED_PER_FILL",
+                                 sec_fill_date_convention="RESEARCH_ONLY_NOT_BROKER_ACTUAL")
+            diag["sec_mapping_sensitivity"] = sec_fill_date_mapping_sensitivity(result, scenario_cost)
+        else:
+            diag = core_costs.tsm_cost_diagnostics(result, profile)
+        exp = spec.get("experiment") or {}
+        extra = {}                       # 5-C1: only when the spec pre-registers it (older specs: unchanged output)
+        if "family_trials_including_this" in exp:
+            extra.update(family_id=exp.get("trial_family_id", "UNASSIGNED"),
+                         family_trials=int(exp["family_trials_including_this"]))
         metrics = evaluate(report, rows, initial_capital=cash, bar_minutes=15, bars_per_year=252 * 26,
-                           parameters=parameters, symbol="TSM", order_qty=qty)
-        out["scenarios"][name] = {"profile_sha256": profile.sha256, "result": result, "report": report,
+                           parameters=parameters, symbol="TSM", order_qty=qty, **extra)
+        metrics.update(preregistered_decompositions(report, rows, exp))
+        out["scenarios"][name] = {"profile_sha256": profile.sha256,
+                                  "cost_schedule_sha256": scenario_cost.sha256 if dated_schedules is not None else None,
+                                  "result": result, "report": report,
                                   "m3a4_checks": checks, "cost_diagnostics": diag, "metrics": metrics}
+    return out
+
+
+def sec_fill_date_mapping_sensitivity(result, schedule) -> dict:
+    """Predeclared diagnostic: compare SEC debit using fill date vs the next calendar date.
+
+    The second mapping is a fixed diagnostic proxy only. It is not an asserted settlement-date rule, does not
+    change the Core result, does not re-run SMA or orders, and cannot select a preferred strategy result.
+    """
+    from decimal import Decimal, ROUND_HALF_UP  # noqa: PLC0415
+    import pandas as pd  # noqa: PLC0415
+    from strategy_agent.adapters.mrc_phase4a import core_dated_costs  # noqa: PLC0415
+    new_york_fill_date = core_dated_costs().new_york_fill_date
+    cent = Decimal("0.01")
+    base_total = Decimal("0")
+    shifted_total = Decimal("0")
+    evaluated = 0
+    unavailable = []
+    transition_fills = 0
+    rates = schedule.document["sec_rates"]
+
+    def rate_on(day):
+        hits = [r for r in rates if r["effective_from"] <= day <= r["effective_to"]]
+        if len(hits) != 1:
+            return None
+        return Decimal(str(hits[0]["rate"]))
+
+    for fill in result.fills.to_dict("records"):
+        if str(fill["side"]).upper() != "SELL":
+            continue
+        ts = pd.Timestamp(fill["exec_ts"])
+        fill_day = new_york_fill_date(ts)
+        next_day = new_york_fill_date(ts + pd.Timedelta(days=1))
+        p = Decimal(str(fill["fill_price"]))
+        q = Decimal(str(fill["qty"]))
+        base_rate, shifted_rate = rate_on(fill_day), rate_on(next_day)
+        if base_rate is None or shifted_rate is None:
+            unavailable.append({"fill_date": fill_day, "diagnostic_date": next_day})
+            continue
+        base_fee = (p * q * base_rate).quantize(cent, rounding=ROUND_HALF_UP)
+        shifted_fee = (p * q * shifted_rate).quantize(cent, rounding=ROUND_HALF_UP)
+        base_total += base_fee
+        shifted_total += shifted_fee
+        evaluated += 1
+        transition_fills += int(base_rate != shifted_rate)
+    return {"status": "DIAGNOSTIC_ONLY", "baseline_mapping": "NEW_YORK_FILL_DATE",
+            "alternative_mapping": "NEXT_CALENDAR_DATE_PROXY_NOT_SETTLEMENT_ASSERTION",
+            "sell_fills_evaluated": evaluated, "fills_with_different_sec_rate": transition_fills,
+            "baseline_sec_fee_usd": str(base_total), "alternative_sec_fee_usd": str(shifted_total),
+            "alternative_minus_baseline_usd": str(shifted_total - base_total),
+            "uncovered_mapping_count": len(unavailable), "uncovered_examples": unavailable[:10],
+            "selection_rule": "PREDECLARED; NEVER_SELECTED_BY_PERFORMANCE",
+            "strategy_execution_uses_baseline_only": True}
+
+
+def preregistered_decompositions(report, rows, experiment: dict) -> dict:
+    """5-C1: the spec's pre-registered regime decomposition and drift-matched control (``evaluation.regimes`` /
+    ``evaluation.controls``), added next to the M3-B metrics (which stay byte-identical). Nothing for older specs."""
+    from zoneinfo import ZoneInfo  # noqa: PLC0415
+
+    from strategy_agent.evaluation import controls as CT  # noqa: PLC0415
+    from strategy_agent.evaluation import regimes as RG  # noqa: PLC0415
+    from strategy_agent.evaluation.research import trade_stats  # noqa: PLC0415
+    out: dict = {}
+    trips = [dict(t) for t in report.round_trips]
+    if experiment.get("regime_definition"):
+        ny = ZoneInfo("America/New_York")
+
+        def session_of(t):
+            ts = t["entry_ts"] if isinstance(t["entry_ts"], datetime) else datetime.fromisoformat(str(t["entry_ts"]))
+            return ts.astimezone(ny).date().isoformat()
+        out["by_regime"] = RG.decompose(trips, rows, experiment["regime_definition"], stats_fn=trade_stats,
+                                        session_of=session_of)
+    if experiment.get("drift_control"):
+        if experiment["drift_control"] != CT.VERSION:
+            raise Phase4ABindingError(f"unknown drift control {experiment['drift_control']!r}")
+        out["drift_control"] = CT.drift_matched(trips, rows)
+        if experiment.get("family_trials_including_this")==3:
+            out.update(CT.c1_decompositions(trips,rows))
     return out
 
 
@@ -343,3 +459,68 @@ def native_snapshot_options(binding: SnapshotBinding) -> dict:
     from strategy_agent.adapters.mrc_phase4a import core_development
     development,_=core_development()
     return {'snapshot_pin':development.DevelopmentSnapshotPin(**binding.snapshot_pin)}
+
+
+def load_continuous_native(core_native, snapshot_root, binding, *, dates, research_window, holdout):
+    """Bounded IO only. Concatenate before SMA/orders/ONE engine call per scenario; never stitch backtests.
+
+    Daily footer row counts prove every native record in the requested interval
+    was returned exactly once. Queries partition New York dates (DST aware in Core).
+    """
+    from datetime import timedelta
+    from types import SimpleNamespace
+    import pandas as pd
+    import pyarrow.parquet as pq
+    DW=core_native.DateWindow
+    kwargs=dict(manifest_relative_path=binding.manifest_relative_path,
+        expected_manifest_sha256=binding.manifest_sha256,layout=core_native.ManifestLayout(**binding.layout),
+        integrity_receipt=core_native.FileIntegrityReceipt(**binding.integrity_receipt),
+        expected_receipt_sha256=binding.integrity_receipt_sha256,symbol='TSM',research_window=DW(*research_window),
+        holdout=tuple(DW(*h) for h in holdout),**native_snapshot_options(binding))
+    start,end=map(date.fromisoformat,dates)
+    if not DW(*research_window).contains(DW(*dates)) or any(DW(*dates).overlaps(DW(*h)) for h in holdout):
+        raise Phase4ABindingError("requested interval reaches Holdout or exceeds research window")
+    if (end-start).days<31:
+        return core_native.load_native_tsm(snapshot_root,dates=DW(*dates),**kwargs)
+    if not binding.snapshot_pin:
+        raise Phase4ABindingError('long reads require an explicit Development snapshot pin')
+    root=Path(snapshot_root).resolve(strict=True)
+    mp=(root/binding.manifest_relative_path).resolve(strict=True)
+    if not mp.is_relative_to(root) or hashlib.sha256(mp.read_bytes()).hexdigest()!=binding.manifest_sha256:
+        raise Phase4ABindingError('manifest pin mismatch')
+    doc=json.loads(mp.read_text())
+    p=(root/doc['parquet_path']).resolve(strict=True)
+    if not p.is_relative_to(root):raise Phase4ABindingError('unsafe Parquet path')
+    pf=pq.ParquetFile(p);idx=pf.schema.names.index(doc['columns']['timestamp']);daily={}
+    for i in range(pf.num_row_groups):
+        g=pf.metadata.row_group(i);st=g.column(idx).statistics
+        if st is None or not st.has_min_max:raise Phase4ABindingError('unknown daily boundary')
+        a,b=pd.Timestamp(st.min),pd.Timestamp(st.max)
+        if a.tzinfo is None or b.tzinfo is None:raise Phase4ABindingError('naive boundary')
+        day=_date(a)
+        if day!=_date(b) or not (binding.snapshot_pin['start']<=day<=binding.snapshot_pin['end']) or any(h[0]<=day<=h[1] for h in holdout):
+            raise Phase4ABindingError('unsafe Development row group')
+        daily[day]=daily.get(day,0)+g.num_rows
+    chunks=[];queries=[];cursor=start
+    while cursor<=end:
+        last=min(cursor+timedelta(days=30),end)
+        expected=sum(n for day,n in daily.items() if cursor.isoformat()<=day<=last.isoformat())
+        if expected:
+            result=core_native.load_native_tsm(root,dates=DW(cursor.isoformat(),last.isoformat()),**kwargs)
+            if len(result.native)!=expected:raise Phase4ABindingError('chunk row count differs from footer')
+            chunks.append(result)
+        queries.append({'start':cursor.isoformat(),'end':last.isoformat(),'native_rows':expected})
+        cursor=last+timedelta(days=1)
+    if not chunks:raise Phase4ABindingError('empty long research window')
+    native=pd.concat([r.native for r in chunks],ignore_index=True)
+    source=pd.concat([r.source_1m for r in chunks],ignore_index=True)
+    bars=pd.concat([r.conservative_15m for r in chunks],ignore_index=True)
+    ts=native[doc['columns']['timestamp']]
+    if ts.duplicated().any() or not ts.is_monotonic_increasing:
+        raise Phase4ABindingError('duplicate or unordered chunk records')
+    if bars.source_timestamp.duplicated().any() or not bars.source_timestamp.is_monotonic_increasing:
+        raise Phase4ABindingError('duplicate or unordered conservative buckets')
+    provenance=dict(chunks[0].provenance,requested_dates={'start':dates[0],'end':dates[1]},
+                    native_rows=len(native),conservative_buckets=len(bars),bounded_read_windows=queries,
+                    execution_partitioning='NONE_ONE_CONTINUOUS_SMA_AND_ENGINE_RUN_PER_SCENARIO')
+    return SimpleNamespace(native=native,source_1m=source,conservative_15m=bars,provenance=provenance)

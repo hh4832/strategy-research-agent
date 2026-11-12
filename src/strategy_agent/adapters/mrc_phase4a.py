@@ -13,6 +13,22 @@ def core_phase4a():
     return native, costs
 
 
+def core_dated_costs():
+    """Return Core's pinned, immutable DatedCostSchedule API."""
+    import market_research_core.dated_costs as dated_costs  # noqa: PLC0415
+    return dated_costs
+
+
+def core_repository_root():
+    """Resolve the root of the exact installed Core checkout for pinned read-only assets."""
+    from pathlib import Path  # noqa: PLC0415
+    dated_costs = core_dated_costs()
+    root = Path(dated_costs.__file__).resolve().parents[2]
+    if not (root / "configs/research/tsm_official_dated_costs_2017_2024.json").is_file():
+        raise RuntimeError("pinned Core checkout does not contain the official dated TSM cost schedule")
+    return root
+
+
 def core_development():
     """Return the reviewed v1.1 producer/reader modules; this never decodes or signs by itself."""
     import market_research_core.tsm_development as development

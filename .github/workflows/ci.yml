@@ -25,8 +25,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      # Core versions are pinned per integration job below; this generic suite intentionally runs without Core.
       - run: pip install -e '.[test]'
-      - run: pytest -q
+      - run: pytest -q --ignore=tests/test_phase5c1_integration.py
       - name: Validate example specs
         run: python -m strategy_agent.spec.validate specs/examples/*.json
 
@@ -440,6 +441,29 @@ jobs:
           git diff --exit-code -- specs registry governance configs
           python -c "from strategy_agent.readiness.b3c import governed_ledger_ok as g; assert g()"
 
+  phase5c1-research-design:
+    # Phase 5-C1: pre-registered research design only (no data, no execution, no authorization). Regime / drift
+    # control units, the draft spec against the spec schema, and the closed-notebook pin invariants.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e '.[test]'
+      - run: pytest -q -p no:cacheprovider tests/test_phase5c1_regimes.py tests/test_phase5c1_proposal.py tests/test_m3b_notebook.py
+      - name: Draft spec 0.2.0 is schema- and semantics-valid; rules identical to the 0.1.1 baseline
+        run: |
+          python -m strategy_agent.spec.validate docs/phase5c1/strategy_spec_v0_2_0.draft.json
+          python -m strategy_agent.execution.c1_proposal emit
+          git diff --exit-code -- docs/phase5c1 registry governance configs specs
+
   phase5a3-integration:
     # Phase 5-A3: actual A2 export -> actual A1 orchestrator (SYNTHETIC_FIXTURE Route A + fixture archive replay).
     # No Core, no market data, no batch, no Holdout. Real archive replay runs only in Colab (notebook).
@@ -533,3 +557,26 @@ jobs:
           python-version: "3.12"
       - run: pip install -e .
       - run: python -m strategy_agent.governance.append_only_guard --base origin/${{ github.base_ref }}
+
+  phase5c1-integration:
+    # Phase 5-C1: exact Core commit carrying the official 2017-2024 Dated Cost Schedule. CI remains synthetic-only;
+    # no real Development archive or formal strategy backtest, Holdout access, authorization or batch is used.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Checkout pinned Core source assets
+        run: |
+          git clone https://github.com/hh4832/market-research-core.git market-research-core
+          git -C market-research-core checkout --detach 50ea3bfa42df7708dd3a1b21f17798c206be054e
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e '.[test,research]' -e ./market-research-core
+      - run: pytest -q -p no:cacheprovider tests/test_phase5c1*.py tests/test_phase5b3c_execution.py tests/test_phase4a_research_only.py
+      - run: git diff --exit-code -- governance registry configs specs docs/evidence
