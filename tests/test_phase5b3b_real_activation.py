@@ -116,7 +116,7 @@ def test_B3B_01_production_books_refuse_the_real_path_today(tmp_path):
         with pytest.raises(ValueError):
             Orchestrator(tmp_path / "s", tmp_path / "o", root=ROOT, governance_root=ROOT, controlled_adapter=ad,
                          approval_verifier=verifier, worker=R.EXECUTOR)
-    assert AV.eligible_authorizations(ROOT, R.EXECUTOR, now) == expected_eligible(now)
+    assert AV.eligible_authorizations(ROOT, R.EXECUTOR, now, authorization_id="RA-IBKR_TSM-SMA520_P5B3C-0001") == expected_eligible(now)
     assert AV.eligible_authorizations(ROOT, "another-runtime", now) == []
     from strategy_agent.readiness.b3c import governed_ledger_ok
     assert A5.tree_fingerprint(ROOT) == before and governed_ledger_ok()

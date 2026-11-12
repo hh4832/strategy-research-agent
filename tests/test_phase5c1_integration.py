@@ -19,16 +19,16 @@ def test_unauthorized_execution_never_constructs_backend_or_consumes(tmp_path):
     assert (C.ROOT/'registry/research_authorization_uses.jsonl').read_bytes()==before
 
 
-def test_prepared_request_requires_reviewed_pins_and_formal_authorization(tmp_path):
+def test_prepared_request_requires_reviewed_pins_and_formal_authorization(tmp_path,pre_c1_root):
     C.save(tmp_path/'readiness.json',{'data_binding':'OBSERVED_NOT_TRUSTED'})
     with pytest.raises(ValueError,match='reviewed real data pins'):
-        C.prepare_governed_request(tmp_path,governance_root=C.ROOT,agent_commit='a'*40)
+        C.prepare_governed_request(tmp_path,governance_root=pre_c1_root,agent_commit='a'*40)
     (tmp_path/'readiness.json').write_text(json.dumps({'data_binding':'REVIEWED_PINS_VERIFIED','artifact_root':str(C.ROOT),
         'config_path':str(tmp_path/'none.json'),'ready_to_submit_formal_authorization':True,'cost_schedule_sha256':C.SCHEDULE_SHA256}))
     with pytest.raises(Exception,match='AUTHORIZATION_NOT_UNIQUE'):
-        C.prepare_governed_request(tmp_path,governance_root=C.ROOT,agent_commit='a'*40)
+        C.prepare_governed_request(tmp_path,governance_root=pre_c1_root,agent_commit='a'*40)
     with pytest.raises(Exception,match='AUTHORIZATION_NOT_UNIQUE'):
-        C.execute_authorized(tmp_path,governance_root=C.ROOT)
+        C.execute_authorized(tmp_path,governance_root=pre_c1_root)
 
 
 @pytest.fixture(scope='module')

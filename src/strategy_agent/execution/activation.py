@@ -40,8 +40,8 @@ def _uses(gov: Path, authorization_id: str) -> int:
     p = Path(gov) / "registry/research_authorization_uses.jsonl"
     if not p.is_file():
         return 0
-    return sum(1 for x in p.read_text(encoding="utf-8").splitlines()
-               if x.strip() and json.loads(x).get("authorization_id") == authorization_id)
+    from strategy_agent.registry.chain import ChainedLog
+    return sum(1 for x in ChainedLog(p).verify() if x.get("authorization_id") == authorization_id)
 
 
 def _book_active(gov: Path) -> dict:
@@ -50,20 +50,22 @@ def _book_active(gov: Path) -> dict:
     return ResearchAuthorizationBook(g / "research_authorizations.jsonl", g / "approvers.json").active
 
 
-def eligible_authorizations(gov: Path, executor_id: str, now: datetime) -> list[str]:
+def eligible_authorizations(gov: Path, executor_id: str, now: datetime, *, authorization_id: str | None = None) -> list[str]:
     """Standing precondition (no request yet): approved, active, unexpired, NOT spent-forever, executor named and equal.
     Budget is NOT a standing condition: an orchestrator must still be constructible to RECOVER / reconcile a consumed
     batch; every new request is refused by A07 at precheck. Empty on today's repository books => the real path cannot
     even be constructed there."""
     try:
-        active = _book_active(gov)
+        from strategy_agent.governance.authorization_contracts import active_contracts
+        from strategy_agent.orchestration.governance import is_isolated_test_root
+        active = _book_active(gov) if is_isolated_test_root(gov) else active_contracts(gov)
     except Exception:  # noqa: BLE001 - an unreadable book is never eligibility
         return []
     out = []
     for aid, a in active.items():
-        if aid in SPENT_FOREVER or (a.get("executor") or {}).get("executor_id") != executor_id:
+        if (authorization_id is not None and aid != authorization_id) or aid in SPENT_FOREVER or (a.get("executor") or {}).get("executor_id") != executor_id:
             continue
-        if datetime.fromisoformat(a["expires_at"]) <= now:
+        if not datetime.fromisoformat(a["issued_at"]) <= now < datetime.fromisoformat(a["expires_at"]):
             continue
         out.append(aid)
     return sorted(out)
@@ -71,9 +73,10 @@ def eligible_authorizations(gov: Path, executor_id: str, now: datetime) -> list[
 
 class RealActivationGate:
     def __init__(self, *, governance_root: Path, artifact_root: Path, executor_id: str, production_books: bool,
-                 readiness_manifest=None, clock=None):
+                 readiness_manifest=None, clock=None, authorization_id=None):
         self.governance_root, self.artifact_root = Path(governance_root), Path(artifact_root)
         self.executor_id, self.production_books = executor_id, production_books
+        self.authorization_id = authorization_id
         self.readiness_manifest = readiness_manifest      # callable -> manifest dict (B3-A); None => A10 BLOCKED
         self.clock = clock or (lambda: datetime.now().astimezone())
 
@@ -86,12 +89,18 @@ class RealActivationGate:
         rid = I.request_identity(doc)
         aid = rid["authorization_id"]
         try:
-            auth = _book_active(self.governance_root).get(aid)
+            from strategy_agent.governance.authorization_contracts import active_contracts
+            from strategy_agent.orchestration.governance import is_isolated_test_root
+            active = _book_active(self.governance_root) if is_isolated_test_root(self.governance_root) else active_contracts(self.governance_root)
+            auth = active.get(aid)
+            if self.authorization_id is not None and aid != self.authorization_id:
+                raise ValueError("AUTHORIZATION_CONTRACT_MISMATCH")
             book_err = None
         except Exception as e:  # noqa: BLE001
             auth, book_err = None, f"{type(e).__name__}: {e}"
         exp = auth and datetime.fromisoformat(auth["expires_at"])
-        put(CONDITIONS[0], bool(auth) and aid not in SPENT_FOREVER and exp > now,
+        issued = auth and datetime.fromisoformat(auth["issued_at"])
+        put(CONDITIONS[0], bool(auth) and aid not in SPENT_FOREVER and issued <= now < exp,
             {"authorization_id": aid, "active": bool(auth), "expires_at": auth and auth["expires_at"],
              "spent_forever": aid in SPENT_FOREVER, "book_error": book_err})
         from strategy_agent.binding.store import BindingStore  # noqa: PLC0415
@@ -121,9 +130,12 @@ class RealActivationGate:
         put(CONDITIONS[5], bool(rid["core_commit"]) and rid["core_commit"] == bid.get("core_commit")
             and not any("CORE" in p for p in bprob),
             {"request": rid["core_commit"], "installed": bid.get("core_commit"), "dataset_producer": ds.get("producer_commit_sha")})
-        used = _uses(self.governance_root, aid or "")
-        put(CONDITIONS[6], bool(auth) and used < int(auth.get("max_batches", 0)),
-            {"used": used, "max_batches": (auth or {}).get("max_batches")})
+        try:
+            used, uses_error = _uses(self.governance_root, aid or ""), None
+        except Exception as error:
+            used, uses_error = 0, str(error)
+        put(CONDITIONS[6], not uses_error and bool(auth) and used < int(auth.get("max_batches", 0)),
+            {"used": used, "max_batches": (auth or {}).get("max_batches"), "uses_error": uses_error})
         ex = (auth or {}).get("executor") or {}
         put(CONDITIONS[7], ex.get("executor_id") == self.executor_id and ex.get("consistency") == "SINGLE_EXECUTOR_ONLY",
             {"authorized": ex.get("executor_id"), "this_executor": self.executor_id})
