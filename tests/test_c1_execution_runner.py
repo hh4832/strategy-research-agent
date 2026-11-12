@@ -158,6 +158,7 @@ def test_notebook_defaults_to_prepare_and_unpublished_pin_stops():
     sources=[''.join(c['source']) for c in notebook['cells'] if c['cell_type']=='code']
     namespace={};exec(sources[0],namespace)
     assert namespace['MODE']=='PREPARE' and namespace['CONFIRM_REMOTE_CLAIM'] is False
+    assert 'uv==0.13.4' in sources[1]
     namespace['EXECUTION_CODE_SHA']=None
     with pytest.raises(RuntimeError,match='reviewed published'):exec(sources[1],namespace)
 
