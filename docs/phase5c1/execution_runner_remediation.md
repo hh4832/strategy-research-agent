@@ -81,3 +81,5 @@ The research lead authorized branch creation, commit, push and an independent Dr
 This line is a URL template. Use the full immutable notebook commit URL reported with the Draft PR; do not substitute a mutable branch URL.
 
 In a fresh Runtime, use PREPARE with the two exact reviewed Drive archive paths. Preserve the printed immutable preparation path and request/task hashes. The lead personally reviews/posts the two approval lines, then runs a fresh PREFLIGHT with those real URLs and the same code pin/preparation archive. Require actual-data PASS, all four dated costs, live governance/claim verification and complete archive verification. Only then may the lead separately decide whether to set EXECUTE and both explicit confirmations for one attempt. No execution is scheduled by this remediation.
+
+Published runtime pin: `ba939f64cce4ecafc0cad16d34cbb8616daa2f1c`. The later notebook commit changes launcher metadata/pin only; all five execution source files are byte-identical to this runtime commit.
