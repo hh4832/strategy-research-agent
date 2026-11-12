@@ -41,7 +41,11 @@
           "type": "object", "additionalProperties": false, "required": ["model", "scenario_set_path", "scenario_set_sha256", "scenarios"],
           "properties": {"model": {"const": "IBKR_PRO_FIXED"}, "scenario_set_path": {"type": "string"},
                          "scenario_set_sha256": {"$ref": "#/$defs/sha"},
-                         "scenarios": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}}
+                         "dated_schedule_path": {"type": "string", "minLength": 1},
+                         "dated_schedule_sha256": {"$ref": "#/$defs/sha"},
+                         "scenarios": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}},
+          "dependentRequired": {"dated_schedule_path": ["dated_schedule_sha256"],
+                                "dated_schedule_sha256": ["dated_schedule_path"]}
         },
         "strategy": {
           "type": "object", "additionalProperties": false, "required": ["spec_path", "spec_file_sha256", "strategy_id", "version", "parameters"],

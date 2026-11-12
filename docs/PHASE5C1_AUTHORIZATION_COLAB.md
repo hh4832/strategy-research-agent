@@ -1,0 +1,41 @@
+# Phase 5-C1 Research Authorization Colab
+
+This is authorization **administration**, not research execution. Default VALIDATE_ONLY never writes an APPROVE. PREPARE_APPROVAL writes an unsigned preview. APPROVE still requires a separate manual UI action, live GitHub identity and an independent PR; Run All only registers the button handler.
+
+## Versions and schema
+
+The reviewed source is `ec06ba63c7164d4c633a23ef304dade8270951d9`. This delivery adds paired optional dated Schedule path/SHA fields to the existing authorization contract. Old events remain valid. Unknown properties, SHA types, dates, approved-user checks and RA01–RA12 remain enforced. The actual runner compares the authorized pair to the execution config during preflight and again immediately before reservation; Core's existing canonical Schedule/source-byte verification remains unchanged. No cost amount, formula, data pin, success threshold or strategy condition changes.
+
+The Notebook's exact CODE_SHA is separate from its delivery commit. Its bootstrap clones that exact code, verifies remote/branch ancestry/HEAD/clean tree, and installs requirements into a private Python 3.11 venv. If the Colab kernel is newer, it provisions a private 3.11 interpreter using pinned uv, with caches/install/bin under the session directory. It does not reinstall or downgrade the kernel or modify another project environment. No Core installation or Snapshot reader is used by authorization administration.
+
+## Source evidence
+
+The original 3,036-byte draft and archive index are preserved under `docs/phase5c1/authorization_source/`. Draft SHA256 is `a6615f050b62e5cc47e8e79355b345c30176a970bbb40f6c47a42343f916aad0`; index SHA256 is `39a7c09fe40886499ca94c008904db1bd6530708f44c39219908220589880b1a`. The tracked proposal is exactly the unsigned `proposal_fields`, with human validity undecided.
+
+Validation reads only index-whitelisted archived JSON and official cost source documents from run `20261111_230118_690789`. It checks the real archived nine-check Preflight, reviewed six pins, personal review reference, generated config/spec, 2017–2024 trading window (2016 warm-up), fixed scenarios, canonical historical Schedule and source digests. It does not load Snapshot/Parquet or reuse runtime_binding.json. The original Drive archive must remain mounted and intact; this session's fixtures are not a substitute for that real archive.
+
+## Seven cells
+
+1. **Human settings:** reviewed code SHA/branch, actual separate authorization PR URL, lead hh4832, seven-day validity, mode, explicit confirmations and Drive paths. Default is VALIDATE_ONLY, confirmation false. Review the code PR before setting CONFIRM_CODE_REVIEW. No token is entered in settings.
+2. **Environment:** create a new isolated clone and Python 3.11 venv; verify repository, commit, clean status, schema and requirements. Git commands touch only new local directories.
+3. **Validation:** original proposal, source hashes, archived reviewed metadata, fixed scope and unchanged formal gate. Print individual PASS/FAIL checks. An omitted PR URL is allowed for initial validation, but approval remains unavailable. A provided URL must pass live GitHub checks using your Colab Secret GITHUB_TOKEN.
+4. **Validity:** preview the current Asia/Taipei time and +7 days, explicitly not an approval. PREPARE_APPROVAL exports that unsigned preview; actual issuance is chosen anew at the human click.
+5. **Human gate:** in APPROVE mode, settings confirmation + a separate unchecked checkbox + typing the full authorization ID + personally clicking are required. Even an enabled button is never clicked by Run All. Live /user identity must match the allow-listed immutable GitHub login/id. The PR must be in the pinned repository, open, target main, be created by the lead and use a separate branch (neither code delivery nor PR #21). Forks/Apps/wrong identity/head changes fail closed.
+6. **Verification/synchronization:** local approval is `LOCAL_APPROVED_PENDING_PR_SYNC`, never effective. Use printed GitHub web-edit links and the exact saved candidate/book files to personally commit changes to that PR branch in the browser. No local Python/Git/VS Code installation is needed. After your review/merge, manually enable VERIFY_MERGED; the Notebook verifies the merged exact record SHA, hash chain, active interval, scope, unchanged gate and unused budget. A later Runtime needs the genuine record SHA from its earlier Drive audit.
+7. **Output:** immutable timestamp+code-SHA Drive directory; validation/review JSON, run_info.txt and explicit-whitelist PR synchronization files/patch when applicable. Each copied file is verified against source-before/source-after/Drive SHA. Tokens, environment variables, git config and settings are never archived. Run this cell again after a human approval or merged verification to create another new audit archive.
+
+## Human procedure without local tools
+
+1. Review this code/schema delivery and its CI. It must reach reviewed main before an authorization operation: approval checks the actual source/schema/requirements bytes against CODE_SHA in both the independent PR and main (including after squash merges). No merge is performed by this delivery.
+2. Open the pinned Colab URL and use a fresh Runtime. Set CONFIRM_CODE_REVIEW=True only after reviewing the pin. Run VALIDATE_ONLY against the original mounted Drive archive.
+3. In a fresh session select PREPARE_APPROVAL. Review the generated unsigned preview and export it. Use GitHub's browser editor to put the preview into the proposal path on a **new authorization branch from compatible main**. This supplies an actual diff for a separate authorization PR; preview timestamps are not approval. Open that PR and retain its real URL. Do not use PR #21, the code delivery PR or old PR #18 as authorization evidence.
+4. In a fresh session select APPROVE, enter the actual PR URL, set CONFIRM_AUTHORIZATION=True and make your personal token available as Colab Secret GITHUB_TOKEN. Run the checks, then separately tick/type/click Cell 5. This is **your own** human operation; the agent has not done it.
+5. The helper rechecks the live PR head and contract, clones only that PR into a fresh directory, refuses source/schema changes relative to reviewed code, and calls the existing `python -m strategy_agent.governance.research_authorization_admin approve`. It does not append JSONL itself. This is not effective authorization yet.
+6. Rerun Cells 6/7. Save the exact proposed JSON, complete validated book, record SHA and synchronization patch. Through the printed GitHub web links, personally commit those exact contents to the **same** authorization PR branch. Do not edit existing log lines, timestamps or chain hashes. Review and merge via the established lead process. No cell commits, pushes or merges automatically.
+7. Rerun Cell 6 with VERIFY_MERGED=True and archive the read-only verification. If interrupted before Drive backup, preserve/reconcile the local working book; never generate another approval merely to retry a failed synchronization. Missing tokens/API, changed code/head, duplicate IDs, expired validity, altered pins or SHA errors stop the process.
+
+Only after effective authorization is confirmed may the separate C1/B3-C preparation generate its two personal GitHub approval requests. This Notebook does not invoke that preparation, the research runner, an execution mode, a strategy, a data reader, or any budget consumer. Formal Market Gate stays NO_GO, Holdout NO_ACCESS and max_batches=1 for all four scenarios together. Existing research Notebooks still carry their old code pin; do not assume an old schema/runtime can accept this new record. A compatible reviewed reader and a separately pinned governance checkout must be used for future research.
+
+## Validation limits
+
+Tests use isolated books, synthetic metadata and a fresh UI namespace; no live human approval is performed in tests. Python 3.11 is exercised locally. Actual private Drive and authenticated Colab/GitHub UI operation must be accepted by the human lead; this delivery does not claim those live actions occurred. External interpreter/package downloads and GitHub API access are runtime prerequisites. Local approvals are not effective solely because a file exists on Drive.

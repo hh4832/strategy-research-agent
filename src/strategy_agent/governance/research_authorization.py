@@ -117,6 +117,23 @@ def validate_events(events: list[dict], approvers: set[str]) -> dict[str, dict]:
     return active
 
 
+def dated_cost_failures(authorization: dict | None, core_costs: dict) -> list:
+    """Bind the actual execution configuration to the authorization's dated pin pair (RA06).
+
+    Legacy authorizations/configurations without either field remain compatible.
+    A dated configuration is never authorized by an unpinned legacy authorization.
+    """
+    if authorization is None:
+        return []  # RA01 already refuses missing authorization.
+    keys = ('dated_schedule_path', 'dated_schedule_sha256')
+    approved = tuple(authorization.get('costs', {}).get(k) for k in keys)
+    requested = tuple(core_costs.get(k) for k in keys)
+    if any(x is not None for x in approved + requested):
+        if any(not isinstance(x, str) or not x for x in approved + requested) or approved != requested:
+            return [('RA06', 'dated Schedule path/SHA differs from the approved authorization')]
+    return []
+
+
 class ResearchAuthorizationBook:
     """Read-only view. Deliberately has no write method."""
 

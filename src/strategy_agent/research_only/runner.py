@@ -120,7 +120,9 @@ class ResearchOnlyRunner:
             first = datetime.fromisoformat(cfg["windows"]["warmup_start"]).date()
             last = datetime.fromisoformat(cfg["windows"]["end"]).date() - timedelta(days=1)
             if cfg.get("core_costs", {}).get("dated_schedule_sha256"):
-                from strategy_agent.execution.c1_integration import load_dated_schedules, SCHEDULE_SHA256
+                from strategy_agent.execution.c1_integration import load_dated_schedules, SCHEDULE_SHA256, SCHEDULE
+                if cfg["core_costs"].get("dated_schedule_path") != SCHEDULE:
+                    raise CostSetError("dated schedule path does not match the reviewed C1 pin")
                 if cfg["core_costs"]["dated_schedule_sha256"] != SCHEDULE_SHA256:
                     raise CostSetError("dated schedule SHA does not match the reviewed C1 pin")
                 schedules = load_dated_schedules(self.root, expected_sha256=cfg["core_costs"]["dated_schedule_sha256"])
@@ -156,7 +158,8 @@ class ResearchOnlyRunner:
             d = guard.check(self.request(cfg, cost_set))
             gov["authorization"] = ("APPROVED" if d.authorization else "MISSING")
             gov["authorization_uses"] = guard.used(cfg["authorization_id"])
-            b += d.failures
+            from strategy_agent.governance.research_authorization import dated_cost_failures
+            b += d.failures + dated_cost_failures(d.authorization, cfg.get("core_costs", {}))
         except AuthorizationBookInvalid as e:
             b.append(("RA00", f"authorization book invalid: {e}"))
 
@@ -280,6 +283,8 @@ class ResearchOnlyRunner:
         cost_set = CostSet(self.root / cfg["costs"]["scenario_set_path"], root=self.root)
         req = self.request(cfg, cost_set)
         d = guard.check(req)                                     # re-check immediately before the atomic reserve
+        from strategy_agent.governance.research_authorization import dated_cost_failures
+        d.failures += dated_cost_failures(d.authorization, cfg.get("core_costs", {}))
         if d.failures:
             return {"executed": False, "slot_consumed": False, "status": "BLOCKED_BEFORE_CONSUMPTION",
                     "blockers": [{"code": c, "message": m} for c, m in d.failures], **base}
