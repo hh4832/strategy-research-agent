@@ -211,8 +211,11 @@ def execution_preflight(preparation,staged,*,governance_root,code_sha,session_di
     """Non-consuming live BIND dry run, personal TASK evidence, fresh backend and unchanged A10."""
     prepared,source,manifest=preflight(preparation,staged,governance_root=governance_root,code_sha=code_sha)
     from strategy_agent.approval import Expectation
+    from strategy_agent.approval.tokens import scope_sha256
+    from strategy_agent.orchestration.request import request_hash
     bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':AUTH})
-    verifier.verify(bind_url,Expectation.for_request(source,intent='BIND_AUTHORIZATION',authorization_id=AUTH))
+    verifier.verify(bind_url,Expectation(intent='BIND_AUTHORIZATION',authorization_id=AUTH,
+        request_sha256=request_hash(source),scope_sha256=scope_sha256(source)))
     verifier.verify(task_url,Expectation.for_request(bound,intent='APPROVE_TASK',task_id=prepared['task_id']))
     if bind_url==task_url:raise ValueError('TWO_DISTINCT_PERSONAL_COMMENTS_REQUIRED')
     root=Path(preparation)

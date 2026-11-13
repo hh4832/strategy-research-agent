@@ -266,3 +266,64 @@ def test_published_notebook_pin_matches_runtime_sources():
     for name in ('c1_runner.py','c1_claim.py','c1_archive.py','c1_integration.py','b3c_run.py'):
         relative='src/strategy_agent/execution/'+name
         assert subprocess.check_output(['git','show',sha+':'+relative],cwd=ROOT)==(ROOT/relative).read_bytes()
+
+
+@pytest.mark.parametrize('intent,wrong_field',[
+    ('BIND_AUTHORIZATION',None),
+    ('BIND_AUTHORIZATION','authorization'),
+    ('BIND_AUTHORIZATION','request'),
+    ('BIND_AUTHORIZATION','scope'),
+    ('APPROVE_TASK','authorization'),
+    ('APPROVE_TASK','request'),
+    ('APPROVE_TASK','scope'),
+    ('APPROVE_TASK','task'),
+])
+def test_c1_preflight_expectation_api_and_subject_guards(tmp_path,monkeypatch,intent,wrong_field):
+    """Real verifier over TEST_FIXTURE comments; no PREPARE, network, binding or dispatch."""
+    from datetime import timezone
+    from strategy_agent.approval import ApprovalRejected
+    from strategy_agent.approval.testkit import FixtureApprovals
+    from strategy_agent.approval.tokens import scope_sha256
+    from strategy_agent.orchestration.request import request_hash
+    from strategy_agent.binding.service import AuthorizationBindingService
+
+    source=R.read(ROOT/'docs/examples/phase5b1/PROBE_PENDING_tsm_sma520_research_only_real.json')
+    assert source['authorization_ref']=='PENDING'
+    original=copy.deepcopy(source)
+    prepared=R.B.approval_lines(source,K.AUTH,expires_utc='2026-11-15T00:00:00Z')
+    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':K.AUTH})
+    approvals=FixtureApprovals(clock=lambda:datetime(2026,11,14,tzinfo=timezone.utc))
+    bind_line=approvals.line(source,intent='BIND_AUTHORIZATION',authorization_id=K.AUTH)
+    task_line=approvals.line(bound,intent='APPROVE_TASK',task_id=prepared['task_id'])
+    if wrong_field:
+        subject=source if intent=='BIND_AUTHORIZATION' else bound
+        old={'authorization':K.AUTH,'request':request_hash(subject),'scope':scope_sha256(subject),
+             'task':prepared['task_id']}[wrong_field]
+        new={'authorization':'RA-WRONG-0001','request':'0'*64,'scope':'0'*64,'task':'T-'+'0'*20}[wrong_field]
+        if intent=='BIND_AUTHORIZATION':bind_line=bind_line.replace(f'{wrong_field}={old}',f'{wrong_field}={new}')
+        else:task_line=task_line.replace(f'{wrong_field}={old}',f'{wrong_field}={new}')
+    bind_url=approvals.comment('SYNTHETIC_FIXTURE ONLY\n'+bind_line)
+    task_url=approvals.comment('SYNTHETIC_FIXTURE ONLY\n'+task_line)
+    calls=[]
+    monkeypatch.setattr(R,'preflight',lambda *a,**kw:(prepared,source,{'fixture':True}))
+    class Backend:
+        def precheck(self,request):
+            assert request==bound
+            calls.append('backend');return []
+        def execution_identity(self):return R.I.request_identity(bound),[]
+    monkeypatch.setattr(R.B,'production_backend',lambda **kw:Backend())
+    def dry_only(self,**kwargs):
+        assert kwargs['dry_run'] is True and kwargs['authorization_id']==K.AUTH
+        calls.append('binding-dry-run')
+        return {'would_write':{'bound_request_sha256':prepared['bound_request_sha256']}}
+    monkeypatch.setattr(AuthorizationBindingService,'bind',dry_only)
+    kwargs=dict(governance_root=ROOT,code_sha='a'*40,session_dir=tmp_path/'session',
+                bind_url=bind_url,task_url=task_url,verifier=approvals.verifier)
+    if wrong_field:
+        with pytest.raises(ApprovalRejected) as error:R.execution_preflight(tmp_path,{'local_root':str(tmp_path),'bundle':{}},**kwargs)
+        assert error.value.code=='V06_SUBJECT_MISMATCH'
+        assert not calls
+    else:
+        result=R.execution_preflight(tmp_path,{'local_root':str(tmp_path),'bundle':{}},**kwargs)
+        assert result[0]==prepared and calls==['backend','binding-dry-run']
+    assert source==original
