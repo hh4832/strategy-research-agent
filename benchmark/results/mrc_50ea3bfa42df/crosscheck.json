@@ -1,0 +1,2068 @@
+{
+ "engine": {
+  "name": "market-research-core",
+  "git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+  "version": "0.2.0",
+  "kind": "REAL_CORE",
+  "api": "ExecutionEngine.run",
+  "source": "file:///tmp/c1-state-core"
+ },
+ "adapter_version": "m1.3-0.5.0",
+ "generated_at": "2026-11-14T07:52:53+08:00",
+ "verdict": "PASS",
+ "counts": {
+  "PASS": 12,
+  "FAIL": 0,
+  "NOT_EXECUTABLE": 0,
+  "PASS_IF_ONLY_C2_FIXED": 12
+ },
+ "capability_matrix": [
+  {
+   "cap_id": "K01",
+   "contract": "C3",
+   "description": "generic execution entry point accepting externally computed orders/targets",
+   "required_by": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "ExecutionEngine.run('bars', 'orders', 'cost_profile', 'config', 'cost_schedule')",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K02",
+   "contract": "C3",
+   "description": "short positions",
+   "required_by": [
+    "B06"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "FIFO long/short lots; target_position signed",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K03",
+   "contract": "C8",
+   "description": "tick-based slippage with an instrument tick size",
+   "required_by": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "CostProfile.tick_size + slippage_ticks; adverse_fill_price rounds against the trader to a valid tick",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K04",
+   "contract": "C8",
+   "description": "fixed fee per unit per side and per-side tax (futures)",
+   "required_by": [
+    "B01",
+    "B03",
+    "B04",
+    "B06",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "futures fee per contract per side, transaction tax rate, multiplier",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K05",
+   "contract": "C1",
+   "description": "side-specific execution eligibility (buy/sell)",
+   "required_by": [
+    "B07"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "bars require buy_/sell_execution_eligible (+ per-side rejection reason columns)",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K06",
+   "contract": "C1",
+   "description": "session awareness with OUTSIDE_SESSION rejection",
+   "required_by": [
+    "B05"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "session_open/session_close per bar; OUTSIDE_SESSION when bar_start outside [open, close)",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K07",
+   "contract": "C1",
+   "description": "ZERO_VOLUME_BAR rejection",
+   "required_by": [
+    "B04"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "volume <= 0 -> ZERO_VOLUME_BAR",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K08",
+   "contract": "C5",
+   "description": "exclusion windows and invalidated round trips",
+   "required_by": [
+    "B11"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "ExecutionConfig.exclusion_windows; invalidated_round_trips ledger",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K09",
+   "contract": "C6",
+   "description": "futures roll from the spec schedule, contract-keyed FIFO, no implied roll",
+   "required_by": [
+    "B09"
+   ],
+   "status": "PARTIAL",
+   "evidence": "FIFO keyed by (symbol, contract); no roll schedule input: roll orders must be supplied by the caller",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K10",
+   "contract": "C7",
+   "description": "open position reported at end of data (no implicit close)",
+   "required_by": [
+    "B10"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "ExecutionResult.open_positions with mark_price, unrealized_pnl",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K11",
+   "contract": "C4",
+   "description": "real engine git SHA in result provenance",
+   "required_by": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "PARTIAL",
+   "evidence": "provenance.engine_git_sha = ExecutionConfig.core_commit_sha (caller-supplied; engine does not self-identify; engine_version hard-coded '2.1.0')",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K12",
+   "contract": "C3",
+   "description": "exact arithmetic or a rounding rule able to reproduce convention v1 (no rounding)",
+   "required_by": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "rounding modes Literal['HALF_UP', 'UP', 'DOWN', 'NONE', 'FLOOR_INTEGER']; calculate_costs returns Decimal",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K13",
+   "contract": "C1",
+   "description": "PIT: execution never before information availability",
+   "required_by": [
+    "B08"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "order_time < signal_available_at -> PIT_VIOLATION; bar_start >= available_at",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K14",
+   "contract": "C3",
+   "description": "order time-in-force / expiry matching convention v1 §1.5",
+   "required_by": [
+    "B05",
+    "B07"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "time_in_force Literal['NEXT_BAR', 'DAY']; DAY expiry at the first session_close > order_time",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K15",
+   "contract": "C3",
+   "description": "rejection log per skipped bar with specific codes (convention v1 §1.4)",
+   "required_by": [
+    "B04",
+    "B05",
+    "B07"
+   ],
+   "status": "SUPPORTED",
+   "evidence": "rejection per skipped bar with order_id, bar_ts, reason",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K16",
+   "contract": "C3",
+   "description": "fills applied in fill-time order (no exit before entry)",
+   "required_by": [],
+   "status": "SUPPORTED",
+   "evidence": "probe fills [('SELL', '09:20'), ('BUY', '09:25')]; round trips [('SHORT', '09:20', '09:25')]",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K17",
+   "contract": "C3",
+   "description": "target orders sized from filled position + live pending intent (convention v1)",
+   "required_by": [],
+   "status": "SUPPORTED",
+   "evidence": "probe fills [('SELL', '09:20'), ('BUY', '09:25')]; open positions 0",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  },
+  {
+   "cap_id": "K14b",
+   "contract": "C3",
+   "description": "DAY expiry half-open: bar_start == expiry is not a candidate",
+   "required_by": [],
+   "status": "SUPPORTED",
+   "evidence": "probe fills []; rejections ['LIMIT_UP_LOCKED_BUY', 'LIMIT_UP_LOCKED_BUY', 'ORDER_EXPIRED']",
+   "core_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e"
+  }
+ ],
+ "cases": [
+  {
+   "case_id": "B01_normal_entry_exit",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "BUY",
+     "target_position": 1.0,
+     "order_time": "2026-01-05 09:15"
+    },
+    {
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-05 09:30"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:15",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-05 09:30",
+      "target": 0
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "7339.76",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:15",
+      "exec_ts": "2026-01-05 09:15",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20011",
+      "fee": "50",
+      "tax": "80.044"
+     },
+     {
+      "order_ts": "2026-01-05 09:30",
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20049",
+      "fee": "50",
+      "tax": "80.196"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:15",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20011.0",
+      "fee": "50.000",
+      "tax": "80.044000000",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20049.0",
+      "fee": "50.000",
+      "tax": "80.196000000",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "7339.76",
+    "round_trip_net_pnl": [
+     "7339.76"
+    ],
+    "rejections": [],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "bae5bd5bccadf16bbc075e3d2ad54266cecda05a1dd1f26343cc6d5d7cbb8f22",
+     "dataset_snapshot_id": "B01_normal_entry_exit",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-05 09:15",
+      "2026-01-05 09:20"
+     ],
+     [
+      "2026-01-05 09:30",
+      "2026-01-05 09:35"
+     ]
+    ],
+    "fills": 2
+   }
+  },
+  {
+   "case_id": "B02_next_bar_execution_sma",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "strategy_agent.signals.sma_crossover",
+   "orders": [
+    {
+     "order_id": "0000-CROSS_ABOVE",
+     "contract": "SYNS",
+     "side": "BUY",
+     "target_position": 1000.0,
+     "order_time": "2026-01-05 09:30"
+    },
+    {
+     "order_id": "0001-CROSS_BELOW",
+     "contract": "SYNS",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-05 09:45"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:30",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-05 09:45",
+      "target": 0
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "-1149.80",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:30",
+      "exec_ts": "2026-01-05 09:30",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "60.4",
+      "fee": "86.07",
+      "tax": "0"
+     },
+     {
+      "order_ts": "2026-01-05 09:45",
+      "exec_ts": "2026-01-05 09:45",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "59.6",
+      "fee": "84.93",
+      "tax": "178.8"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "60.4",
+      "fee": "86.0700000000",
+      "tax": "0.0",
+      "order_id": "0000-CROSS_ABOVE",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-05 09:45",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "59.6",
+      "fee": "84.9300000000",
+      "tax": "178.8000000",
+      "order_id": "0001-CROSS_BELOW",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "-1149.8",
+    "round_trip_net_pnl": [
+     "-1149.8"
+    ],
+    "rejections": [],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "29640178678d37fbaf600d99c97117c3092ad6441d48b10cd641d0ae247078ae",
+     "dataset_snapshot_id": "B02_next_bar_execution_sma",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-05 09:30",
+      "2026-01-05 09:35"
+     ]
+    ],
+    "fills": 1
+   }
+  },
+  {
+   "case_id": "B03_missing_bar",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "BUY",
+     "target_position": 1.0,
+     "order_time": "2026-01-05 09:15"
+    },
+    {
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-05 09:30"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:15",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-05 09:30",
+      "target": 0
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "-2660.2",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:15",
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20031",
+      "fee": "50",
+      "tax": "80.124"
+     },
+     {
+      "order_ts": "2026-01-05 09:30",
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20019",
+      "fee": "50",
+      "tax": "80.076"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20031.0",
+      "fee": "50.000",
+      "tax": "80.124000000",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "NEXT_ELIGIBLE_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20019.0",
+      "fee": "50.000",
+      "tax": "80.076000000",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "-2660.2",
+    "round_trip_net_pnl": [
+     "-2660.2"
+    ],
+    "rejections": [],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "30ae9a9da4fd29b602d0b9cd872c68885b4ee636484987e9b1d6f6c83a11a9a3",
+     "dataset_snapshot_id": "B03_missing_bar",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-05 09:30",
+      "2026-01-05 09:35"
+     ]
+    ],
+    "fills": 2
+   }
+  },
+  {
+   "case_id": "B04_zero_volume",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "BUY",
+     "target_position": 1.0,
+     "order_time": "2026-01-05 09:15"
+    },
+    {
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-05 09:30"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:15",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-05 09:30",
+      "target": 0
+     }
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-05 09:15",
+      "order_ts": "2026-01-05 09:15",
+      "side": "BUY",
+      "contract": "SYNF",
+      "reason": "ZERO_VOLUME_BAR"
+     }
+    ],
+    "realized_pnl": "3339.76",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:15",
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20021",
+      "fee": "50",
+      "tax": "80.084"
+     },
+     {
+      "order_ts": "2026-01-05 09:30",
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20039",
+      "fee": "50",
+      "tax": "80.156"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20021.0",
+      "fee": "50.000",
+      "tax": "80.084000000",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "NEXT_ELIGIBLE_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-05 09:30",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20039.0",
+      "fee": "50.000",
+      "tax": "80.156000000",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "3339.76",
+    "round_trip_net_pnl": [
+     "3339.76"
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-05 09:15",
+      "reason": "ZERO_VOLUME_BAR",
+      "order_id": "0000-FIXTURE_SIGNAL"
+     }
+    ],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "7b75c57f518e21b5915c188ee62a925d073ce2b8f086f94a5eab44e0f1ba0ac4",
+     "dataset_snapshot_id": "B04_zero_volume",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-05 09:30",
+      "2026-01-05 09:35"
+     ]
+    ],
+    "fills": 2
+   }
+  },
+  {
+   "case_id": "B05_outside_session",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNS",
+     "side": "BUY",
+     "target_position": 1000.0,
+     "order_time": "2026-01-05 09:20"
+    },
+    {
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "contract": "SYNS",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-06 09:10"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:20",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-06 09:10",
+      "target": 0
+     }
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-05 09:20",
+      "order_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "contract": "SYNS",
+      "reason": "OUTSIDE_SESSION"
+     },
+     {
+      "bar_ts": "2026-01-06 08:55",
+      "order_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "contract": "SYNS",
+      "reason": "OUTSIDE_SESSION"
+     }
+    ],
+    "realized_pnl": "-155.395",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:20",
+      "exec_ts": "2026-01-06 09:00",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "60.6",
+      "fee": "86.355",
+      "tax": "0"
+     },
+     {
+      "order_ts": "2026-01-06 09:10",
+      "exec_ts": "2026-01-06 09:10",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "60.8",
+      "fee": "86.64",
+      "tax": "182.4"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-06 09:00",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "60.6",
+      "fee": "86.3550000000",
+      "tax": "0.0",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "NEXT_ELIGIBLE_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-06 09:10",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "60.8",
+      "fee": "86.6400000000",
+      "tax": "182.4000000",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "-155.395",
+    "round_trip_net_pnl": [
+     "-155.395"
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-05 09:20",
+      "reason": "OUTSIDE_SESSION",
+      "order_id": "0000-FIXTURE_SIGNAL"
+     },
+     {
+      "bar_ts": "2026-01-06 08:55",
+      "reason": "OUTSIDE_SESSION",
+      "order_id": "0000-FIXTURE_SIGNAL"
+     }
+    ],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "5025810b43003f5f3a5535649862481457422c5297a0b7c362ffb7a4fddc9644",
+     "dataset_snapshot_id": "B05_outside_session",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-06 09:10",
+      "2026-01-06 09:15"
+     ]
+    ],
+    "fills": 2
+   }
+  },
+  {
+   "case_id": "B06_costs_slippage_short",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "SELL",
+     "target_position": -2.0,
+     "order_time": "2026-01-05 09:10"
+    },
+    {
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "BUY",
+     "target_position": 0.0,
+     "order_time": "2026-01-05 09:20"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:10",
+      "target": -1
+     },
+     {
+      "signal_ts": "2026-01-05 09:20",
+      "target": 0
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "38679.2",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:10",
+      "exec_ts": "2026-01-05 09:10",
+      "side": "SELL",
+      "qty": 2,
+      "contract": "SYNF",
+      "fill_price": "20099",
+      "fee": "100",
+      "tax": "160.792"
+     },
+     {
+      "order_ts": "2026-01-05 09:20",
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 2,
+      "contract": "SYNF",
+      "fill_price": "20001",
+      "fee": "100",
+      "tax": "160.008"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:10",
+      "side": "SELL",
+      "qty": 2,
+      "contract": "SYNF",
+      "fill_price": "20099.0",
+      "fee": "100.000",
+      "tax": "160.792000000",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "qty": 2,
+      "contract": "SYNF",
+      "fill_price": "20001.0",
+      "fee": "100.000",
+      "tax": "160.008000000",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "38679.2",
+    "round_trip_net_pnl": [
+     "38679.2"
+    ],
+    "rejections": [],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "1e22724f245f49b4a96de4a67d2a34c3318f2e044eb6f9f4115b2d53026fc120",
+     "dataset_snapshot_id": "B06_costs_slippage_short",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-05 09:10",
+      "2026-01-05 09:15"
+     ],
+     [
+      "2026-01-05 09:20",
+      "2026-01-05 09:25"
+     ]
+    ],
+    "fills": 2
+   }
+  },
+  {
+   "case_id": "B07_limit_locked",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNS",
+     "side": "BUY",
+     "target_position": 1000.0,
+     "order_time": "2026-01-05 09:20"
+    },
+    {
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "contract": "SYNS",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-06 09:20"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:20",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-06 09:20",
+      "target": 0
+     }
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-06 09:00",
+      "order_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "contract": "SYNS",
+      "reason": "LIMIT_UP_LOCKED_BUY"
+     },
+     {
+      "bar_ts": "2026-01-06 09:05",
+      "order_ts": "2026-01-05 09:20",
+      "side": "BUY",
+      "contract": "SYNS",
+      "reason": "LIMIT_UP_LOCKED_BUY"
+     },
+     {
+      "bar_ts": "2026-01-07 09:00",
+      "order_ts": "2026-01-06 09:20",
+      "side": "SELL",
+      "contract": "SYNS",
+      "reason": "LIMIT_DOWN_LOCKED_SELL"
+     },
+     {
+      "bar_ts": "2026-01-07 09:05",
+      "order_ts": "2026-01-06 09:20",
+      "side": "SELL",
+      "contract": "SYNS",
+      "reason": "LIMIT_DOWN_LOCKED_SELL"
+     }
+    ],
+    "realized_pnl": "-7253.2275",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:20",
+      "exec_ts": "2026-01-06 09:10",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "65.6",
+      "fee": "93.48",
+      "tax": "0"
+     },
+     {
+      "order_ts": "2026-01-06 09:20",
+      "exec_ts": "2026-01-07 09:10",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "58.7",
+      "fee": "83.6475",
+      "tax": "176.1"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-06 09:10",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "65.6",
+      "fee": "93.4800000000",
+      "tax": "0.0",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "NEXT_ELIGIBLE_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-07 09:10",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "58.7",
+      "fee": "83.6475000000",
+      "tax": "176.1000000",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "execution_assumption": "NEXT_ELIGIBLE_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "-7253.2275",
+    "round_trip_net_pnl": [
+     "-7253.2275"
+    ],
+    "rejections": [
+     {
+      "bar_ts": "2026-01-06 09:00",
+      "reason": "LIMIT_UP_LOCKED_BUY",
+      "order_id": "0000-FIXTURE_SIGNAL"
+     },
+     {
+      "bar_ts": "2026-01-06 09:05",
+      "reason": "LIMIT_UP_LOCKED_BUY",
+      "order_id": "0000-FIXTURE_SIGNAL"
+     },
+     {
+      "bar_ts": "2026-01-07 09:00",
+      "reason": "LIMIT_DOWN_LOCKED_SELL",
+      "order_id": "0001-FIXTURE_SIGNAL"
+     },
+     {
+      "bar_ts": "2026-01-07 09:05",
+      "reason": "LIMIT_DOWN_LOCKED_SELL",
+      "order_id": "0001-FIXTURE_SIGNAL"
+     }
+    ],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "6129926e7be9bae81523f0587320ea10ef366ab243c1201baf62b38ac7a0e763",
+     "dataset_snapshot_id": "B07_limit_locked",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [],
+    "fills": 2
+   }
+  },
+  {
+   "case_id": "B08_pit_not_yet_available",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNS",
+     "side": "BUY",
+     "target_position": 1000.0,
+     "order_time": "2026-01-06 09:05"
+    },
+    {
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "contract": "SYNS",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-06 09:25"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-06 09:05",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-06 09:25",
+      "target": 0
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "-58.7625",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-06 09:05",
+      "exec_ts": "2026-01-06 09:05",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "61.1",
+      "fee": "87.0675",
+      "tax": "0"
+     },
+     {
+      "order_ts": "2026-01-06 09:25",
+      "exec_ts": "2026-01-06 09:25",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "61.4",
+      "fee": "87.495",
+      "tax": "184.2"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-06 09:05",
+      "side": "BUY",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "61.1",
+      "fee": "87.0675000000",
+      "tax": "0.0",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-06 09:25",
+      "side": "SELL",
+      "qty": 1000,
+      "contract": "SYNS",
+      "fill_price": "61.4",
+      "fee": "87.4950000000",
+      "tax": "184.2000000",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "-58.7625",
+    "round_trip_net_pnl": [
+     "-58.7625"
+    ],
+    "rejections": [],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "4c185a3302a68d33c8c98751a5356751fae062f62e175e54ebadb25884aad803",
+     "dataset_snapshot_id": "B08_pit_not_yet_available",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-06 09:05",
+      "2026-01-06 09:10"
+     ]
+    ],
+    "fills": 1
+   }
+  },
+  {
+   "case_id": "B09_futures_roll",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNF2601",
+     "side": "BUY",
+     "target_position": 1.0,
+     "order_time": "2026-01-06 09:05"
+    },
+    {
+     "order_id": "0001-ROLL_CLOSE",
+     "contract": "SYNF2601",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-07 09:00"
+    },
+    {
+     "order_id": "0002-ROLL_OPEN",
+     "contract": "SYNF2602",
+     "side": "BUY",
+     "target_position": 1.0,
+     "order_time": "2026-01-07 09:00"
+    },
+    {
+     "order_id": "0003-FIXTURE_SIGNAL",
+     "contract": "SYNF2602",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-07 09:10"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-06 09:05",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-07 09:10",
+      "target": 0
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "26278.152",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-06 09:05",
+      "exec_ts": "2026-01-06 09:05",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF2601",
+      "fill_price": "20013",
+      "fee": "50",
+      "tax": "80.052"
+     },
+     {
+      "order_ts": "2026-01-07 09:00",
+      "exec_ts": "2026-01-07 09:00",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF2601",
+      "fill_price": "20099",
+      "fee": "50",
+      "tax": "80.396"
+     },
+     {
+      "order_ts": "2026-01-07 09:00",
+      "exec_ts": "2026-01-07 09:00",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF2602",
+      "fill_price": "20151",
+      "fee": "50",
+      "tax": "80.604"
+     },
+     {
+      "order_ts": "2026-01-07 09:10",
+      "exec_ts": "2026-01-07 09:10",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF2602",
+      "fill_price": "20199",
+      "fee": "50",
+      "tax": "80.796"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-06 09:05",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF2601",
+      "fill_price": "20013.0",
+      "fee": "50.000",
+      "tax": "80.052000000",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-07 09:00",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF2601",
+      "fill_price": "20099.0",
+      "fee": "50.000",
+      "tax": "80.396000000",
+      "order_id": "0001-ROLL_CLOSE",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-07 09:00",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF2602",
+      "fill_price": "20151.0",
+      "fee": "50.000",
+      "tax": "80.604000000",
+      "order_id": "0002-ROLL_OPEN",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-07 09:10",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF2602",
+      "fill_price": "20199.0",
+      "fee": "50.000",
+      "tax": "80.796000000",
+      "order_id": "0003-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "26278.152",
+    "round_trip_net_pnl": [
+     "16939.552",
+     "9338.6"
+    ],
+    "rejections": [],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "50867239ee4a79ad9658ecc04ab049f5d3566f73d3bb38e1487bbe4ad7e9fe71",
+     "dataset_snapshot_id": "B09_futures_roll",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-06 09:05",
+      "2026-01-06 09:10"
+     ],
+     [
+      "2026-01-07 09:00",
+      "2026-01-07 09:05"
+     ],
+     [
+      "2026-01-07 09:00",
+      "2026-01-07 09:05"
+     ]
+    ],
+    "fills": 3
+   }
+  },
+  {
+   "case_id": "B10_open_position_at_end",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "BUY",
+     "target_position": 1.0,
+     "order_time": "2026-01-05 09:15"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:15",
+      "target": 1
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "0",
+    "open_position": {
+     "contract": "SYNF",
+     "direction": "LONG",
+     "qty": 1,
+     "entry_ts": "2026-01-05 09:15",
+     "entry_price": "20011",
+     "entry_costs": "130.044",
+     "mark_ts": "2026-01-05 09:35",
+     "mark_price": "20060",
+     "unrealized_pnl_mark": "9800",
+     "equity_change_mark_after_entry_costs": "9669.956",
+     "terminal_liquidation_estimate_net": "9339.72"
+    },
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:15",
+      "exec_ts": "2026-01-05 09:15",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20011",
+      "fee": "50",
+      "tax": "80.044"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:15",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20011.0",
+      "fee": "50.000",
+      "tax": "80.044000000",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "0",
+    "round_trip_net_pnl": [],
+    "rejections": [],
+    "invalidated_net_pnl": [],
+    "open_position": {
+     "qty": 1.0,
+     "side": "LONG",
+     "contract": "SYNF",
+     "mark_price": "20060.0",
+     "unrealized_pnl_mark": "9800.0"
+    },
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "58a90debc1c03c4ec7f03c86b164c00c98ec46c4c11dcf88d4e18a3c9ea6b90e",
+     "dataset_snapshot_id": "B10_open_position_at_end",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-05 09:15",
+      "2026-01-05 09:20"
+     ]
+    ],
+    "fills": 1
+   }
+  },
+  {
+   "case_id": "B11_exclusion_window",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "fixture expected.signals (hand-calculated)",
+   "orders": [
+    {
+     "order_id": "0000-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "BUY",
+     "target_position": 1.0,
+     "order_time": "2026-01-05 09:10"
+    },
+    {
+     "order_id": "0001-FIXTURE_SIGNAL",
+     "contract": "SYNF",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-05 09:35"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:10",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-05 09:35",
+      "target": 0
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "0",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:10",
+      "exec_ts": "2026-01-05 09:10",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20011",
+      "fee": "50",
+      "tax": "80.044"
+     },
+     {
+      "order_ts": "2026-01-05 09:35",
+      "exec_ts": "2026-01-05 09:35",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20064",
+      "fee": "50",
+      "tax": "80.256"
+     }
+    ],
+    "invalidated_net_pnl": [
+     "10339.7"
+    ]
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:10",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20011.0",
+      "fee": "50.000",
+      "tax": "80.044000000",
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-05 09:35",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20064.0",
+      "fee": "50.000",
+      "tax": "80.256000000",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "0",
+    "round_trip_net_pnl": [],
+    "rejections": [],
+    "invalidated_net_pnl": [
+     "10339.7"
+    ],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "a26eeb4a5d65b1e3bc178cd413593c21793395ea3bb3809f68ef28ec0ba26570",
+     "dataset_snapshot_id": "B11_exclusion_window",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-05 09:10",
+      "2026-01-05 09:15"
+     ]
+    ],
+    "fills": 1
+   }
+  },
+  {
+   "case_id": "B12_orb_lookahead_trap",
+   "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+   "status": "PASS",
+   "executed_on_core": true,
+   "core_api": "ExecutionEngine.run",
+   "signal_source": "strategy_agent.signals.orb",
+   "orders": [
+    {
+     "order_id": "0000-BREAK_UP",
+     "contract": "SYNF",
+     "side": "BUY",
+     "target_position": 1.0,
+     "order_time": "2026-01-05 09:25"
+    },
+    {
+     "order_id": "0001-TIME_FLATTEN",
+     "contract": "SYNF",
+     "side": "SELL",
+     "target_position": 0.0,
+     "order_time": "2026-01-05 09:35"
+    }
+   ],
+   "expected": {
+    "signals": [
+     {
+      "signal_ts": "2026-01-05 09:25",
+      "target": 1
+     },
+     {
+      "signal_ts": "2026-01-05 09:35",
+      "target": 0
+     }
+    ],
+    "rejections": [],
+    "realized_pnl": "1339.632",
+    "open_position": null,
+    "fills": [
+     {
+      "order_ts": "2026-01-05 09:25",
+      "exec_ts": "2026-01-05 09:25",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20042",
+      "fee": "50",
+      "tax": "80.168"
+     },
+     {
+      "order_ts": "2026-01-05 09:35",
+      "exec_ts": "2026-01-05 09:35",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20050",
+      "fee": "50",
+      "tax": "80.2"
+     }
+    ],
+    "invalidated_net_pnl": []
+   },
+   "actual": {
+    "fills": [
+     {
+      "exec_ts": "2026-01-05 09:25",
+      "side": "BUY",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20042.0",
+      "fee": "50.000",
+      "tax": "80.168000000",
+      "order_id": "0000-BREAK_UP",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     },
+     {
+      "exec_ts": "2026-01-05 09:35",
+      "side": "SELL",
+      "qty": 1,
+      "contract": "SYNF",
+      "fill_price": "20050.0",
+      "fee": "50.000",
+      "tax": "80.200000000",
+      "order_id": "0001-TIME_FLATTEN",
+      "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+     }
+    ],
+    "realized_pnl": "1339.632",
+    "round_trip_net_pnl": [
+     "1339.632"
+    ],
+    "rejections": [],
+    "invalidated_net_pnl": [],
+    "open_position": null,
+    "provenance": {
+     "engine_git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+     "execution_convention": "oracle-execution-convention-v1",
+     "spec_sha256": "8814157c7efbd00adce93a8fcbb270b83ae8b24d19dc27dfbcc2f25b209269ae",
+     "dataset_snapshot_id": "B12_orb_lookahead_trap",
+     "core_status": "RESEARCH_ONLY"
+    }
+   },
+   "differences": [],
+   "first_divergent_event": null,
+   "root_cause_tags": [],
+   "differences_other_than_c2_rounding": [],
+   "root_causes": [],
+   "blocking": false,
+   "c1_default_assumption_diagnostic": {
+    "same_timestamp_open_assumption": false,
+    "fill_time_shifts": [
+     [
+      "2026-01-05 09:25",
+      "2026-01-05 09:30"
+     ]
+    ],
+    "fills": 1
+   }
+  }
+ ],
+ "probes": {
+  "G16_acceptance": {
+   "status": "PASS",
+   "checks": {
+    "fills_in_fill_time_order": true,
+    "no_exit_before_entry": true,
+    "equity_starts_at_initial_cash_and_reconciles_when_flat": true,
+    "prefix_invariance_no_future_dependent_fills": true,
+    "unfilled_order_does_not_change_state_before_fill": true,
+    "same_timestamp_orders_deterministic": true
+   },
+   "notes": [],
+   "scenario": {
+    "case_id": "X16_delayed_buy_later_target",
+    "core_fills": [
+     [
+      "2026-01-05 09:20:00+08:00",
+      "0001-FIXTURE_SIGNAL",
+      "SELL",
+      1000.0,
+      "59.9",
+      "85.3575000000",
+      "179.7000000",
+      "SYNS"
+     ],
+     [
+      "2026-01-05 09:25:00+08:00",
+      "0000-FIXTURE_SIGNAL",
+      "BUY",
+      1000.0,
+      "60.1",
+      "85.6425000000",
+      "0.0",
+      "SYNS"
+     ]
+    ],
+    "core_open_positions": [],
+    "orders": [
+     {
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "contract": "SYNS",
+      "side": "BUY",
+      "target_position": 1000.0,
+      "order_time": "2026-01-05 09:10"
+     },
+     {
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "contract": "SYNS",
+      "side": "SELL",
+      "target_position": 0.0,
+      "order_time": "2026-01-05 09:20"
+     }
+    ]
+   }
+  },
+  "oracle_probes": {
+   "G17": {
+    "case_id": "X16_delayed_buy_later_target",
+    "status": "PASS",
+    "expected_source": "oracle-generated (benchmark.oracle.reference_engine.run_case)",
+    "expected": {
+     "fills": [
+      {
+       "order_ts": "2026-01-05 09:20",
+       "exec_ts": "2026-01-05 09:20",
+       "side": "SELL",
+       "qty": 1000,
+       "contract": "SYNS",
+       "ref_open": "60",
+       "fill_price": "59.9",
+       "fee": "85.3575000",
+       "tax": "179.7000"
+      },
+      {
+       "order_ts": "2026-01-05 09:10",
+       "exec_ts": "2026-01-05 09:25",
+       "side": "BUY",
+       "qty": 1000,
+       "contract": "SYNS",
+       "ref_open": "60",
+       "fill_price": "60.1",
+       "fee": "85.6425000",
+       "tax": "0.0"
+      }
+     ],
+     "rejections": [
+      {
+       "bar_ts": "2026-01-05 09:10",
+       "reason": "LIMIT_UP_LOCKED_BUY"
+      },
+      {
+       "bar_ts": "2026-01-05 09:15",
+       "reason": "LIMIT_UP_LOCKED_BUY"
+      },
+      {
+       "bar_ts": "2026-01-05 09:20",
+       "reason": "LIMIT_UP_LOCKED_BUY"
+      }
+     ],
+     "realized_pnl": "-550.7000000",
+     "open_position": null
+    },
+    "actual": {
+     "fills": [
+      {
+       "exec_ts": "2026-01-05 09:20",
+       "side": "SELL",
+       "qty": 1000,
+       "contract": "SYNS",
+       "fill_price": "59.9",
+       "fee": "85.3575000000",
+       "tax": "179.7000000",
+       "order_id": "0001-FIXTURE_SIGNAL",
+       "execution_assumption": "SAME_TIMESTAMP_BAR_OPEN"
+      },
+      {
+       "exec_ts": "2026-01-05 09:25",
+       "side": "BUY",
+       "qty": 1000,
+       "contract": "SYNS",
+       "fill_price": "60.1",
+       "fee": "85.6425000000",
+       "tax": "0.0",
+       "order_id": "0000-FIXTURE_SIGNAL",
+       "execution_assumption": "NEXT_ELIGIBLE_BAR_OPEN"
+      }
+     ],
+     "rejections": [
+      {
+       "bar_ts": "2026-01-05 09:10",
+       "reason": "LIMIT_UP_LOCKED_BUY",
+       "order_id": "0000-FIXTURE_SIGNAL"
+      },
+      {
+       "bar_ts": "2026-01-05 09:15",
+       "reason": "LIMIT_UP_LOCKED_BUY",
+       "order_id": "0000-FIXTURE_SIGNAL"
+      },
+      {
+       "bar_ts": "2026-01-05 09:20",
+       "reason": "LIMIT_UP_LOCKED_BUY",
+       "order_id": "0000-FIXTURE_SIGNAL"
+      }
+     ],
+     "realized_pnl": "-550.7",
+     "open_position": null
+    },
+    "orders": [
+     {
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "contract": "SYNS",
+      "side": "BUY",
+      "target_position": 1000.0,
+      "order_time": "2026-01-05 09:10"
+     },
+     {
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "contract": "SYNS",
+      "side": "SELL",
+      "target_position": 0.0,
+      "order_time": "2026-01-05 09:20"
+     }
+    ],
+    "differences": [],
+    "adapter_guard_hits": [],
+    "divergence_situations": [
+     {
+      "gap": "G17",
+      "order_id": "0001-FIXTURE_SIGNAL",
+      "while_live": "0000-FIXTURE_SIGNAL",
+      "order_time": "2026-01-05T09:20:00+08:00"
+     }
+    ],
+    "guard_enforced_for": [],
+    "first_divergent_event": null
+   },
+   "G14b": {
+    "case_id": "X14b_day_expiry_back_to_back_sessions",
+    "status": "PASS",
+    "expected_source": "oracle-generated (benchmark.oracle.reference_engine.run_case)",
+    "expected": {
+     "fills": [],
+     "rejections": [
+      {
+       "bar_ts": "2026-01-05 09:10",
+       "reason": "LIMIT_UP_LOCKED_BUY"
+      },
+      {
+       "bar_ts": "2026-01-05 09:15",
+       "reason": "LIMIT_UP_LOCKED_BUY"
+      },
+      {
+       "bar_ts": null,
+       "reason": "ORDER_EXPIRED"
+      }
+     ],
+     "realized_pnl": "0",
+     "open_position": null
+    },
+    "actual": {
+     "fills": [],
+     "rejections": [
+      {
+       "bar_ts": "2026-01-05 09:10",
+       "reason": "LIMIT_UP_LOCKED_BUY",
+       "order_id": "0000-FIXTURE_SIGNAL"
+      },
+      {
+       "bar_ts": "2026-01-05 09:15",
+       "reason": "LIMIT_UP_LOCKED_BUY",
+       "order_id": "0000-FIXTURE_SIGNAL"
+      },
+      {
+       "bar_ts": null,
+       "reason": "ORDER_EXPIRED",
+       "order_id": "0000-FIXTURE_SIGNAL"
+      }
+     ],
+     "realized_pnl": "0",
+     "open_position": null
+    },
+    "orders": [
+     {
+      "order_id": "0000-FIXTURE_SIGNAL",
+      "contract": "SYNS",
+      "side": "BUY",
+      "target_position": 1000.0,
+      "order_time": "2026-01-05 09:10"
+     }
+    ],
+    "differences": [],
+    "adapter_guard_hits": [],
+    "divergence_situations": [],
+    "guard_enforced_for": [],
+    "first_divergent_event": null
+   }
+  }
+ },
+ "statement": "expected values read from benchmark/cases (unchanged); actual values produced by the real Core ExecutionEngine.run; synthetic START label/sessions are engine-test settings, not evidence about real TXF/IBKR data"
+}

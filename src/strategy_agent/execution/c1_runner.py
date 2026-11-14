@@ -165,6 +165,17 @@ def prepare(staged, destination, *, code_sha, governance_root, code_root=C.ROOT)
         authorization_id=AUTH,canonical_config=artifact/C.CONFIG,agent_commit=code_sha,
         completion=read(root/'completion.json'),hypothesis=read(root/'proposal.json')['draft']['hypothesis']['question'],
         adapter_id='CLAUDE_AUTHORED_P5C1_COMPLETION_FILE',manifest_kind='PHASE5C1_PREPARE_MANIFEST')
+    from strategy_agent.orchestration.governance import Governance
+    from strategy_agent.binding.service import REQUIRED_GOVERNANCE
+    _,source=B.load_prepared(root/'governed_request',governance_root=governance_root)
+    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':AUTH})
+    decision=Governance(artifact,governance_root=governance_root).check(bound,binding_check=False)
+    checks={item['id']:item['status'] for item in decision.checks}
+    if any(checks.get(key)!='PASS' for key in REQUIRED_GOVERNANCE):
+        raise ValueError('C1_PREPARE_GOVERNANCE_BLOCKED:'+json.dumps(decision.as_dict()))
+    # Governance.consumes_budget describes a future dispatch, not this read-only check.
+    C.save(root/'C1_PRE_BIND_GOVERNANCE.json',{'operation':'READ_ONLY_PRE_BIND_CHECK',
+        'batch_consumption':0,'decision':decision.as_dict()})
     C.save(root/'C1_PINNED_CONTEXT.json',{'code_sha':code_sha,'governance_sha':GOVERNANCE_SHA,'core_sha':C.CORE,
         'authorization_record_sha256':RECORD_SHA,'authorization_id':AUTH,'request_sha256':prepared['bound_request_sha256'],
         'batch':1,'batch_consumed':0,'strategy_execution':'NOT_EXECUTED'})
@@ -178,6 +189,8 @@ def preflight(preparation, staged, *, governance_root, code_sha):
     root=Path(preparation);context=read(root/'C1_PINNED_CONTEXT.json')
     if context['code_sha']!=code_sha or context['governance_sha']!=GOVERNANCE_SHA or context['core_sha']!=C.CORE:
         raise ValueError('C1_CODE_OR_GOVERNANCE_PIN_CHANGED')
+    from strategy_agent.execution.c1_benchmark import verify
+    verify(root/'artifacts')
     auth=authority(governance_root)
     manifest=readiness_manifest(auth,read(root/'artifacts'/C.CONFIG),root/'artifacts',staged,
                                 governance_root=governance_root,measured_core_sha=core_sha())
@@ -324,11 +337,14 @@ def main():
     provenance={'code_sha':code_sha,'governance_sha':GOVERNANCE_SHA,'core_sha':C.CORE,'mode':mode,
                 'authorization_id':AUTH,'strategy_execution':'NOT_EXECUTED' if mode!='EXECUTE' else 'HUMAN_REQUESTED'}
     if mode=='PREPARE':
+        from strategy_agent.execution.c1_benchmark import archive
+        benchmark_archive=archive(parent,execution_sha=code_sha)
         prepared=prepare(staged,local/'preparation',code_sha=code_sha,governance_root=gov)
         archived=archive_attempt(parent/'archives',preparation=local/'preparation',governance=gov,
             work=local/'unused',runtime_audit=audit,provenance=provenance,
             outcome={'status':'PREPARED_UNSIGNED_TASK','batch_consumption':0})
-        print(json.dumps({'preparation':str(archived/'preparation'),
+        print(json.dumps({'preparation':str(archived/'preparation'),'benchmark_archive':str(benchmark_archive),
+            'task_id':prepared['task_id'],'bound_request_sha256':prepared['bound_request_sha256'],
             'BIND_AUTHORIZATION':prepared['BIND_AUTHORIZATION'],'APPROVE_TASK':prepared['APPROVE_TASK'],
             'comments_posted':False,'batch_consumption':0},indent=2));return
     from strategy_agent.approval import production_verifier

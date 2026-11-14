@@ -263,7 +263,7 @@ def test_published_notebook_pin_matches_runtime_sources():
     sha=namespace['EXECUTION_CODE_SHA']
     if sha is None:return  # pre-publication template; always stops before bootstrap
     assert len(sha)==40 and all(c in '0123456789abcdef' for c in sha)
-    for name in ('c1_runner.py','c1_claim.py','c1_archive.py','c1_integration.py','b3c_run.py'):
+    for name in ('c1_runner.py','c1_claim.py','c1_archive.py','c1_integration.py','b3c_run.py','c1_benchmark.py'):
         relative='src/strategy_agent/execution/'+name
         assert subprocess.check_output(['git','show',sha+':'+relative],cwd=ROOT)==(ROOT/relative).read_bytes()
 
@@ -327,3 +327,79 @@ def test_c1_preflight_expectation_api_and_subject_guards(tmp_path,monkeypatch,in
         result=R.execution_preflight(tmp_path,{'local_root':str(tmp_path),'bundle':{}},**kwargs)
         assert result[0]==prepared and calls==['backend','binding-dry-run']
     assert source==original
+
+
+@pytest.mark.parametrize('damage',['missing','wrong_core','invalid_json','partial_cases','G16','G17','G14b'])
+def test_g4_authentic_evidence_negative_cases(prepared,damage):
+    from strategy_agent.execution import c1_benchmark as E
+    from strategy_agent.orchestration.governance import Governance
+    directory=prepared/'artifacts'/E.RELATIVE
+    record=directory/'crosscheck.json'
+    if damage=='missing':record.unlink()
+    elif damage=='invalid_json':record.write_text('NOT_JSON')
+    else:
+        doc=R.read(record)
+        if damage=='wrong_core':doc['engine']['git_sha']=E.CORE[:12]+'0'*28
+        if damage=='partial_cases':doc['cases'].pop()
+        if damage=='G16':doc['probes']['G16_acceptance']['status']='FAIL'
+        if damage in ('G17','G14b'):doc['probes']['oracle_probes'][damage]['status']='FAIL'
+        record.write_text(json.dumps(doc))  # isolated tampered copy; never published as evidence
+    with pytest.raises(ValueError):E.verify(prepared/'artifacts')
+    _,source=R.B.load_prepared(prepared/'governed_request',governance_root=ROOT)
+    bound=dict(source,authorization_ref={'authorization_id':K.AUTH})
+    decision=Governance(prepared/'artifacts',governance_root=ROOT).check(bound,binding_check=False)
+    g4=next(c for c in decision.checks if c['id']=='G4_CORE_COST')
+    assert g4['status']=='FAIL' and g4['detail']['benchmark']['status']=='NOT_VERIFIED'
+
+
+def test_authentic_benchmark_packaging_and_append_only_archive(tmp_path):
+    from strategy_agent.execution import c1_benchmark as E
+    result=E.package(ROOT,tmp_path/'artifact')
+    assert result['derived_status']['status']=='BENCHMARK_PASS'
+    assert (tmp_path/'artifact'/E.RELATIVE/'crosscheck.json').read_bytes()==(ROOT/E.RELATIVE/'crosscheck.json').read_bytes()
+    with pytest.raises(FileExistsError):E.package(ROOT,tmp_path/'artifact')
+    first=E.archive(tmp_path/'drive',execution_sha='a'*40)
+    second=E.archive(tmp_path/'drive',execution_sha='a'*40)
+    assert first!=second
+    for archive in (first,second):
+        assert verify_archive(archive)['provenance']['timezone']=='Asia/Taipei'
+        assert E.verify(archive)['record_sha256']==E.RECORD_SHA
+
+
+def test_full_nonconsuming_c1_binding_preflight_uses_authentic_g4(prepared,staged,tmp_path,monkeypatch):
+    import shutil
+    from strategy_agent.approval.testkit import FixtureApprovals
+    from strategy_agent.orchestration.governance import ISOLATION_MARKER
+    from strategy_agent.execution import c1_benchmark as E
+    gov=tmp_path/'isolated-books'
+    for folder in ('governance','registry'):shutil.copytree(ROOT/folder,gov/folder)
+    (gov/ISOLATION_MARKER).write_text(json.dumps({'kind':'ISOLATED_TEST_GOVERNANCE_ROOT'}))
+    before={p:p.read_bytes() for p in gov.rglob('*') if p.is_file()}
+    manifest,source=R.B.load_prepared(prepared/'governed_request',governance_root=gov)
+    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':K.AUTH})
+    approvals=FixtureApprovals()
+    bind_url=approvals.comment('ISOLATED_TEST ONLY\n'+manifest['BIND_AUTHORIZATION'])
+    task_url=approvals.comment('ISOLATED_TEST ONLY\n'+manifest['APPROVE_TASK'])
+    class Backend:
+        def precheck(self,request):assert request==bound;return []
+        def execution_identity(self):return R.I.request_identity(bound),[]
+    monkeypatch.setattr(R.B,'production_backend',lambda **kw:Backend())
+    def forbidden(*a,**kw):raise AssertionError('formal action reached by PREFLIGHT')
+    monkeypatch.setattr(K.GitHubClaim,'acquire',forbidden)
+    monkeypatch.setattr(R.B,'execute',forbidden)
+    result=R.execution_preflight(prepared,staged,governance_root=gov,code_sha='a'*40,session_dir=tmp_path/'session',
+        bind_url=bind_url,task_url=task_url,verifier=approvals.verifier)
+    assert result[0]['bound_request_sha256']==manifest['bound_request_sha256']
+    assert R.read(prepared/'C1_PRE_BIND_GOVERNANCE.json')['batch_consumption']==0
+    checks=R.read(prepared/'C1_PRE_BIND_GOVERNANCE.json')['decision']['checks']
+    assert next(c for c in checks if c['id']=='G4_CORE_COST')['status']=='PASS'
+    assert E.verify(prepared/'artifacts')['record_sha256']==E.RECORD_SHA
+    assert all(p.read_bytes()==v for p,v in before.items())
+    R.unused(gov)
+
+
+def test_new_runtime_does_not_reuse_old_preparation(prepared,staged):
+    before=(prepared/'C1_PINNED_CONTEXT.json').read_bytes()
+    with pytest.raises(ValueError,match='C1_CODE_OR_GOVERNANCE_PIN_CHANGED'):
+        R.preflight(prepared,staged,governance_root=ROOT,code_sha='b'*40)
+    assert (prepared/'C1_PINNED_CONTEXT.json').read_bytes()==before
