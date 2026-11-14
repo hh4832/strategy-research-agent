@@ -275,7 +275,7 @@ def load_prepared(d: Path, *, governance_root=None) -> tuple[dict, dict]:
 # ------------------------------------------------------------------------------------------- run 2: execute
 def production_backend(*, root: Path, snapshot_root: Path, session_dir: Path, git_commit: str, context: dict, canonical_config: Path | None = None,
                        authorization_id: str = AUTHORIZATION_ID, runner_root: Path | None = None,
-                       governance_root: Path | None = None):
+                       governance_root: Path | None = None, runtime_bundle: dict | None = None):
     """The existing ResearchOnlyRunner on the REAL snapshot, with Core's own receipt renewal (never hand-made)."""
     from strategy_agent.execution.controlled import ResearchOnlyRunnerBackend  # noqa: PLC0415
     from strategy_agent.readiness.b3c import B3C_RUN_CONFIG_PATH  # noqa: PLC0415
@@ -289,7 +289,7 @@ def production_backend(*, root: Path, snapshot_root: Path, session_dir: Path, gi
                                 uses_path=gov / "registry/research_authorization_uses.jsonl",
                                 approvers_path=gov / "governance/approvers.json",
                                 readiness_path=gov / "governance/market_readiness.json")
-    sc = DR.session_config(canon, Path(snapshot_root), Path(session_dir))
+    sc = DR.session_config(canon, Path(snapshot_root), Path(session_dir), runtime_bundle=runtime_bundle)
     auth = _authorization(gov, authorization_id)
     ctx = dict(context) | {"canonical_config_path": str(canon), "canonical_config_sha256": sc["canonical_config_sha256"],
                            "canonical_config": sc["canonical_config"], "session_config_difference": sc["difference"],
@@ -301,7 +301,7 @@ def production_backend(*, root: Path, snapshot_root: Path, session_dir: Path, gi
 
 def execute(prepared_dir: Path, *, bind_url: str, task_url: str, verifier, backend, work_dir: Path, claim_dir: Path,
             artifact_root: Path = ROOT, governance_root: Path = ROOT, executor_id: str = EXECUTOR,
-            production_books: bool = True, readiness_manifest=None, benchmark=None, clock=None) -> dict:
+            production_books: bool = True, readiness_manifest=None, benchmark=None, clock=None, external_claim=None) -> dict:
     """Run 2. Consumes the single batch at most once. Returns the orchestrator status + evidence pointers."""
     from strategy_agent.approval import ApprovalRejected, Expectation  # noqa: PLC0415
     from strategy_agent.binding.service import AuthorizationBindingService, BindingRejected  # noqa: PLC0415
@@ -315,6 +315,11 @@ def execute(prepared_dir: Path, *, bind_url: str, task_url: str, verifier, backe
     if claim.exists():
         raise B3CStopped("CLAIM_EXISTS", {"claim": str(claim), "meaning": "an earlier attempt exists: "
                                           "RECONCILIATION_REQUIRED by the research lead; never re-run"})
+    if aid == "RA-IBKR_TSM-SMA520_P5C1-0001":
+        from strategy_agent.execution.c1_claim import ClaimGrant
+        if not isinstance(external_claim,ClaimGrant) or (production_books and not external_claim.production):
+            raise B3CStopped("C1_SERVER_CLAIM_CAPABILITY_REQUIRED")
+        external_claim.consume(aid,m["bound_request_sha256"])
     clock = clock or (lambda: datetime.now(TPE))
     d = Path(prepared_dir)
     kw = {"source_request_path": d / "request.json", "provenance_path": d / "request_provenance.json",

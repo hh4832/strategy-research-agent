@@ -1,0 +1,80 @@
+{
+  "exit_code": 0,
+  "engine": {
+    "name": "market-research-core",
+    "git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+    "version": "0.2.0",
+    "kind": "REAL_CORE",
+    "api": "ExecutionEngine.run",
+    "source": "file:///tmp/c1-state-core"
+  },
+  "counts": {
+    "PASS": 12,
+    "FAIL": 0,
+    "NOT_EXECUTABLE": 0,
+    "PASS_IF_ONLY_C2_FIXED": 12
+  },
+  "G16": {
+    "status": "PASS",
+    "checks": {
+      "fills_in_fill_time_order": true,
+      "no_exit_before_entry": true,
+      "equity_starts_at_initial_cash_and_reconciles_when_flat": true,
+      "prefix_invariance_no_future_dependent_fills": true,
+      "unfilled_order_does_not_change_state_before_fill": true,
+      "same_timestamp_orders_deterministic": true
+    },
+    "notes": [],
+    "scenario": {
+      "case_id": "X16_delayed_buy_later_target",
+      "core_fills": [
+        [
+          "2026-01-05 09:20:00+08:00",
+          "0001-FIXTURE_SIGNAL",
+          "SELL",
+          1000.0,
+          "59.9",
+          "85.3575000000",
+          "179.7000000",
+          "SYNS"
+        ],
+        [
+          "2026-01-05 09:25:00+08:00",
+          "0000-FIXTURE_SIGNAL",
+          "BUY",
+          1000.0,
+          "60.1",
+          "85.6425000000",
+          "0.0",
+          "SYNS"
+        ]
+      ],
+      "core_open_positions": [],
+      "orders": [
+        {
+          "order_id": "0000-FIXTURE_SIGNAL",
+          "contract": "SYNS",
+          "side": "BUY",
+          "target_position": 1000.0,
+          "order_time": "2026-01-05 09:10"
+        },
+        {
+          "order_id": "0001-FIXTURE_SIGNAL",
+          "contract": "SYNS",
+          "side": "SELL",
+          "target_position": 0.0,
+          "order_time": "2026-01-05 09:20"
+        }
+      ]
+    }
+  },
+  "oracle_probes": {
+    "G17": "PASS",
+    "G14b": "PASS"
+  },
+  "derived_status": {
+    "status": "BENCHMARK_PASS",
+    "why": "all 12 cases, G16 acceptance and oracle probes G17/G14b PASS on the real Core"
+  },
+  "finished_at": "2026-11-14T07:52:54.579552+08:00"
+}
