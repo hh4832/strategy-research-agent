@@ -11,6 +11,7 @@ from pathlib import Path
 import ssl
 import urllib.error
 import urllib.request
+from strategy_agent.execution.c1_context import claim_ref
 
 REPO = 'hh4832/strategy-research-agent'
 REPO_ID = 1443253343
@@ -49,9 +50,9 @@ class ClaimGrant:
 
     def consume(self,authorization_id,request_sha):
         with self.__lock:
-            if (os.getpid()!=self.__pid or self.__used or authorization_id!=AUTH
+            if (os.getpid()!=self.__pid or self.__used
                     or self.__record['authorization_id']!=authorization_id
-                    or self.__record['request_sha256']!=request_sha or self.__record['claim_ref']!=REF):
+                    or self.__record['request_sha256']!=request_sha or self.__record['claim_ref']!=claim_ref(authorization_id)):
                 raise ReconciliationRequired('CLAIM_CAPABILITY_MISMATCH_OR_ALREADY_USED')
             self.__used=True
 
@@ -78,7 +79,9 @@ _LIVE = _live
 
 
 class GitHubClaim:
-    def __init__(self, token=None, *, transport=None):
+    def __init__(self, token=None, *, transport=None, authorization_id=AUTH):
+        self.authorization_id=authorization_id
+        self.claim_ref=claim_ref(authorization_id)
         self._token=token if token is not None else os.environ.get('GITHUB_TOKEN','')
         self._transport=transport
 
@@ -107,25 +110,25 @@ class GitHubClaim:
                 user.get('login'),user.get('id'),user.get('type'))!=('hh4832',LEAD_ID,'User'):
             raise ReconciliationRequired('CLAIM_WRONG_REPOSITORY_OR_HUMAN_IDENTITY')
         live=self._get('/repos/'+REPO+'/git/ref/heads/main')['object']['sha']
-        for relative in PROTECTED:
+        for relative in (*PROTECTED, 'governance/proposals/'+self.authorization_id+'.json'):
             value=self._get('/repos/'+REPO+'/contents/'+relative+'?ref='+live)
             if value.get('encoding')!='base64':
                 raise ReconciliationRequired('GOVERNANCE_CONTENT_UNAVAILABLE')
             if base64.b64decode(value['content'])!=(Path(governance_root)/relative).read_bytes():
                 raise ReconciliationRequired('LIVE_GOVERNANCE_CHANGED:'+relative)
-        status,_=self._call('GET','/repos/'+REPO+'/git/ref/'+REF.removeprefix('refs/'))
+        status,_=self._call('GET','/repos/'+REPO+'/git/ref/'+self.claim_ref.removeprefix('refs/'))
         if status!=404:
             raise ReconciliationRequired('EXISTING_OR_UNVERIFIABLE_REMOTE_CLAIM')
-        return {'repository':REPO,'user':'hh4832','main_sha':live,'governance_sha':governance_sha,'claim_ref':REF}
+        return {'repository':REPO,'user':'hh4832','main_sha':live,'governance_sha':governance_sha,'claim_ref':self.claim_ref}
 
     def acquire(self, *, governance_root, governance_sha, request_sha):
         if len(request_sha)!=64 or any(c not in '0123456789abcdef' for c in request_sha):
             raise ValueError('full request SHA required')
         proof=self.inspect(governance_root,governance_sha)
         # GitHub enforces ref-name uniqueness atomically. No GET-then-file-write lock is relied on.
-        status,value=self._call('POST','/repos/'+REPO+'/git/refs',{'ref':REF,'sha':governance_sha})
-        if status!=201 or value.get('ref')!=REF or value.get('object',{}).get('sha')!=governance_sha:
+        status,value=self._call('POST','/repos/'+REPO+'/git/refs',{'ref':self.claim_ref,'sha':governance_sha})
+        if status!=201 or value.get('ref')!=self.claim_ref or value.get('object',{}).get('sha')!=governance_sha:
             raise ReconciliationRequired('CLAIM_NOT_EXCLUSIVELY_ACKNOWLEDGED; do not retry')
-        record=dict(proof,authorization_id=AUTH,batch=1,request_sha256=request_sha,
+        record=dict(proof,authorization_id=self.authorization_id,batch=1,request_sha256=request_sha,
                     status='CLAIMED_PENDING_SETTLEMENT',remote_url=value.get('url'))
         return ClaimGrant(record,self.production,_capability=_GRANT_CAPABILITY)

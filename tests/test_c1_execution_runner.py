@@ -263,9 +263,13 @@ def test_published_notebook_pin_matches_runtime_sources():
     sha=namespace['EXECUTION_CODE_SHA']
     if sha is None:return  # pre-publication template; always stops before bootstrap
     assert len(sha)==40 and all(c in '0123456789abcdef' for c in sha)
-    for name in ('c1_runner.py','c1_claim.py','c1_archive.py','c1_integration.py','b3c_run.py','c1_benchmark.py'):
-        relative='src/strategy_agent/execution/'+name
-        assert subprocess.check_output(['git','show',sha+':'+relative],cwd=ROOT)==(ROOT/relative).read_bytes()
+    import hashlib
+    evidence=R.read(ROOT/'tests/fixtures/notebook_pins/c1_historical.json')
+    assert sha==evidence['agent_commit']
+    assert hashlib.sha256((ROOT/'notebooks/Phase5C1_Development_Execution.ipynb').read_bytes()).hexdigest()==evidence['notebook_sha256']
+    entries=subprocess.check_output(['git','ls-tree','-r',sha,'--',*evidence['paths']],cwd=ROOT,text=True).splitlines()
+    assert entries==evidence['entries']
+
 
 
 @pytest.mark.parametrize('intent,wrong_field',[

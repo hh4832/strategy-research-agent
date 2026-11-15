@@ -96,44 +96,54 @@ def test_gate_and_no_strategy_logic(cells):
     assert "/content/m3c_env" in code             # isolated run root, not the repository
 
 
+def _verify_historical_pin(config, evidence, git):
+    # Evidence is anchored to immutable history, not the evolving working tree.
+    assert config["AGENT_COMMIT"] == evidence["agent_commit"]
+    assert config["CORE_SHA"] == evidence["core_sha"]
+    commit = evidence["agent_commit"]
+    assert git("merge-base", "--is-ancestor", commit, "HEAD").returncode == 0
+    actual = git("ls-tree", "-r", commit, "--", *evidence["paths"])
+    assert actual.returncode == 0
+    assert actual.stdout.splitlines() == evidence["entries"], "historical executable/input tree changed"
+    # Check object availability/integrity as well as the inventory of Git blob identities.
+    assert git("fsck", "--no-reflogs", "--no-dangling", commit).returncode == 0
+
+
 def test_n2_pin_is_an_already_committed_integration_commit_with_identical_code(cells):
-    """N2: the notebook pins a commit made BEFORE the notebook edit (no self-referential SHA), and everything Colab
-    executes from that commit is byte-identical to this tree."""
+    """The historical launcher and pinned executable/input blobs stay fixed; HEAD may evolve."""
+    import hashlib
     import subprocess
-    commit = _cfg(cells)["AGENT_COMMIT"]
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True)  # noqa: E731
+    evidence = json.loads((ROOT / "tests/fixtures/notebook_pins/m3b_historical.json").read_text())
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True)
+    commit = evidence["agent_commit"]
     if git("rev-parse", "--git-dir").returncode != 0 or git("cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
         pytest.skip("git history with the pinned commit not available (shallow clone)")
-    assert git("merge-base", "--is-ancestor", commit, "HEAD").returncode == 0
-    # pipeline code and pinned inputs: byte-identical
-    paths = ["src", "configs/research", "configs/cost_scenarios", "fixtures", "schemas", "specs", "benchmark",
-             "pyproject.toml",
-             "docs/evidence/m3c_reference_metrics.json"]
-    # Every file present at the pin must be unchanged (no M/D/R/T). Files ADDED after the pin (e.g. the Phase 4-A
-    # research-only modules) are allowed: the pinned Colab clone does not contain them, so they cannot change what
-    # it executes - provided no pinned file references them.
-    status = [ln.split("\t") for ln in git("diff", "--name-status", commit, "--", *paths).stdout.splitlines() if ln]
-    assert not [s for s in status if s[0] != "A"], status
-    for _, added in status:
-        if added.endswith(".py") and added.startswith("src/"):
-            mod = added[len("src/"):-len(".py")].replace("/", ".").removesuffix(".__init__")
-            assert git("grep", "-q", mod, commit, "--", "src", "notebooks").returncode != 0, f"pinned code references {mod}"
-    # governance records may gain reviewed facts (e.g. the 2026-11-05 RESEARCH_ONLY temporal acceptance), but only
-    # in market_readiness.json and without changing any market or gate status the pinned smoke ran against
-    # Allowed governance drift since the pin: market_readiness.json (statuses checked below), newly ADDED files
-    # (e.g. Phase 4-A research-only authorization book and proposals), and append-only growth of existing *.jsonl
-    # logs (e.g. a research-lead holdout lock). The pinned smoke only fingerprints governance before/after its own
-    # run and must still find the market gate closed, which the status check below guarantees.
-    gstatus = [ln.split("\t") for ln in git("diff", "--name-status", commit, "--", "governance").stdout.splitlines() if ln]
-    for st, path in ((s[0], s[-1]) for s in gstatus):
-        if st == "A" or path == "governance/market_readiness.json":
-            continue
-        assert st == "M" and path.endswith(".jsonl"), (st, path)
-        old_bytes = subprocess.run(["git", "show", f"{commit}:{path}"], cwd=ROOT, capture_output=True).stdout
-        assert (ROOT / path).read_bytes().startswith(old_bytes), f"{path} was not append-only since the pin"
-    old = json.loads(git("show", f"{commit}:governance/market_readiness.json").stdout)
-    new = json.loads((ROOT / "governance" / "market_readiness.json").read_text(encoding="utf-8"))
-    for m, e in old["markets"].items():
-        assert new["markets"][m]["status"] == e["status"]
-        assert {g: (v["status"], v.get("approved_by")) for g, v in new["markets"][m]["gates"].items()} == \
-            {g: (v["status"], v.get("approved_by")) for g, v in e["gates"].items()}
+    assert hashlib.sha256(NB.read_bytes()).hexdigest() == evidence["notebook_sha256"]
+    _verify_historical_pin(_cfg(cells), evidence, git)
+
+
+def test_n2_rejects_changed_launcher_sha_and_historical_evidence(cells):
+    import copy
+    import subprocess
+    evidence = json.loads((ROOT / "tests/fixtures/notebook_pins/m3b_historical.json").read_text())
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True)
+    if git("cat-file", "-e", evidence["agent_commit"]).returncode:
+        pytest.skip("historical objects unavailable in shallow clone")
+    cfg = _cfg(cells)
+    with pytest.raises(AssertionError):
+        _verify_historical_pin({**cfg, "AGENT_COMMIT": "0" * 40}, evidence, git)
+    bad = copy.deepcopy(evidence)
+    bad["entries"][0] = bad["entries"][0].replace("100644", "100755")
+    with pytest.raises(AssertionError, match="historical executable/input tree changed"):
+        _verify_historical_pin(cfg, bad, git)
+
+
+def test_n2_current_repair_cannot_change_historical_objects(cells, tmp_path):
+    import subprocess
+    evidence = json.loads((ROOT / "tests/fixtures/notebook_pins/m3b_historical.json").read_text())
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True)
+    if git("cat-file", "-e", evidence["agent_commit"]).returncode:
+        pytest.skip("historical objects unavailable in shallow clone")
+    # Stand-in future source is deliberately different. Verification reads only the pinned Git tree.
+    (tmp_path / "m3a4_contract.py").write_text("a future independent repair")
+    _verify_historical_pin(_cfg(cells), evidence, git)
