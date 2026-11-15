@@ -317,7 +317,8 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
                                                 cost_schedule=scenario_cost)
         A.guard_known_divergences(result, orders, frame, unsupported)
         checks = validate_conservative_result(result, orders=orders, cost_profile=profile,
-                                              policy=core.CONSERVATIVE_POLICY, core_sha=core_sha)
+                                              policy=core.CONSERVATIVE_POLICY, core_sha=core_sha,
+                                              cost_schedule=scenario_cost if dated_schedules is not None else None)
         report = A.core_result_to_report(result, request, core_sha, cost_profile=profile)
         if dated_schedules is not None:
             from strategy_agent.adapters.mrc_phase4a import core_dated_costs  # noqa: PLC0415

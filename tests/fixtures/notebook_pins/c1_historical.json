@@ -1,0 +1,20 @@
+{
+  "agent_commit": "209b56fe2bb4cf13b952f1baef51e8cfd89c6392",
+  "notebook_sha256": "5bef5cfdd9c6ac73ae2cce5c96151b8610f1ce344c42f200c72e8e61b333c418",
+  "paths": [
+    "src/strategy_agent/execution/c1_runner.py",
+    "src/strategy_agent/execution/c1_claim.py",
+    "src/strategy_agent/execution/c1_archive.py",
+    "src/strategy_agent/execution/c1_integration.py",
+    "src/strategy_agent/execution/b3c_run.py",
+    "src/strategy_agent/execution/c1_benchmark.py"
+  ],
+  "entries": [
+    "100644 blob 281d8a5a18d31224717992741a49d00e8917d15d\tsrc/strategy_agent/execution/b3c_run.py",
+    "100644 blob 5fc35085e2803277892a29a56450637391724032\tsrc/strategy_agent/execution/c1_archive.py",
+    "100644 blob 8d7d3bfb4edc6b81e3a5de5f09448374970a9978\tsrc/strategy_agent/execution/c1_benchmark.py",
+    "100644 blob 365720b615a0019f879a56e0a0423211dfae0e59\tsrc/strategy_agent/execution/c1_claim.py",
+    "100644 blob ee5f4257f5dc0b29ed5b75efa35b570affd975dc\tsrc/strategy_agent/execution/c1_integration.py",
+    "100644 blob f7bbe6fc6dcc8f7563077d7a8e0df1e918cc94c6\tsrc/strategy_agent/execution/c1_runner.py"
+  ]
+}

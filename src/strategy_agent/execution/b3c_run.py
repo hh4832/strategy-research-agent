@@ -145,9 +145,10 @@ def _isolated_core_fixture(root, authorization_id):
 
 
 def _manifest_contract(kind, authorization_id, governance_root):
-    from strategy_agent.governance.authorization_contracts import B3C, C1
+    from strategy_agent.governance.authorization_contracts import B3C, C1, C1_RECOVERY
     known = {"PHASE5B3C_PREPARE_MANIFEST": B3C, "PHASE5C1_PREPARE_MANIFEST": C1}
     return ((kind in known and known[kind] == authorization_id)
+            or (kind == "PHASE5C1_PREPARE_MANIFEST" and authorization_id == C1_RECOVERY)
             or (kind == TEST_MANIFEST and _isolated_core_fixture(governance_root, authorization_id)))
 
 
@@ -315,7 +316,7 @@ def execute(prepared_dir: Path, *, bind_url: str, task_url: str, verifier, backe
     if claim.exists():
         raise B3CStopped("CLAIM_EXISTS", {"claim": str(claim), "meaning": "an earlier attempt exists: "
                                           "RECONCILIATION_REQUIRED by the research lead; never re-run"})
-    if aid == "RA-IBKR_TSM-SMA520_P5C1-0001":
+    if aid.startswith("RA-IBKR_TSM-SMA520_P5C1-"):
         from strategy_agent.execution.c1_claim import ClaimGrant
         if not isinstance(external_claim,ClaimGrant) or (production_books and not external_claim.production):
             raise B3CStopped("C1_SERVER_CLAIM_CAPABILITY_REQUIRED")

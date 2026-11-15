@@ -14,6 +14,7 @@ from pathlib import Path
 from strategy_agent.execution import c1_integration as C, b3c_run as B, identity as I
 from strategy_agent.execution.c1_archive import archive_attempt, verify_archive
 from strategy_agent.execution.c1_claim import GitHubClaim, ReconciliationRequired, AUTH, REF
+from strategy_agent.execution.c1_context import context, CURRENT, recovery_context
 from strategy_agent.governance.research_authorization import gates_sha256
 from strategy_agent.registry.chain import ChainedLog
 from strategy_agent.research_only.runner import canonical_sha
@@ -41,18 +42,18 @@ def unused(root):
         path=root/'registry/research_budget_events.jsonl'
         events=[json.loads(x) for x in path.read_text().splitlines() if x.strip()] if path.exists() else []
         _verify(events,path)
-        reserved=[r for r in _fold(events).values() if r.get('authorization_id')==AUTH]
-        if reserved or any(e.get('authorization_id')==AUTH for e in uses+bindings):
+        reserved=[r for r in _fold(events).values() if r.get('authorization_id')==context().authorization_id]
+        if reserved or any(e.get('authorization_id')==context().authorization_id for e in uses+bindings):
             raise ReconciliationRequired('PRIOR_C1_STATE; no automatic retry')
     except ReconciliationRequired:raise
     except Exception:raise ReconciliationRequired('C1_SETTLEMENT_UNVERIFIABLE') from None
 
 
 def authority(root, *, now=None):
-    auth=B._authorization(Path(root),AUTH)
+    auth=B._authorization(Path(root),context().authorization_id)
     records=ChainedLog(Path(root)/'governance/research_authorizations.jsonl').verify()
-    found=[e for e in records if e.get('authorization_id')==AUTH]
-    if len(found)!=1 or found[0]['record_sha256']!=RECORD_SHA:
+    found=[e for e in records if e.get('authorization_id')==context().authorization_id]
+    if len(found)!=1 or found[0]['record_sha256']!=context().record_sha256:
         raise ValueError('C1_APPROVED_RECORD_MISMATCH')
     now=now or datetime.now(B.TPE)
     if not datetime.fromisoformat(auth['issued_at'])<=now<datetime.fromisoformat(auth['expires_at']):
@@ -96,7 +97,7 @@ def readiness_manifest(auth, config, artifact_root, staged, *, governance_root, 
             or tuple(config['costs']['scenarios']+config['costs']['sensitivity'])!=C.SCENARIOS
             or config['costs']['scenario_set_path']!=auth['costs']['scenario_set_path']
             or config['costs']['scenario_set_sha256']!=auth['costs']['scenario_set_sha256']
-            or config['authorization_id']!=AUTH or config['windows']!=C.WINDOW
+            or config['authorization_id']!=context().authorization_id or config['windows']!=C.WINDOW
             or config['core']['phase4a_sha']!=measured_core_sha or measured_core_sha!=C.CORE
             or config['snapshot_binding']['manifest_sha256']!=PINS['manifest_sha256']
             or staged['bundle']['manifest_sha256']!=PINS['manifest_sha256']
@@ -157,18 +158,18 @@ def prepare(staged, destination, *, code_sha, governance_root, code_root=C.ROOT)
     auth=authority(governance_root)
     before={p:p.read_bytes() for folder in ('governance','registry') for p in (Path(governance_root)/folder).rglob('*') if p.is_file()}
     root=Path(destination)
-    C.prepare(staged,root,agent_commit=code_sha,root=code_root)
+    C.prepare(staged,root,agent_commit=code_sha,root=code_root,authorization_id=context().authorization_id)
     artifact=root/'artifacts';config=read(artifact/C.CONFIG)
     manifest=readiness_manifest(auth,config,artifact,staged,governance_root=governance_root,measured_core_sha=core_sha())
     C.save(root/'C1_READINESS.json',manifest)
     prepared=B.prepare(root/'governed_request',artifact_root=artifact,governance_root=Path(governance_root),
-        authorization_id=AUTH,canonical_config=artifact/C.CONFIG,agent_commit=code_sha,
+        authorization_id=context().authorization_id,canonical_config=artifact/C.CONFIG,agent_commit=code_sha,
         completion=read(root/'completion.json'),hypothesis=read(root/'proposal.json')['draft']['hypothesis']['question'],
         adapter_id='CLAUDE_AUTHORED_P5C1_COMPLETION_FILE',manifest_kind='PHASE5C1_PREPARE_MANIFEST')
     from strategy_agent.orchestration.governance import Governance
     from strategy_agent.binding.service import REQUIRED_GOVERNANCE
     _,source=B.load_prepared(root/'governed_request',governance_root=governance_root)
-    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':AUTH})
+    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':context().authorization_id})
     decision=Governance(artifact,governance_root=governance_root).check(bound,binding_check=False)
     checks={item['id']:item['status'] for item in decision.checks}
     if any(checks.get(key)!='PASS' for key in REQUIRED_GOVERNANCE):
@@ -176,8 +177,8 @@ def prepare(staged, destination, *, code_sha, governance_root, code_root=C.ROOT)
     # Governance.consumes_budget describes a future dispatch, not this read-only check.
     C.save(root/'C1_PRE_BIND_GOVERNANCE.json',{'operation':'READ_ONLY_PRE_BIND_CHECK',
         'batch_consumption':0,'decision':decision.as_dict()})
-    C.save(root/'C1_PINNED_CONTEXT.json',{'code_sha':code_sha,'governance_sha':GOVERNANCE_SHA,'core_sha':C.CORE,
-        'authorization_record_sha256':RECORD_SHA,'authorization_id':AUTH,'request_sha256':prepared['bound_request_sha256'],
+    C.save(root/'C1_PINNED_CONTEXT.json',{'code_sha':code_sha,'governance_sha':context().governance_sha,'core_sha':C.CORE,
+        'authorization_record_sha256':context().record_sha256,'authorization_id':context().authorization_id,'request_sha256':prepared['bound_request_sha256'],
         'batch':1,'batch_consumed':0,'strategy_execution':'NOT_EXECUTED'})
     if any(p.read_bytes()!=raw for p,raw in before.items()):raise ValueError('PREPARE_CHANGED_GOVERNANCE')
     seal_preparation(root)
@@ -186,8 +187,10 @@ def prepare(staged, destination, *, code_sha, governance_root, code_root=C.ROOT)
 
 def preflight(preparation, staged, *, governance_root, code_sha):
     verify_preparation(preparation)
-    root=Path(preparation);context=read(root/'C1_PINNED_CONTEXT.json')
-    if context['code_sha']!=code_sha or context['governance_sha']!=GOVERNANCE_SHA or context['core_sha']!=C.CORE:
+    root=Path(preparation);pinned_context=read(root/'C1_PINNED_CONTEXT.json')
+    if (pinned_context['code_sha']!=code_sha or pinned_context['governance_sha']!=context().governance_sha
+            or pinned_context['core_sha']!=C.CORE or pinned_context['authorization_id']!=context().authorization_id
+            or pinned_context['authorization_record_sha256']!=context().record_sha256):
         raise ValueError('C1_CODE_OR_GOVERNANCE_PIN_CHANGED')
     from strategy_agent.execution.c1_benchmark import verify
     verify(root/'artifacts')
@@ -195,13 +198,13 @@ def preflight(preparation, staged, *, governance_root, code_sha):
     manifest=readiness_manifest(auth,read(root/'artifacts'/C.CONFIG),root/'artifacts',staged,
                                 governance_root=governance_root,measured_core_sha=core_sha())
     prepared,source=B.load_prepared(root/'governed_request',governance_root=governance_root)
-    if context['request_sha256']!=prepared['bound_request_sha256']:raise ValueError('C1_REQUEST_CHANGED')
+    if pinned_context['request_sha256']!=prepared['bound_request_sha256']:raise ValueError('C1_REQUEST_CHANGED')
     if I.authorization_problems(source,auth) or I.artefact_problems(source,root/'artifacts'):
         raise ValueError('C1_REQUEST_SCOPE_CHANGED')
     from strategy_agent.execution.activation import RealActivationGate
     gate=RealActivationGate(governance_root=governance_root,artifact_root=root/'artifacts',executor_id=B.EXECUTOR,
-                            production_books=True,readiness_manifest=lambda:manifest,authorization_id=AUTH)
-    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':AUTH})
+                            production_books=True,readiness_manifest=lambda:manifest,authorization_id=context().authorization_id)
+    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':context().authorization_id})
     ok,info=gate._readiness(auth,I.request_identity(bound))
     if not ok:raise ValueError('C1_A10_BLOCKED:'+json.dumps(info))
     return prepared,source,manifest
@@ -210,11 +213,11 @@ def preflight(preparation, staged, *, governance_root, code_sha):
 def verify_settlement(root, request_sha):
     from strategy_agent.execution.budget import _verify,_fold
     root=Path(root)
-    uses=[e for e in ChainedLog(root/'registry/research_authorization_uses.jsonl').verify() if e.get('authorization_id')==AUTH]
+    uses=[e for e in ChainedLog(root/'registry/research_authorization_uses.jsonl').verify() if e.get('authorization_id')==context().authorization_id]
     path=root/'registry/research_budget_events.jsonl'
     events=[json.loads(x) for x in path.read_text().splitlines() if x.strip()]
     _verify(events,path)
-    reservations=[r for r in _fold(events).values() if r.get('authorization_id')==AUTH]
+    reservations=[r for r in _fold(events).values() if r.get('authorization_id')==context().authorization_id]
     if (len(uses)!=1 or len(reservations)!=1 or reservations[0]['state']!='CONSUMED'
             or reservations[0]['request_sha256']!=request_sha):
         raise ReconciliationRequired('C1_SETTLEMENT_NOT_PROVEN')
@@ -226,22 +229,22 @@ def execution_preflight(preparation,staged,*,governance_root,code_sha,session_di
     from strategy_agent.approval import Expectation
     from strategy_agent.approval.tokens import scope_sha256
     from strategy_agent.orchestration.request import request_hash
-    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':AUTH})
-    verifier.verify(bind_url,Expectation(intent='BIND_AUTHORIZATION',authorization_id=AUTH,
+    bound=dict(copy.deepcopy(source),authorization_ref={'authorization_id':context().authorization_id})
+    verifier.verify(bind_url,Expectation(intent='BIND_AUTHORIZATION',authorization_id=context().authorization_id,
         request_sha256=request_hash(source),scope_sha256=scope_sha256(source)))
     verifier.verify(task_url,Expectation.for_request(bound,intent='APPROVE_TASK',task_id=prepared['task_id']))
     if bind_url==task_url:raise ValueError('TWO_DISTINCT_PERSONAL_COMMENTS_REQUIRED')
     root=Path(preparation)
     backend=B.production_backend(root=Path(governance_root),runner_root=root/'artifacts',governance_root=Path(governance_root),
         snapshot_root=Path(staged['local_root']),session_dir=Path(session_dir),git_commit=code_sha,
-        canonical_config=root/'artifacts'/C.CONFIG,authorization_id=AUTH,
+        canonical_config=root/'artifacts'/C.CONFIG,authorization_id=context().authorization_id,
         runtime_bundle=staged['bundle'],context={'notebook':'PHASE5C1_FINAL_EXECUTION','schedule_sha256':C.SCHEDULE_SHA256})
     if backend.precheck(bound):raise ValueError('C1_BACKEND_PREFLIGHT_BLOCKED')
     from strategy_agent.binding.service import AuthorizationBindingService
     dry=AuthorizationBindingService(verifier=verifier,governance_root=governance_root,root=root/'artifacts').bind(
         dry_run=True,source_request_path=root/'governed_request/request.json',
         provenance_path=root/'governed_request/request_provenance.json',proposal_path=root/'governed_request/proposal.json',
-        authorization_id=AUTH,evidence_url=bind_url)
+        authorization_id=context().authorization_id,evidence_url=bind_url)
     identity,failures=backend.execution_identity()
     if failures or I.compare(I.request_identity(bound),identity,source='BACKEND'):
         raise ValueError('C1_BACKEND_IDENTITY_MISMATCH')
@@ -254,13 +257,15 @@ def execute(preparation, staged, *, governance_root, code_sha, claim_client, dri
             archive_parent, runtime_audit, work_dir, session_dir, bind_url, task_url, verifier,
             confirm_authorization='', confirm_remote_claim=False):
     """Human EXECUTE entry. Never called by PREPARE/PREFLIGHT. No retry on any failure."""
-    if confirm_authorization!=AUTH or confirm_remote_claim is not True:
+    if confirm_authorization!=context().authorization_id or confirm_remote_claim is not True:
         raise ValueError('EXPLICIT_HUMAN_EXECUTION_AND_REMOTE_CLAIM_CONFIRMATIONS_REQUIRED')
     from strategy_agent.orchestration.governance import is_isolated_test_root
     isolated=is_isolated_test_root(governance_root)
     if not isolated and (not isinstance(claim_client,GitHubClaim) or not claim_client.production or not verifier.production):
         raise ValueError('LIVE_PRODUCTION_CLAIM_AND_APPROVAL_SOURCES_REQUIRED')
-    control=Path(drive_control)/AUTH/'batch-1'
+    if isinstance(claim_client,GitHubClaim) and claim_client.authorization_id!=context().authorization_id:
+        raise ValueError('C1_CLAIM_AUTHORIZATION_MISMATCH')
+    control=Path(drive_control)/context().authorization_id/'batch-1'
     if control.exists():raise ReconciliationRequired('PRIOR_CONTROL_STATE; inspect, never retry')
     prepared,source,manifest=preflight(preparation,staged,governance_root=governance_root,code_sha=code_sha)
     prepared,source,manifest,backend=execution_preflight(preparation,staged,governance_root=governance_root,
@@ -269,14 +274,17 @@ def execute(preparation, staged, *, governance_root, code_sha, claim_client, dri
     # Creating a local marker is NOT the global lock. The server ref is the sole authoritative atomic winner.
     try:control.mkdir(parents=True,exist_ok=False)
     except FileExistsError:raise ReconciliationRequired('CONCURRENT_OR_PREVIOUS_CONTROL_STATE') from None
-    provenance={'code_sha':code_sha,'governance_sha':GOVERNANCE_SHA,'core_sha':C.CORE,
-        'authorization_id':AUTH,'authorization_record_sha256':RECORD_SHA,
-        'request_sha256':prepared['bound_request_sha256'],'claim_ref':REF}
+    provenance={'code_sha':code_sha,'governance_sha':context().governance_sha,'core_sha':C.CORE,
+        'authorization_id':context().authorization_id,'authorization_record_sha256':context().record_sha256,
+        'request_sha256':prepared['bound_request_sha256'],'claim_ref':context().claim_ref}
     outcome={'status':'RECONCILIATION_REQUIRED','batch_consumption':'UNKNOWN_UNTIL_LEDGER_RECONCILED'}
     try:
-        proof=claim_client.acquire(governance_root=Path(governance_root),governance_sha=GOVERNANCE_SHA,
+        proof=claim_client.acquire(governance_root=Path(governance_root),governance_sha=context().governance_sha,
                                    request_sha=prepared['bound_request_sha256'])
         C.save(control/'REMOTE_CLAIM.json',proof.record)
+        import sys
+        print(json.dumps({'stage':'DISPATCH','task_id':prepared.get('task_id','UNKNOWN'),
+            'authorization_id':context().authorization_id,'work_path':str(work_dir)}),file=sys.stderr,flush=True)
         result=B.execute(root/'governed_request',bind_url=bind_url,task_url=task_url,verifier=verifier,backend=backend,
             work_dir=Path(work_dir),claim_dir=control,artifact_root=root/'artifacts',governance_root=Path(governance_root),
             executor_id=B.EXECUTOR,production_books=not isolated,readiness_manifest=lambda:manifest,external_claim=proof)
@@ -294,6 +302,10 @@ def execute(preparation, staged, *, governance_root, code_sha, claim_client, dri
     except BaseException as error:
         # Do not serialize exception text, settings, environment or credentials.
         outcome['error_type']=type(error).__name__
+        C.save(Path(runtime_audit)/'attempt_diagnostics.json',{'stage':'EXECUTE_INTERRUPTED',
+            'error_type':type(error).__name__,'task_id':prepared.get('task_id','UNKNOWN'),
+            'work_path':str(work_dir),'task_events_path':str(Path(work_dir)/'state/task_events.jsonl'),
+            'rerun':'NEVER'})
         raise ReconciliationRequired('C1_ATTEMPT_INTERRUPTED; inspect immutable archive and server claim; never retry') from None
     finally:
         try:
@@ -308,10 +320,12 @@ def execute(preparation, staged, *, governance_root, code_sha, claim_client, dri
 
 def main():
     """Notebook entry; default PREPARE. Settings contain paths/pins, never credentials."""
-    import argparse, subprocess, tempfile, shutil
+    import argparse, subprocess, tempfile, shutil, sys
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--settings',required=True)
     args=parser.parse_args();settings=read(args.settings)
+    if 'execution_context' in settings:
+        CURRENT.set(recovery_context(settings['execution_context']))
     code_sha=settings['code_sha'];mode=settings.get('mode','PREPARE')
     if len(code_sha)!=40 or any(c not in '0123456789abcdef' for c in code_sha):
         raise ValueError('PUBLISHED_REVIEWED_FULL_CODE_SHA_REQUIRED')
@@ -320,22 +334,25 @@ def main():
     if git(C.ROOT,'rev-parse','HEAD')!=code_sha or git(C.ROOT,'status','--porcelain','--untracked-files=all'):
         raise ValueError('EXECUTION_CODE_PIN_OR_TREE_MISMATCH')
     gov=Path(settings['governance_root'])
-    if git(gov,'rev-parse','HEAD')!=GOVERNANCE_SHA or git(gov,'status','--porcelain','--untracked-files=all'):
+    if git(gov,'rev-parse','HEAD')!=context().governance_sha or git(gov,'status','--porcelain','--untracked-files=all'):
         raise ValueError('GOVERNANCE_PIN_OR_TREE_MISMATCH')
     if mode not in ('PREPARE','PREFLIGHT','EXECUTE'):raise ValueError('UNKNOWN_MODE')
+    print(json.dumps({'stage':'AUTHORITY','mode':mode}),file=sys.stderr,flush=True)
     authority(gov)
-    claim=GitHubClaim()
-    claim.inspect(gov,GOVERNANCE_SHA)  # GET only; stops on prior remote claim.
+    claim=GitHubClaim(authorization_id=context().authorization_id)
+    claim.inspect(gov,context().governance_sha)  # GET only; stops on prior remote claim.
     parent=Path(settings['drive_root'])
-    if any((parent/folder/AUTH/'batch-1').exists() for folder in ('control','attempts')):
+    if any((parent/folder/context().authorization_id/'batch-1').exists() for folder in ('control','attempts')):
         raise ReconciliationRequired('PRIOR_CONTROL_OR_DURABLE_ATTEMPT; manual reconciliation required')
     local=Path(tempfile.mkdtemp(prefix='c1-runtime-'))
+    print(json.dumps({'stage':'STAGE_REVIEWED_DEVELOPMENT','mode':mode}),file=sys.stderr,flush=True)
     staged=stage(settings['recovery_archive'],settings['original_preparation_archive'],local/'staging')
     audit=local/'audit';audit.mkdir()
     for name in ('runtime_binding.json','data_preflight.json','pin_summary.json'):
         shutil.copyfile(local/'staging'/name,audit/name)
-    provenance={'code_sha':code_sha,'governance_sha':GOVERNANCE_SHA,'core_sha':C.CORE,'mode':mode,
-                'authorization_id':AUTH,'strategy_execution':'NOT_EXECUTED' if mode!='EXECUTE' else 'HUMAN_REQUESTED'}
+    provenance={'code_sha':code_sha,'governance_sha':context().governance_sha,'core_sha':C.CORE,'mode':mode,
+                'authorization_id':context().authorization_id,'strategy_execution':'NOT_EXECUTED' if mode!='EXECUTE' else 'HUMAN_REQUESTED'}
+    print(json.dumps({'stage':mode,'code_sha':code_sha,'authorization_id':context().authorization_id}),file=sys.stderr,flush=True)
     if mode=='PREPARE':
         from strategy_agent.execution.c1_benchmark import archive
         benchmark_archive=archive(parent,execution_sha=code_sha)
@@ -360,7 +377,7 @@ def main():
         print(json.dumps({'status':'PREFLIGHT_PASS','archive':str(archived),'batch_consumption':0}));return
     # Persist mutable execution books and partial results on Drive BEFORE any remote claim.
     # A hard Runtime loss cannot run finally; the durable workspace remains for reconciliation.
-    durable=parent/'attempts'/AUTH/'batch-1'
+    durable=parent/'attempts'/context().authorization_id/'batch-1'
     durable.mkdir(parents=True,exist_ok=False)
     for folder in ('governance','registry'):
         shutil.copytree(gov/folder,durable/'state'/folder)

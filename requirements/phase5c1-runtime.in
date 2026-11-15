@@ -1,0 +1,12 @@
+# CPU / CPython 3.11: exact engineering-runtime dependencies, not research input pins.
+numpy==2.2.6
+scipy==1.15.3
+pandas==2.2.3
+pyarrow==19.0.1
+jsonschema==4.23.0
+pandas_market_calendars==5.5.0
+exchange_calendars==4.11.1
+PyYAML==6.0.3
+pytest==8.4.2
+setuptools==80.9.0
+wheel==0.45.1

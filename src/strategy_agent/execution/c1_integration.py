@@ -213,7 +213,7 @@ def stage_archive(inspection: dict,local_directory):
     return {'bundle':renewed,'preflight':report,'inspection':inspection,'local_root':str(staged)}
 
 
-def prepare(staged: dict,output_directory, *, agent_commit: str,root=ROOT):
+def prepare(staged: dict,output_directory, *, agent_commit: str,root=ROOT,authorization_id=AUTHORIZATION):
     """Draft artifacts only. Never calls ResearchOnlyRunner/run/budget/admin approval.
 
     Emits a self-contained artifact root for the existing exporter and runner.
@@ -232,7 +232,7 @@ def prepare(staged: dict,output_directory, *, agent_commit: str,root=ROOT):
           manifest_sha256=bundle['manifest_sha256'],access_contract='Core Development Contract v1.2; reviewed pins required')
     spec['provenance']['spec_sha256']=None
     save(artifact/SPEC,spec)
-    cfg.update(authorization_id=AUTHORIZATION,run_config_id='tsm_sma520_p5c1',purpose='PRE_REGISTERED_HYPOTHESIS_TEST')
+    cfg.update(authorization_id=authorization_id,run_config_id='tsm_sma520_p5c1',purpose='PRE_REGISTERED_HYPOTHESIS_TEST')
     cfg['dataset'].update(snapshot_id=SNAPSHOT,producer_commit_sha=PRODUCER)
     cfg['windows']=dict(WINDOW)
     cfg['strategy'].update(spec_path=SPEC,spec_file_sha256=sha(artifact/SPEC),version='0.2.0')
@@ -258,7 +258,7 @@ def prepare(staged: dict,output_directory, *, agent_commit: str,root=ROOT):
     for path in (cfg['costs']['scenario_set_path'],cfg['core_costs']['sec_config_path'],cfg['core_costs']['taf_record_path']):
         target=artifact/path;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/path,target)
     auth=json.loads((root/'docs/phase5b3c/authorization_draft.json').read_text())['proposal_fields']
-    auth.update(authorization_id=AUTHORIZATION,max_batches=1,issued_at='HUMAN_DECISION_REQUIRED',expires_at='HUMAN_DECISION_REQUIRED')
+    auth.update(authorization_id=authorization_id,max_batches=1,issued_at='HUMAN_DECISION_REQUIRED',expires_at='HUMAN_DECISION_REQUIRED')
     auth['executor']={'consistency':'SINGLE_EXECUTOR_ONLY','executor_id':B.EXECUTOR}
     auth['dataset']=copy.deepcopy(cfg['dataset']);auth['research_window']={'interval':'[start,end)','start':WINDOW['warmup_start'],'end':WINDOW['end']}
     auth['strategy'].update(spec_path=SPEC,spec_file_sha256=sha(artifact/SPEC),version='0.2.0')
@@ -286,7 +286,7 @@ def prepare(staged: dict,output_directory, *, agent_commit: str,root=ROOT):
     if staged['inspection']['status']!='REVIEWED_PINS_VERIFIED':blockers.append('REAL_DATA_PINS_PENDING_RESEARCH_LEAD_REVIEW')
     summary={'mode':'PREPARE_ONLY','data_binding':staged['inspection']['status'],'observed_pins':staged['inspection']['observed_pins'],
         'core_reader_sha':CORE,'original_producer_sha':PRODUCER,'recovery_core_sha':staged['inspection']['recovery_core_sha'],
-        'config_path':str(artifact/CONFIG),'artifact_root':str(artifact),'authorization_id':AUTHORIZATION,
+        'config_path':str(artifact/CONFIG),'artifact_root':str(artifact),'authorization_id':authorization_id,
         'authorization':'NOT_GRANTED','execution':'NOT_EXECUTED','consumed_batches':0,'family_trials':3,
         'cost_schedule_sha256':SCHEDULE_SHA256,'cost_scenario_compatibility':cost_compatibility,
         'sec_fill_date_convention':SEC_MAPPING_CONVENTION,
