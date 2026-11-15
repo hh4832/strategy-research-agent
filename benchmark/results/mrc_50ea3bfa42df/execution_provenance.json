@@ -1,0 +1,43 @@
+{
+  "agent_commit": "3db1d75d9d6f9de1320f3e4542e24dd84d551713",
+  "core": {
+    "installed": true,
+    "git_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+    "version": "0.2.0",
+    "source": "file:///tmp/c1-state-core"
+  },
+  "python": "3.11.17 (main, Oct 14 2026, 01:05:33) [Clang 23.1.3 ]",
+  "started_at": "2026-11-14T07:52:52.466661+08:00",
+  "timezone": "Asia/Taipei",
+  "inputs_sha256": {
+    "benchmark/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "benchmark/cases/B01_normal_entry_exit.json": "73a19e7335e4cbcbdb023d4d4febc28b6eb8d75f7fc150fa17dedff87b21dfa8",
+    "benchmark/cases/B02_next_bar_execution_sma.json": "22874d4f301884ed17f5ee9b5739180825fc0b64a8cc2e6a188cf68be8334cff",
+    "benchmark/cases/B03_missing_bar.json": "5b4db0a97408819ce9a6e387fe5aacbe7df9277a2694b5ac8d9c8e561b6a95ca",
+    "benchmark/cases/B04_zero_volume.json": "1fa85f8e01658ca4332636de2525a400eb017b861af6445750142e1b82cb95f3",
+    "benchmark/cases/B05_outside_session.json": "42abe5badfaa9e3e4c242a0bca8db2f301e66e2d9cf9e93bd446f89ab0951fb1",
+    "benchmark/cases/B06_costs_slippage_short.json": "2f4b332e88c606e6a5b114879f4d8f8265bcfc72d81c413278fade9db68a1ff2",
+    "benchmark/cases/B07_limit_locked.json": "b85b137268dae832e8cef87372c7f2e0623ff7063a7ee7c1de47dc1ab238c6e4",
+    "benchmark/cases/B08_pit_not_yet_available.json": "ab420b851d7790641e9cfb3b7a914e3a286a101a5dfa50f5fdf35cd34fb31460",
+    "benchmark/cases/B09_futures_roll.json": "22ac98671ab739113a0d9407082e688398104d094cf532ed701a13758912b386",
+    "benchmark/cases/B10_open_position_at_end.json": "b05f34b4eae1d628727dcea7c4cf00e9378d07c6d13592f7846684946ee5dc73",
+    "benchmark/cases/B11_exclusion_window.json": "07cf7f515868e6989f6e1eb69b8a9e868f3907725c470c37ab71a512f79fb2c6",
+    "benchmark/cases/B12_orb_lookahead_trap.json": "5848cee5bf185b4be8ec3d457b8b9090da8381e870e7d9f596b9c540d4d8c9c0",
+    "benchmark/harness/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "benchmark/harness/crosscheck.py": "38e7f01e428a295e8714d9b710aaa73986b81ae0e422cdb61a5465bc71bb9d44",
+    "benchmark/harness/mrc_crosscheck.py": "6a9044d1919be97f51db09b74816e76e18de24dfa3a348f85da34be86ba9ee88",
+    "benchmark/oracle/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "benchmark/oracle/reference_engine.py": "e8d0fa722c657f2a86ba1c8046e3abedfd2080f61587477595ef59b7e81cea9d",
+    "src/strategy_agent/adapters/mrc_adapter.py": "905e74062b4b1859d6a9e4a25c5375fcf6cd761be7bb555586453529173d2a4e"
+  },
+  "command": [
+    "/tmp/c1-state-311/bin/python",
+    "-m",
+    "benchmark.harness.mrc_crosscheck",
+    "--out",
+    "/tmp/c1-g4-benchmark-recovery/20261114_075252_460022_5fa61ad6f3394dd49e567a5353bc4d51/results"
+  ],
+  "purpose": "REAL_CORE engineering benchmark; no formal research data/authorization/batch",
+  "batch_consumption": 0,
+  "holdout_access": "NO_ACCESS"
+}

@@ -1,0 +1,16 @@
+{
+  "format": "C1_REAL_CORE_BENCHMARK_V1",
+  "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+  "original_agent_commit": "3db1d75d9d6f9de1320f3e4542e24dd84d551713",
+  "files_sha256": {
+    "SOURCE_SHA256_MANIFEST.json": "75d09d17439eae575d247be151be850b874d6eaee6b3f7badc934a99d96e6700",
+    "contract_gaps.json": "b0435ab48f9ae2be7ee4bd677f2d30f9d1591fbec817b382d3d5d5c60a9ca6e5",
+    "crosscheck.json": "2c74d6d2fccd4233892f64b1447ceb2133a261b733f52aa1e8069d25df2f7ffc",
+    "execution_provenance.json": "3d6fcb6b2010f2697bc3e37123ffd8bc47bc063840c5de4b96ff835177987f73",
+    "report.md": "4323c1aa28841649f3dedd63241a78c51cfd507f7dfb9483d09ccb48fb8e04cf",
+    "run_info.txt": "e9165be3b8fc3ca914d464a821c3e2c947dc132219f46ccf8469a52931be227b",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "40abef0ee2abc4ff2e7ad2703a45bb7cdb347b8d791818853d4109ca58ddda79",
+    "summary.json": "e184d50fdfa7b2e78542d88bfc4926f22bd7a198ec4d00f186a07f41f891b1d0"
+  }
+}

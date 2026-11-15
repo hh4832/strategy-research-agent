@@ -224,6 +224,8 @@ def prepare(staged: dict,output_directory, *, agent_commit: str,root=ROOT):
     out=Path(output_directory).resolve();out.mkdir(parents=True,exist_ok=False);root=Path(root)
     if not re.fullmatch('[0-9a-f]{40}',agent_commit):raise ValueError('full Agent commit required')
     artifact=out/'artifacts'
+    from strategy_agent.execution.c1_benchmark import package
+    package(root,artifact)
     cfg=json.loads((root/'configs/research_only/tsm_sma_5_20_p5b3c_2024_06_dev_18350b3adba8e28a7e5e.json').read_text())
     spec=json.loads((root/P.SPEC).read_text());bundle=staged['bundle']
     spec['data_requirements']['datasets'][0].update(snapshot_id=SNAPSHOT,producer_commit_sha=PRODUCER,
@@ -329,5 +331,5 @@ def prepare_governed_request(preparation_directory, *, governance_root,agent_com
     return B.prepare(out/'governed_request',artifact_root=out/'artifacts',governance_root=Path(governance_root),
         authorization_id=AUTHORIZATION,canonical_config=out/'artifacts'/CONFIG,agent_commit=agent_commit,
         completion=json.loads((out/'completion.json').read_text()),
-        hypothesis=json.loads((out/'proposal.json').read_text())['hypothesis']['question'],
+        hypothesis=json.loads((out/'proposal.json').read_text())['draft']['hypothesis']['question'],
         adapter_id='CLAUDE_AUTHORED_P5C1_COMPLETION_FILE',manifest_kind='PHASE5C1_PREPARE_MANIFEST')
