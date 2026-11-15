@@ -20,6 +20,21 @@ from test_c1_execution_runner import staged, transport
 ROOT=Path(__file__).parents[1]
 
 
+def pre_recovery_books(target):
+    """Disposable historical prefix: these tests themselves introduce the new approval.
+
+    A real approved recovery record may now exist in ROOT; never append a duplicate to that snapshot.
+    """
+    for folder in ('governance','registry'):shutil.copytree(ROOT/folder,target/folder)
+    book=target/'governance/research_authorizations.jsonl'
+    lines=book.read_bytes().splitlines(keepends=True)
+    end=next(i for i,line in enumerate(lines) if json.loads(line).get('authorization_id')==OLD_AUTH)
+    book.write_bytes(b''.join(lines[:end+1]))
+    rows=ChainedLog(book).verify()
+    assert rows[-1]['authorization_id']==OLD_AUTH
+    assert not any(r.get('authorization_id')==C1_RECOVERY for r in rows)
+
+
 def test_unsigned_packet_has_no_inherited_approval_or_reused_subject(tmp_path):
     sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     out=prepare_packet(ROOT,tmp_path,sha)
@@ -76,7 +91,7 @@ def test_new_capability_is_bound_to_new_subject_and_single_use(tmp_path, monkeyp
 def test_new_preparation_uses_new_approved_record_without_changing_old_books(tmp_path,staged):
     pytest.importorskip('market_research_core.dated_costs')
     gov=tmp_path/'synthetic-governance'
-    for folder in ('governance','registry'):shutil.copytree(ROOT/folder,gov/folder)
+    pre_recovery_books(gov)
     log=ChainedLog(gov/'governance/research_authorizations.jsonl')
     old=next(r for r in log.verify() if r.get('authorization_id')==OLD_AUTH)
     event={k:v for k,v in old.items() if k not in {'seq','prev_sha256','record_sha256'}}
@@ -129,7 +144,7 @@ def test_recovery_notebook_safe_default_and_missing_execution_authority_fails_be
 
 def test_recovery_cannot_relabel_original_authorization_approval(tmp_path):
     from strategy_agent.governance.authorization_contracts import verified_contracts
-    for folder in ('governance','registry'):shutil.copytree(ROOT/folder,tmp_path/folder)
+    pre_recovery_books(tmp_path)
     log=ChainedLog(tmp_path/'governance/research_authorizations.jsonl')
     old=next(r for r in log.verify() if r.get('authorization_id')==OLD_AUTH)
     event={k:v for k,v in old.items() if k not in {'seq','prev_sha256','record_sha256'}}
