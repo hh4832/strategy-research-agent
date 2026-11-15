@@ -49,6 +49,17 @@ def verified_contracts(root):
     for record in events:
         if record.get('action') == 'APPROVE' and record['authorization_id'] not in LEGACY:
             contract_id(record)
+    # A new authorization needs an independent approval reference, not a relabelled old approval.
+    from urllib.parse import urlsplit, urlunsplit
+    def approval_subject(value):
+        parts=urlsplit(value)
+        return urlunsplit((parts.scheme.lower(),parts.netloc.lower(),parts.path,'',parts.fragment))
+    old_refs={approval_subject(r.get('approval_ref','')) for r in events
+              if r.get('authorization_id')==C1 and r.get('action')=='APPROVE'}
+    for record in events:
+        if (record.get('authorization_id')==C1_RECOVERY and record.get('action')=='APPROVE'
+                and approval_subject(record.get('approval_ref','')) in old_refs):
+            raise ValueError('RECOVERY_REQUIRES_NEW_AUTHORIZATION_APPROVAL_REFERENCE')
     return active, events
 
 

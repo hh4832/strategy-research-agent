@@ -50,7 +50,15 @@ and transitive versions), editable fixed Core 50ea3bfa42df7708dd3a1b21f17798c206
 The entry is tested only with synthetic temporary books/fixtures. No real Development or Holdout files
 are opened. The new authorization draft is not written into a ledger.
 
-The local targeted validation and current-head GitHub Actions acceptance are recorded in PR #27 and
+Local acceptance: CPython 3.11.17 locked environment passed 96 targeted cases before launcher publication;
+CPython 3.11.17 and 3.12.14 each passed 61 final runtime/N2/recovery cases. The additional launcher test
+checks safe defaults and rejects EXECUTE before Colab imports when new authority is absent.
+A separate clean worktree + fresh locked CPython 3.11.17 environment successfully ran unsigned PREPARE
+against a temporary fake Drive directory: NOT_EXECUTED, batch_consumption=0, no Request/Task. The same
+entry rejected EXECUTE without new authority with nonzero exit before data or CLAIM access. This is
+a fresh local runtime validation, not a claim of Google-hosted Colab or real Drive acceptance.
+
+The final targeted validation and current-head GitHub Actions acceptance are recorded in PR #27 and
 the delivery report. Follow the PR's Checks for the latest HEAD, not an older successful run. The full
 CI matrix remains enabled, including generic, historical Core, exact-Core C1, append-only and security
 checks. A local success is not a remote CI claim. Final acceptance requires every current-head CI job
@@ -166,6 +174,10 @@ The old governance SHA is a historical reference only. A new fixed governance SH
 cannot truthfully be supplied before the lead approves and commits the new authorization. They are
 left empty, never substituted from the original Batch. New contract scope recognition alone is not
 approval; original logs remain unchanged.
+
+Published immutable execution runtime: `7c0ecf6201291dc8452fa6baec2421b607f91ec2`.
+Core remains `50ea3bfa42df7708dd3a1b21f17798c206be054e`. The launcher is committed after this
+runtime; obtain its exact final HEAD/Colab URL from the delivery report.
 
 1. Open `notebooks/Phase5C1_Recovery_Execution.ipynb` at the final published launcher commit. Its
    EXECUTION_CODE_SHA names a prior immutable runtime commit (no self-SHA cycle). Run default PREPARE

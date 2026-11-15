@@ -81,6 +81,7 @@ def test_new_preparation_uses_new_approved_record_without_changing_old_books(tmp
     old=next(r for r in log.verify() if r.get('authorization_id')==OLD_AUTH)
     event={k:v for k,v in old.items() if k not in {'seq','prev_sha256','record_sha256'}}
     event['authorization_id']=C1_RECOVERY
+    event['approval_ref']='https://github.com/hh4832/strategy-research-agent/pull/27#issuecomment-123456789'
     record=log.append(event)  # disposable test books only, never a real approval
     token=CURRENT.set(ExecutionContext(C1_RECOVERY,'1'*40,record['record_sha256']))
     before={p:p.read_bytes() for folder in ('governance','registry') for p in (gov/folder).rglob('*') if p.is_file()}
@@ -105,3 +106,34 @@ def test_nonzero_child_keeps_redacted_diagnostics_and_does_not_retry(tmp_path):
     assert secret not in text and '[REDACTED]' in text
     outcome=json.loads((outputs[0]/'process_outcome.json').read_text())
     assert outcome['returncode']==7 and outcome['automatic_retry'] is False
+
+
+def test_recovery_notebook_safe_default_and_missing_execution_authority_fails_before_colab():
+    import ast
+    nb=json.loads((ROOT/'notebooks/Phase5C1_Recovery_Execution.ipynb').read_text())
+    code=[''.join(c['source']) for c in nb['cells'] if c['cell_type']=='code']
+    for source in code:ast.parse(source)
+    assert all(c['outputs']==[] and c['execution_count'] is None for c in nb['cells'] if c['cell_type']=='code')
+    ns={};exec(code[0],ns)
+    assert ns['MODE']=='PREPARE' and not ns['GOVERNANCE_SHA'] and not ns['CONFIRM_REMOTE_CLAIM']
+    assert ns['NEW_AUTHORIZATION_ID']==C1_RECOVERY
+    assert ns['EXECUTION_CODE_SHA']=='7c0ecf6201291dc8452fa6baec2421b607f91ec2'
+    assert '/workspace' not in '\n'.join(code)
+    ns['MODE']='EXECUTE'
+    with pytest.raises(RuntimeError,match='Separate explicit'):exec(code[1],ns)
+    ns['CONFIRM_AUTHORIZATION']=C1_RECOVERY;ns['CONFIRM_REMOTE_CLAIM']=True
+    with pytest.raises(RuntimeError,match='New approved governance'):exec(code[1],ns)
+    assert 'userdata.get("GITHUB_TOKEN")' in code[1]
+    assert 'run_logged(' in code[1] and 'requirements/phase5c1-runtime.txt' in code[1]
+
+
+def test_recovery_cannot_relabel_original_authorization_approval(tmp_path):
+    from strategy_agent.governance.authorization_contracts import verified_contracts
+    for folder in ('governance','registry'):shutil.copytree(ROOT/folder,tmp_path/folder)
+    log=ChainedLog(tmp_path/'governance/research_authorizations.jsonl')
+    old=next(r for r in log.verify() if r.get('authorization_id')==OLD_AUTH)
+    event={k:v for k,v in old.items() if k not in {'seq','prev_sha256','record_sha256'}}
+    event['authorization_id']=C1_RECOVERY
+    log.append(event)
+    with pytest.raises(ValueError,match='NEW_AUTHORIZATION_APPROVAL_REFERENCE'):
+        verified_contracts(tmp_path)
