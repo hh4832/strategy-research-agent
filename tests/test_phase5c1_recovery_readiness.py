@@ -117,7 +117,7 @@ def test_recovery_notebook_safe_default_and_missing_execution_authority_fails_be
     ns={};exec(code[0],ns)
     assert ns['MODE']=='PREPARE' and not ns['GOVERNANCE_SHA'] and not ns['CONFIRM_REMOTE_CLAIM']
     assert ns['NEW_AUTHORIZATION_ID']==C1_RECOVERY
-    assert ns['EXECUTION_CODE_SHA']=='7c0ecf6201291dc8452fa6baec2421b607f91ec2'
+    assert ns['EXECUTION_CODE_SHA']=='a4cc87e91dde6fbbba3b71e294224745a8d240f9'
     assert '/workspace' not in '\n'.join(code)
     ns['MODE']='EXECUTE'
     with pytest.raises(RuntimeError,match='Separate explicit'):exec(code[1],ns)

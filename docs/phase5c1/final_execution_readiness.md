@@ -50,9 +50,12 @@ and transitive versions), editable fixed Core 50ea3bfa42df7708dd3a1b21f17798c206
 The entry is tested only with synthetic temporary books/fixtures. No real Development or Holdout files
 are opened. The new authorization draft is not written into a ledger.
 
-Local acceptance: CPython 3.11.17 locked environment passed 96 targeted cases before launcher publication;
-CPython 3.11.17 and 3.12.14 each passed 61 final runtime/N2/recovery cases. The additional launcher test
-checks safe defaults and rejects EXECUTE before Colab imports when new authority is absent.
+Local acceptance: CPython 3.11.17 locked environment passed 132 targeted tests, including K02 (18),
+N2 (8), runner, recovery approval/identity isolation, authorization and launcher guards. Exact Core
+contract tests passed 56 cases. The final runtime/N2/recovery subset also passed 61 tests on CPython
+3.12.14 before the additional approval-reference/launcher negatives; the full remote matrix covers
+both versions on the final published HEAD.
+
 A separate clean worktree + fresh locked CPython 3.11.17 environment successfully ran unsigned PREPARE
 against a temporary fake Drive directory: NOT_EXECUTED, batch_consumption=0, no Request/Task. The same
 entry rejected EXECUTE without new authority with nonzero exit before data or CLAIM access. This is
@@ -175,7 +178,7 @@ cannot truthfully be supplied before the lead approves and commits the new autho
 left empty, never substituted from the original Batch. New contract scope recognition alone is not
 approval; original logs remain unchanged.
 
-Published immutable execution runtime: `7c0ecf6201291dc8452fa6baec2421b607f91ec2`.
+Published immutable execution runtime: `a4cc87e91dde6fbbba3b71e294224745a8d240f9`.
 Core remains `50ea3bfa42df7708dd3a1b21f17798c206be054e`. The launcher is committed after this
 runtime; obtain its exact final HEAD/Colab URL from the delivery report.
 
