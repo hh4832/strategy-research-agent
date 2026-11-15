@@ -59,7 +59,16 @@ or EXECUTE permission. No Request/Task or execution approval is created by this 
 - Related authorization, approval-binding, C1 runner and recovery regressions: 106 PASS (CPython 3.11.17).
 - Two recovery tests now build a disposable pre-recovery historical prefix before injecting their synthetic
   approval. This avoids duplicating the newly approved real ID in a copied book, preserves all positive
-  and negative expectations, and never edits the source book. No production code or cost validation is changed.
+  and negative expectations, and never edits the source book. No strategy, Core, K02 or cost validation is changed.
+
+The first governance CI run exposed two legacy coexistence assumptions: B3-C's read-only governance
+classifier recognized only C1 0001, and the Phase4-A historical-book test filtered only that ID. The
+classifier/test now also recognize the explicitly registered C1_RECOVERY ID, only AFTER the existing
+full chain/schema/known-scope/approval-reference validator passes. Unknown IDs and altered scopes
+still fail closed; six new metadata cases check the exact approved event/proposal, interval and
+positive/negative coexistence. The actual authorization event and its confirmed SHA are unchanged.
+This is not a strategy, financial, Core or execution-runtime modification; the published runtime pin
+remains a4cc87e91dde6fbbba3b71e294224745a8d240f9. Targeted coexistence/legacy governance checks passed 129 cases, including all six new exact-record/interval/negative cases. CI must be checked on the new governance HEAD.
 
 ## Dependency and authoritative governance requirements
 

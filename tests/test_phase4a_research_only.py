@@ -131,9 +131,9 @@ def test_repository_governance_only_grows_by_lead_signatures():
         # Phase 5-B3-C: the research lead's own approval of the governed candidate proposal (separate PR)
         ("RA-IBKR_TSM-SMA520_P5B3C-0001", ROOT / "governance/proposals/RA-IBKR_TSM-SMA520_P5B3C-0001.json"),
     )
-    from strategy_agent.governance.authorization_contracts import C1, active_contracts
+    from strategy_agent.governance.authorization_contracts import C1, C1_RECOVERY, active_contracts
     active_contracts(ROOT)  # full chain/schema + exact known contracts, including C1; never arbitrary extras
-    historical = [a for a in auths if a["authorization_id"] != C1]
+    historical = [a for a in auths if a["authorization_id"] not in (C1, C1_RECOVERY)]
     assert len(historical) <= len(expected), "unexpected historical authorization appended"
     assert [a["authorization_id"] for a in historical] == [aid for aid, _ in expected[:len(historical)]]
     auths = historical
