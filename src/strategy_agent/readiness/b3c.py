@@ -331,13 +331,13 @@ def formal_authorization_state() -> dict:
     UNEXPECTED      anything else (an unknown authorization, a second B3-C line, a mismatch). Always a failure.
 
     Never creates, approves or consumes anything; downstream checks accept GRANTED_* only through this function."""
-    from strategy_agent.governance.authorization_contracts import verified_contracts, C1
+    from strategy_agent.governance.authorization_contracts import verified_contracts, C1, C1_RECOVERY
     try:
         _, book = verified_contracts(ROOT)
     except Exception as error:
         return {"state": "UNEXPECTED", "why": [f"INVALID_AUTHORIZATION_BOOK:{error}"]}
     why = []
-    other = [x.get("authorization_id") for x in book if x.get("authorization_id") not in (*KNOWN_SPENT, CANDIDATE_AUTHORIZATION_ID, C1)]
+    other = [x.get("authorization_id") for x in book if x.get("authorization_id") not in (*KNOWN_SPENT, CANDIDATE_AUTHORIZATION_ID, C1, C1_RECOVERY)]
     if other:
         why.append(f"UNKNOWN_AUTHORIZATIONS:{other}")
     mine = [x for x in book if x.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID]
