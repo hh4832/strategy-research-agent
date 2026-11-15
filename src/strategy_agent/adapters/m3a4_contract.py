@@ -50,7 +50,7 @@ def policy_sha256(policy_dict: Mapping) -> str:
     return hashlib.sha256(json.dumps(dict(policy_dict), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def validate_conservative_result(result, *, orders: Sequence, cost_profile, policy, core_sha: str) -> dict:
+def validate_conservative_result(result, *, orders: Sequence, cost_profile, policy, core_sha: str, cost_schedule=None) -> dict:
     """Return {check_id: "PASS"} or raise ContractViolation listing every failed check."""
     fails: list[str] = []
     checks: dict[str, str] = {}
@@ -90,6 +90,20 @@ def validate_conservative_result(result, *, orders: Sequence, cost_profile, poli
         all({"basis", "source_evidence", "approval_status"} <= set(v) for v in prov["cost_profile_components"].values()),
         "cost_profile_components lack basis/evidence/approval")
 
+    # Validate against the caller's pinned schedule, never reconstruct trust from result provenance.
+    if cost_schedule is not None:
+        doc = cost_schedule.document
+        put("P12_dated_cost_schedule", cost_profile.sha256 == cost_schedule.base_profile.sha256 and
+            all(prov.get(key) == expected for key, expected in {
+                "cost_schedule_sha256": cost_schedule.sha256,
+                "cost_schedule_id": doc["schedule_id"], "cost_schedule_version": doc["version"],
+                "cost_schedule_scenario": cost_schedule.scenario,
+                "cost_schedule_timezone": doc["timezone"], "cost_schedule_coverage": doc["coverage"],
+            }.items()) and prov.get("cost_configuration", {}).get("dated_cost_schedule") == doc,
+            "submitted base profile or pinned dated schedule provenance mismatch")
+    elif prov.get("cost_schedule_sha256") is not None:
+        put("P12_dated_cost_schedule", False, "dated result requires the submitted pinned schedule")
+
     # ---------------------------------------------------------------- ledger
     ledger = result.ledger
     put("K00_ledger_is_fills", ledger.equals(result.fills) and ledger is not result.fills,
@@ -116,10 +130,19 @@ def validate_conservative_result(result, *, orders: Sequence, cost_profile, poli
             if any(_d(r[k]) < 0 for k in ("commission", "exchange_fee", "clearing_fee", "transaction_tax",
                                           "regulatory_fee", "price_adjustment_cost")):
                 k_bad.append(f"{oid}: negative cost component")
-            if (r["cost_profile_sha256"], r["cost_profile_version"]) != (cost_profile.sha256, cost_profile.version):
-                k_bad.append(f"{oid}: ledger cost pin {r['cost_profile_sha256'][:12]} != submitted profile")
-            if r["commission_scope"] != (cost_profile.fee_mode or "LEGACY"):
-                k_bad.append(f"{oid}: commission_scope {r['commission_scope']} != fee_mode {cost_profile.fee_mode}")
+            expected_profile = cost_profile
+            if cost_schedule is not None:
+                try:
+                    # Core owns New York fill-date conversion, effective intervals and coverage checks.
+                    expected_profile = cost_schedule.profile_for(r["exec_ts"])
+                except (ValueError, StopIteration, TypeError) as error:
+                    k_bad.append(f"{oid}: dated cost resolution failed: {error}")
+                    continue  # already invalid; do not compare malformed timestamps below
+            if (r["cost_profile_id"], r["cost_profile_sha256"], r["cost_profile_version"]) != (
+                    expected_profile.profile_id, expected_profile.sha256, expected_profile.version):
+                k_bad.append(f"{oid}: ledger cost identity != expected execution profile")
+            if r["commission_scope"] != (expected_profile.fee_mode or "LEGACY"):
+                k_bad.append(f"{oid}: commission_scope {r['commission_scope']} != expected fee_mode")
             # ----- temporal (no look-ahead under either label hypothesis)
             ex, sa = pd.Timestamp(r["exec_ts"]), pd.Timestamp(r["signal_available_at"])
             st, ot = pd.Timestamp(r["signal_time"]), pd.Timestamp(r["order_time"])
