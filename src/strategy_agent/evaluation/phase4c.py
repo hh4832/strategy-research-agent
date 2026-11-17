@@ -21,6 +21,9 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from .c3_reconciliation import execution_quality, reconcile_scenario
+from .c6_research import ONE_YEAR_DAYS, research_evaluation
+from .sufficiency import DEFAULTS as SAMPLE_DEFAULTS
 from .universal import ROOT, absent, available, canonical, digest, evaluate, write_evaluation
 
 VERSION = "1.0.0"
@@ -157,8 +160,9 @@ def _ny(cfg):
     return cfg["windows"]
 
 
-def envelope(parsed: dict, archive: dict, gov: dict, scenario: str) -> tuple[dict, list[dict]]:
-    """Real archive -> RESEARCH_EVALUATOR_INPUT_SCHEMA envelope for one scenario, plus the mapping table."""
+def envelope(parsed: dict, archive: dict, gov: dict, scenario: str, c3: dict | None = None) -> tuple[dict, list[dict]]:
+    """Real archive -> RESEARCH_EVALUATOR_INPUT_SCHEMA envelope for one scenario, plus the mapping table.
+    ``c3`` is this scenario's independent C3 reconciliation; without it no non-PASS Core check is ever accepted."""
     ri, cfg, dm, diag, m = (parsed[k] for k in ("run_info", "config", "dataset_manifest", "diagnostics", "metrics"))
     mapping: list[dict] = []
 
@@ -257,14 +261,19 @@ def envelope(parsed: dict, archive: dict, gov: dict, scenario: str) -> tuple[dic
 
     t = diag["temporal"].get(scenario, {})
     checks = m.get(scenario, {}).get("m3a4_checks", {})
-    exec_ok = t.get("status") == "PASS" and checks and all(v == "PASS" for v in checks.values())
+    eq_ = execution_quality(checks, t, c3)
+    exec_ok = eq_["status"] == "PASS"
+    fd = {"temporal": t, "m3a4_checks": checks}
+    if eq_["explained_exceptions"]:
+        fd["explained_exceptions"] = eq_["explained_exceptions"]
     doc["execution_diagnostics"] = available({
         "status": "PASS" if exec_ok else "FAIL", "orders_submitted": int(diag["decisions"]["orders"]),
-        "exposure": float(m[scenario]["exposure"]),
-        "fill_diagnostics": {"temporal": t, "m3a4_checks": checks}})
-    note("execution_diagnostics", "execution_diagnostics.json temporal[scenario] + metrics.json m3a4_checks + decisions.orders",
-         "PASS only if temporal PASS and every M3-A.4 check PASS; lookahead_checked NOT asserted (fill chronology is "
-         "verified, signal computation is not independently re-verified)", "VERIFIED" if exec_ok else "FAIL")
+        "exposure": float(m[scenario]["exposure"]), "fill_diagnostics": fd})
+    note("execution_diagnostics", "execution_diagnostics.json temporal[scenario] + metrics.json m3a4_checks + decisions.orders"
+         " + C3 reconciliation", "PASS only if temporal PASS and every M3-A.4 check PASS, except K03 = "
+         "NOT_APPLICABLE_OPEN_POSITION when C3 independently reconciled the open position and costs; lookahead_checked "
+         "NOT asserted (fill chronology is verified, signal computation is not independently re-verified)",
+         "VERIFIED" if exec_ok else "FAIL")
 
     gates = (gov["readiness"] or {}).get("markets", {}).get(cfg["market"]["market_id"], {}).get("gates", {})
     dq = gates.get("DATA_QUALITY", {})
@@ -313,61 +322,26 @@ def _close(a, b) -> bool:
     return math.isclose(float(a), float(b), rel_tol=TOL, abs_tol=TOL)
 
 
-def trade_integrity(parsed: dict) -> dict:
+def trade_integrity(parsed: dict, *, order_quantity: float | None = None) -> dict:
+    """C3: independent ledger reconciliation per scenario (see ``c3_reconciliation``). Status PASS / FAIL /
+    UNDETERMINED; UNDETERMINED never counts as PASS."""
     out = {}
     orders = int(parsed["diagnostics"]["decisions"]["orders"])
+    symbol = parsed["config"]["market"]["symbol"]
     for s in SCENARIOS:
-        tr = [r for r in parsed["trades"] if r["scenario"] == s]
-        fl = [r for r in parsed["fills"] if r["scenario"] == s]
-        rj = [r for r in parsed["rejections"] if r["scenario"] == s]
-        problems = []
-        keys = [(r["entry_ts"], r["exit_ts"]) for r in tr]
-        if len(set(keys)) != len(keys):
-            problems.append("DUPLICATE_TRADE")
-        fid = [(r["order_id"], r["exec_ts"]) for r in fl]
-        if len(set(fid)) != len(fid):
-            problems.append("DUPLICATE_FILL")
-        if len(set(r["order_id"] for r in fl)) != len(fl):
-            problems.append("ORDER_FILLED_TWICE")
-        buys = {(r["exec_ts"]): r for r in fl if r["side"] == "BUY"}
-        sells = {(r["exec_ts"]): r for r in fl if r["side"] == "SELL"}
-        matched = 0
-        for r in tr:
-            b, z = buys.get(r["entry_ts"]), sells.get(r["exit_ts"])
-            if not b or not z:
-                problems.append(f"TRADE_WITHOUT_FILL:{r['entry_ts']}")
-                continue
-            if not (_close(b["fill_price"], r["entry_price"]) and _close(z["fill_price"], r["exit_price"])
-                    and _close(b["qty"], r["qty"]) and _close(z["qty"], r["qty"])):
-                problems.append(f"TRADE_FILL_MISMATCH:{r['entry_ts']}")
-            if not _close((float(r["exit_price"]) - float(r["entry_price"])) * float(r["qty"]), r["gross_pnl"]):
-                problems.append(f"TRADE_GROSS_PNL:{r['entry_ts']}")
-            if not datetime.fromisoformat(r["entry_ts"]) < datetime.fromisoformat(r["exit_ts"]):
-                problems.append(f"TRADE_CHRONOLOGY:{r['entry_ts']}")
-            matched += 1
-        if len(fl) != 2 * len(tr):
-            problems.append(f"FILL_COUNT:{len(fl)} != 2 x trades {len(tr)} (open position or orphan fill)")
-        allocated = math.fsum(float(r["gross_pnl"]) - float(r["net_pnl"]) for r in tr)
-        ledger = math.fsum(float(r["explicit_cost"]) for r in fl)
-        if not _close(allocated, ledger):
-            problems.append(f"COST_ALLOCATION:{allocated} != fill ledger {ledger}")
-        m = parsed["metrics"].get(s, {})
-        if not _close(math.fsum(float(r["net_pnl"]) for r in tr), m.get("trades", {}).get("net_pnl", float("nan"))):
-            problems.append("NET_PNL_VS_METRICS")
-        if m.get("fills") != len(fl) or m.get("rejections") != len(rj):
-            problems.append("COUNTS_VS_METRICS")
-        rejected_orders = sorted({r["order_id"] for r in rj})
-        terminal = sorted({r["order_id"] for r in rj if r["reason"] in ("ORDER_EXPIRED",)})
-        filled = {r["order_id"] for r in fl}
-        if set(rejected_orders) & filled:
-            problems.append("ORDER_FILLED_AND_REJECTED")
-        out[s] = {"trades": len(tr), "trades_matched_to_entry_and_exit_fills": matched, "fills": len(fl),
-                  "rejection_rows": len(rj), "rejected_orders": rejected_orders, "terminal_rejections": terminal,
-                  "orders_submitted": orders, "orders_filled": len(filled),
-                  "orders_without_fill_or_rejection_record": orders - len(filled) - len(rejected_orders),
-                  "allocated_trade_costs": allocated, "fill_ledger_explicit_costs": ledger,
-                  "status": "PASS" if not problems else "FAIL", "problems": problems}
+        out[s] = reconcile_scenario(
+            trades=[r for r in parsed["trades"] if r["scenario"] == s],
+            fills=[dict(r) for r in parsed["fills"] if r["scenario"] == s],
+            rejections=[r for r in parsed["rejections"] if r["scenario"] == s],
+            decisions=parsed["decisions"], metrics=parsed["metrics"].get(s, {}), orders_submitted=orders,
+            symbol=symbol, tol=TOL, order_quantity=order_quantity, order_events=parsed.get("order_events"))
     return out
+
+
+def c3_status(scenarios: dict) -> str:
+    st = [v["status"] for v in scenarios.values()]
+    return "FAIL" if "FAIL" in st or not st else "UNDETERMINED" if "UNDETERMINED" in st else \
+        "PASS" if all(x == "PASS" for x in st) else "FAIL"
 
 
 def performance_consistency(parsed: dict, evaluations: dict) -> dict:
@@ -495,12 +469,12 @@ def accept(archive_path, *, expected_manifest_sha256: str, evaluator_commit_sha:
     checks["C2_archive_integrity"] = {"manifest_sha256_pinned": expected_manifest_sha256, "files_verified": len(archive["files"]),
                                       "contract_files_exact": True, "unlisted_entries": [], "symlinks": [],
                                       "status": "PASS"}
-    checks["C3_trade_integrity"] = {"scenarios": trade_integrity(parsed)}
-    checks["C3_trade_integrity"]["status"] = "PASS" if all(v["status"] == "PASS" for v in
-                                                           checks["C3_trade_integrity"]["scenarios"].values()) else "FAIL"
-    evaluations, mappings = {}, {}
+    c3 = trade_integrity(parsed)
+    checks["C3_trade_integrity"] = {"scenarios": c3, "status": c3_status(c3)}
+    evaluations, mappings, docs = {}, {}, {}
     for s in SCENARIOS:
-        doc, mp = envelope(parsed, archive, gov, s)
+        doc, mp = envelope(parsed, archive, gov, s, c3[s])
+        docs[s] = doc
         evaluations[s] = evaluate(doc, evaluator_commit_sha=evaluator_commit_sha, evaluated_at=evaluated_at)
         mappings[s] = mp
     checks["C4_performance_consistency"] = {"tolerance": f"rel/abs {TOL} (QUANT_EVALUATION_PROTOCOL 重現性 < 1e-9)",
@@ -509,23 +483,9 @@ def accept(archive_path, *, expected_manifest_sha256: str, evaluator_commit_sha:
         v["status"] == "PASS" for v in checks["C4_performance_consistency"]["scenarios"].values()) else "FAIL"
     checks["C5_temporal_safety"] = temporal_safety(parsed, gov)
     primary = evaluations[PRIMARY]
-    codes = {f["code"] for f in primary["risk_flags"]}
-    want = {"INSUFFICIENT_SAMPLE": "INSUFFICIENT_SAMPLE", "concentrated_profits": "NET_PROFIT_COVERED_BY_TOP_TRADES",
-            "missing_oos": "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED", "BLINDNESS_UNVERIFIED": "BLINDNESS_UNVERIFIED",
-            "limited_regime_coverage": "MARKET_REGIME_COVERAGE_NOT_ESTABLISHED"}
-    cost_row = next((r for r in primary["robustness_matrix"] if r.get("group") == "cost_sensitivity"), {})
-    pnl = [float(r["net_pnl"]) for r in parsed["trades"] if r["scenario"] == PRIMARY]
-    if not (sum(pnl) > 0 and any(x < 0 for x in pnl)):   # concentration fact is only defined for positive net with losers
-        want.pop("concentrated_profits")
-    c6 = {k: v in codes for k, v in want.items()} | {"cost_sensitivity_observed": cost_row.get("status") == "AVAILABLE",
-                                                     "less_than_one_year": "LESS_THAN_ONE_YEAR_OBSERVED" in codes,
-                                                     "verdict_not_keep": primary["strategy_verdict"] != "KEEP",
-                                                     "verdict": primary["strategy_verdict"],
-                                                     "evidence_sufficiency": primary["evidence_sufficiency"]}
-    checks["C6_research_evaluation"] = {**c6, "status": "PASS" if all(
-        v for k, v in c6.items() if k not in ("verdict", "evidence_sufficiency")) and primary["strategy_verdict"] == "RETEST"
-        and primary["evidence_sufficiency"] == "UNDETERMINED" else "FAIL"}
-    doc, _ = envelope(parsed, archive, gov, PRIMARY)
+    checks["C6_research_evaluation"] = research_evaluation(
+        {s: [r for r in parsed["trades"] if r["scenario"] == s] for s in SCENARIOS}, docs, evaluations, PRIMARY)
+    doc, _ = envelope(parsed, archive, gov, PRIMARY, c3[PRIMARY])
     again = evaluate(doc, evaluator_commit_sha=evaluator_commit_sha, evaluated_at=evaluated_at)
     other = evaluate(doc, evaluator_commit_sha=evaluator_commit_sha, evaluated_at="2000-01-01T00:00:00+08:00")
     strip = lambda r: {k: v for k, v in r.items() if k != "metadata"}  # noqa: E731
@@ -555,7 +515,9 @@ def _mapping_md(acc: dict) -> str:
         L.append(f"| {r['field']} | {r['source']} | {r['mapping']} | {r['status']} |")
     L += ["", "Not reconstructed: trades are Core round trips from trades.csv; no trade, PnL, notional or cost is derived "
           "from fills or aggregates. Turnover and rejection rate stay NOT_AVAILABLE (no notional export; rejection rows "
-          "repeat an order id). Order outcomes: see acceptance_checks.json C3 `orders_without_fill_or_rejection_record`.", ""]
+          "repeat an order id). Order outcomes: see acceptance_checks.json C3 `order_classification`.", "",
+          f"NOOP evidence ({PRIMARY}): `{_noop_lines(acc)['c3_noop_evidence_basis']}` — "
+          f"{_noop_lines(acc)['c3_noop_evidence_note']}.", ""]
     return "\n".join(L)
 
 
@@ -603,9 +565,62 @@ def _info(acc, sha, at, context) -> str:
              "engineering_status": ev.get("engineering_status"), "strategy_verdict": ev.get("strategy_verdict"),
              "evidence_sufficiency": ev.get("evidence_sufficiency"), "evaluation_batch_consumption": 0,
              "new_backtest_executed": False, "holdout_read": False,
-             "limitations": "RESEARCH_ONLY development sample; 13 trades < 30; no OOS; BLINDNESS_UNVERIFIED; "
-                            "Formal Market NO_GO; not evidence the strategy works"} | (context or {})
+             **_sample_lines(acc), "limitations": limitations_text(acc),
+             **_noop_lines(acc)} | (context or {})
     return "".join(f"{k}={v if isinstance(v, str) else json.dumps(v, default=str)}\n" for k, v in lines.items())
+
+
+def _primary_c6(acc) -> dict:
+    return ((acc.get("checks", {}).get("C6_research_evaluation") or {}).get("scenarios") or {}).get(PRIMARY) or {}
+
+
+def _sample_lines(acc) -> dict:
+    f = _primary_c6(acc).get("facts") or {}
+    return {"sample_scenario": PRIMARY, "sample_valid_trades": f.get("valid_trades"),
+            "sample_min_valid_trades": SAMPLE_DEFAULTS["min_valid_trades"], "sample_status": f.get("sample_status"),
+            "sample_observed_days": None if f.get("elapsed_days") is None else round(f["elapsed_days"], 2)}
+
+
+def limitations_text(acc) -> str:
+    """Human limitation line built from THIS archive's facts (C6 primary scenario, derived from trades.csv and
+    the sample window) and the existing protocol minimum; nothing here is fixed to a fixture."""
+    ev = acc.get("evaluation") or {}
+    f = _primary_c6(acc).get("facts") or {}
+    flags = {x.get("code") for x in ev.get("risk_flags", [])}
+    m = SAMPLE_DEFAULTS["min_valid_trades"]
+    parts = ["RESEARCH_ONLY development sample"]
+    n, st, days = f.get("valid_trades"), f.get("sample_status"), f.get("elapsed_days")
+    if n is None or st is None:
+        parts.append("sample size not evaluated (acceptance blocked or facts unavailable)")
+    elif st == "SUFFICIENT":
+        parts.append(f"{n} valid trades >= {m} minimum (sample SUFFICIENT; evidence {ev.get('evidence_sufficiency')})")
+    else:
+        parts.append(f"{n} valid trades" + (f" < {m} minimum" if n < m else "") +
+                     f" (sample INSUFFICIENT; evidence {ev.get('evidence_sufficiency')})")
+    if days is not None:
+        parts.append(f"{days:.0f} days observed" + (" (< 1 year)" if days < ONE_YEAR_DAYS else ""))
+    if "IN_SAMPLE_VS_OUT_OF_SAMPLE_NOT_TESTED" in flags:
+        parts.append("no OOS")
+    if "BLINDNESS_UNVERIFIED" in flags:
+        parts.append("BLINDNESS_UNVERIFIED")
+    market = (acc.get("checks", {}).get("C8_governance_isolation") or {}).get("formal_market_status")
+    parts.append(f"Formal Market {market or 'status UNKNOWN'}")
+    parts.append("not evidence the strategy works")
+    return "; ".join(parts)
+
+
+def _noop_lines(acc) -> dict:
+    c3 = ((acc.get("checks", {}).get("C3_trade_integrity") or {}).get("scenarios") or {}).get(PRIMARY) or {}
+    ev = c3.get("noop_evidence") or {}
+    basis = ev.get("basis")
+    note = {"STRICT_REPLAY_OF_CORE_ACTIVATION_RULE":
+            "TARGET_ORDER_NOOP reconstructed by replaying the Core activation rule over archived decisions/fills/"
+            "rejections (" + str(ev.get("core_lifecycle_ref")) + "); NOT native Core order_events (not archived)",
+            "CORE_ORDER_EVENTS": "TARGET_ORDER_NOOP verified against native Core order_events",
+            "NONE": "TARGET_ORDER_NOOP not verifiable: no Core order_events and order unit quantity unproven"}
+    return {"c3_noop_orders_verified": len(c3.get("verified_noop_order_ids") or []),
+            "c3_noop_evidence_basis": basis, "c3_noop_evidence_note": note.get(basis, "C3 not evaluated"),
+            "c3_order_unit_quantity": ev.get("unit_quantity"), "c3_order_unit_quantity_basis": ev.get("unit_quantity_basis")}
 
 
 def evaluation_dir_name(evaluated_at: str, evaluator_commit_sha: str) -> str:
