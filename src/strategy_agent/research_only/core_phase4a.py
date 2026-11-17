@@ -278,7 +278,12 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
 
     A.check_core_bars(frame)
     rows, sbars = conservative_rows_and_bars(frame)
-    decs = sma_crossover(sbars, int(parameters["fast"]), int(parameters["slow"]))
+    family, ta01_params = signal_family(spec, parameters)
+    if family == "TA01":
+        from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+        decs = TA.ta01_decisions(sbars, TA.sessions_from_rows(rows), ta01_params)
+    else:                                   # unchanged SMA path (every existing caller)
+        decs = sma_crossover(sbars, int(parameters["fast"]), int(parameters["slow"]))
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
     if spec.get("version")=="0.2.0" and sum(b.eligible and b.available_at<ws for b in sbars)<int(spec['data_requirements']['warmup_bars']):
         raise Phase4ABindingError('insufficient eligible pre-window warm-up bars')
@@ -339,11 +344,36 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
         metrics = evaluate(report, rows, initial_capital=cash, bar_minutes=15, bars_per_year=252 * 26,
                            parameters=parameters, symbol="TSM", order_qty=qty, **extra)
         metrics.update(preregistered_decompositions(report, rows, exp))
+        if family == "TA01":                # P5C-TA-01 is intraday: an exit that did not fill in-session is FAIL
+            from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+            ta01_check = TA.intraday_check(report.round_trips, report.open_position, ta01_params.timezone)
         out["scenarios"][name] = {"profile_sha256": profile.sha256,
                                   "cost_schedule_sha256": scenario_cost.sha256 if dated_schedules is not None else None,
                                   "result": result, "report": report,
                                   "m3a4_checks": checks, "cost_diagnostics": diag, "metrics": metrics}
+        if family == "TA01":
+            out["scenarios"][name]["ta01_intraday_check"] = ta01_check
+    if family == "TA01":
+        from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+        out["signal_family"] = {"family": "TA01", "structure_sha256": TA.STRUCTURE_SHA256,
+                                "params_sha256": TA.params_digest(ta01_params)}
     return out
+
+
+def signal_family(spec: dict, parameters: dict):
+    """Which signal function an execution uses. Every spec that is not a P5C-TA-01 spec keeps the historical SMA
+    path unchanged. A P5C-TA-01 spec is bound fail-closed (exact reviewed rule structure, fixed parameters equal to
+    the spec defaults); any binding error is a Phase4ABindingError before any order exists."""
+    from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+    from strategy_agent.signals.core import SignalInputError  # noqa: PLC0415
+    if not TA.is_ta01_spec(spec):
+        if TA.PARAMETER_KEYS & set(parameters):
+            raise Phase4ABindingError("TA-01 parameters supplied for a non-TA-01 spec")
+        return "SMA", None
+    try:
+        return "TA01", TA.params_from_spec(spec, parameters)
+    except (SignalInputError, KeyError, TypeError, ValueError) as e:
+        raise Phase4ABindingError(f"TA-01 spec binding refused: {e}") from e
 
 
 def sec_fill_date_mapping_sensitivity(result, schedule) -> dict:

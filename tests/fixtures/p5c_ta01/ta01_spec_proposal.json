@@ -1,0 +1,358 @@
+{
+  "spec_version": "1.0.0",
+  "strategy_id": "p5c_ta01_res20_strongclose_relvol_tsm_15m",
+  "name": "P5C-TA-01 PROPOSAL ONLY: 20-bar resistance breakout + strong-close candle + relative volume (TSM 15m)",
+  "version": "0.0.1",
+  "status": "DRAFT",
+  "hypothesis": {
+    "statement": "A completed 15m RTH bucket that closes above the highest high of the prior 20 eligible buckets, closes in the top quarter of its own range, and trades at least twice the prior 20-bucket average volume marks accepted resistance breaks that continue over the next hours.",
+    "mechanism": "Resistance at a recent high concentrates resting sell orders; a strong close on unusually high volume indicates that this supply was absorbed by aggressive buyers rather than a thin, quickly reversed probe.",
+    "falsifiable_prediction": "Mean net PnL per closed trade at BASE cost exceeds the pre-registered random-entry null with identical exits and costs.",
+    "null_hypothesis": "Mean net PnL per closed trade at BASE cost does not exceed the random-entry null.",
+    "rationale_category": "TREND_FOLLOWING",
+    "expected_holding_period": "up to 8 eligible 15m buckets; flat by the 15:15 ET decision",
+    "known_failure_modes": [
+      "breakout failure / stop runs",
+      "volume spikes from auctions or news mis-attributed",
+      "edge below costs"
+    ],
+    "references": [
+      "PROPOSAL ONLY; Phase 5-C; no backtest"
+    ]
+  },
+  "universe": {
+    "market": "IBKR",
+    "symbols": [
+      "TSM"
+    ],
+    "timeframe": "15m",
+    "source_timeframe": "1m",
+    "aggregation": {
+      "label": "start",
+      "closed": "left",
+      "require_complete": true,
+      "session_anchored": true
+    },
+    "timezone": "America/New_York",
+    "contract_policy": {
+      "type": "NOT_APPLICABLE",
+      "continuous_inferred": false,
+      "indicator_series": "NOT_APPLICABLE"
+    },
+    "sessions": {
+      "allowed": [
+        "RTH"
+      ],
+      "calendar_ref": "NYSE RTH 09:30-16:00 America/New_York (DST-aware; source timestamps are UTC)",
+      "exclude_closing_auction": true,
+      "no_overnight": true
+    }
+  },
+  "data_requirements": {
+    "datasets": [
+      {
+        "dataset_id": "ibkr_tsm_1m_normalized",
+        "snapshot_id": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+        "producer_commit_sha": "06359faf7ef4b8ff702a7ab1a6d07521d3b68f28",
+        "verdict": "GO",
+        "usage_scope": "BACKTEST",
+        "access_contract": "Data Access Contract v0.1 (MarketDataClient.load('TSM'))"
+      }
+    ],
+    "warmup_bars": 90,
+    "fields": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume"
+    ]
+  },
+  "parameters": {
+    "values": {
+      "res_n": {
+        "type": "integer",
+        "default": 20,
+        "min": 20,
+        "max": 20,
+        "step": 1,
+        "description": "resistance lookback (eligible 15m buckets, excluding current)"
+      },
+      "vol_m": {
+        "type": "integer",
+        "default": 20,
+        "min": 20,
+        "max": 20,
+        "step": 1,
+        "description": "relative-volume baseline length (eligible buckets, excluding current)"
+      },
+      "vol_k": {
+        "type": "number",
+        "default": 2.0,
+        "min": 2.0,
+        "max": 2.0,
+        "step": 0.5,
+        "description": "relative-volume multiple"
+      },
+      "close_pos": {
+        "type": "number",
+        "default": 0.75,
+        "min": 0.75,
+        "max": 0.75,
+        "step": 0.05,
+        "description": "strong close: close in top (1-close_pos) of the bar range"
+      },
+      "sup_l": {
+        "type": "integer",
+        "default": 10,
+        "min": 10,
+        "max": 10,
+        "step": 1,
+        "description": "trailing support lookback for the exit"
+      }
+    },
+    "constraints": [],
+    "search": {
+      "mode": "FIXED",
+      "max_trials": 1
+    }
+  },
+  "signal": {
+    "evaluation_time": "BAR_CLOSE",
+    "indicators": [
+      {
+        "id": "res",
+        "type": "ROLLING_MAX",
+        "input": "high",
+        "params": {
+          "period": {
+            "param": "res_n"
+          }
+        },
+        "lag": 1,
+        "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+      },
+      {
+        "id": "vol_avg",
+        "type": "SMA",
+        "input": "volume",
+        "params": {
+          "period": {
+            "param": "vol_m"
+          }
+        },
+        "lag": 1,
+        "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+      },
+      {
+        "id": "sup",
+        "type": "ROLLING_MIN",
+        "input": "low",
+        "params": {
+          "period": {
+            "param": "sup_l"
+          }
+        },
+        "lag": 1,
+        "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+      }
+    ],
+    "entry_rules": [
+      {
+        "id": "res_break_strong_close_relvol",
+        "action": "ENTER_LONG",
+        "description": "all three must hold on the same completed eligible bucket",
+        "when": {
+          "op": "and",
+          "args": [
+            {
+              "op": "is_flat"
+            },
+            {
+              "op": "time_lt",
+              "time_local": "14:30"
+            },
+            {
+              "op": "gt",
+              "left": {
+                "ref": "close"
+              },
+              "right": {
+                "ref": "res"
+              }
+            },
+            {
+              "op": "gt",
+              "left": {
+                "ref": "close"
+              },
+              "right": {
+                "ref": "open"
+              }
+            },
+            {
+              "op": "gt",
+              "left": {
+                "ref": "high"
+              },
+              "right": {
+                "ref": "low"
+              }
+            },
+            {
+              "op": "ge",
+              "left": {
+                "op": "sub",
+                "args": [
+                  {
+                    "ref": "close"
+                  },
+                  {
+                    "ref": "low"
+                  }
+                ]
+              },
+              "right": {
+                "op": "mul",
+                "args": [
+                  {
+                    "param": "close_pos"
+                  },
+                  {
+                    "op": "sub",
+                    "args": [
+                      {
+                        "ref": "high"
+                      },
+                      {
+                        "ref": "low"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "op": "ge",
+              "left": {
+                "ref": "volume"
+              },
+              "right": {
+                "op": "mul",
+                "args": [
+                  {
+                    "param": "vol_k"
+                  },
+                  {
+                    "ref": "vol_avg"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "exit_rules": [
+      {
+        "id": "support_break",
+        "action": "EXIT_LONG",
+        "when": {
+          "op": "lt",
+          "left": {
+            "ref": "close"
+          },
+          "right": {
+            "ref": "sup"
+          }
+        }
+      }
+    ],
+    "max_entries_per_session": 1
+  },
+  "position_sizing": {
+    "method": "FIXED_UNITS",
+    "units": 100,
+    "max_units": 100,
+    "initial_capital": 100000
+  },
+  "risk_exits": {
+    "stop_loss": {
+      "type": "NONE"
+    },
+    "take_profit": {
+      "type": "NONE"
+    },
+    "time_exit": {
+      "max_holding_bars": 8,
+      "flatten_decision_time_local": "15:15",
+      "flatten_before_session_end": true
+    }
+  },
+  "execution": {
+    "convention": "oracle-execution-convention-v1",
+    "signal_time": "BAR_AVAILABLE_AT",
+    "order_time": "SIGNAL_TIME",
+    "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+    "order_type": "MARKET",
+    "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END",
+    "max_fill_delay_bars": 2,
+    "partial_fills": false,
+    "same_bar_reentry": false
+  },
+  "costs": {
+    "currency": "USD",
+    "fee": {
+      "per_unit_side": 0.005,
+      "rate_side": 0,
+      "min_per_order": 1.0,
+      "rounding": "NONE"
+    },
+    "tax": {
+      "rate_side": 0,
+      "sell_rate": 0,
+      "rounding": "NONE"
+    },
+    "slippage": {
+      "model": "BPS",
+      "value": 2
+    },
+    "sensitivity_multipliers": [
+      0,
+      1,
+      2,
+      4
+    ],
+    "profile_ref": {
+      "profile_id": "ibkr_us_equity",
+      "version": "0.1.0",
+      "sha256": null
+    }
+  },
+  "risk_constraints": {
+    "allowed_directions": [
+      "LONG"
+    ],
+    "max_position_units": 100,
+    "max_trades_per_session": 1,
+    "max_drawdown_halt": 0.25
+  },
+  "experiment": {
+    "seed": 20261103,
+    "evaluation_protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
+    "split_ref": "SPLIT-TSM-15M-v1 (to be registered after Phase-2 GO)",
+    "holdout_lock_id": "HOLDOUT-TSM-15M-v1",
+    "trial_family_id": "FAM-VOLBRK-TSM",
+    "compute_budget": {
+      "max_backtests": 1,
+      "max_wall_minutes": 30
+    }
+  },
+  "provenance": {
+    "created_at": "2026-11-03T01:30:00+08:00",
+    "created_by": "claude-phase3-prep",
+    "parent_spec_id": null,
+    "spec_sha256": null,
+    "notes": "TEST FIXTURE: P5C-TA-01 proposal spec draft (PROPOSAL_ONLY). Not a registered spec; dataset refs are the ATR example placeholders; no data, cost or research approval is implied."
+  }
+}
