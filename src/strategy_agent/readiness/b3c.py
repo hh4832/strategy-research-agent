@@ -391,9 +391,25 @@ def execution_records() -> dict:
             res = _fold(ev).values()
         except Exception:  # noqa: BLE001 - a broken ledger is never sound
             out["ledger_valid"], res = False, []
+        res = list(res)
         out["reservations"] = [{"reservation_id": r["reservation_id"], "state": r["state"], "task_id": r["task_id"]}
                                for r in res if r.get("authorization_id") == CANDIDATE_AUTHORIZATION_ID]
-        out["other_reservations"] = sum(1 for r in res if r.get("authorization_id") != CANDIDATE_AUTHORIZATION_ID)
+        # Phase 5-C1 executions are governed by their own contracts (authorization_contracts C1 / C1_RECOVERY).
+        # A C1 reservation is not a B3-C anomaly only when it is the single, terminal-or-reconciling reservation of
+        # that authorization with a matching uses count; anything else still counts against B3-C (fail closed).
+        from strategy_agent.governance.authorization_contracts import C1, C1_RECOVERY  # noqa: PLC0415
+        # Recognition only: this never makes a C1 authorization eligible and never reads RECONCILIATION_REQUIRED as
+        # CONSUMED (eligibility stays with the budget ledger, the C1 runner and the remote CLAIM gate).
+        c1_ok = {}
+        for aid in (C1, C1_RECOVERY):
+            mine = [r for r in res if r.get("authorization_id") == aid]
+            uses = sum(1 for u in _book_lines("uses_log") if u.get("authorization_id") == aid)
+            if len(mine) == 1 and ((mine[0]["state"] == "CONSUMED" and uses == 1)
+                                   or (mine[0]["state"] == "RECONCILIATION_REQUIRED" and uses <= 1)):
+                c1_ok[mine[0]["reservation_id"]] = mine[0]["state"]
+        out["c1_recognized_reservations"] = c1_ok
+        out["other_reservations"] = sum(1 for r in res if r.get("authorization_id") != CANDIDATE_AUTHORIZATION_ID
+                                        and r["reservation_id"] not in c1_ok)
         if not out["ledger_valid"]:
             out["other_reservations"] = -1
     return out
