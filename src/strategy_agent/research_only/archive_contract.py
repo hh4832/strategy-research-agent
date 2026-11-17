@@ -178,6 +178,9 @@ def write_contract_archive(out_dir: Path, *, write_once, cfg: dict, run_id: str,
             "m3a4_checks": {k: v["m3a4_checks"] for k, v in scen.items()},
             "rejections_by_scenario": {k: len(_records(v["result"].rejections)) for k, v in scen.items()},
             "loader_provenance": prov}
+    for key in ("signal_family", "execution_frame", "ta01_fill_window"):   # TA-01 only; absent for SMA (unchanged)
+        if key in batch:
+            diag[key] = batch[key]
 
     sec_cfg = cfg["snapshot_binding"]
     info = {

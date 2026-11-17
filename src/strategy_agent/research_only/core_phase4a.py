@@ -394,24 +394,60 @@ def ta01_fill_window(orders, frame, window_minutes: int):
     (recorded as FILL_WINDOW_NO_BAR). Whether the in-window bar is tradable is left to Core (NEXT_BAR: a rejected
     bar means no fill)."""
     import pandas as pd  # noqa: PLC0415
-    f = frame.copy()
+    f = frame[["contract", "bar_start", "possible_open_latest", "session_close", "modeled_available_at"]].copy()
     for c in ("bar_start", "possible_open_latest", "session_close", "modeled_available_at"):
         f[c] = pd.to_datetime(f[c], utc=True)
-    f = f.sort_values("bar_start", kind="stable")
+    by_contract = {k: g.sort_values("bar_start", kind="stable").reset_index(drop=True) for k, g in f.groupby("contract")}
+    signal_session = {}
+    for k, g in by_contract.items():
+        if g["modeled_available_at"].duplicated().any():
+            raise Phase4ABindingError("duplicate 1m execution rows for one decision time")
+        signal_session[k] = dict(zip(g["modeled_available_at"], g["session_close"]))
+    window = pd.Timedelta(minutes=window_minutes)
     kept, dropped = [], []
     for o in orders:
         t = pd.Timestamp(o.order_time).tz_convert("UTC")
-        sig = f[f["modeled_available_at"].eq(t)]
-        if sig.empty:
+        g = by_contract.get(o.contract)
+        if g is None or t not in signal_session[o.contract]:
             raise Phase4ABindingError(f"order {o.order_id}: no 1m execution row at the decision time")
-        cand = f[(f["contract"] == o.contract) & (f["bar_start"] > t) & f["session_close"].eq(sig["session_close"].max())]
-        first = cand.iloc[0] if len(cand) else None
-        if first is not None and first["possible_open_latest"] <= t + pd.Timedelta(minutes=window_minutes):
+        i = int(g["bar_start"].searchsorted(t, side="right"))          # first bar_start strictly after t
+        first = g.iloc[i] if i < len(g) and g["session_close"].iat[i] == signal_session[o.contract][t] else None
+        if first is not None and first["possible_open_latest"] <= t + window:
             kept.append(o)
         else:
             dropped.append({"order_id": o.order_id, "order_time": t.isoformat(), "reason": "FILL_WINDOW_NO_BAR",
                             "first_candidate_open_latest": None if first is None else first["possible_open_latest"].isoformat()})
     return kept, dropped
+
+
+def execution_frame(core, loaded, spec: dict, parameters: dict):
+    """Frame handed to ``execute_batch`` by the governed runner.
+
+    Non-TA-01 (SMA): ``loaded.conservative_15m`` exactly as Core's loader returned it (unchanged behaviour).
+    TA-01: the Core 1m conservative frame, built by Core ``prepare_conservative_bars(loaded.source_1m, bar_minutes=1)``
+    from the same Core source rows. Fail-closed cross-check: Core's own 15m rebuild from those rows must equal the
+    loader's 15m frame on timing, eligibility and volume, so signals see exactly the buckets the loader produced."""
+    family, _ = signal_family(spec, parameters)
+    if family != "TA01":
+        return loaded.conservative_15m, None
+    import pandas as pd  # noqa: PLC0415
+    from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+    exec_frame = core.prepare_conservative_bars(loaded.source_1m, bar_minutes=TA.EXEC_MINUTES)
+    rebuilt = core.prepare_conservative_bars(loaded.source_1m, bar_minutes=TA.SIGNAL_MINUTES)
+    cols = ["source_timestamp", "bar_start", "modeled_available_at", "session_close", "volume", "signal_eligible",
+            "buy_execution_eligible", "sell_execution_eligible"]
+    try:
+        pd.testing.assert_frame_equal(rebuilt[cols].reset_index(drop=True),
+                                      loaded.conservative_15m[cols].reset_index(drop=True), check_dtype=False)
+    except (AssertionError, KeyError) as e:
+        raise Phase4ABindingError(f"TA-01: Core 15m rebuild from source_1m differs from the loaded 15m frame: {e}") from e
+    info = {"execution_bars_minutes": TA.EXEC_MINUTES, "signal_bars_minutes": TA.SIGNAL_MINUTES,
+            "execution_bars": int(len(exec_frame)),
+            "execution_rejection_reasons": {str(k): int(v) for k, v in
+                                            exec_frame["execution_rejection_reason"].value_counts().items() if k},
+            "built_by": "market_research_core.prepare_conservative_bars(source_1m, bar_minutes=1)",
+            "loaded_15m_cross_check": "PASS"}
+    return exec_frame, info
 
 
 class TA01NoOvernightViolation(RuntimeError):
