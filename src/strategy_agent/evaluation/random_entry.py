@@ -1,9 +1,10 @@
 """RANDOM-ENTRY-NULL-v1: reproducible random-entry comparison baseline for P5C-TA-01 (engineering component).
 
-Question it answers
-    Does conditioning the entry on the TA-01 pattern (breakout + strong-close candle + relative volume) give a higher
-    mean net PnL per closed trade than entering at a randomly chosen PERMITTED entry point, when exits, position size,
-    order/fill path and cost calculation are identical?
+Question it answers (and only this)
+    Do the TA-01 entries, taken as a whole, have a higher mean net PnL per closed trade than the same number of
+    entries placed at randomly chosen PERMITTED entry points, when exits, position size, order/fill path and cost
+    calculation are identical? The comparison is joint: it mixes WHICH sessions are traded (day selection) and WHEN
+    inside a session the entry happens (intraday timing). A difference cannot be attributed to either part alone.
 
 How (all parameters in an explicit ``RandomEntryConfig``; nothing is a hidden constant)
     * Population (``ALL_TRADEABLE_SESSIONS``): sessions that have at least one permitted entry point. A permitted
@@ -19,9 +20,13 @@ How (all parameters in an explicit ``RandomEntryConfig``; nothing is a hidden co
     * Statistic: mean ``net_pnl`` per closed trade; reported against the null distribution's ``quantile``.
 
 What it cannot answer
-    Statistical significance beyond the empirical rank; whether TA-01 beats buy-and-hold or a market factor; why an
-    effect exists; regime dependence; anything on data other than what the caller supplies. The result is never a
-    trading permission, and this component must not be run on real market data without a research authorization.
+    * the separate contribution of day selection vs intraday timing (both are randomised at once);
+    * the isolated or causal effect of any single component (breakout, candle shape, relative volume) - the
+      pattern is compared only as a whole, and no component is ablated here;
+    * statistical significance beyond the empirical rank; whether TA-01 beats buy-and-hold or a market factor; why
+      an effect exists; regime dependence; anything on data other than what the caller supplies.
+    The result is never a trading permission, and this component must not be run on real market data without a
+    research authorization.
 
 Known sampling biases
     * Day selection: the strategy enters on specific days; the null spreads entries uniformly over tradeable days, so
@@ -128,10 +133,14 @@ def compare(strategy_trades: Sequence[Mapping], null_trades: Sequence[Sequence[M
     nulls = [_mean_net(t, f"draw {i}") for i, t in enumerate(null_trades)]
     thr = _quantile(nulls, config.quantile)
     return {"version": VERSION, "config": config.__dict__, "statistic": "mean net_pnl per closed trade",
+            "question": "TA-01 entries as a whole vs random permitted entries (day selection and intraday timing "
+                        "randomised jointly), identical exits, fills and costs",
             "strategy_mean": s, "strategy_trades": len(strategy_trades), "null_means": nulls,
             "null_quantile_value": thr, "share_of_null_below_strategy": sum(x < s for x in nulls) / len(nulls),
             "strategy_above_quantile": s > thr,
-            "not_answered": ["statistical significance beyond empirical rank", "market/beta comparison",
+            "not_answered": ["separate effect of day selection vs intraday timing",
+                             "isolated or causal effect of the candle or volume component",
+                             "statistical significance beyond empirical rank", "market/beta comparison",
                              "regime dependence", "trading permission"]}
 
 

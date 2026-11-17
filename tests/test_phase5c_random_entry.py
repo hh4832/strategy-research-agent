@@ -123,6 +123,20 @@ def test_same_executor_quantity_and_costs_for_strategy_and_every_draw():
     assert out["version"] == "RANDOM-ENTRY-NULL-v1" and out["config"]["seed"] == 7
     assert out["null_quantile_value"] == R._quantile(out["null_means"], 0.95)
     assert "trading permission" in out["not_answered"]
+    assert "separate effect of day selection vs intraday timing" in out["not_answered"]
+    assert "isolated or causal effect of the candle or volume component" in out["not_answered"]
+    assert "jointly" in out["question"]
+
+
+def test_failed_null_returns_no_result():
+    days = [day("2025-01-13", [FLAT] * 4 + [BREAK] + [HOLD] * 19), day("2025-01-14", [FLAT] * 9),
+            day("2025-01-15", [FLAT] * 24)]
+    bars, sess = series(*days)
+    ex, result = FakeExecutor(bars), None
+    with pytest.raises(T.SameDayExitError):
+        result = R.run(bars, sess, P, strategy_decisions=T.ta01_decisions(bars, sess, P), execute=ex,
+                       config=R.RandomEntryConfig(3, 40, 0.95, "ALL_TRADEABLE_SESSIONS"))
+    assert result is None                                                  # no partial comparison is returned
 
 
 def test_compare_and_quantile():

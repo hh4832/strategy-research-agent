@@ -18,6 +18,11 @@ ROOT = Path(__file__).resolve().parents[1]
 NY = ZoneInfo("America/New_York")
 SPEC = json.loads((ROOT / "tests/fixtures/p5c_ta01/ta01_spec_proposal.json").read_text(encoding="utf-8"))
 DEFAULTS = {k: SPEC["parameters"]["values"][k]["default"] for k in T.PARAMETER_KEYS}
+# ENGINEERING TEST VARIANT, not the proposal: the proposal fixture declares execution.max_fill_delay_bars = 2, which
+# is not enforced by Agent or Core 50ea3bf, so the proposal spec is refused (TA-01 as proposed is BLOCKED). The
+# variant omits only that field so the rest of the binding/execution path can be engineering-tested.
+ENG = copy.deepcopy(SPEC)
+del ENG["execution"]["max_fill_delay_bars"]
 P = T.TA01Params(res_n=3, vol_m=3, vol_k=2.0, close_pos=0.75, sup_l=2, max_hold_bars=3,
                  last_entry_local=time(14, 30), flatten_local=time(15, 15), regular_close_local=time(16, 0),
                  timezone="America/New_York", bar_minutes=15)
@@ -231,8 +236,16 @@ def test_sessions_from_rows_fail_closed():
 
 
 # ------------------------------------------------------------------------------------------- spec binding
+def test_proposal_spec_is_refused_because_fill_delay_is_unenforceable():
+    assert SPEC["execution"]["max_fill_delay_bars"] == 2
+    with pytest.raises(SignalInputError, match="TA01_MAX_FILL_DELAY_UNENFORCEABLE"):
+        T.params_from_spec(SPEC, DEFAULTS)
+    # the canonical structure hash does not cover `execution`, hence the explicit check
+    assert T.structure_sha256(SPEC) == T.structure_sha256(ENG) == T.STRUCTURE_SHA256
+
+
 def test_spec_binds_to_exact_reviewed_structure():
-    p = T.params_from_spec(SPEC, DEFAULTS)
+    p = T.params_from_spec(ENG, DEFAULTS)
     assert (p.res_n, p.vol_m, p.vol_k, p.close_pos, p.sup_l, p.max_hold_bars) == (20, 20, 2.0, 0.75, 10, 8)
     assert (p.last_entry_local, p.flatten_local, p.regular_close_local) == (time(14, 30), time(15, 15), time(16, 0))
     assert p.bar_minutes == 15
@@ -251,7 +264,7 @@ def test_spec_binds_to_exact_reviewed_structure():
     lambda s: s["universe"].update(timeframe="5m"),
 ])
 def test_spec_binding_fails_closed(mutate):
-    s = copy.deepcopy(SPEC)
+    s = copy.deepcopy(ENG)
     mutate(s)
     with pytest.raises(SignalInputError):
         T.params_from_spec(s, DEFAULTS)
@@ -261,7 +274,7 @@ def test_spec_binding_fails_closed(mutate):
                                     {**DEFAULTS, "fast": 5}])
 def test_run_parameters_must_equal_spec_defaults(params):
     with pytest.raises(SignalInputError):
-        T.params_from_spec(SPEC, params)
+        T.params_from_spec(ENG, params)
 
 
 # ------------------------------------------------------------------------------------------ dispatch
@@ -269,13 +282,15 @@ def test_dispatch_routes_only_ta01_specs_and_keeps_sma_path():
     from strategy_agent.research_only import core_phase4a as P4
     sma_spec = json.loads((ROOT / "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json").read_text(encoding="utf-8"))
     assert P4.signal_family(sma_spec, {"fast": 5, "slow": 20}) == ("SMA", None)
-    fam, p = P4.signal_family(SPEC, DEFAULTS)
+    fam, p = P4.signal_family(ENG, DEFAULTS)
     assert fam == "TA01" and p.res_n == 20
+    with pytest.raises(P4.Phase4ABindingError, match="MAX_FILL_DELAY"):
+        P4.signal_family(SPEC, DEFAULTS)                                   # proposal spec: BLOCKED
     with pytest.raises(P4.Phase4ABindingError):
         P4.signal_family(sma_spec, {**DEFAULTS})                           # TA-01 params never reach SMA
     with pytest.raises(P4.Phase4ABindingError):
-        P4.signal_family(SPEC, {"fast": 5, "slow": 20})                    # SMA params never reach TA-01
-    bad = copy.deepcopy(SPEC)
+        P4.signal_family(ENG, {"fast": 5, "slow": 20})                     # SMA params never reach TA-01
+    bad = copy.deepcopy(ENG)
     bad["signal"]["indicators"][1]["input"] = "close"
     with pytest.raises(P4.Phase4ABindingError):
         P4.signal_family(bad, DEFAULTS)

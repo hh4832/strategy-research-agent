@@ -79,7 +79,9 @@ def last_feasible_exit_decision(session_close: datetime, bar_minutes: int) -> da
         and bar_start < DAY expiry (first session close after order_time).
     So the last executable bucket starts at L* = session_close - 2m; a decision d can reach it only if
     d < L* - 1min. Decisions lie on the m-minute grid, so the answer is the largest grid time strictly earlier
-    than session_close - 2m - 1min. For 15m buckets and a 16:00 close this is 15:15; for a 13:00 close, 12:15.
+    than session_close - 2m - 1min. For 15m buckets and a 16:00 close this is 15:15. (For a 13:00 close the same
+    derivation gives 12:15; that value is a timing derivation only: TA-01 never enters on an early-close session
+    and never carries a position into one, so it is not used by any TA-01 decision.)
     It is a NECESSARY condition only: the single remaining fill bucket may still be ineligible (zero volume,
     participation cap), in which case the DAY order expires and intraday_check FAILs."""
     if bar_minutes not in CORE_BUCKET_MINUTES:
@@ -164,6 +166,13 @@ def params_from_spec(spec: Mapping, parameters: Mapping) -> TA01Params:
         raise SignalInputError("TA01: RTH-only, no_overnight and an explicit HH:MM-HH:MM calendar_ref required")
     if spec["risk_constraints"]["allowed_directions"] != ["LONG"]:
         raise SignalInputError("TA01 is long-only")
+    if "max_fill_delay_bars" in spec.get("execution", {}):
+        # The canonical structure hash does not cover `execution`, so this is checked explicitly. Neither the Agent
+        # execution path nor pinned Core 50ea3bf enforces a fill-delay limit (orders are DAY; expiry is the first
+        # session close), and the schema does not define how the bars are counted. A spec that declares the rule
+        # is therefore refused instead of being run without it.
+        raise SignalInputError("TA01_MAX_FILL_DELAY_UNENFORCEABLE: execution.max_fill_delay_bars is declared but "
+                               "not enforced by Agent or Core 50ea3bf and its bar counting is undefined")
     tf = spec["universe"].get("timeframe")
     if tf != "15m":
         raise SignalInputError(f"TA01: universe.timeframe must be 15m, got {tf!r}")

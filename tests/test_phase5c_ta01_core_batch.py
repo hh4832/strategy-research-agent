@@ -19,6 +19,10 @@ from strategy_agent.research.environment import synthetic_componentized_cost_pro
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = json.loads((ROOT / "tests/fixtures/p5c_ta01/ta01_spec_proposal.json").read_text(encoding="utf-8"))
 PARAMS = {k: SPEC["parameters"]["values"][k]["default"] for k in ("res_n", "vol_m", "vol_k", "close_pos", "sup_l")}
+# ENGINEERING TEST VARIANT (not the proposal): the proposal declares max_fill_delay_bars = 2, which is unenforced and
+# therefore refused; only that field is removed to engineering-test the execution path.
+ENG = copy.deepcopy(SPEC)
+del ENG["execution"]["max_fill_delay_bars"]
 DAYS = ("2025-01-06", "2025-01-07", "2025-01-08")
 WINDOW_END = "2025-01-09T00:00:00-05:00"
 
@@ -76,7 +80,7 @@ def frame(zero_volume_minute=None):
     return core.prepare_conservative_bars(pd.DataFrame(rows), bar_minutes=15)
 
 
-def run(schedule, fr, spec=SPEC, params=None):
+def run(schedule, fr, spec=ENG, params=None):
     from market_research_core import tsm_research_costs
     from strategy_agent.research_only import core_phase4a as P
     return P.execute_batch(core, tsm_research_costs, frame=fr, core_sha=A.core_identity()['git_sha'],
@@ -108,16 +112,28 @@ def test_same_day_time_exit_signal_and_fill_through_core(schedule, monkeypatch):
         assert len(item['result'].open_positions) == 0
 
 
+def test_proposal_spec_is_refused_before_any_order(schedule):
+    from strategy_agent.research_only import core_phase4a as P
+    result = None
+    with pytest.raises(P.Phase4ABindingError, match='MAX_FILL_DELAY_UNENFORCEABLE'):
+        result = run(schedule, frame(), spec=SPEC)
+    assert result is None
+
+
 def test_exit_fill_bucket_ineligible_fails_whole_execution(schedule):
     from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
+    result = None
     with pytest.raises(TA01NoOvernightViolation, match='no-overnight violated'):
-        run(schedule, frame(zero_volume_minute='15:35'))      # the only same-day fill bucket (15:30) is ineligible
+        result = run(schedule, frame(zero_volume_minute='15:35'))   # the only same-day fill bucket (15:30) is ineligible
+    assert result is None                                    # no metrics, trades or report are returned
 
 
 def test_no_same_day_exit_decision_fails_whole_execution(schedule):
     from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
+    result = None
     with pytest.raises(TA01NoOvernightViolation, match='NO_SAME_DAY_EXIT'):
-        run(schedule, frame(zero_volume_minute='15:05'))      # the 15:15 decision bucket is ineligible
+        result = run(schedule, frame(zero_volume_minute='15:05'))   # the 15:15 decision bucket is ineligible
+    assert result is None
 
 
 def test_sma_spec_with_ta01_parameters_is_refused_before_any_order(schedule):
