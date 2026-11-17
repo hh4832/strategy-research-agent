@@ -21,6 +21,11 @@ Rule (one completed ELIGIBLE bar ``t``; ``[k]`` = k eligible bars back; windows 
   The time exit is fired by the FIRST eligible bucket whose decision time is at or after flatten_local. There is no
   separate session-end exit rule (the spec must state flatten_before_session_end: false).
 
+EXECUTION (Haw, 2026-11-18): signals are evaluated on Core 15m buckets; once a signal is observed, the order is
+filled on the Core 1m bars that make up the 15m buckets: it fills on the first 1m bar strictly after the decision
+only if that bar's latest possible open is within ``fill_window_minutes`` (= max_fill_delay_bars x 1 min) of the
+decision and the bar is tradable; otherwise the order does not fill (no waiting for later bars).
+
 NO OVERNIGHT (fail-closed). Every exit decision must be able to fill in the SAME session under the pinned Core rules
 (market-research-core 50ea3bf; see ``last_feasible_exit_decision``). Hence:
   * an entry is only permitted on a session whose flatten_local is <= that session's last feasible exit decision;
@@ -60,38 +65,39 @@ PARAMETER_KEYS = frozenset({"res_n", "vol_m", "vol_k", "close_pos", "sup_l"})
 # a spec whose rule STRUCTURE differs is refused instead of being run with these semantics
 STRUCTURE_SHA256 = "0c7bde1a867d21956a4f02b426ccdeb1884d1d2cc65040b494b2f8ec69f0246c"
 ENTRY, SUPPORT, MAX_HOLD, TIME_FLAT = "TA01_ENTRY", "SUPPORT_BREAK", "MAX_HOLD", "TIME_FLATTEN"
-CORE_BUCKET_MINUTES = (1, 15)            # market-research-core 50ea3bf temporal.prepare_conservative_bars
+SIGNAL_MINUTES, EXEC_MINUTES = 15, 1      # signal on Core 15m buckets; orders fill on the Core 1m bars inside them
 
 
 class SameDayExitError(SignalInputError):
     """TA-01 is intraday-only: a position could not be exited by a decision that can still fill the same session."""
 
 
-def last_feasible_exit_decision(session_close: datetime, bar_minutes: int) -> datetime:
-    """Latest decision time whose MARKET order can still fill in the same session under pinned Core 50ea3bf.
+def last_feasible_exit_decision(session_close: datetime, *, fill_window_minutes: int,
+                                signal_minutes: int = SIGNAL_MINUTES, exec_minutes: int = EXEC_MINUTES) -> datetime:
+    """Latest signal decision whose exit order can still fill in the same session within the fill window.
 
-    Evidence (market-research-core 50ea3bf):
-      temporal.prepare_conservative_bars: buckets group source labels by floor(bar_minutes) (UTC); a bucket with
-        labels L..L+m-1 has bar_start = L - 1min and modeled_available_at = L + m; it is execution-eligible only if
-        L + m < session_close (else CLOSING_AUCTION_EXCLUDED) and every minute has volume.
-      execution.run: candidate fill buckets need bar_start > max(signal available_at, order_time)
-        (same_timestamp_open_assumption=False in Agent core_config), the same session_close as the signal bucket,
-        and bar_start < DAY expiry (first session close after order_time).
-    So the last executable bucket starts at L* = session_close - 2m; a decision d can reach it only if
-    d < L* - 1min. Decisions lie on the m-minute grid, so the answer is the largest grid time strictly earlier
-    than session_close - 2m - 1min. For 15m buckets and a 16:00 close this is 15:15. (For a 13:00 close the same
-    derivation gives 12:15; that value is a timing derivation only: TA-01 never enters on an early-close session
-    and never carries a position into one, so it is not used by any TA-01 decision.)
-    It is a NECESSARY condition only: the single remaining fill bucket may still be ineligible (zero volume,
-    participation cap), in which case the DAY order expires and intraday_check FAILs."""
-    if bar_minutes not in CORE_BUCKET_MINUTES:
-        raise SignalInputError(f"bar_minutes must be one of {CORE_BUCKET_MINUTES}")
-    limit = session_close - timedelta(minutes=2 * bar_minutes + 1)
-    epoch_min = int(limit.timestamp() // 60)
-    grid = epoch_min - (epoch_min % bar_minutes)
-    if grid * 60 >= limit.timestamp():
-        grid -= bar_minutes
-    return datetime.fromtimestamp(grid * 60, tz=session_close.tzinfo)
+    Evidence (market-research-core 50ea3bf, read-only):
+      temporal.prepare_conservative_bars: an exec bar with source labels L..L+e-1 has bar_start = L - 1min,
+        possible_open_latest = L and is execution-eligible only if L + e < session_close (else
+        CLOSING_AUCTION_EXCLUDED) and every minute has volume.
+      execution.run: candidates need bar_start > max(signal available_at, order_time) (Agent core_config sets
+        same_timestamp_open_assumption=False) and the signal bucket's session_close; NEXT_BAR uses only the first one.
+    TA-01 fill window (Haw, 2026-11-18): the fill bar's possible_open_latest must be <= decision + window. So a
+    decision d on the signal grid is feasible iff some exec-grid label L has d + 1min < L <= d + window and
+    L + e < session_close. For 15m signals, 1m execution, a 2-minute window and a 16:00 close this gives 15:45
+    (Core's own signal window ends at 15:30, so TA-01 decisions never occur later than 15:30). NECESSARY only: the
+    single in-window bar may still be missing or ineligible, in which case the order does not fill."""
+    if exec_minutes != 1 or signal_minutes != 15:
+        raise SignalInputError("TA-01 supports 15m signal buckets with 1m execution bars only")
+    if fill_window_minutes < 2:
+        raise SignalInputError("fill window < 2 minutes can never fill: the first Core candidate opens at decision+2min")
+    close_min = int(session_close.timestamp() // 60)
+    d = close_min - (close_min % signal_minutes)
+    while d > close_min - 24 * 60:
+        if any(lbl + exec_minutes < close_min for lbl in range(d + 2, d + fill_window_minutes + 1)):
+            return datetime.fromtimestamp(d * 60, tz=session_close.tzinfo)
+        d -= signal_minutes
+    raise SignalInputError("no feasible exit decision in the session")
 
 
 @dataclass(frozen=True)
@@ -106,7 +112,7 @@ class TA01Params:
     flatten_local: time
     regular_close_local: time
     timezone: str
-    bar_minutes: int
+    fill_window_minutes: int        # = execution.max_fill_delay_bars x 1m execution bars
 
     def __post_init__(self):
         if min(self.res_n, self.vol_m, self.sup_l, self.max_hold_bars) < 1:
@@ -116,8 +122,8 @@ class TA01Params:
         if not (self.last_entry_local <= self.flatten_local <= self.regular_close_local):
             raise SignalInputError("require last_entry_local <= flatten_local <= regular_close_local")
         ZoneInfo(self.timezone)
-        if self.bar_minutes not in CORE_BUCKET_MINUTES:
-            raise SignalInputError(f"bar_minutes must be one of {CORE_BUCKET_MINUTES}")
+        if not isinstance(self.fill_window_minutes, int) or self.fill_window_minutes < 2:
+            raise SignalInputError("fill_window_minutes must be an integer >= 2")
 
 
 def _hm(text: str) -> time:
@@ -166,13 +172,15 @@ def params_from_spec(spec: Mapping, parameters: Mapping) -> TA01Params:
         raise SignalInputError("TA01: RTH-only, no_overnight and an explicit HH:MM-HH:MM calendar_ref required")
     if spec["risk_constraints"]["allowed_directions"] != ["LONG"]:
         raise SignalInputError("TA01 is long-only")
-    if "max_fill_delay_bars" in spec.get("execution", {}):
-        # The canonical structure hash does not cover `execution`, so this is checked explicitly. Neither the Agent
-        # execution path nor pinned Core 50ea3bf enforces a fill-delay limit (orders are DAY; expiry is the first
-        # session close), and the schema does not define how the bars are counted. A spec that declares the rule
-        # is therefore refused instead of being run without it.
-        raise SignalInputError("TA01_MAX_FILL_DELAY_UNENFORCEABLE: execution.max_fill_delay_bars is declared but "
-                               "not enforced by Agent or Core 50ea3bf and its bar counting is undefined")
+    # Fill window (Haw, 2026-11-18): after a 15m signal, the order may fill only on a 1m source bar whose latest
+    # possible open is within max_fill_delay_bars x 1 minute of the decision; otherwise it does not fill. The
+    # canonical structure hash does not cover `execution`, so these fields are checked explicitly here.
+    delay = spec.get("execution", {}).get("max_fill_delay_bars")
+    if not isinstance(delay, int) or isinstance(delay, bool) or delay < 2:
+        raise SignalInputError("TA01_FILL_WINDOW: execution.max_fill_delay_bars must be an integer >= 2 "
+                               "(1-minute execution bars; the first Core candidate opens at decision + 2 min)")
+    if spec["universe"].get("source_timeframe") != "1m":
+        raise SignalInputError("TA01: universe.source_timeframe must be 1m (execution bars)")
     tf = spec["universe"].get("timeframe")
     if tf != "15m":
         raise SignalInputError(f"TA01: universe.timeframe must be 15m, got {tf!r}")
@@ -182,7 +190,7 @@ def params_from_spec(spec: Mapping, parameters: Mapping) -> TA01Params:
     return TA01Params(**ints, vol_k=float(parameters["vol_k"]), close_pos=float(parameters["close_pos"]),
                       max_hold_bars=int(texit["max_holding_bars"]), last_entry_local=_hm(cut[0]),
                       flatten_local=_hm(texit["flatten_decision_time_local"]), regular_close_local=_hm(m.group(2)),
-                      timezone=spec["universe"]["timezone"], bar_minutes=15)
+                      timezone=spec["universe"]["timezone"], fill_window_minutes=delay)
 
 
 def sessions_from_rows(rows: Iterable[Mapping]) -> dict[str, tuple[datetime, datetime]]:
@@ -227,7 +235,7 @@ def _run(bars: Sequence[SignalBar], sessions: Mapping[str, tuple[datetime, datet
     pos, held, entered, session = 0, 0, False, None
     for b, reset in eligible_stream(bars, exclusions):
         s_start, s_end = _session(sessions, b)
-        last_exit = last_feasible_exit_decision(s_end, p.bar_minutes)
+        last_exit = last_feasible_exit_decision(s_end, fill_window_minutes=p.fill_window_minutes)
         flattened = False
         if b.session_id != session:
             if pos:                                    # never flatten yesterday's position with today's bar
@@ -270,7 +278,7 @@ def _run(bars: Sequence[SignalBar], sessions: Mapping[str, tuple[datetime, datet
                     pos, held, entered = 1, 0, True
         highs.append(b.high), vols.append(b.volume), lows.append(b.low)   # windows updated AFTER the decision
     if pos:                     # input (eligible or not) already passed the last feasible exit -> FAIL, never wait
-        last_exit = last_feasible_exit_decision(sessions[session][1], p.bar_minutes)
+        last_exit = last_feasible_exit_decision(sessions[session][1], fill_window_minutes=p.fill_window_minutes)
         later = [x for x in bars if x.available_at > out[-1].decision_ts]
         if any(x.session_id != session or x.available_at > last_exit for x in later):
             raise SameDayExitError(f"NO_SAME_DAY_EXIT: session {session} has no exit decision by {last_exit.isoformat()}")

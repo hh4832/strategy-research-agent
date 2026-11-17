@@ -280,11 +280,19 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
     rows, sbars = conservative_rows_and_bars(frame)
     family, ta01_params = signal_family(spec, parameters)
     if family == "TA01":
+        # TA-01: `frame` is the Core 1m conservative frame (execution bars). The 15m signal buckets are rebuilt by
+        # Core's own prepare_conservative_bars from the 1m frame's carried native rows (the same recomputation Core
+        # uses in validate_conservative_bars); the Agent never re-times a bar.
         from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
-        if {int(r["bar_minutes"]) for r in rows} != {ta01_params.bar_minutes}:
-            raise Phase4ABindingError(f"TA-01 requires Core {ta01_params.bar_minutes}m conservative buckets")
+        import pandas as pd  # noqa: PLC0415
+        if {int(r["bar_minutes"]) for r in rows} != {TA.EXEC_MINUTES}:
+            raise Phase4ABindingError("TA-01 requires the Core 1m conservative frame as execution bars")
+        native = [r for group in frame["source_rows"] for r in group]
+        signal_frame = core.prepare_conservative_bars(pd.DataFrame(native), bar_minutes=TA.SIGNAL_MINUTES)
+        A.check_core_bars(signal_frame)
+        rows15, sbars15 = conservative_rows_and_bars(signal_frame)
         try:
-            decs = TA.ta01_decisions(sbars, TA.sessions_from_rows(rows), ta01_params)
+            decs = TA.ta01_decisions(sbars15, TA.sessions_from_rows(rows15), ta01_params)
         except TA.SameDayExitError as e:   # no same-day exit decision possible: the whole execution fails
             raise TA01NoOvernightViolation(str(e)) from e
     else:                                   # unchanged SMA path (every existing caller)
@@ -306,8 +314,14 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
     sem = A.MarketSemantics(market="IBKR_EQUITY", bar_label="UNKNOWN", session_semantics="CONFIRMED",
                             timezone="America/New_York", initial_cash=cash, constant_tick_size=0.01,
                             available_at_policy=A.CONSERVATIVE)
-    orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
-                                 strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16], core=core)
+    if family == "TA01":   # one fill chance (NEXT_BAR), and only inside the fill window; otherwise no fill
+        orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
+                                     strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16],
+                                     time_in_force="NEXT_BAR", core=core)
+        orders, fill_window_dropped = ta01_fill_window(orders, frame, ta01_params.fill_window_minutes)
+    else:
+        orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
+                                     strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16], core=core)
     cfg = A.core_config(request, sem, core_sha, core=core)
     if (profiles is None) == (dated_schedules is None):
         raise Phase4ABindingError("exactly one of profiles or dated_schedules is required")
@@ -346,7 +360,8 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
         if "family_trials_including_this" in exp:
             extra.update(family_id=exp.get("trial_family_id", "UNASSIGNED"),
                          family_trials=int(exp["family_trials_including_this"]))
-        metrics = evaluate(report, rows, initial_capital=cash, bar_minutes=15, bars_per_year=252 * 26,
+        bar_minutes, bars_per_year = (1, 252 * 390) if family == "TA01" else (15, 252 * 26)   # TA-01: 1m equity
+        metrics = evaluate(report, rows, initial_capital=cash, bar_minutes=bar_minutes, bars_per_year=bars_per_year,
                            parameters=parameters, symbol="TSM", order_qty=qty, **extra)
         metrics.update(preregistered_decompositions(report, rows, exp))
         if family == "TA01":                # P5C-TA-01 is intraday: an exit that did not fill in-session is FAIL
@@ -365,8 +380,38 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
         if failed:                         # an exit that did not fill in-session invalidates the whole result
             raise TA01NoOvernightViolation(f"TA-01 no-overnight violated: {failed}")
         out["signal_family"] = {"family": "TA01", "structure_sha256": TA.STRUCTURE_SHA256,
-                                "params_sha256": TA.params_digest(ta01_params)}
+                                "params_sha256": TA.params_digest(ta01_params),
+                                "signal_bars_minutes": TA.SIGNAL_MINUTES, "execution_bars_minutes": TA.EXEC_MINUTES}
+        out["ta01_fill_window"] = {"window_minutes": ta01_params.fill_window_minutes, "time_in_force": "NEXT_BAR",
+                                   "not_submitted": fill_window_dropped}
     return out
+
+
+def ta01_fill_window(orders, frame, window_minutes: int):
+    """Keep an order only if Core's FIRST candidate bar for it (same contract, same session, bar_start strictly after
+    order_time - the rule in market-research-core 50ea3bf execution.run) has possible_open_latest within
+    ``window_minutes`` of order_time. Otherwise the order cannot fill inside the window and is not submitted
+    (recorded as FILL_WINDOW_NO_BAR). Whether the in-window bar is tradable is left to Core (NEXT_BAR: a rejected
+    bar means no fill)."""
+    import pandas as pd  # noqa: PLC0415
+    f = frame.copy()
+    for c in ("bar_start", "possible_open_latest", "session_close", "modeled_available_at"):
+        f[c] = pd.to_datetime(f[c], utc=True)
+    f = f.sort_values("bar_start", kind="stable")
+    kept, dropped = [], []
+    for o in orders:
+        t = pd.Timestamp(o.order_time).tz_convert("UTC")
+        sig = f[f["modeled_available_at"].eq(t)]
+        if sig.empty:
+            raise Phase4ABindingError(f"order {o.order_id}: no 1m execution row at the decision time")
+        cand = f[(f["contract"] == o.contract) & (f["bar_start"] > t) & f["session_close"].eq(sig["session_close"].max())]
+        first = cand.iloc[0] if len(cand) else None
+        if first is not None and first["possible_open_latest"] <= t + pd.Timedelta(minutes=window_minutes):
+            kept.append(o)
+        else:
+            dropped.append({"order_id": o.order_id, "order_time": t.isoformat(), "reason": "FILL_WINDOW_NO_BAR",
+                            "first_candidate_open_latest": None if first is None else first["possible_open_latest"].isoformat()})
+    return kept, dropped
 
 
 class TA01NoOvernightViolation(RuntimeError):

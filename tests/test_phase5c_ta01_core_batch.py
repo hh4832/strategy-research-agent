@@ -19,10 +19,7 @@ from strategy_agent.research.environment import synthetic_componentized_cost_pro
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = json.loads((ROOT / "tests/fixtures/p5c_ta01/ta01_spec_proposal.json").read_text(encoding="utf-8"))
 PARAMS = {k: SPEC["parameters"]["values"][k]["default"] for k in ("res_n", "vol_m", "vol_k", "close_pos", "sup_l")}
-# ENGINEERING TEST VARIANT (not the proposal): the proposal declares max_fill_delay_bars = 2, which is unenforced and
-# therefore refused; only that field is removed to engineering-test the execution path.
-ENG = copy.deepcopy(SPEC)
-del ENG["execution"]["max_fill_delay_bars"]
+
 DAYS = ("2025-01-06", "2025-01-07", "2025-01-08")
 WINDOW_END = "2025-01-09T00:00:00-05:00"
 
@@ -60,27 +57,29 @@ def schedule():
     return DatedCostSchedule.from_document(doc, expected_sha256=doc['schedule_sha256'])
 
 
-def frame(zero_volume_minute=None):
-    """Core 15m conservative buckets from synthetic 1m rows. Days 1-2 flat (warm-up across sessions); day 3 has a
-    breakout bucket (labels 14:00-14:14 -> decision 14:15) and then holds. ``zero_volume_minute`` ('HH:MM' on day 3)
-    sets one source minute to volume 0, which makes its bucket ineligible in Core."""
+def frame(zero_volume=(), missing=(), bar_minutes=1):
+    """Core conservative frame from synthetic 1m rows (execution bars). Days 1-2 flat (warm-up across sessions);
+    day 3 has a breakout 15m bucket (labels 14:00-14:14 -> decision 14:15) and then holds. ``zero_volume`` /
+    ``missing``: 'HH:MM' minutes on day 3 set to volume 0 / removed from the source."""
     rows = []
     for d in DAYS:
         for t in pd.date_range(d + ' 09:30', periods=390, freq='min', tz='America/New_York'):
             hm = t.strftime('%H:%M')
+            if d == DAYS[2] and hm in missing:
+                continue
             if d == DAYS[2] and '14:00' <= hm <= '14:14':
                 o, h, lw, c, v = 100.0, 101.0, 99.9, 100.95, 3000.0
             elif d == DAYS[2] and hm >= '14:15':
                 o, h, lw, c, v = 100.9, 101.0, 100.8, 100.9, 1000.0
             else:
                 o, h, lw, c, v = 100.0, 100.2, 99.8, 100.0, 1000.0
-            if d == DAYS[2] and hm == zero_volume_minute:
+            if d == DAYS[2] and hm in zero_volume:
                 v = 0.0
             rows.append(dict(source_timestamp=t, symbol='TSM', contract='TSM', open=o, high=h, low=lw, close=c, volume=v))
-    return core.prepare_conservative_bars(pd.DataFrame(rows), bar_minutes=15)
+    return core.prepare_conservative_bars(pd.DataFrame(rows), bar_minutes=bar_minutes)
 
 
-def run(schedule, fr, spec=ENG, params=None):
+def run(schedule, fr, spec=SPEC, params=None):
     from market_research_core import tsm_research_costs
     from strategy_agent.research_only import core_phase4a as P
     return P.execute_batch(core, tsm_research_costs, frame=fr, core_sha=A.core_identity()['git_sha'],
@@ -91,49 +90,65 @@ def run(schedule, fr, spec=ENG, params=None):
                                     'producer_commit_sha': 'synthetic'})
 
 
-def test_same_day_time_exit_signal_and_fill_through_core(schedule, monkeypatch):
+def ny(ts):
+    return pd.Timestamp(ts).tz_convert('America/New_York').strftime('%m-%d %H:%M')
+
+
+def test_15m_signal_fills_on_1m_bar_within_2_minutes(schedule, monkeypatch):
     from strategy_agent.signals import sma
 
     def forbidden(*a, **k):
         raise AssertionError("TA-01 must not reach the SMA signal")
     monkeypatch.setattr(sma, 'sma_crossover', forbidden)
     out = run(schedule, frame())
-    assert out['signal_family']['family'] == 'TA01'
-    got = [(pd.Timestamp(ts).tz_convert('America/New_York').strftime('%m-%d %H:%M'), tgt, r) for ts, tgt, r in out['decisions']]
-    assert got == [('01-08 14:15', 1, 'TA01_ENTRY'), ('01-08 15:15', 0, 'TIME_FLATTEN')]
-    assert out['orders'] == 2
+    assert out['signal_family']['family'] == 'TA01' and out['signal_family']['execution_bars_minutes'] == 1
+    assert [(ny(ts), tgt, r) for ts, tgt, r in out['decisions']] == [('01-08 14:15', 1, 'TA01_ENTRY'),
+                                                                     ('01-08 15:15', 0, 'TIME_FLATTEN')]
+    assert out['orders'] == 2 and out['ta01_fill_window']['not_submitted'] == []
     for item in out['scenarios'].values():
         assert item['ta01_intraday_check']['status'] == 'PASS'
         trip = item['result'].round_trips.iloc[0]
-        entry = pd.Timestamp(trip['entry_ts']).tz_convert('America/New_York')
-        exit_ = pd.Timestamp(trip['exit_ts']).tz_convert('America/New_York')
-        # Core fills at the first eligible bucket with bar_start strictly after the decision: labels 14:30 / 15:30
-        assert (entry.strftime('%m-%d %H:%M'), exit_.strftime('%m-%d %H:%M')) == ('01-08 14:29', '01-08 15:29')
+        # first 1m bar strictly after the decision: source label 14:17 (bar_start 14:16, opens by 14:17) and 15:17
+        assert (ny(trip['entry_ts']), ny(trip['exit_ts'])) == ('01-08 14:16', '01-08 15:16')
         assert len(item['result'].open_positions) == 0
 
 
-def test_proposal_spec_is_refused_before_any_order(schedule):
-    from strategy_agent.research_only import core_phase4a as P
-    result = None
-    with pytest.raises(P.Phase4ABindingError, match='MAX_FILL_DELAY_UNENFORCEABLE'):
-        result = run(schedule, frame(), spec=SPEC)
-    assert result is None
+def test_no_bar_within_2_minutes_means_no_fill(schedule):
+    out = run(schedule, frame(missing=('14:17',)))           # next 1m bar after 14:15 opens at 14:18 -> outside window
+    assert [d['reason'] for d in out['ta01_fill_window']['not_submitted']] == ['FILL_WINDOW_NO_BAR']
+    for item in out['scenarios'].values():
+        assert len(item['result'].round_trips) == 0 and len(item['result'].open_positions) == 0
+        assert item['ta01_intraday_check']['status'] == 'PASS'
 
 
-def test_exit_fill_bucket_ineligible_fails_whole_execution(schedule):
+def test_untradable_bar_inside_window_means_no_fill(schedule):
+    out = run(schedule, frame(zero_volume=('14:17',)))       # in-window bar has no volume -> Core rejects, no retry
+    assert out['ta01_fill_window']['not_submitted'] == []
+    for item in out['scenarios'].values():
+        assert len(item['result'].round_trips) == 0 and len(item['result'].open_positions) == 0
+        assert 'ZERO_VOLUME_BAR' in set(item['result'].rejections['reason'])
+
+
+def test_exit_not_filled_same_day_fails_whole_execution(schedule):
     from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
     result = None
     with pytest.raises(TA01NoOvernightViolation, match='no-overnight violated'):
-        result = run(schedule, frame(zero_volume_minute='15:35'))   # the only same-day fill bucket (15:30) is ineligible
+        result = run(schedule, frame(zero_volume=('15:17',)))   # the exit's only in-window bar is untradable
     assert result is None                                    # no metrics, trades or report are returned
 
 
-def test_no_same_day_exit_decision_fails_whole_execution(schedule):
+def test_no_feasible_exit_decision_fails_whole_execution(schedule):
     from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
     result = None
     with pytest.raises(TA01NoOvernightViolation, match='NO_SAME_DAY_EXIT'):
-        result = run(schedule, frame(zero_volume_minute='15:05'))   # the 15:15 decision bucket is ineligible
+        result = run(schedule, frame(zero_volume=('15:05', '15:20')))   # 15:15 and 15:30 decision buckets ineligible
     assert result is None
+
+
+def test_ta01_requires_1m_execution_frame(schedule):
+    from strategy_agent.research_only import core_phase4a as P
+    with pytest.raises(P.Phase4ABindingError, match='1m'):
+        run(schedule, frame(bar_minutes=15))
 
 
 def test_sma_spec_with_ta01_parameters_is_refused_before_any_order(schedule):

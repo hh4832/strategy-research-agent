@@ -18,14 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 NY = ZoneInfo("America/New_York")
 SPEC = json.loads((ROOT / "tests/fixtures/p5c_ta01/ta01_spec_proposal.json").read_text(encoding="utf-8"))
 DEFAULTS = {k: SPEC["parameters"]["values"][k]["default"] for k in T.PARAMETER_KEYS}
-# ENGINEERING TEST VARIANT, not the proposal: the proposal fixture declares execution.max_fill_delay_bars = 2, which
-# is not enforced by Agent or Core 50ea3bf, so the proposal spec is refused (TA-01 as proposed is BLOCKED). The
-# variant omits only that field so the rest of the binding/execution path can be engineering-tested.
-ENG = copy.deepcopy(SPEC)
-del ENG["execution"]["max_fill_delay_bars"]
 P = T.TA01Params(res_n=3, vol_m=3, vol_k=2.0, close_pos=0.75, sup_l=2, max_hold_bars=3,
                  last_entry_local=time(14, 30), flatten_local=time(15, 15), regular_close_local=time(16, 0),
-                 timezone="America/New_York", bar_minutes=15)
+                 timezone="America/New_York", fill_window_minutes=2)
 FLAT = (100.0, 100.2, 99.8, 100.0, 1000.0)          # open, high, low, close, volume
 BREAK = (100.0, 101.0, 99.9, 100.95, 5000.0)         # breakout + bullish + strong close + 5x volume
 HOLD = (100.9, 101.0, 100.8, 100.9, 1000.0)
@@ -133,15 +128,18 @@ def test_support_exit_max_hold_and_time_flatten():
 
 
 def test_last_feasible_exit_decision_from_core_timing():
-    for close, m, want in [("2025-01-13T16:00", 15, "15:15"), ("2025-07-14T16:00", 15, "15:15"),   # EST and EDT
-                           ("2025-11-28T13:00", 15, "12:15"), ("2025-01-13T16:00", 1, "15:56")]:
-        got = T.last_feasible_exit_decision(datetime.fromisoformat(close).replace(tzinfo=NY), m)
+    f = T.last_feasible_exit_decision
+    for close, want in [("2025-01-13T16:00", "15:45"), ("2025-07-14T16:00", "15:45"),     # EST and EDT
+                        ("2025-11-28T13:00", "12:45")]:                                    # derivation only (no entries)
+        got = f(datetime.fromisoformat(close).replace(tzinfo=NY), fill_window_minutes=2)
         assert got.astimezone(NY).strftime("%H:%M") == want
     with pytest.raises(SignalInputError):
-        T.last_feasible_exit_decision(datetime(2025, 1, 13, 16, tzinfo=NY), 5)
+        f(datetime(2025, 1, 13, 16, tzinfo=NY), fill_window_minutes=1)                   # can never fill
+    with pytest.raises(SignalInputError):
+        f(datetime(2025, 1, 13, 16, tzinfo=NY), fill_window_minutes=2, exec_minutes=15)
 
 
-def test_time_exit_at_1515_is_the_last_same_day_decision():
+def test_time_exit_at_1515():
     p = replace(P, max_hold_bars=50)
     rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6                              # decisions 14:15 (entry) ... 15:45
     bars, sess = day("2025-01-13", rows)
@@ -149,21 +147,29 @@ def test_time_exit_at_1515_is_the_last_same_day_decision():
                                                         ("01-13 15:15", 0, "TIME_FLATTEN")]
 
 
-def test_no_eligible_1515_bucket_fails_instead_of_exiting_late():
+def test_ineligible_1515_bucket_moves_exit_to_next_eligible_feasible_bucket():
     p = replace(P, max_hold_bars=50)
     rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6
     elig = [True] * 21 + [False, True, True]                               # 15:15 decision ineligible, 15:30 eligible
     bars, sess = day("2025-01-13", rows, eligible=elig)
-    with pytest.raises(T.SameDayExitError, match="NO_SAME_DAY_EXIT"):     # a 15:30 exit could only fill tomorrow
+    assert reasons(T.ta01_decisions(bars, sess, p))[-1] == ("01-13 15:30", 0, "TIME_FLATTEN")   # 15:30 <= 15:45
+
+
+def test_no_feasible_exit_bucket_fails_at_end_of_input():
+    p = replace(P, max_hold_bars=50)
+    rows = [FLAT] * 17 + [BREAK] + [HOLD] * 7                              # decisions up to 16:00 (closing bucket)
+    elig = [True] * 21 + [False] * 4                                       # only ineligible buckets after 15:00
+    bars, sess = day("2025-01-13", rows, eligible=elig)
+    with pytest.raises(T.SameDayExitError, match="no exit decision by"):
         T.ta01_decisions(bars, sess, p)
 
 
-def test_later_buckets_all_ineligible_still_fail_at_end_of_input():
+def test_still_long_after_last_feasible_decision_fails():
     p = replace(P, max_hold_bars=50)
-    rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6
-    elig = [True] * 21 + [False] * 3                                       # only ineligible buckets after 15:00
+    rows = [FLAT] * 17 + [BREAK] + [HOLD] * 7
+    elig = [True] * 21 + [False, False, False, True]                       # an eligible 16:00 decision would be late
     bars, sess = day("2025-01-13", rows, eligible=elig)
-    with pytest.raises(T.SameDayExitError, match="no exit decision by"):
+    with pytest.raises(T.SameDayExitError, match="after the last feasible exit decision"):
         T.ta01_decisions(bars, sess, p)
 
 
@@ -180,7 +186,7 @@ def test_no_next_session_flatten_signal_ever():
 
 
 def test_no_entry_when_flatten_time_is_not_same_day_feasible():
-    late = replace(P, flatten_local=time(15, 30))                          # 15:30 > last feasible 15:15
+    late = replace(P, flatten_local=time(15, 50))                          # 15:50 > last feasible 15:45
     bars, sess = day("2025-01-13", [FLAT] * 3 + [BREAK] + [HOLD] * 3)
     assert T.ta01_decisions(bars, sess, late) == []
     assert T.entry_candidates(bars, sess, late) == {}
@@ -236,19 +242,29 @@ def test_sessions_from_rows_fail_closed():
 
 
 # ------------------------------------------------------------------------------------------- spec binding
-def test_proposal_spec_is_refused_because_fill_delay_is_unenforceable():
-    assert SPEC["execution"]["max_fill_delay_bars"] == 2
-    with pytest.raises(SignalInputError, match="TA01_MAX_FILL_DELAY_UNENFORCEABLE"):
-        T.params_from_spec(SPEC, DEFAULTS)
-    # the canonical structure hash does not cover `execution`, hence the explicit check
-    assert T.structure_sha256(SPEC) == T.structure_sha256(ENG) == T.STRUCTURE_SHA256
+def test_fill_window_comes_from_max_fill_delay_bars_in_1m_bars():
+    assert SPEC["execution"]["max_fill_delay_bars"] == 2 and SPEC["universe"]["source_timeframe"] == "1m"
+    assert T.params_from_spec(SPEC, DEFAULTS).fill_window_minutes == 2
+    for bad in (None, 1, True, "2"):
+        s = copy.deepcopy(SPEC)
+        if bad is None:
+            del s["execution"]["max_fill_delay_bars"]
+        else:
+            s["execution"]["max_fill_delay_bars"] = bad
+        assert T.structure_sha256(s) == T.STRUCTURE_SHA256              # hash cannot see execution -> explicit check
+        with pytest.raises(SignalInputError, match="TA01_FILL_WINDOW"):
+            T.params_from_spec(s, DEFAULTS)
+    s = copy.deepcopy(SPEC)
+    s["universe"]["source_timeframe"] = "5m"
+    with pytest.raises(SignalInputError):
+        T.params_from_spec(s, DEFAULTS)
 
 
 def test_spec_binds_to_exact_reviewed_structure():
-    p = T.params_from_spec(ENG, DEFAULTS)
+    p = T.params_from_spec(SPEC, DEFAULTS)
     assert (p.res_n, p.vol_m, p.vol_k, p.close_pos, p.sup_l, p.max_hold_bars) == (20, 20, 2.0, 0.75, 10, 8)
     assert (p.last_entry_local, p.flatten_local, p.regular_close_local) == (time(14, 30), time(15, 15), time(16, 0))
-    assert p.bar_minutes == 15
+    assert p.fill_window_minutes == 2
 
 
 @pytest.mark.parametrize("mutate", [
@@ -264,7 +280,7 @@ def test_spec_binds_to_exact_reviewed_structure():
     lambda s: s["universe"].update(timeframe="5m"),
 ])
 def test_spec_binding_fails_closed(mutate):
-    s = copy.deepcopy(ENG)
+    s = copy.deepcopy(SPEC)
     mutate(s)
     with pytest.raises(SignalInputError):
         T.params_from_spec(s, DEFAULTS)
@@ -274,7 +290,7 @@ def test_spec_binding_fails_closed(mutate):
                                     {**DEFAULTS, "fast": 5}])
 def test_run_parameters_must_equal_spec_defaults(params):
     with pytest.raises(SignalInputError):
-        T.params_from_spec(ENG, params)
+        T.params_from_spec(SPEC, params)
 
 
 # ------------------------------------------------------------------------------------------ dispatch
@@ -282,15 +298,17 @@ def test_dispatch_routes_only_ta01_specs_and_keeps_sma_path():
     from strategy_agent.research_only import core_phase4a as P4
     sma_spec = json.loads((ROOT / "specs/research/sma_crossover_tsm_15m_5_20_v0_1_1.json").read_text(encoding="utf-8"))
     assert P4.signal_family(sma_spec, {"fast": 5, "slow": 20}) == ("SMA", None)
-    fam, p = P4.signal_family(ENG, DEFAULTS)
+    fam, p = P4.signal_family(SPEC, DEFAULTS)
     assert fam == "TA01" and p.res_n == 20
-    with pytest.raises(P4.Phase4ABindingError, match="MAX_FILL_DELAY"):
-        P4.signal_family(SPEC, DEFAULTS)                                   # proposal spec: BLOCKED
+    nodelay = copy.deepcopy(SPEC)
+    del nodelay["execution"]["max_fill_delay_bars"]
+    with pytest.raises(P4.Phase4ABindingError, match="TA01_FILL_WINDOW"):
+        P4.signal_family(nodelay, DEFAULTS)
     with pytest.raises(P4.Phase4ABindingError):
         P4.signal_family(sma_spec, {**DEFAULTS})                           # TA-01 params never reach SMA
     with pytest.raises(P4.Phase4ABindingError):
-        P4.signal_family(ENG, {"fast": 5, "slow": 20})                     # SMA params never reach TA-01
-    bad = copy.deepcopy(ENG)
+        P4.signal_family(SPEC, {"fast": 5, "slow": 20})                     # SMA params never reach TA-01
+    bad = copy.deepcopy(SPEC)
     bad["signal"]["indicators"][1]["input"] = "close"
     with pytest.raises(P4.Phase4ABindingError):
         P4.signal_family(bad, DEFAULTS)
