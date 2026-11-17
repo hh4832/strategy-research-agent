@@ -33,6 +33,19 @@ def pre_recovery_books(target):
     rows=ChainedLog(book).verify()
     assert rows[-1]['authorization_id']==OLD_AUTH
     assert not any(r.get('authorization_id')==C1_RECOVERY for r in rows)
+    # The real registry may now also hold the settled recovery execution: cut each ledger to its true pre-recovery
+    # chain prefix and drop the recovery's content-addressed files (they appear only after the recovery binding).
+    for name in ('research_authorization_uses.jsonl','research_budget_events.jsonl','authorization_bindings.jsonl'):
+        led=target/'registry'/name
+        if led.is_file():
+            lines=led.read_bytes().splitlines(keepends=True)
+            cut=next((i for i,line in enumerate(lines) if json.loads(line).get('authorization_id')==C1_RECOVERY),len(lines))
+            for line in lines[cut:]:
+                rec=json.loads(line)
+                for key in ('bound_request_path','approval_evidence_path'):
+                    if rec.get(key):(target/rec[key]).unlink(missing_ok=True)
+            led.write_bytes(b''.join(lines[:cut]))
+            assert not any(r.get('authorization_id')==C1_RECOVERY for r in ChainedLog(led).verify())
 
 
 def test_unsigned_packet_has_no_inherited_approval_or_reused_subject(tmp_path):
@@ -152,3 +165,16 @@ def test_recovery_cannot_relabel_original_authorization_approval(tmp_path):
     log.append(event)
     with pytest.raises(ValueError,match='NEW_AUTHORIZATION_APPROVAL_REFERENCE'):
         verified_contracts(tmp_path)
+
+
+def test_recorded_recovery_execution_can_never_be_prepared_again():
+    """With the settled 0002 records in the repository registry, the runner refuses any new C1 attempt for 0002."""
+    uses=[u for u in ChainedLog(ROOT/'registry/research_authorization_uses.jsonl').verify() if u['authorization_id']==C1_RECOVERY]
+    if not uses:pytest.skip('repository registry does not yet carry the recovery execution records')
+    record=next(r for r in ChainedLog(ROOT/'governance/research_authorizations.jsonl').verify()
+                if r.get('authorization_id')==C1_RECOVERY)
+    token=CURRENT.set(ExecutionContext(C1_RECOVERY,'1'*40,record['record_sha256']))
+    try:
+        with pytest.raises(K.ReconciliationRequired,match='PRIOR_C1_STATE'):
+            R.unused(ROOT)
+    finally:CURRENT.reset(token)
