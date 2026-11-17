@@ -247,9 +247,11 @@ def repo_copy(tmp_path, monkeypatch):
         shutil.rmtree(tmp_path / d, ignore_errors=True)
     for f in ("registry/authorization_bindings.jsonl", "registry/research_authorization_uses.jsonl"):
         p = tmp_path / f                              # the pre-B3C prefix of each chained log
-        if p.is_file():
-            p.write_text("".join(x + "\n" for x in p.read_text().splitlines()
-                                 if x.strip() and json.loads(x).get("authorization_id") != b3c.CANDIDATE_AUTHORIZATION_ID))
+        if p.is_file():                               # (a true prefix: later records, e.g. Phase 5-C1, chain after B3-C)
+            lines = [x for x in p.read_text().splitlines() if x.strip()]
+            cut = next((i for i, x in enumerate(lines)
+                        if json.loads(x).get("authorization_id") == b3c.CANDIDATE_AUTHORIZATION_ID), len(lines))
+            p.write_text("".join(x + "\n" for x in lines[:cut]))
     monkeypatch.setattr(C, "ROOT", tmp_path)
     monkeypatch.setattr(b3c, "ROOT", tmp_path)
     return tmp_path

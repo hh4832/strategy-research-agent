@@ -1,0 +1,123 @@
+{
+  "archive": {
+    "archive_index_files": 95,
+    "archive_index_sha256": "b391d84853ddffdffb2327b727a9186186ccc93e8e5b0c1d3ea3b4deac5e8b13",
+    "archive_index_status": "COMPLETE",
+    "code_sha": "209b56fe2bb4cf13b952f1baef51e8cfd89c6392",
+    "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+    "drive_path": "MyDrive/Quant_Research/strategy-research-agent/phase5c1_execution/archives/20261114T204619_955894Z_72bd561ed98040b9a26eb0f0e78536e6",
+    "governance_sha": "df56664a12a54762e222f141b50e337c6dfc5088",
+    "outcome_json_sha256": "07b6f825df1839a30f00f1d9440ce516a994c86a0319dfa39fb2da71cc2ee809",
+    "run_info_txt_sha256": "4d75f501315c8df502644ffd2bf58c909a022bbcf2b369c3b84edb3ff20f05bc"
+  },
+  "authorization_id": "RA-IBKR_TSM-SMA520_P5C1-0001",
+  "batch": 1,
+  "claim": {
+    "claim_json_sha256": "2118456a8c12d1045ca824af42eae74764696bd757a2e4e7683f1addcc43d4c5",
+    "claimed_at": "2026-11-15T02:39:28+08:00",
+    "ref": "refs/heads/research-claims/phase5c1/d5ab3c93b8ea125c5d262b25923a02ff6ea0a68f0a5c88e8815140f8699cf0a8/batch-1",
+    "ref_target": "df56664a12a54762e222f141b50e337c6dfc5088",
+    "remote_claim_json_sha256": "89b61081fa9967e46cf122267db1fabb4d0049ec435877ec1dd2f32f815c260c",
+    "request_sha256": "c357245378eeb8d5852b5114aa27af350a9e4965c2687d45cfffadb4f073548e",
+    "task_id": "T-c357245378eeb8d5852b"
+  },
+  "control_reference_drive_path": "MyDrive/Quant_Research/strategy-research-agent/phase5c1_execution/control/RA-IBKR_TSM-SMA520_P5C1-0001/batch-1/ARCHIVE_REFERENCE_52fbb20639ad4abf813305cd741daaf8.json",
+  "control_reference_sha256": "8ce998c438a0d320b33beaf06d08f86f60cc118bb53bf33b4881eb7948333329",
+  "disposition": {
+    "appended_to_main": false,
+    "batch_consumption": "UNKNOWN_UNTIL_LEDGER_RECONCILED (archive outcome.json); one uses record exists in the fork",
+    "budget_restored": false,
+    "counts_as_completed_research": false,
+    "decided_by": "research lead (hh4832), 2026-11-17 Phase 5-C1 registry reconciliation instruction",
+    "new_claim": false,
+    "renumbered_or_rehashed": false,
+    "settlement_state": "RECONCILIATION_REQUIRED",
+    "status": "FAILED_EXECUTION_PRESERVED_IMMUTABLE",
+    "use_fact_revoked": false
+  },
+  "failure": {
+    "event_type": "RECONCILIATION_REQUIRED",
+    "reason": "execution failed after commit: ContractViolation",
+    "record_sha256": "75a8c42c79501b3886d4dac5c71146f008e32cc82426ee2128b99aefd89f9c9f",
+    "reservation_id": "BR-1679101111bc9a6d4d34ef94",
+    "root_cause_doc": "docs/phase5c1/k02_dated_cost_identity_fix.md",
+    "transaction_timestamp": "2026-11-15T04:46:13.199847+08:00"
+  },
+  "fork_ledgers": {
+    "registry/authorization_bindings.jsonl": {
+      "archive_index_path": "settlement/registry/authorization_bindings.jsonl",
+      "file_sha256": "992db34b01400b11ccb50d27d156e2354f89a3f83c21a13ecb786f9ef8f568a6",
+      "fork_parent_record_sha256": "ab69f92475be20abc5a67cc31f20b7a70a8f5688c288970f8c68fda81bb344f2",
+      "fork_records": [
+        {
+          "binding_id": "AB-88e998968de14c24804a6590",
+          "prev_sha256": "ab69f92475be20abc5a67cc31f20b7a70a8f5688c288970f8c68fda81bb344f2",
+          "record_sha256": "98d61221f18c6204fe3eb8da03b2e3382c54621046a7d1aa36b3f623dda36415",
+          "seq": 1
+        }
+      ],
+      "forks_at_seq": 1,
+      "head_record_sha256": "98d61221f18c6204fe3eb8da03b2e3382c54621046a7d1aa36b3f623dda36415",
+      "records": 2,
+      "work_state_drive_path": "MyDrive/Quant_Research/strategy-research-agent/phase5c1_execution/attempts/RA-IBKR_TSM-SMA520_P5C1-0001/batch-1/state/registry/authorization_bindings.jsonl"
+    },
+    "registry/research_authorization_uses.jsonl": {
+      "archive_index_path": "settlement/registry/research_authorization_uses.jsonl",
+      "file_sha256": "d574953245e97d820f51657d06642c83648b8ed94153fa1bd882f399dc53360e",
+      "fork_parent_record_sha256": "c7fd92df24c789035c0a5825138185d1c98b228e080c9b4242507dffec43f232",
+      "fork_records": [
+        {
+          "prev_sha256": "c7fd92df24c789035c0a5825138185d1c98b228e080c9b4242507dffec43f232",
+          "record_sha256": "ab1b06a10a9bd4a6b80ceacfbd0bf2d191f2e1b12c6039a437f6839ff534bff8",
+          "run_id": "20261115_023931_209b56f",
+          "seq": 2
+        }
+      ],
+      "forks_at_seq": 2,
+      "head_record_sha256": "ab1b06a10a9bd4a6b80ceacfbd0bf2d191f2e1b12c6039a437f6839ff534bff8",
+      "records": 3,
+      "work_state_drive_path": "MyDrive/Quant_Research/strategy-research-agent/phase5c1_execution/attempts/RA-IBKR_TSM-SMA520_P5C1-0001/batch-1/state/registry/research_authorization_uses.jsonl"
+    },
+    "registry/research_budget_events.jsonl": {
+      "archive_index_path": "settlement/registry/research_budget_events.jsonl",
+      "file_sha256": "65fed4b52e8ef5aecf349cd580df9d4b35f8aadab8f9f569aad9ac75e634c41b",
+      "fork_parent_record_sha256": "3a3d56a841f541a89aba0a36bdac807e992d5e3e55f5ec0f86e1451a80d1c885",
+      "fork_records": [
+        {
+          "binding_id": "AB-88e998968de14c24804a6590",
+          "event_type": "RESERVED",
+          "prev_sha256": "3a3d56a841f541a89aba0a36bdac807e992d5e3e55f5ec0f86e1451a80d1c885",
+          "record_sha256": "a6e7eba9d989c9f1fe59a4fbf977bb481040eeed542424215aa5b0397fe191b0",
+          "seq": 7
+        },
+        {
+          "binding_id": "AB-88e998968de14c24804a6590",
+          "event_type": "COMMITTED",
+          "prev_sha256": "a6e7eba9d989c9f1fe59a4fbf977bb481040eeed542424215aa5b0397fe191b0",
+          "record_sha256": "b597e6bbb336b73f55c351260eb202dd7b0565fe552d7c2d9a61fd89fb9087c9",
+          "seq": 8
+        },
+        {
+          "binding_id": "AB-88e998968de14c24804a6590",
+          "event_type": "EXECUTION_STARTED",
+          "prev_sha256": "b597e6bbb336b73f55c351260eb202dd7b0565fe552d7c2d9a61fd89fb9087c9",
+          "record_sha256": "eecec0286ebc764bb90e993907150e4e40ac16f6eb62670e23d1358c448a4e18",
+          "seq": 9
+        },
+        {
+          "binding_id": "AB-88e998968de14c24804a6590",
+          "event_type": "RECONCILIATION_REQUIRED",
+          "prev_sha256": "eecec0286ebc764bb90e993907150e4e40ac16f6eb62670e23d1358c448a4e18",
+          "record_sha256": "75a8c42c79501b3886d4dac5c71146f008e32cc82426ee2128b99aefd89f9c9f",
+          "seq": 10
+        }
+      ],
+      "forks_at_seq": 7,
+      "head_record_sha256": "75a8c42c79501b3886d4dac5c71146f008e32cc82426ee2128b99aefd89f9c9f",
+      "records": 11,
+      "work_state_drive_path": "MyDrive/Quant_Research/strategy-research-agent/phase5c1_execution/attempts/RA-IBKR_TSM-SMA520_P5C1-0001/batch-1/state/registry/research_budget_events.jsonl"
+    }
+  },
+  "kind": "SEALED_FORK_REFERENCE",
+  "schema_version": "1.0.0"
+}
