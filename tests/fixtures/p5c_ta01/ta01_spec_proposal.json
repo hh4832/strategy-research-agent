@@ -286,7 +286,7 @@
     "time_exit": {
       "max_holding_bars": 8,
       "flatten_decision_time_local": "15:15",
-      "flatten_before_session_end": true
+      "flatten_before_session_end": false
     }
   },
   "execution": {

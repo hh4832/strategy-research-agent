@@ -31,20 +31,22 @@ authorizations, CLAIM, archives, and `research_only/runner.py`. The governed run
 | Fill strictly after the signal; order expiry | `NEXT_ELIGIBLE_BAR_OPEN`; TIF `UNTIL_END_OF_NEXT_SESSION_END` | Same path as SMA: `decisions_to_targets` → `targets_to_orders` (MARKET, DAY) → Core decides fills, rejections and expiry | DEFINED (Core semantics, unchanged) |
 | `execution.max_fill_delay_bars = 2` | declared | Not consumed by Agent code (the existing SMA specs declare the same value). Whether Core enforces it is not shown in this repo | **NEEDS_CONFIRMATION** |
 | One entry per session; one position; long only | `max_entries_per_session: 1`, `max_position_units: 100` | State machine; quantity from `position_sizing` as before | DEFINED |
-| Exits | support break, then `max_holding_bars` 8, then 15:15 time flatten or session end | Same priority; held bars = eligible bars after the entry **decision** bar | DEFINED |
+| Exits | support break, then `max_holding_bars` 8, then the 15:15 time exit | Same priority; held bars = eligible bars after the entry **decision** bar | DEFINED |
+| 15:15 time exit | the **first eligible bucket whose decision time is at or after 15:15 ET** emits the exit signal; `flatten_before_session_end: false` (there is no separate session-end exit rule) | `local decision time >= flatten_local` only; ineligible buckets are skipped, so the exit moves to the next eligible bucket (e.g. 15:45 if the 15:15 and 15:30 decisions are ineligible). The binding refuses a spec with `flatten_before_session_end` true or missing | DEFINED (signal) |
 | Entry cut-off | `time_lt 14:30` | Local decision time strictly before 14:30 | DEFINED |
 | Early-close session | no entries (proposal) | `session_close` (from Core rows) earlier than the regular close parsed from the spec's `calendar_ref` → no entry | DEFINED (relies on Core's session columns) |
 | Missing, zero-volume or auction buckets | ineligible | Skipped: never in a window, never counted as held, never a signal (`eligible_stream`) | DEFINED |
-| Exit not filled in session | must not be hidden | The signal cannot see fills. If still long at the next session, it emits `SESSION_CHANGE` on that session's first eligible bar (no entry on that bar). After execution, `intraday_check` returns **FAIL** for any overnight round trip or open position | DEFINED (detection); Core behaviour **NEEDS_CONFIRMATION** |
+| No exit in session (no eligible bucket at/after 15:15, or exit order not filled) | must not be hidden | Fail-safe, **not an exit rule**: the signal cannot see fills; if it is still long when the next session starts, it emits `SESSION_CHANGE` on that session's first eligible bar (no entry on that bar). After execution, `intraday_check` returns **FAIL** for any overnight round trip or open position | DEFINED (detection); Core behaviour **NEEDS_CONFIRMATION** |
 | Position open at end of data | — | No fabricated exit; `intraday_check` returns `OPEN_POSITION_AT_END` FAIL | DEFINED |
-| 15:15 decision fills in session | proposal assumption | Derived from `docs/M3C_FINAL_ACCEPTANCE.md` §4 (closing bucket excluded). Not verified on real 15m bucket construction | **UNVERIFIED** |
+| 15:15 exit order fills in session | proposal assumption | Fill time and price are Core's (strictly later eligible bucket, closing bucket excluded per `docs/M3C_FINAL_ACCEPTANCE.md` §4). Synthetic tests do not verify real fills or real 15m bucket construction | **UNVERIFIED** |
 | Bucket volume = sum of 1m volumes; TSM volume unit; frequency of zero-volume minutes | — | Not visible in this repo | **NEEDS_CONFIRMATION** |
 | Auction volume leaking into an eligible bucket; intraday U-shaped volume | — | Not handled (cannot be expressed safely) | **BLOCKED for research** until decided |
 
 The binding is fail-closed. A spec is accepted only if `strategy_id` starts with `p5c_ta01_`, its canonical rule
 structure equals the reviewed hash `0c7bde1a…246c`, the parameters are exactly `res_n, vol_m, vol_k, close_pos,
-sup_l` and equal the spec defaults (FIXED search), the strategy is long-only and RTH-only with `no_overnight`, and
-there is one `time_lt` cut-off plus an explicit `HH:MM-HH:MM` calendar. Anything else raises before any order
+sup_l` and equal the spec defaults (FIXED search), the strategy is long-only and RTH-only with `no_overnight`,
+there is one `time_lt` cut-off plus an explicit `HH:MM-HH:MM` calendar, and `flatten_before_session_end` is explicitly
+`false`. Anything else raises before any order
 exists. TA-01 parameters given with a non-TA-01 spec are refused, so they never reach SMA.
 
 ## RANDOM-ENTRY-NULL-v1

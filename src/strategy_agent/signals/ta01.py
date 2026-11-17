@@ -17,9 +17,13 @@ Rule (one completed ELIGIBLE bar ``t``; ``[k]`` = k eligible bars back; windows 
 
   EXIT (first that holds, while long):  close < S            -> SUPPORT_BREAK
                                         held >= max_hold_bars -> MAX_HOLD   (eligible bars after the entry DECISION bar)
-                                        local time >= flatten_local or available_at >= session_close -> TIME_FLATTEN
-  A position still held when a new session starts is flattened on that session's first eligible bar
-  (SESSION_CHANGE); no entry is allowed on a bar that emitted a flatten. CONTRACT_CHANGE / EXCLUSION resets the
+                                        local decision time >= flatten_local (15:15 ET in the spec) -> TIME_FLATTEN
+  The time exit is fired by the FIRST eligible bucket whose decision time is at or after flatten_local. There is no
+  separate session-end exit rule (the spec must state flatten_before_session_end: false).
+  Fail-safe, not an exit rule: if no eligible bucket at/after flatten_local exists in the session (e.g. all later
+  buckets ineligible), the position is still long when the next session starts and is flattened on that session's
+  first eligible bar (SESSION_CHANGE); ``intraday_check`` then reports it. No entry is allowed on a bar that emitted
+  a flatten. CONTRACT_CHANGE / EXCLUSION resets the
   windows and flattens. Ineligible bars (missing minute, zero volume, outside RTH, auction buckets) are skipped:
   they never enter a window, never count as held bars, never signal.
 
@@ -108,8 +112,10 @@ def params_from_spec(spec: Mapping, parameters: Mapping) -> TA01Params:
         raise SignalInputError("TA01: exactly one entry rule and max_entries_per_session == 1 required")
     cut = [a["time_local"] for a in entry[0]["when"]["args"] if a.get("op") == "time_lt"]
     texit = spec["risk_exits"]["time_exit"]
-    if len(cut) != 1 or texit.get("flatten_before_session_end") is not True:
-        raise SignalInputError("TA01: one time_lt entry cut-off and flatten_before_session_end=true required")
+    if len(cut) != 1 or texit.get("flatten_before_session_end") is not False:
+        # the only time exit is the first eligible bucket at/after flatten_decision_time_local; a separate
+        # session-end exit rule is not part of TA-01 and must be explicitly disabled in the spec
+        raise SignalInputError("TA01: one time_lt entry cut-off and flatten_before_session_end=false required")
     sessions = spec["universe"]["sessions"]
     m = re.search(r"(\d{2}:\d{2})-(\d{2}:\d{2})", str(sessions.get("calendar_ref", "")))
     if sessions.get("allowed") != ["RTH"] or not m or sessions.get("no_overnight") is not True:
@@ -187,7 +193,7 @@ def _run(bars: Sequence[SignalBar], sessions: Mapping[str, tuple[datetime, datet
             elif held >= p.max_hold_bars:
                 out.append(Decision(b.available_at, 0, b.contract, MAX_HOLD))
                 pos = 0
-            elif local >= p.flatten_local or b.available_at >= s_end:
+            elif local >= p.flatten_local:                 # first eligible bucket with decision time >= 15:15
                 out.append(Decision(b.available_at, 0, b.contract, TIME_FLAT))
                 pos = 0
         else:

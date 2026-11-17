@@ -127,6 +127,20 @@ def test_support_exit_max_hold_and_time_flatten():
     assert reasons(T.ta01_decisions(bars, sess, p))[-1] == ("01-13 15:15", 0, "TIME_FLATTEN")
 
 
+def test_time_exit_is_first_eligible_bucket_at_or_after_1515():
+    p = replace(P, max_hold_bars=50)
+    rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6                              # decisions 14:15 (entry) ... 15:45
+    elig = [True] * 21 + [False, False, True]                              # 15:15 and 15:30 decisions ineligible
+    bars, sess = day("2025-01-13", rows, eligible=elig)
+    out = reasons(T.ta01_decisions(bars, sess, p))
+    assert out == [("01-13 14:15", 1, "TA01_ENTRY"), ("01-13 15:45", 0, "TIME_FLATTEN")]
+    # nothing before 15:15 exits on time, and there is no separate session-end exit: a session closing at 16:00
+    # with eligible buckets only up to 15:00 leaves the position open in-session (fail-safe handles it later)
+    elig2 = [True] * 21 + [False, False, False]
+    bars2, sess2 = day("2025-01-13", rows, eligible=elig2)
+    assert reasons(T.ta01_decisions(bars2, sess2, p)) == [("01-13 14:15", 1, "TA01_ENTRY")]
+
+
 def test_exit_impossible_in_session_flattens_on_next_session_and_blocks_same_bar_entry():
     p = replace(P, max_hold_bars=50)
     rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6
@@ -203,6 +217,8 @@ def test_spec_binds_to_exact_reviewed_structure():
     lambda s: s["parameters"]["search"].update(mode="PREREGISTERED_GRID", max_trials=4),
     lambda s: s["universe"]["sessions"].update(calendar_ref="NYSE RTH"),
     lambda s: s.update(strategy_id="sma_crossover_lookalike"),
+    lambda s: s["risk_exits"]["time_exit"].update(flatten_before_session_end=True),   # no session-end exit rule
+    lambda s: s["risk_exits"]["time_exit"].pop("flatten_before_session_end"),
 ])
 def test_spec_binding_fails_closed(mutate):
     s = copy.deepcopy(SPEC)
