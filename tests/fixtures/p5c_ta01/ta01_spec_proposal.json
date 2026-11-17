@@ -2,7 +2,7 @@
   "spec_version": "1.0.0",
   "strategy_id": "p5c_ta01_res20_strongclose_relvol_tsm_15m",
   "name": "P5C-TA-01 PROPOSAL ONLY: 20-bar resistance breakout + strong-close candle + relative volume (TSM 15m)",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "status": "DRAFT",
   "hypothesis": {
     "statement": "A completed 15m RTH bucket that closes above the highest high of the prior 20 eligible buckets, closes in the top quarter of its own range, and trades at least twice the prior 20-bucket average volume marks accepted resistance breaks that continue over the next hours.",
@@ -353,6 +353,6 @@
     "created_by": "claude-phase3-prep",
     "parent_spec_id": null,
     "spec_sha256": null,
-    "notes": "TEST FIXTURE: P5C-TA-01 proposal spec draft (PROPOSAL_ONLY). Not a registered spec; dataset refs are the ATR example placeholders; no data, cost or research approval is implied."
+    "notes": "TEST FIXTURE: P5C-TA-01 proposal spec draft (PROPOSAL_ONLY). Not a registered spec; dataset refs are the ATR example placeholders; no data, cost or research approval is implied. 0.0.2: intraday only (no_overnight, fail-closed): the time exit is the first eligible 15m bucket with decision time >= 15:15 ET, and 15:15 ET is also the last decision that can still fill in-session under pinned Core 50ea3bf for a 16:00 close; no next-session flatten exists - a position not closed in its entry session fails the execution."
   }
 }

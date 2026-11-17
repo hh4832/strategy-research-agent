@@ -20,11 +20,18 @@ Rule (one completed ELIGIBLE bar ``t``; ``[k]`` = k eligible bars back; windows 
                                         local decision time >= flatten_local (15:15 ET in the spec) -> TIME_FLATTEN
   The time exit is fired by the FIRST eligible bucket whose decision time is at or after flatten_local. There is no
   separate session-end exit rule (the spec must state flatten_before_session_end: false).
-  Fail-safe, not an exit rule: if no eligible bucket at/after flatten_local exists in the session (e.g. all later
-  buckets ineligible), the position is still long when the next session starts and is flattened on that session's
-  first eligible bar (SESSION_CHANGE); ``intraday_check`` then reports it. No entry is allowed on a bar that emitted
-  a flatten. CONTRACT_CHANGE / EXCLUSION resets the
-  windows and flattens. Ineligible bars (missing minute, zero volume, outside RTH, auction buckets) are skipped:
+
+NO OVERNIGHT (fail-closed). Every exit decision must be able to fill in the SAME session under the pinned Core rules
+(market-research-core 50ea3bf; see ``last_feasible_exit_decision``). Hence:
+  * an entry is only permitted on a session whose flatten_local is <= that session's last feasible exit decision;
+  * while long, a bucket whose decision time is later than the last feasible exit decision raises SameDayExitError
+    (no exit is emitted that could only fill the next day);
+  * a position still long when a later session's bucket appears raises SameDayExitError; there is NO next-session
+    flatten signal;
+  * after the loop, a position still open while the input already extends past the last feasible exit decision (or
+    into a later session, even through ineligible buckets only) raises SameDayExitError. A position open at a
+    truncated end of input is left to the post-execution ``intraday_check`` (FAIL). CONTRACT_CHANGE / EXCLUSION resets the
+  windows and flattens (only if that decision is still same-day feasible). Ineligible bars (missing minute, zero volume, outside RTH, auction buckets) are skipped:
   they never enter a window, never count as held bars, never signal.
 
 What this function cannot know (NEEDS_CONFIRMATION, see docs/PHASE5C_TA01_ENGINEERING.md): whether an order fills,
@@ -43,6 +50,8 @@ from datetime import datetime, time
 from typing import Iterable, Mapping, Sequence
 from zoneinfo import ZoneInfo
 
+from datetime import timedelta
+
 from .core import Decision, SignalBar, SignalInputError, eligible_stream
 
 STRATEGY_PREFIX = "p5c_ta01_"
@@ -50,7 +59,37 @@ PARAMETER_KEYS = frozenset({"res_n", "vol_m", "vol_k", "close_pos", "sup_l"})
 # canonical family structure of the reviewed P5C-TA-01 proposal spec (family.canonical.structure_hash);
 # a spec whose rule STRUCTURE differs is refused instead of being run with these semantics
 STRUCTURE_SHA256 = "0c7bde1a867d21956a4f02b426ccdeb1884d1d2cc65040b494b2f8ec69f0246c"
-ENTRY, SUPPORT, MAX_HOLD, TIME_FLAT, SESSION = "TA01_ENTRY", "SUPPORT_BREAK", "MAX_HOLD", "TIME_FLATTEN", "SESSION_CHANGE"
+ENTRY, SUPPORT, MAX_HOLD, TIME_FLAT = "TA01_ENTRY", "SUPPORT_BREAK", "MAX_HOLD", "TIME_FLATTEN"
+CORE_BUCKET_MINUTES = (1, 15)            # market-research-core 50ea3bf temporal.prepare_conservative_bars
+
+
+class SameDayExitError(SignalInputError):
+    """TA-01 is intraday-only: a position could not be exited by a decision that can still fill the same session."""
+
+
+def last_feasible_exit_decision(session_close: datetime, bar_minutes: int) -> datetime:
+    """Latest decision time whose MARKET order can still fill in the same session under pinned Core 50ea3bf.
+
+    Evidence (market-research-core 50ea3bf):
+      temporal.prepare_conservative_bars: buckets group source labels by floor(bar_minutes) (UTC); a bucket with
+        labels L..L+m-1 has bar_start = L - 1min and modeled_available_at = L + m; it is execution-eligible only if
+        L + m < session_close (else CLOSING_AUCTION_EXCLUDED) and every minute has volume.
+      execution.run: candidate fill buckets need bar_start > max(signal available_at, order_time)
+        (same_timestamp_open_assumption=False in Agent core_config), the same session_close as the signal bucket,
+        and bar_start < DAY expiry (first session close after order_time).
+    So the last executable bucket starts at L* = session_close - 2m; a decision d can reach it only if
+    d < L* - 1min. Decisions lie on the m-minute grid, so the answer is the largest grid time strictly earlier
+    than session_close - 2m - 1min. For 15m buckets and a 16:00 close this is 15:15; for a 13:00 close, 12:15.
+    It is a NECESSARY condition only: the single remaining fill bucket may still be ineligible (zero volume,
+    participation cap), in which case the DAY order expires and intraday_check FAILs."""
+    if bar_minutes not in CORE_BUCKET_MINUTES:
+        raise SignalInputError(f"bar_minutes must be one of {CORE_BUCKET_MINUTES}")
+    limit = session_close - timedelta(minutes=2 * bar_minutes + 1)
+    epoch_min = int(limit.timestamp() // 60)
+    grid = epoch_min - (epoch_min % bar_minutes)
+    if grid * 60 >= limit.timestamp():
+        grid -= bar_minutes
+    return datetime.fromtimestamp(grid * 60, tz=session_close.tzinfo)
 
 
 @dataclass(frozen=True)
@@ -65,6 +104,7 @@ class TA01Params:
     flatten_local: time
     regular_close_local: time
     timezone: str
+    bar_minutes: int
 
     def __post_init__(self):
         if min(self.res_n, self.vol_m, self.sup_l, self.max_hold_bars) < 1:
@@ -74,6 +114,8 @@ class TA01Params:
         if not (self.last_entry_local <= self.flatten_local <= self.regular_close_local):
             raise SignalInputError("require last_entry_local <= flatten_local <= regular_close_local")
         ZoneInfo(self.timezone)
+        if self.bar_minutes not in CORE_BUCKET_MINUTES:
+            raise SignalInputError(f"bar_minutes must be one of {CORE_BUCKET_MINUTES}")
 
 
 def _hm(text: str) -> time:
@@ -122,13 +164,16 @@ def params_from_spec(spec: Mapping, parameters: Mapping) -> TA01Params:
         raise SignalInputError("TA01: RTH-only, no_overnight and an explicit HH:MM-HH:MM calendar_ref required")
     if spec["risk_constraints"]["allowed_directions"] != ["LONG"]:
         raise SignalInputError("TA01 is long-only")
+    tf = spec["universe"].get("timeframe")
+    if tf != "15m":
+        raise SignalInputError(f"TA01: universe.timeframe must be 15m, got {tf!r}")
     ints = {k: int(parameters[k]) for k in ("res_n", "vol_m", "sup_l")}
     if any(float(parameters[k]) != ints[k] for k in ints):
         raise SignalInputError("TA01: window lengths must be integers")
     return TA01Params(**ints, vol_k=float(parameters["vol_k"]), close_pos=float(parameters["close_pos"]),
                       max_hold_bars=int(texit["max_holding_bars"]), last_entry_local=_hm(cut[0]),
                       flatten_local=_hm(texit["flatten_decision_time_local"]), regular_close_local=_hm(m.group(2)),
-                      timezone=spec["universe"]["timezone"])
+                      timezone=spec["universe"]["timezone"], bar_minutes=15)
 
 
 def sessions_from_rows(rows: Iterable[Mapping]) -> dict[str, tuple[datetime, datetime]]:
@@ -173,12 +218,16 @@ def _run(bars: Sequence[SignalBar], sessions: Mapping[str, tuple[datetime, datet
     pos, held, entered, session = 0, 0, False, None
     for b, reset in eligible_stream(bars, exclusions):
         s_start, s_end = _session(sessions, b)
+        last_exit = last_feasible_exit_decision(s_end, p.bar_minutes)
         flattened = False
         if b.session_id != session:
-            if pos:
-                out.append(Decision(b.available_at, 0, b.contract, SESSION))
-                pos, flattened = 0, True
+            if pos:                                    # never flatten yesterday's position with today's bar
+                raise SameDayExitError(f"NO_SAME_DAY_EXIT: position from session {session} still long at "
+                                       f"{b.available_at.isoformat()} (session {b.session_id})")
             session, entered = b.session_id, False
+        if pos and b.available_at > last_exit:        # an exit decided now could only fill the next session
+            raise SameDayExitError(f"NO_SAME_DAY_EXIT: still long at {b.available_at.isoformat()} after the last "
+                                   f"feasible exit decision {last_exit.isoformat()} (session {session})")
         if reset:
             highs.clear(), vols.clear(), lows.clear()
             if pos:
@@ -198,8 +247,10 @@ def _run(bars: Sequence[SignalBar], sessions: Mapping[str, tuple[datetime, datet
                 pos = 0
         else:
             warm = len(highs) == p.res_n and len(vols) == p.vol_m and len(lows) == p.sup_l
+            flatten_at = datetime.combine(b.available_at.astimezone(tz).date(), p.flatten_local, tz)
             allowed = (warm and not entered and not flattened and not _early_close(s_end, p)
-                       and local < p.last_entry_local and s_start <= b.available_at < s_end)
+                       and local < p.last_entry_local and s_start <= b.available_at < s_end
+                       and flatten_at <= last_exit)           # a same-day time exit must exist before entering
             if allowed and collect_candidates:
                 candidates.setdefault(b.session_id, []).append(b.available_at)
             if allowed:
@@ -209,6 +260,11 @@ def _run(bars: Sequence[SignalBar], sessions: Mapping[str, tuple[datetime, datet
                     out.append(Decision(b.available_at, 1, b.contract, ENTRY if entry_at is None else "RANDOM_ENTRY"))
                     pos, held, entered = 1, 0, True
         highs.append(b.high), vols.append(b.volume), lows.append(b.low)   # windows updated AFTER the decision
+    if pos:                     # input (eligible or not) already passed the last feasible exit -> FAIL, never wait
+        last_exit = last_feasible_exit_decision(sessions[session][1], p.bar_minutes)
+        later = [x for x in bars if x.available_at > out[-1].decision_ts]
+        if any(x.session_id != session or x.available_at > last_exit for x in later):
+            raise SameDayExitError(f"NO_SAME_DAY_EXIT: session {session} has no exit decision by {last_exit.isoformat()}")
     return out, candidates
 
 

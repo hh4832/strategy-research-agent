@@ -20,7 +20,7 @@ SPEC = json.loads((ROOT / "tests/fixtures/p5c_ta01/ta01_spec_proposal.json").rea
 DEFAULTS = {k: SPEC["parameters"]["values"][k]["default"] for k in T.PARAMETER_KEYS}
 P = T.TA01Params(res_n=3, vol_m=3, vol_k=2.0, close_pos=0.75, sup_l=2, max_hold_bars=3,
                  last_entry_local=time(14, 30), flatten_local=time(15, 15), regular_close_local=time(16, 0),
-                 timezone="America/New_York")
+                 timezone="America/New_York", bar_minutes=15)
 FLAT = (100.0, 100.2, 99.8, 100.0, 1000.0)          # open, high, low, close, volume
 BREAK = (100.0, 101.0, 99.9, 100.95, 5000.0)         # breakout + bullish + strong close + 5x volume
 HOLD = (100.9, 101.0, 100.8, 100.9, 1000.0)
@@ -127,30 +127,58 @@ def test_support_exit_max_hold_and_time_flatten():
     assert reasons(T.ta01_decisions(bars, sess, p))[-1] == ("01-13 15:15", 0, "TIME_FLATTEN")
 
 
-def test_time_exit_is_first_eligible_bucket_at_or_after_1515():
+def test_last_feasible_exit_decision_from_core_timing():
+    for close, m, want in [("2025-01-13T16:00", 15, "15:15"), ("2025-07-14T16:00", 15, "15:15"),   # EST and EDT
+                           ("2025-11-28T13:00", 15, "12:15"), ("2025-01-13T16:00", 1, "15:56")]:
+        got = T.last_feasible_exit_decision(datetime.fromisoformat(close).replace(tzinfo=NY), m)
+        assert got.astimezone(NY).strftime("%H:%M") == want
+    with pytest.raises(SignalInputError):
+        T.last_feasible_exit_decision(datetime(2025, 1, 13, 16, tzinfo=NY), 5)
+
+
+def test_time_exit_at_1515_is_the_last_same_day_decision():
     p = replace(P, max_hold_bars=50)
     rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6                              # decisions 14:15 (entry) ... 15:45
-    elig = [True] * 21 + [False, False, True]                              # 15:15 and 15:30 decisions ineligible
+    bars, sess = day("2025-01-13", rows)
+    assert reasons(T.ta01_decisions(bars, sess, p)) == [("01-13 14:15", 1, "TA01_ENTRY"),
+                                                        ("01-13 15:15", 0, "TIME_FLATTEN")]
+
+
+def test_no_eligible_1515_bucket_fails_instead_of_exiting_late():
+    p = replace(P, max_hold_bars=50)
+    rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6
+    elig = [True] * 21 + [False, True, True]                               # 15:15 decision ineligible, 15:30 eligible
     bars, sess = day("2025-01-13", rows, eligible=elig)
-    out = reasons(T.ta01_decisions(bars, sess, p))
-    assert out == [("01-13 14:15", 1, "TA01_ENTRY"), ("01-13 15:45", 0, "TIME_FLATTEN")]
-    # nothing before 15:15 exits on time, and there is no separate session-end exit: a session closing at 16:00
-    # with eligible buckets only up to 15:00 leaves the position open in-session (fail-safe handles it later)
-    elig2 = [True] * 21 + [False, False, False]
-    bars2, sess2 = day("2025-01-13", rows, eligible=elig2)
-    assert reasons(T.ta01_decisions(bars2, sess2, p)) == [("01-13 14:15", 1, "TA01_ENTRY")]
+    with pytest.raises(T.SameDayExitError, match="NO_SAME_DAY_EXIT"):     # a 15:30 exit could only fill tomorrow
+        T.ta01_decisions(bars, sess, p)
 
 
-def test_exit_impossible_in_session_flattens_on_next_session_and_blocks_same_bar_entry():
+def test_later_buckets_all_ineligible_still_fail_at_end_of_input():
+    p = replace(P, max_hold_bars=50)
+    rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6
+    elig = [True] * 21 + [False] * 3                                       # only ineligible buckets after 15:00
+    bars, sess = day("2025-01-13", rows, eligible=elig)
+    with pytest.raises(T.SameDayExitError, match="no exit decision by"):
+        T.ta01_decisions(bars, sess, p)
+
+
+def test_no_next_session_flatten_signal_ever():
     p = replace(P, max_hold_bars=50)
     rows = [FLAT] * 17 + [BREAK] + [HOLD] * 6
     elig = [True] * 19 + [False] * 5                                       # every bucket after 14:30 ineligible
     d1 = day("2025-01-13", rows, eligible=elig)
-    d2 = day("2025-01-14", [BREAK] + [FLAT] * 3)                           # pattern on the first bar of day 2
+    d2 = day("2025-01-14", [BREAK] + [FLAT] * 3)
     bars, sess = series(d1, d2)
-    out = reasons(T.ta01_decisions(bars, sess, p))
-    assert out[-1] == ("01-14 10:00", 0, "SESSION_CHANGE")                 # no entry on the flattening bar
-    assert sum(r[1] == 1 for r in out) == 1
+    with pytest.raises(T.SameDayExitError):
+        T.ta01_decisions(bars, sess, p)
+    assert "SESSION_CHANGE" not in (ROOT / "src/strategy_agent/signals/ta01.py").read_text(encoding="utf-8")
+
+
+def test_no_entry_when_flatten_time_is_not_same_day_feasible():
+    late = replace(P, flatten_local=time(15, 30))                          # 15:30 > last feasible 15:15
+    bars, sess = day("2025-01-13", [FLAT] * 3 + [BREAK] + [HOLD] * 3)
+    assert T.ta01_decisions(bars, sess, late) == []
+    assert T.entry_candidates(bars, sess, late) == {}
 
 
 def test_early_close_session_has_no_entry():
@@ -207,6 +235,7 @@ def test_spec_binds_to_exact_reviewed_structure():
     p = T.params_from_spec(SPEC, DEFAULTS)
     assert (p.res_n, p.vol_m, p.vol_k, p.close_pos, p.sup_l, p.max_hold_bars) == (20, 20, 2.0, 0.75, 10, 8)
     assert (p.last_entry_local, p.flatten_local, p.regular_close_local) == (time(14, 30), time(15, 15), time(16, 0))
+    assert p.bar_minutes == 15
 
 
 @pytest.mark.parametrize("mutate", [
@@ -219,6 +248,7 @@ def test_spec_binds_to_exact_reviewed_structure():
     lambda s: s.update(strategy_id="sma_crossover_lookalike"),
     lambda s: s["risk_exits"]["time_exit"].update(flatten_before_session_end=True),   # no session-end exit rule
     lambda s: s["risk_exits"]["time_exit"].pop("flatten_before_session_end"),
+    lambda s: s["universe"].update(timeframe="5m"),
 ])
 def test_spec_binding_fails_closed(mutate):
     s = copy.deepcopy(SPEC)

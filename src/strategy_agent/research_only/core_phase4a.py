@@ -281,7 +281,12 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
     family, ta01_params = signal_family(spec, parameters)
     if family == "TA01":
         from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
-        decs = TA.ta01_decisions(sbars, TA.sessions_from_rows(rows), ta01_params)
+        if {int(r["bar_minutes"]) for r in rows} != {ta01_params.bar_minutes}:
+            raise Phase4ABindingError(f"TA-01 requires Core {ta01_params.bar_minutes}m conservative buckets")
+        try:
+            decs = TA.ta01_decisions(sbars, TA.sessions_from_rows(rows), ta01_params)
+        except TA.SameDayExitError as e:   # no same-day exit decision possible: the whole execution fails
+            raise TA01NoOvernightViolation(str(e)) from e
     else:                                   # unchanged SMA path (every existing caller)
         decs = sma_crossover(sbars, int(parameters["fast"]), int(parameters["slow"]))
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
@@ -355,9 +360,17 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
             out["scenarios"][name]["ta01_intraday_check"] = ta01_check
     if family == "TA01":
         from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+        failed = {n: s["ta01_intraday_check"]["violations"] for n, s in out["scenarios"].items()
+                  if s["ta01_intraday_check"]["status"] != "PASS"}
+        if failed:                         # an exit that did not fill in-session invalidates the whole result
+            raise TA01NoOvernightViolation(f"TA-01 no-overnight violated: {failed}")
         out["signal_family"] = {"family": "TA01", "structure_sha256": TA.STRUCTURE_SHA256,
                                 "params_sha256": TA.params_digest(ta01_params)}
     return out
+
+
+class TA01NoOvernightViolation(RuntimeError):
+    """P5C-TA-01 is intraday-only; any position not closed in its entry session fails the whole execution."""
 
 
 def signal_family(spec: dict, parameters: dict):

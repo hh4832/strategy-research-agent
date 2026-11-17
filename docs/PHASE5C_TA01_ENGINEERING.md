@@ -28,18 +28,21 @@ authorizations, CLAIM, archives, and `research_only/runner.py`. The governed run
 | Warm-up | windows must be full | No signal until all three windows are full | DEFINED |
 | Entry components | breakout, bullish, `high > low`, strong close, relative volume | `pattern()`; all must hold; `>=` is inclusive where the spec says `ge` | DEFINED |
 | Signal time | `BAR_AVAILABLE_AT` | Decision at the `SignalBar.available_at` = Core `modeled_available_at` (unchanged mapping) | DEFINED |
-| Fill strictly after the signal; order expiry | `NEXT_ELIGIBLE_BAR_OPEN`; TIF `UNTIL_END_OF_NEXT_SESSION_END` | Same path as SMA: `decisions_to_targets` → `targets_to_orders` (MARKET, DAY) → Core decides fills, rejections and expiry | DEFINED (Core semantics, unchanged) |
-| `execution.max_fill_delay_bars = 2` | declared | Not consumed by Agent code (the existing SMA specs declare the same value). Whether Core enforces it is not shown in this repo | **NEEDS_CONFIRMATION** |
+| Fill strictly after the signal; order expiry | `NEXT_ELIGIBLE_BAR_OPEN`; TIF `UNTIL_END_OF_NEXT_SESSION_END` | Same path as SMA: `decisions_to_targets` → `targets_to_orders` (MARKET, DAY) → Core. Pinned Core `50ea3bf` `execution.run`: fill at the open of the first candidate bucket of the **same session** with `bar_start > max(available_at, order_time)` (`same_timestamp_open_assumption=False`); a DAY order expires at the first session close after `order_time` | DEFINED (Core code read) |
+| `execution.max_fill_delay_bars = 2` | declared | **Not enforced**: absent from Agent execution code and from Core `50ea3bf` (code search); expiry is the DAY rule only. Same as the existing SMA specs | Known spec/executor divergence (open) |
 | One entry per session; one position; long only | `max_entries_per_session: 1`, `max_position_units: 100` | State machine; quantity from `position_sizing` as before | DEFINED |
 | Exits | support break, then `max_holding_bars` 8, then the 15:15 time exit | Same priority; held bars = eligible bars after the entry **decision** bar | DEFINED |
-| 15:15 time exit | the **first eligible bucket whose decision time is at or after 15:15 ET** emits the exit signal; `flatten_before_session_end: false` (there is no separate session-end exit rule) | `local decision time >= flatten_local` only; ineligible buckets are skipped, so the exit moves to the next eligible bucket (e.g. 15:45 if the 15:15 and 15:30 decisions are ineligible). The binding refuses a spec with `flatten_before_session_end` true or missing | DEFINED (signal) |
+| 15:15 time exit | the **first eligible bucket whose decision time is at or after 15:15 ET** emits the exit signal; `flatten_before_session_end: false` (no separate session-end rule) | `local decision time >= flatten_local`, but only while the decision is still **same-day feasible** (≤ `last_feasible_exit_decision`, 15:15 for a 16:00 close). On a regular session the 15:15 decision bucket is therefore the only time-exit bucket; if it is ineligible the execution FAILS (see below). The binding refuses `flatten_before_session_end` true/missing and any timeframe other than 15m | DEFINED (signal) |
 | Entry cut-off | `time_lt 14:30` | Local decision time strictly before 14:30 | DEFINED |
 | Early-close session | no entries (proposal) | `session_close` (from Core rows) earlier than the regular close parsed from the spec's `calendar_ref` → no entry | DEFINED (relies on Core's session columns) |
 | Missing, zero-volume or auction buckets | ineligible | Skipped: never in a window, never counted as held, never a signal (`eligible_stream`) | DEFINED |
-| No exit in session (no eligible bucket at/after 15:15, or exit order not filled) | must not be hidden | Fail-safe, **not an exit rule**: the signal cannot see fills; if it is still long when the next session starts, it emits `SESSION_CHANGE` on that session's first eligible bar (no entry on that bar). After execution, `intraday_check` returns **FAIL** for any overnight round trip or open position | DEFINED (detection); Core behaviour **NEEDS_CONFIRMATION** |
+| No same-day exit decision possible | `no_overnight` | **No next-session flatten exists.** The signal raises `SameDayExitError` when it is still long at a decision later than the last feasible exit, when a later session appears, or when the input (eligible or not) already passed the last feasible exit; `execute_batch` turns it into `TA01NoOvernightViolation` (whole execution fails, no result) | DEFINED |
+| Exit order not filled in the session | `no_overnight` | The signal cannot see fills. After execution `intraday_check` FAILs on any overnight round trip or open position, and `execute_batch` raises `TA01NoOvernightViolation` for the whole batch | DEFINED |
+| Entry only if a same-day time exit exists | — | An entry is permitted only when `flatten_local` ≤ that session's last feasible exit decision (also restricts random-entry candidates) | DEFINED |
 | Position open at end of data | — | No fabricated exit; `intraday_check` returns `OPEN_POSITION_AT_END` FAIL | DEFINED |
-| 15:15 exit order fills in session | proposal assumption | Fill time and price are Core's (strictly later eligible bucket, closing bucket excluded per `docs/M3C_FINAL_ACCEPTANCE.md` §4). Synthetic tests do not verify real fills or real 15m bucket construction | **UNVERIFIED** |
-| Bucket volume = sum of 1m volumes; TSM volume unit; frequency of zero-volume minutes | — | Not visible in this repo | **NEEDS_CONFIRMATION** |
+| 15:15 exit order fills in session | proposal assumption | By Core code the 15:15 decision has exactly **one** same-day fill bucket (source labels 15:30–15:44, `bar_start` 15:29 ET). If that bucket is ineligible (zero-volume minute, participation cap) the DAY order expires and the execution FAILS. Whether real TSM data makes it fillable is not verified; synthetic tests verify only the code path | **UNVERIFIED on real data** |
+| Bucket volume | — | Core `50ea3bf` `temporal.prepare_conservative_bars`: `volume = group.volume.sum()`; any zero-volume minute makes the bucket ineligible for signal and execution | DEFINED (Core code read) |
+| TSM volume unit; frequency of zero-volume minutes | — | Not visible in code or docs; would need data | **NEEDS_CONFIRMATION** |
 | Auction volume leaking into an eligible bucket; intraday U-shaped volume | — | Not handled (cannot be expressed safely) | **BLOCKED for research** until decided |
 
 The binding is fail-closed. A spec is accepted only if `strategy_id` starts with `p5c_ta01_`, its canonical rule
@@ -48,6 +51,26 @@ sup_l` and equal the spec defaults (FIXED search), the strategy is long-only and
 there is one `time_lt` cut-off plus an explicit `HH:MM-HH:MM` calendar, and `flatten_before_session_end` is explicitly
 `false`. Anything else raises before any order
 exists. TA-01 parameters given with a non-TA-01 spec are refused, so they never reach SMA.
+
+## No-overnight and the last feasible exit decision (evidence)
+
+Haw's decision: TA-01 is intraday. Evidence from pinned Core `50ea3bf` (read-only source; no data read):
+
+1. `temporal.prepare_conservative_bars`: a 15m bucket with source labels `L..L+14` has `bar_start = L − 1min` and
+   `modeled_available_at = L + 15min`. It is execution-eligible only if `L + 15min < session_close` (otherwise
+   `CLOSING_AUCTION_EXCLUDED`) and every minute has volume. It is signal-eligible only if, in addition,
+   `modeled_available_at` falls within `10:00–15:30` ET (`TemporalPolicy`).
+2. `execution.run`: a MARKET order fills at the open of the first same-session candidate with
+   `bar_start > max(available_at, order_time)`. A DAY order expires at the first session close after `order_time`.
+3. Hence the last executable bucket of a 16:00 session is `L = 15:30` (`bar_start 15:29`), and the latest decision
+   that can still reach it is **15:15 ET**. In general, for `m`-minute buckets this is the largest `m`-grid time
+   strictly before `session_close − 2m − 1min`; for a 13:00 early close it is **12:15**.
+   This is implemented in `signals.ta01.last_feasible_exit_decision` and unit-tested, including EST and EDT.
+4. This is a **necessary** condition, not a guarantee. The 15:15 decision has a single same-day fill bucket. If that
+   bucket is ineligible, the execution fails rather than carrying the position.
+
+So the proposal's 15:15 time exit coincides with the latest same-day-feasible decision. No earlier time was
+chosen. Entries remain limited to decisions before 14:30.
 
 ## RANDOM-ENTRY-NULL-v1
 
@@ -72,7 +95,8 @@ See the module docstring for the full statement.
 
 1. Decide the market (TSM is the only governed market and is NO_GO).
 2. Resolve the auction-volume handling and the volume baseline.
-3. Confirm volume aggregation and units, and the max-fill-delay and DAY expiry semantics.
+3. Confirm the TSM volume unit and zero-volume frequency, and resolve the `max_fill_delay_bars` divergence (it is
+   not enforced).
 4. Approve a cost set.
 5. Create a runner config.
 6. Obtain a new research authorization, and pre-register the seed, draws and quantile.

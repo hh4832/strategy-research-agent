@@ -19,10 +19,11 @@ CFG = R.RandomEntryConfig(seed=7, draws=25, quantile=0.95, population="ALL_TRADE
 
 def market():
     """Five sessions; one TA-01 breakout on two of them; one early-close session (never tradeable)."""
-    days = [day("2025-01-13", [FLAT] * 4 + [BREAK] + [HOLD] * 4),
-            day("2025-01-14", [FLAT] * 9),
-            day("2025-01-15", [FLAT] * 3 + [BREAK] + [HOLD] * 5),
-            day("2025-01-16", [FLAT] * 9),
+    # full sessions (decisions 10:00 ... 15:45) so every permitted entry has a same-day exit
+    days = [day("2025-01-13", [FLAT] * 4 + [BREAK] + [HOLD] * 19),
+            day("2025-01-14", [FLAT] * 24),
+            day("2025-01-15", [FLAT] * 3 + [BREAK] + [HOLD] * 20),
+            day("2025-01-16", [FLAT] * 24),
             day("2025-11-28", [FLAT] * 3 + [BREAK] + [HOLD] * 3, close="13:00")]
     return series(*days)
 
@@ -102,6 +103,15 @@ def test_no_permitted_points_or_too_many_entries_fail_closed():
         R.null_decision_sets(bars, sess, P, n_entries=5, config=CFG)
     with pytest.raises(R.RandomEntryError):
         R.null_decision_sets(bars, sess, P, n_entries=0, config=CFG)
+
+
+def test_null_draw_needing_overnight_fails_explicitly():
+    # a short session (data stops at 12:00 while the next session exists) gives entries no same-day exit
+    days = [day("2025-01-13", [FLAT] * 4 + [BREAK] + [HOLD] * 19), day("2025-01-14", [FLAT] * 9),
+            day("2025-01-15", [FLAT] * 24)]
+    bars, sess = series(*days)
+    with pytest.raises(T.SameDayExitError):
+        R.null_decision_sets(bars, sess, P, n_entries=2, config=R.RandomEntryConfig(3, 40, 0.95, "ALL_TRADEABLE_SESSIONS"))
 
 
 def test_same_executor_quantity_and_costs_for_strategy_and_every_draw():
