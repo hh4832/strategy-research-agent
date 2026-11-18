@@ -67,3 +67,15 @@ def test_run_requires_typed_confirmation_before_anything(tmp_path):
     with pytest.raises(D.DiagnosticRefused, match="confirm"):
         D.main(["--settings", str(settings)])
     assert list(tmp_path.iterdir()) == [settings]
+
+
+def test_notebook_prepare_never_mounts_drive_or_reads_a_credential():
+    nb = json.loads((ROOT / "notebooks/Phase5C_TA01_Fill_Diagnostic.ipynb").read_text())
+    code = "".join(nb["cells"][2]["source"])
+    lines = code.splitlines()
+    gate = lines.index('if MODE == "RUN":  # PREPARE never mounts Drive and never reads a credential')
+    for needle in ("from google.colab import drive", "drive.mount(", "userdata.get("):
+        hits = [i for i, l in enumerate(lines) if needle in l]
+        assert hits, needle
+        assert all(i > gate and lines[i].startswith("    ") for i in hits), needle   # only inside the RUN branch
+    assert "".join(nb["cells"][1]["source"]).startswith('MODE = "PREPARE"')                  # PREPARE is the default

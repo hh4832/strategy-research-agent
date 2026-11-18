@@ -40,7 +40,8 @@ is written.
 ## Authorization and run
 
 1. Review and merge this code. The notebook pins an exact reviewed commit.
-2. Run `notebooks/Phase5C_TA01_Fill_Diagnostic.ipynb` in `PREPARE` mode. It reads no data and prints the exact
+2. Run `notebooks/Phase5C_TA01_Fill_Diagnostic.ipynb` in `PREPARE` mode. It does not mount Google Drive, reads
+   no data and no credential, and prints the exact
    `RESEARCH-APPROVAL v1 … intent=BIND_AUTHORIZATION …` line for this document's SHA.
 3. hh4832 personally posts that line on the PR. The line is checked live by `approval.verifier` (V01–V09):
    - author is hh4832 (login and numeric id);
