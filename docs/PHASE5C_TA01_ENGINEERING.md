@@ -20,7 +20,25 @@ or confirmatory.
 | `.github/workflows/ci.yml` | One line: the Core TA-01 test is added to the existing synthetic-only `phase5c1-integration` job |
 
 Not changed: Core, existing strategy specs, data, the formal cost set, periods, `registry/`, `governance/`, ledgers,
-authorizations, CLAIM, archives, and `research_only/runner.py`. The governed runner stays pinned to its C1 SMA config.
+authorizations, CLAIM and archives. No runner config exists for TA-01.
+
+### Governed runner (follow-up PR, stacked on this one)
+
+`research_only/runner.py` `_execute` now asks `core_phase4a.execution_frame` which frame to pass to `execute_batch`:
+
+- **SMA / every non-TA-01 spec:** `loaded.conservative_15m`, the same object Core's loader returned (tested to be
+  the identical object). SMA behaviour and archive output are unchanged.
+- **TA-01:** the Core 1m conservative frame, built by Core `prepare_conservative_bars(loaded.source_1m,
+  bar_minutes=1)` from the rows Core's loader already returned (no extra data read). Fail-closed cross-check: Core's
+  own 15m rebuild from the same rows must equal the loader's 15m frame (timing, eligibility, volume), otherwise
+  `Phase4ABindingError`.
+- The archive (`execution_diagnostics.json`) records `signal_family`, `execution_frame` and `ta01_fill_window`
+  (orders not submitted: no tradable bar in the window, or the known-volume check failed), `ta01_delayed_open`, for TA-01 only. The temporal check allows a TA-01 order time later than the signal time by at most the fill window (Agent fill-bar selection); SMA still requires equality. Trade holding periods are still
+  counted in Core 15m bars.
+- Preflight, authorization, CLAIM and slot consumption are untouched; they run before `_execute`. A TA-01 failure
+  (`TA01NoOvernightViolation`) after consumption is recorded by the existing `FAILURE.json` path.
+- Tests call `_execute` with the data load replaced by synthetic Core output and write a full synthetic archive;
+  no preflight, authorization, real data or Batch is involved.
 
 ## Rule-by-rule consistency check (spec draft → implementation)
 
@@ -125,7 +143,7 @@ See the module docstring for the full statement.
 
 ## Remaining before any TA-01 research
 
-0. **Runner integration:** handled in the follow-up PR #33 (the runner passes the Core 1m frame for TA-01).
+0. **Runner config:** the runner can now execute a TA-01 spec, but no TA-01 run config or authorization exists.
 
 1. Decide the market (TSM is the only governed market and is NO_GO).
 2. Resolve the auction-volume handling and the volume baseline.

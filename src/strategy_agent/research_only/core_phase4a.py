@@ -481,6 +481,36 @@ def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, pa
     return kept, {"not_submitted": not_submitted, "submitted": len(kept), "order_time_shifted": shifted}
 
 
+def execution_frame(core, loaded, spec: dict, parameters: dict):
+    """Frame handed to ``execute_batch`` by the governed runner.
+
+    Non-TA-01 (SMA): ``loaded.conservative_15m`` exactly as Core's loader returned it (unchanged behaviour).
+    TA-01: the Core 1m conservative frame, built by Core ``prepare_conservative_bars(loaded.source_1m, bar_minutes=1)``
+    from the same Core source rows. Fail-closed cross-check: Core's own 15m rebuild from those rows must equal the
+    loader's 15m frame on timing, eligibility and volume, so signals see exactly the buckets the loader produced."""
+    family, _ = signal_family(spec, parameters)
+    if family != "TA01":
+        return loaded.conservative_15m, None
+    import pandas as pd  # noqa: PLC0415
+    from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+    exec_frame = core.prepare_conservative_bars(loaded.source_1m, bar_minutes=TA.EXEC_MINUTES)
+    rebuilt = core.prepare_conservative_bars(loaded.source_1m, bar_minutes=TA.SIGNAL_MINUTES)
+    cols = ["source_timestamp", "bar_start", "modeled_available_at", "session_close", "volume", "signal_eligible",
+            "buy_execution_eligible", "sell_execution_eligible"]
+    try:
+        pd.testing.assert_frame_equal(rebuilt[cols].reset_index(drop=True),
+                                      loaded.conservative_15m[cols].reset_index(drop=True), check_dtype=False)
+    except (AssertionError, KeyError) as e:
+        raise Phase4ABindingError(f"TA-01: Core 15m rebuild from source_1m differs from the loaded 15m frame: {e}") from e
+    info = {"execution_bars_minutes": TA.EXEC_MINUTES, "signal_bars_minutes": TA.SIGNAL_MINUTES,
+            "execution_bars": int(len(exec_frame)),
+            "execution_rejection_reasons": {str(k): int(v) for k, v in
+                                            exec_frame["execution_rejection_reason"].value_counts().items() if k},
+            "built_by": "market_research_core.prepare_conservative_bars(source_1m, bar_minutes=1)",
+            "loaded_15m_cross_check": "PASS"}
+    return exec_frame, info
+
+
 class TA01NoOvernightViolation(RuntimeError):
     """P5C-TA-01 is intraday-only; any position not closed in its entry session fails the whole execution."""
 

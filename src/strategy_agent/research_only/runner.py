@@ -313,10 +313,14 @@ class ResearchOnlyRunner:
         spec = json.loads((self.root / cfg["strategy"]["spec_path"]).read_text(encoding="utf-8"))
         cost_kw = ({"dated_schedules": dc["dated_schedules"]} if dc.get("dated_schedules") is not None
                    else {"profiles": dc["profiles"]})
-        batch = P.execute_batch(core, core_costs, frame=loaded.conservative_15m, core_sha=ident["core_git_sha"],
+        # SMA: Core's 15m frame, unchanged. TA-01: Core's 1m execution frame (signals still on Core 15m buckets).
+        frame, exec_info = P.execution_frame(core, loaded, spec, dict(cfg["strategy"]["parameters"]))
+        batch = P.execute_batch(core, core_costs, frame=frame, core_sha=ident["core_git_sha"],
                                 **cost_kw, spec=spec, parameters=dict(cfg["strategy"]["parameters"]),
                                 window_start=cfg["windows"]["start"], window_end=cfg["windows"]["end"],
                                 warmup_start=cfg["windows"]["warmup_start"], dataset=dict(cfg["dataset"]))
+        if exec_info is not None:
+            batch["execution_frame"] = exec_info
         ctx = dict(run_context or {})
         mpath = Path(dc["snapshot_root"]) / b.manifest_relative_path
         ctx.setdefault("snapshot_manifest", json.loads(mpath.read_text(encoding="utf-8")))
