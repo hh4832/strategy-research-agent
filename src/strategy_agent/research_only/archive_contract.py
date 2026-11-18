@@ -81,10 +81,17 @@ def descriptive(pnls: list[float]) -> dict:
             "label": "DESCRIPTIVE_ONLY" + ("_BELOW_EVALUATOR_MINIMUM_10_TRADES" if n < 10 else "")}
 
 
-def temporal_diagnostics(fills: list[dict]) -> dict:
+def temporal_diagnostics(fills: list[dict], max_order_delay_minutes: float | None = None) -> dict:
     """Checks on Core's own fill ledger (not re-computation): every fill is strictly after its signal's modeled
-    availability, executes on a later bar than the signal bar, and the order time equals the signal time."""
+    availability, executes on a later bar than the signal bar, and the order time equals the signal time.
+    ``max_order_delay_minutes`` (TA-01 only): the order time may instead be later than the signal time by at most
+    that many minutes (Agent fill-bar selection inside the declared fill window); never earlier."""
     delays, before, same_bar = [], 0, 0
+    lags = [(_ts(f["order_time"]) - _ts(f["signal_time"])).total_seconds() / 60 for f in fills]
+    if max_order_delay_minutes is None:
+        order_ok = all(x == 0 for x in lags)
+    else:
+        order_ok = all(0 <= x <= max_order_delay_minutes for x in lags)
     for f in fills:
         ex, av = _ts(f["exec_ts"]), _ts(f["signal_available_at"])
         delays.append((ex - av).total_seconds() / 60)
@@ -97,8 +104,10 @@ def temporal_diagnostics(fills: list[dict]) -> dict:
             "min_minutes_signal_available_to_fill": min(delays) if delays else None,
             "max_minutes_signal_available_to_fill": max(delays) if delays else None,
             "execution_assumptions": sorted({str(f.get("execution_assumption")) for f in fills}),
-            "status": "PASS" if before == 0 and same_bar == 0 and
-                      all(_ts(f["signal_time"]) == _ts(f["order_time"]) for f in fills) else "FAIL"}
+            **({} if max_order_delay_minutes is None else
+               {"max_minutes_signal_to_order_time": max(lags) if lags else None,
+                "allowed_order_delay_minutes": max_order_delay_minutes}),
+            "status": "PASS" if before == 0 and same_bar == 0 and order_ok else "FAIL"}
 
 
 def write_contract_archive(out_dir: Path, *, write_once, cfg: dict, run_id: str, use: dict, loaded, batch: dict,
@@ -152,7 +161,7 @@ def write_contract_archive(out_dir: Path, *, write_once, cfg: dict, run_id: str,
         m["cost_profile_sha256"] = sc["profile_sha256"]
         m["m3a4_checks"] = sc["m3a4_checks"]
         metrics[name] = m
-        temporal[name] = temporal_diagnostics(fills)
+        temporal[name] = temporal_diagnostics(fills, (batch.get("ta01_fill_window") or {}).get("window_minutes"))
 
     native = loaded.native
     ts_col = "timestamp_utc" if "timestamp_utc" in native.columns else native.columns[0]
@@ -178,7 +187,7 @@ def write_contract_archive(out_dir: Path, *, write_once, cfg: dict, run_id: str,
             "m3a4_checks": {k: v["m3a4_checks"] for k, v in scen.items()},
             "rejections_by_scenario": {k: len(_records(v["result"].rejections)) for k, v in scen.items()},
             "loader_provenance": prov}
-    for key in ("signal_family", "execution_frame", "ta01_fill_window"):   # TA-01 only; absent for SMA (unchanged)
+    for key in ("signal_family", "execution_frame", "ta01_fill_window", "ta01_delayed_open"):   # TA-01 only; absent for SMA (unchanged)
         if key in batch:
             diag[key] = batch[key]
 

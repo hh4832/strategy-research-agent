@@ -134,7 +134,8 @@ def test_last_feasible_exit_decision_from_core_timing():
         got = f(datetime.fromisoformat(close).replace(tzinfo=NY), fill_window_minutes=2)
         assert got.astimezone(NY).strftime("%H:%M") == want
     with pytest.raises(SignalInputError):
-        f(datetime(2025, 1, 13, 16, tzinfo=NY), fill_window_minutes=1)                   # can never fill
+        f(datetime(2025, 1, 13, 16, tzinfo=NY), fill_window_minutes=0)
+    assert f(datetime(2025, 1, 13, 16, tzinfo=NY), fill_window_minutes=1).astimezone(NY).strftime("%H:%M") == "15:45"
     with pytest.raises(SignalInputError):
         f(datetime(2025, 1, 13, 16, tzinfo=NY), fill_window_minutes=2, exec_minutes=15)
 
@@ -245,7 +246,7 @@ def test_sessions_from_rows_fail_closed():
 def test_fill_window_comes_from_max_fill_delay_bars_in_1m_bars():
     assert SPEC["execution"]["max_fill_delay_bars"] == 2 and SPEC["universe"]["source_timeframe"] == "1m"
     assert T.params_from_spec(SPEC, DEFAULTS).fill_window_minutes == 2
-    for bad in (None, 1, True, "2"):
+    for bad in (None, 0, True, "2"):
         s = copy.deepcopy(SPEC)
         if bad is None:
             del s["execution"]["max_fill_delay_bars"]
@@ -320,3 +321,34 @@ def test_ta01_never_uses_sma_orb_or_atr_code():
     assert not {"sma", "orb", "atr"} & {m.split(".")[-1] for m in mods}
     p4 = (ROOT / "src/strategy_agent/research_only/core_phase4a.py").read_text(encoding="utf-8")
     assert "signals.orb" not in p4 and "signals.atr" not in p4
+
+
+def _row(day, hm, vol):
+    ts = datetime.fromisoformat(f"{day}T{hm}").replace(tzinfo=NY)
+    return {"source_timestamp": ts, "volume": vol, "session": day,
+            "session_open": datetime.fromisoformat(f"{day}T09:30").replace(tzinfo=NY),
+            "session_close": datetime.fromisoformat(f"{day}T16:00").replace(tzinfo=NY)}
+
+
+def test_delayed_open_detection_is_label_agnostic():
+    day = "2025-01-13"
+    normal_start = [_row(day, "09:30", 500)] + [_row(day, f"09:{m}", 100) for m in range(31, 59)]
+    normal_end = [_row(day, "09:30", 0), _row(day, "09:31", 900)]          # opening print in label open+1
+    assert T.delayed_open_buckets(normal_start) == {} and T.delayed_open_buckets(normal_end) == {}
+    delayed = [_row(day, f"09:{m}", 0) for m in range(30, 47)] + [_row(day, "09:47", 800), _row(day, "10:05", 50)]
+    got = T.delayed_open_buckets(delayed)[day]
+    assert got["first_traded_label"].startswith(f"{day}T09:47")
+    assert got["exclude_bucket_first_labels_through"].startswith(f"{day}T09:45")
+    assert T.delayed_open_buckets([_row(day, "09:30", 0), _row(day, "11:00", 0)])[day][
+        "exclude_bucket_first_labels_through"] == "WHOLE_SESSION"
+
+
+def test_delayed_open_exclusion_marks_only_affected_buckets_ineligible():
+    day = "2025-01-13"
+    excluded = {day: {"exclude_bucket_first_labels_through": f"{day}T09:45:00-05:00"}}
+    bars = [SignalBar(datetime.fromisoformat(f"{day}T{hm}").replace(tzinfo=NY) - timedelta(minutes=1),
+                      datetime.fromisoformat(f"{day}T{hm}").replace(tzinfo=NY) + timedelta(minutes=14),
+                      1, 1, 1, 1, 1, "TSM", day, True) for hm in ("09:30", "09:45", "10:00")]
+    out = T.apply_delayed_open_exclusion(bars, excluded)
+    assert [b.eligible for b in out] == [False, False, True]
+    assert [b.eligible for b in T.apply_delayed_open_exclusion(bars, {})] == [True, True, True]

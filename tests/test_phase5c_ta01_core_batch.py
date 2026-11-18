@@ -28,12 +28,19 @@ WINDOW_END = "2025-01-09T00:00:00-05:00"
 
 @pytest.fixture
 def schedule():
+    return make_schedule()
+
+
+def make_schedule(cap=None):
     base = A.core_cost_profile(synthetic_componentized_cost_profile(), instrument_type='EQUITY', tick_size=.01, core=core)
     added = ('commission_cap_rate', 'half_spread_bps', 'equity_commission_per_share',
              'exchange_fee_per_unit', 'clearing_fee_per_unit')
+    if cap is not None:
+        added += ('volume_participation_cap',)
     base = replace(base, approval_status='DRAFT', equity_commission_rate=0, equity_commission_per_share=.005,
                    minimum_commission=1, commission_scheme='FIXED', commission_cap_rate=.01, half_spread_bps=0,
                    sell_tax_rate=0, slippage_ticks=0, exchange_fee_per_unit=0, clearing_fee_per_unit=0,
+                   volume_participation_cap=cap,
                    fee_rounding='HALF_UP', tax_rounding='HALF_UP',
                    component_basis={**base.component_basis, **{k: 'ASSUMED' for k in added}},
                    component_evidence={**base.component_evidence, **{k: 'SYNTHETIC' for k in added}},
@@ -58,10 +65,10 @@ def schedule():
     return DatedCostSchedule.from_document(doc, expected_sha256=doc['schedule_sha256'])
 
 
-def source(zero_volume=(), missing=()):
+def source(zero_volume=(), missing=(), volumes=None):
     """Synthetic 1m source rows in Core's loader format. Days 1-2 flat (warm-up across sessions); day 3 has a
-    breakout 15m bucket (labels 14:00-14:14 -> decision 14:15) and then holds. ``zero_volume`` / ``missing``:
-    'HH:MM' minutes on day 3 set to volume 0 / removed from the source."""
+    breakout 15m bucket (labels 14:00-14:14 -> decision 14:15) and then holds. ``zero_volume`` / ``missing`` /
+    ``volumes``: 'HH:MM' minutes on day 3 set to volume 0 / removed / given an explicit volume."""
     rows = []
     for d in DAYS:
         for t in pd.date_range(d + ' 09:30', periods=390, freq='min', tz='America/New_York'):
@@ -76,13 +83,15 @@ def source(zero_volume=(), missing=()):
                 o, h, lw, c, v = 100.0, 100.2, 99.8, 100.0, 1000.0
             if d == DAYS[2] and hm in zero_volume:
                 v = 0.0
+            if d == DAYS[2] and volumes and hm in volumes:
+                v = float(volumes[hm])
             rows.append(dict(source_timestamp=t, symbol='TSM', contract='TSM', open=o, high=h, low=lw, close=c, volume=v))
     return pd.DataFrame(rows)
 
 
-def frame(zero_volume=(), missing=(), bar_minutes=1):
+def frame(zero_volume=(), missing=(), bar_minutes=1, volumes=None):
     """Core conservative frame (1m = execution bars) from the synthetic source."""
-    return core.prepare_conservative_bars(source(zero_volume, missing), bar_minutes=bar_minutes)
+    return core.prepare_conservative_bars(source(zero_volume, missing, volumes), bar_minutes=bar_minutes)
 
 
 def loaded(**kw):
@@ -108,7 +117,12 @@ def ny(ts):
     return pd.Timestamp(ts).tz_convert('America/New_York').strftime('%m-%d %H:%M')
 
 
-def test_15m_signal_fills_on_1m_bar_within_2_minutes(schedule, monkeypatch):
+def trips(out):
+    return {n: tuple((ny(t['entry_ts']), ny(t['exit_ts'])) for t in item['result'].round_trips.to_dict('records'))
+            for n, item in out['scenarios'].items()}
+
+
+def test_15m_signal_fills_on_first_1m_bar_in_window(schedule, monkeypatch):
     from strategy_agent.signals import sma
 
     def forbidden(*a, **k):
@@ -118,37 +132,74 @@ def test_15m_signal_fills_on_1m_bar_within_2_minutes(schedule, monkeypatch):
     assert out['signal_family']['family'] == 'TA01' and out['signal_family']['execution_bars_minutes'] == 1
     assert [(ny(ts), tgt, r) for ts, tgt, r in out['decisions']] == [('01-08 14:15', 1, 'TA01_ENTRY'),
                                                                      ('01-08 15:15', 0, 'TIME_FLATTEN')]
-    assert out['orders'] == 2 and out['ta01_fill_window']['not_submitted'] == []
+    fw = out['ta01_fill_window']
+    assert out['orders'] == 2 and fw['not_submitted'] == [] and fw['order_time_shifted'] == 0
     for item in out['scenarios'].values():
-        assert item['ta01_intraday_check']['status'] == 'PASS'
-        trip = item['result'].round_trips.iloc[0]
-        # first 1m bar strictly after the decision: source label 14:17 (bar_start 14:16, opens by 14:17) and 15:17
-        assert (ny(trip['entry_ts']), ny(trip['exit_ts'])) == ('01-08 14:16', '01-08 15:16')
-        assert len(item['result'].open_positions) == 0
+        assert item['ta01_intraday_check']['status'] == 'PASS' and len(item['result'].open_positions) == 0
+    # first in-window bar: label 14:17 -> bar_start (earliest possible open) 14:16, inside (14:15, 14:17]
+    assert set(trips(out).values()) == {(('01-08 14:16', '01-08 15:16'),)}
 
 
-def test_no_bar_within_2_minutes_means_no_fill(schedule):
-    out = run(schedule, frame(missing=('14:17',)))           # next 1m bar after 14:15 opens at 14:18 -> outside window
-    assert [d['reason'] for d in out['ta01_fill_window']['not_submitted']] == ['FILL_WINDOW_NO_BAR']
+def test_missing_first_bar_waits_for_next_bar_in_window(schedule):
+    out = run(schedule, frame(missing=('14:17',)))          # label 14:18: bar_start 14:17 = t+2 (boundary included)
+    assert out['ta01_fill_window']['not_submitted'] == [] and out['ta01_fill_window']['order_time_shifted'] == 0
+    assert set(trips(out).values()) == {(('01-08 14:17', '01-08 15:16'),)}
+
+
+def test_zero_volume_first_bar_waits_for_next_bar_in_window(schedule):
+    out = run(schedule, frame(zero_volume=('14:17',)))
+    assert out['ta01_fill_window']['order_time_shifted'] == 1    # chosen bar made Core's first candidate
+    assert set(trips(out).values()) == {(('01-08 14:17', '01-08 15:16'),)}
+    for item in out['scenarios'].values():
+        rej = item['result'].rejections
+        assert len(rej) == 0 or 'ZERO_VOLUME_BAR' not in set(rej['reason'])
+
+
+@pytest.mark.parametrize('kw', [{'missing': ('14:17', '14:18')}, {'zero_volume': ('14:17', '14:18')},
+                                {'missing': ('14:17',), 'zero_volume': ('14:18',)}])
+def test_no_tradable_bar_within_window_means_no_entry(schedule, kw):
+    out = run(schedule, frame(**kw))                          # next tradable bar would open at 14:18 -> too late
+    ns = out['ta01_fill_window']['not_submitted']
+    assert [d['reason'] for d in ns[:1]] == ['FILL_WINDOW_NO_TRADABLE_BAR']
+    assert ns[0]['missing_minutes'] + ns[0]['zero_volume_minutes'] == 2
     for item in out['scenarios'].values():
         assert len(item['result'].round_trips) == 0 and len(item['result'].open_positions) == 0
         assert item['ta01_intraday_check']['status'] == 'PASS'
 
 
-def test_untradable_bar_inside_window_means_no_fill(schedule):
-    out = run(schedule, frame(zero_volume=('14:17',)))       # in-window bar has no volume -> Core rejects, no retry
-    assert out['ta01_fill_window']['not_submitted'] == []
-    for item in out['scenarios'].values():
-        assert len(item['result'].round_trips) == 0 and len(item['result'].open_positions) == 0
-        assert 'ZERO_VOLUME_BAR' in set(item['result'].rejections['reason'])
-
-
-def test_exit_not_filled_same_day_fails_whole_execution(schedule):
+def test_exit_without_tradable_bar_in_window_fails_whole_execution(schedule):
     from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
     result = None
     with pytest.raises(TA01NoOvernightViolation, match='no-overnight violated'):
-        result = run(schedule, frame(zero_volume=('15:17',)))   # the exit's only in-window bar is untradable
+        result = run(schedule, frame(zero_volume=('15:17', '15:18')))
     assert result is None                                    # no metrics, trades or report are returned
+
+
+def test_known_volume_cap_blocks_order_before_submission():
+    # known volume at 14:15 is the 14:14 minute (3000); at 15:15 the 15:14 minute (1000)
+    out = run(make_schedule(cap=0.02), frame())               # 3000 x 0.02 = 60 < 100 -> entry not submitted
+    assert out['ta01_fill_window']['not_submitted'][0]['reason'] == 'KNOWN_VOLUME_CAP'
+    assert all(len(i['result'].round_trips) == 0 for i in out['scenarios'].values())
+    out = run(make_schedule(cap=0.05), frame(volumes={'15:14': 3000}))   # 150 >= 100 both
+    assert out['ta01_fill_window']['not_submitted'] == []
+
+
+def test_core_full_minute_cap_still_applies_after_known_volume_check():
+    # known volume passes (3000 x 0.05 = 150), but the chosen bar's FULL-minute volume is 100 -> Core rejects with its
+    # own pinned cap (not changed here); NEXT_BAR: no fill. Documented residual; counted by the fill diagnostic.
+    out = run(make_schedule(cap=0.05), frame(volumes={'14:17': 100, '15:14': 3000}))
+    for item in out['scenarios'].values():
+        assert len(item['result'].round_trips) == 0
+        assert 'VOLUME_PARTICIPATION_EXCEEDED' in set(item['result'].rejections['reason'])
+
+
+def test_delayed_open_is_recorded_and_its_buckets_excluded(schedule):
+    early = tuple(f"09:{m:02d}" for m in range(30, 45))       # nothing trades until 09:45 on day 3
+    out = run(schedule, frame(zero_volume=early))
+    info = out['ta01_delayed_open']['sessions'][DAYS[2]]
+    assert info['first_traded_label'].startswith(DAYS[2] + 'T09:45') and DAYS[0] not in out['ta01_delayed_open']['sessions']
+    assert info['exclude_bucket_first_labels_through'].startswith(DAYS[2] + 'T09:45')
+    assert [r for _, _, r in out['decisions']] == ['TA01_ENTRY', 'TIME_FLATTEN']
 
 
 def test_no_feasible_exit_decision_fails_whole_execution(schedule):
@@ -250,7 +301,8 @@ def test_runner_passes_core_1m_frame_for_ta01_and_archives_fill_window(tmp_path,
     assert out['executed'] and seen['bar_minutes'] == {1}
     assert diag['execution_frame']['execution_bars_minutes'] == 1
     assert diag['ta01_fill_window']['window_minutes'] == 2 and diag['ta01_fill_window']['not_submitted'] == []
-    assert diag['signal_family']['family'] == 'TA01'
+    assert diag['signal_family']['family'] == 'TA01' and 'ta01_delayed_open' in diag
+    assert all(v['status'] == 'PASS' for v in diag['temporal'].values())
     import csv
     with open(tmp_path / 'archive' / 'trades.csv', newline='') as fh:
         trades = list(csv.DictReader(fh))
@@ -260,7 +312,7 @@ def test_runner_passes_core_1m_frame_for_ta01_and_archives_fill_window(tmp_path,
 def test_runner_ta01_unfilled_exit_writes_no_archive(tmp_path, schedule, monkeypatch):
     from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
     with pytest.raises(TA01NoOvernightViolation):
-        _runner_execute(tmp_path, schedule, monkeypatch, TA01_SPEC_PATH, PARAMS, loaded(zero_volume=('15:17',)))
+        _runner_execute(tmp_path, schedule, monkeypatch, TA01_SPEC_PATH, PARAMS, loaded(zero_volume=('15:17', '15:18')))
     assert not (tmp_path / 'archive').exists()          # run() would write only FAILURE.json
 
 
@@ -269,3 +321,12 @@ def test_runner_sma_still_gets_loaded_15m_and_archive_has_no_ta01_keys(tmp_path,
                                       loaded())
     assert out['executed'] and seen['bar_minutes'] == {15}
     assert not {'execution_frame', 'ta01_fill_window', 'signal_family'} & set(diag)
+
+
+def test_runner_archive_accepts_shifted_order_time_within_window_only(tmp_path, schedule, monkeypatch):
+    out, seen, diag = _runner_execute(tmp_path, schedule, monkeypatch, TA01_SPEC_PATH, PARAMS,
+                                      loaded(zero_volume=('14:17',)))       # entry fills on the second in-window bar
+    assert diag['ta01_fill_window']['order_time_shifted'] == 1
+    for t in diag['temporal'].values():
+        assert t['status'] == 'PASS' and t['order_time_equals_signal_time'] is False
+        assert 0 < t['max_minutes_signal_to_order_time'] <= 2
