@@ -68,14 +68,19 @@ Haw's decision: TA-01 is intraday. Evidence from pinned Core `50ea3bf` (read-onl
    `L + e < session_close` (otherwise `CLOSING_AUCTION_EXCLUDED`) and every minute has volume. A 15m bucket is
    signal-eligible only if, in addition, `modeled_available_at` falls within `10:00–15:30` ET (`TemporalPolicy`).
 2. `execution.run`: a MARKET order's candidates are same-session bars with `bar_start > max(available_at,
-   order_time)`. `NEXT_BAR` uses only the first candidate; if Core rejects it, the order ends unfilled.
+   order_time)`. `NEXT_BAR` uses only Core's first candidate. That is why the Agent chooses the fill bar first
+   (`ta01_select_fills`) and makes it Core's first candidate; Core itself is not asked to retry.
 3. With 1m execution bars and the window on `bar_start`, a decision `d` has candidates labelled `d+2 .. d+window+1`
    (`bar_start` `d+1 .. d+window`). One is executable only if `label + 1min < session_close`, so for a 16:00 close
    the last feasible decision on the 15m grid is **15:45 ET** (13:00 close: 12:45, derivation only). Core's signal
    window already ends at 15:30, so this bound never cuts a real decision; it guards the code path.
    Implemented in `signals.ta01.last_feasible_exit_decision` and unit-tested, including EST and EDT.
-4. This is a **necessary** condition, not a guarantee. The single in-window bar may be missing or untradable; the
-   exit then does not fill and the execution fails rather than carrying the position.
+4. This is a **necessary** condition, not a guarantee. Two cases:
+   - **Next bar usable:** the first in-window bar is missing, has zero volume or is Core-ineligible, but the next
+     in-window bar (`bar_start` ≤ t+2) is tradable → the order fills on that next bar.
+   - **No usable bar in the whole window:** no in-window bar is tradable (or the known-volume check fails) → the
+     order is not submitted. An entry is then simply not taken; an exit leaves the position open, so the execution
+     fails rather than carrying the position.
 
 ### Failure output
 
@@ -120,16 +125,20 @@ See the module docstring for the full statement.
 
 ## Remaining before any TA-01 research
 
-0. **Runner integration (engineering, not done):** the governed runner still loads only the 15m frame for SMA. A
-   TA-01 run needs it to pass the Core 1m conservative frame. Not changed here.
+0. **Runner integration:** handled in the follow-up PR #33 (the runner passes the Core 1m frame for TA-01).
 
 1. Decide the market (TSM is the only governed market and is NO_GO).
 2. Resolve the auction-volume handling and the volume baseline.
-3. Confirm the TSM volume unit and zero-volume frequency, and how often the single 2-minute fill bar is missing or
-   untradable on real 1m data. (Separately: older SMA docs — `readiness/checks.py:72`, `PHASE5B3A_READINESS.md` D6,
-   `PHASE5C1_PREREGISTRATION.md:43` — describe `max_fill_delay_bars` as enforced for SMA; it is not. Not changed
-   here.)
-4. Approve a cost set.
+3. Confirm the TSM volume unit and zero-volume frequency, and how often the 2-minute window has no usable bar on
+   real 1m data (fill diagnostic, PR #34). (The older SMA docs that described `max_fill_delay_bars` as enforced are
+   corrected in PR #32.)
+4. Costs: TA-01 reuses the Phase 5-C1 dated schedule `TSM-OFFICIAL-HISTORY-2017-2024` v1.0.0
+   (`configs/research/tsm_official_dated_costs_2017_2024.json` in Core `50ea3bf`, sha256 `43b60457…4216`), the same
+   schedule cited by the PR #34 diagnostic authorization draft. Status: approved for **RESEARCH_ONLY** use only inside
+   lead-signed research authorizations (so far the SMA authorizations `RA-IBKR_TSM-SMA520_P5C1-0001/-0002`); the
+   formal `COST_APPROVAL` gate is **FAIL**, the base profile's `approval_status` is `DRAFT`, and its
+   `volume_participation_cap` 0.01 is `ASSUMED / PENDING`. A TA-01 research authorization must name this SHA; no new
+   cost set is created or approved here.
 5. Create a runner config.
 6. Obtain a new research authorization, and pre-register the seed, draws and quantile.
 
