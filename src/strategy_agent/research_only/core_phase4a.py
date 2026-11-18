@@ -280,30 +280,15 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
     rows, sbars = conservative_rows_and_bars(frame)
     family, ta01_params = signal_family(spec, parameters)
     if family == "TA01":
-        # TA-01: `frame` is the Core 1m conservative frame (execution bars). The 15m signal buckets are rebuilt by
-        # Core's own prepare_conservative_bars from the 1m frame's carried native rows (the same recomputation Core
-        # uses in validate_conservative_bars); the Agent never re-times a bar.
-        from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
-        import pandas as pd  # noqa: PLC0415
-        if {int(r["bar_minutes"]) for r in rows} != {TA.EXEC_MINUTES}:
-            raise Phase4ABindingError("TA-01 requires the Core 1m conservative frame as execution bars")
-        native = [r for group in frame["source_rows"] for r in group]
-        signal_frame = core.prepare_conservative_bars(pd.DataFrame(native), bar_minutes=TA.SIGNAL_MINUTES)
-        A.check_core_bars(signal_frame)
-        rows15, sbars15 = conservative_rows_and_bars(signal_frame)
-        delayed_open = TA.delayed_open_buckets(rows)            # Haw 2026-11-18: exclude delayed-open buckets
-        sbars15 = TA.apply_delayed_open_exclusion(sbars15, delayed_open)
-        try:
-            decs = TA.ta01_decisions(sbars15, TA.sessions_from_rows(rows15), ta01_params)
-        except TA.SameDayExitError as e:   # no same-day exit decision possible: the whole execution fails
-            raise TA01NoOvernightViolation(str(e)) from e
+        decs, delayed_open = ta01_signals(core, frame, rows, ta01_params)
     else:                                   # unchanged SMA path (every existing caller)
         decs = sma_crossover(sbars, int(parameters["fast"]), int(parameters["slow"]))
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
     if spec.get("version")=="0.2.0" and sum(b.eligible and b.available_at<ws for b in sbars)<int(spec['data_requirements']['warmup_bars']):
         raise Phase4ABindingError('insufficient eligible pre-window warm-up bars')
     kept = [d for d in decs if ws <= d.decision_ts < we]
-    if any(not any(b.available_at == d.decision_ts for b in sbars) for d in kept):
+    available = {b.available_at for b in sbars}          # same check as before, O(n) instead of O(n x decisions)
+    if any(d.decision_ts not in available for d in kept):
         raise Phase4ABindingError("decision not at a Core modeled_available_at")
     sizing = spec["position_sizing"]
     qty, cash = float(sizing["units"]), float(sizing["initial_capital"])
@@ -394,6 +379,29 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
                                    "known_volume_rule": KNOWN_VOLUME_RULE, **fill_selection}
         out["ta01_delayed_open"] = {"policy": TA.DELAYED_OPEN_POLICY, "sessions": delayed_open}
     return out
+
+
+def ta01_signals(core, frame, rows, params):
+    """TA-01 decisions from the Core 1m conservative frame (shared by execute_batch and the fill diagnostic).
+    The 15m signal buckets are rebuilt by Core's own prepare_conservative_bars from the 1m frame's carried native rows
+    (the same recomputation Core uses in validate_conservative_bars); the Agent never re-times a bar. Delayed-open
+    buckets are excluded (Haw, 2026-11-18). A missing same-day exit raises TA01NoOvernightViolation."""
+    from strategy_agent.adapters import mrc_adapter as A  # noqa: PLC0415
+    from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+    import pandas as pd  # noqa: PLC0415
+    if {int(r["bar_minutes"]) for r in rows} != {TA.EXEC_MINUTES}:
+        raise Phase4ABindingError("TA-01 requires the Core 1m conservative frame as execution bars")
+    native = [r for group in frame["source_rows"] for r in group]
+    signal_frame = core.prepare_conservative_bars(pd.DataFrame(native), bar_minutes=TA.SIGNAL_MINUTES)
+    A.check_core_bars(signal_frame)
+    rows15, sbars15 = conservative_rows_and_bars(signal_frame)
+    delayed_open = TA.delayed_open_buckets(rows)
+    sbars15 = TA.apply_delayed_open_exclusion(sbars15, delayed_open)
+    try:
+        decs = TA.ta01_decisions(sbars15, TA.sessions_from_rows(rows15), params)
+    except TA.SameDayExitError as e:   # no same-day exit decision possible: the whole execution fails
+        raise TA01NoOvernightViolation(str(e)) from e
+    return decs, delayed_open
 
 
 KNOWN_VOLUME_RULE = ("order quantity <= volume of the completed 1m bar available at the order time (Core "

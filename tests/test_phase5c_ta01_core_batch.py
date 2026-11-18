@@ -330,3 +330,54 @@ def test_runner_archive_accepts_shifted_order_time_within_window_only(tmp_path, 
     for t in diag['temporal'].values():
         assert t['status'] == 'PASS' and t['order_time_equals_signal_time'] is False
         assert 0 < t['max_minutes_signal_to_order_time'] <= 2
+
+
+# ------------------------------------------------------------------ fill diagnostic (synthetic only; counts, no PnL)
+
+def diag(fr, cap=None):
+    from strategy_agent.research_only import ta01_fill_diagnostic as D
+    return D.diagnose(core, fr, spec=SPEC, parameters=PARAMS, participation_cap=cap,
+                      window_start=DAYS[0] + 'T00:00:00-05:00', window_end=WINDOW_END)
+
+
+def test_diagnostic_counts_match_execute_batch_on_the_same_frame(schedule):
+    fr = frame()
+    d = diag(fr)
+    assert (d['entry']['intents'], d['entry']['fillable'], d['entry']['chosen_first_candidate']) == (1, 1, 1)
+    assert (d['exit']['intents'], d['exit']['fillable'], d['exit_failures']['count']) == (1, 1, 0)
+    out = run(schedule, fr)
+    assert all(len(i['result'].round_trips) == d['exit']['fillable'] for i in out['scenarios'].values())
+
+
+@pytest.mark.parametrize('kw,side,key,cause', [
+    ({'zero_volume': ('14:17',)}, 'entry', 'chosen_later_candidate_waited', None),
+    ({'missing': ('14:17', '14:18')}, 'entry', 'no_tradable_bar_in_window', 'ALL_MINUTES_MISSING'),
+    ({'zero_volume': ('14:17', '14:18')}, 'entry', 'no_tradable_bar_in_window', 'ALL_MINUTES_ZERO_VOLUME'),
+    ({'missing': ('14:17',), 'zero_volume': ('14:18',)}, 'entry', 'no_tradable_bar_in_window', 'MISSING_AND_ZERO_VOLUME'),
+])
+def test_diagnostic_window_outcomes(kw, side, key, cause):
+    d = diag(frame(**kw))
+    assert d[side][key] == 1
+    if cause:
+        assert d[side]['no_tradable_bar_causes'] == {cause: 1} and d['exit']['intents'] == 0   # flat: no exit order
+
+
+def test_diagnostic_exit_failure_is_counted_not_raised():
+    d = diag(frame(zero_volume=('15:17', '15:18')))
+    assert d['exit']['no_tradable_bar_in_window'] == 1 and d['exit_failures']['count'] == 1
+
+
+def test_diagnostic_participation_known_volume_and_core_residual():
+    d = diag(frame(), cap=0.02)                                 # known 3000 x 0.02 = 60 < 100
+    assert d['entry']['known_volume_cap_blocked'] == 1 and d['exit']['intents'] == 0
+    assert d['entry']['known_volume_to_quantity']['median'] == 30.0
+    d = diag(frame(volumes={'14:17': 100, '15:14': 3000}), cap=0.05)
+    assert d['entry']['core_full_minute_cap_would_reject'] == 1 and d['entry']['fillable'] == 0
+
+
+def test_diagnostic_reports_delayed_open_and_data_summary_without_performance_fields():
+    from strategy_agent.research_only import ta01_fill_diagnostic as D
+    d = diag(frame(zero_volume=tuple(f"09:{m:02d}" for m in range(30, 45))))
+    assert d['delayed_open']['sessions'] == 1 and d['delayed_open']['dates'] == [DAYS[2]]
+    assert d['data']['rth_sessions'] == 3 and 2025 in d['data']['median_daily_rth_volume_by_year']
+    D.assert_no_performance_fields(d)
