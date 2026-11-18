@@ -1,0 +1,32 @@
+{
+  "record": "ta01-fill-diagnostic-authorization-disposition-v1",
+  "authorization_id": "RA-IBKR_TSM-TA01_FILLDIAG-0001",
+  "classification": "PRE_DATA_INPUT_PATH_FAILURE",
+  "approval_comment": "https://github.com/hh4832/strategy-research-agent/pull/34#issuecomment-6978313388",
+  "approved_document_sha256": "eacb3c0b8011faecff7bcd8cdf1b2bb0c72f4bd5d39ab79ac18ef03d261eccbf",
+  "approved_scope_sha256": "d4ed88f48f6d4ca0f35f0c4cac1c15efd429bc4c7e2a3ba1bc7fb19f02448725",
+  "facts_reported_by_lead_2026_11_18": {
+    "wrong_recovery_archive_used": "/content/drive/MyDrive/Quant_Research/development_recovery_archives/...",
+    "correct_recovery_archive": "/content/drive/MyDrive/00Quant_Research/data/development_recovery_archives/TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211_20261110T142034_335006Z",
+    "original_preparation_archive_metadata": "PASSED archive_metadata",
+    "local_staging_created": false,
+    "development_data_read": false,
+    "holdout_accessed": false,
+    "strategy_core_or_backtest_run": false,
+    "batch_consumed": false,
+    "drive_output_directory": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/phase5c_ta01_fill_diagnostic/RA-IBKR_TSM-TA01_FILLDIAG-0001",
+    "drive_output_directory_item_count": 0
+  },
+  "root_cause": [
+    "RECOVERY_ARCHIVE pointed to a non-existent path (Quant_Research/development_recovery_archives instead of 00Quant_Research/data/development_recovery_archives)",
+    "the 0001 RUN created its one-time output directory before checking input paths (code order)",
+    "the notebook ran the subprocess without capturing output, so the child's error text was not shown in Colab"
+  ],
+  "disposition": {
+    "drive_directory": "LEFT_AS_IS (not deleted, moved, overwritten or reused)",
+    "authorization": "RETIRED in code (ta01_fill_diagnostic.RETIRED_AUTHORIZATIONS): refused in PREPARE and RUN regardless of Drive state",
+    "authorization_document": "docs/phase5c/ta01_fill_diagnostic_authorization.json kept byte-identical (its SHA is bound by the approval comment)",
+    "superseded_by": "RA-IBKR_TSM-TA01_FILLDIAG-0002 (draft, NOT approved)"
+  },
+  "verification_note": "Facts above are as reported by the lead; this repository record was written without Drive access."
+}
