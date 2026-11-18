@@ -324,3 +324,16 @@ def test_notebook_prepare_never_mounts_drive_and_run_uses_pinned_paths():
     assert f'ORIGINAL_PREPARATION_ARCHIVE = "{DOC2["scope"]["inputs"]["original_preparation_archive"]}"' in settings
     assert "capture_output=True" in code and "STDERR (sanitized, complete)" in code
     assert "subprocess.run([" not in code.replace("subprocess.run(cmd", "")          # every step goes through run()
+
+
+def test_sanitize_keeps_authorization_ids_and_the_approval_line_intact():
+    line = D.approval_line(DOC2, "2026-11-26T00:00:00Z")
+    assert D.sanitize(line) == line
+    assert D.sanitize("Authorization: ghp_" + "C" * 36) == "Authorization: [REDACTED]"
+    assert D.sanitize("authorization=abc123secret") == "authorization=[REDACTED]"
+    import re
+    nb = json.loads((ROOT / "notebooks/Phase5C_TA01_Fill_Diagnostic.ipynb").read_text())
+    code = "".join(nb["cells"][2]["source"])
+    scope = {"re": re}
+    exec(code[code.index("SECRETS = []"):code.index("def run(")], scope)      # the notebook's own clean()
+    assert scope["clean"](line) == line and "[REDACTED]" in scope["clean"]("token=abcdefgh12345")

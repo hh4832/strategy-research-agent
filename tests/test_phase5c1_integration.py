@@ -1,7 +1,7 @@
 """Synthetic engineering evidence only. No Drive, real approval, real budget or raw Holdout."""
 import ast
 from dataclasses import replace
-from datetime import date,timedelta
+from datetime import date,datetime,timedelta,timezone
 import json
 import math
 from pathlib import Path
@@ -314,3 +314,60 @@ def test_notebook_prepare_only_accepts_original_tracking_url_without_execution(a
     assert context['approval']==approval and '?utm_source=chatgpt.com#' in context['approval']['approval_ref']
     assert (context['DRIVE_OUTPUT']/'ARCHIVE_INDEX.json').is_file()
     assert books_before=={str(p.relative_to(C.ROOT)):C.sha(p) for base in ('governance','registry') for p in (C.ROOT/base).rglob('*') if p.is_file()}
+
+
+def _ta01_e2e(archived, tmp_path, monkeypatch):
+    """TA-01 fill diagnostic through the REAL RUN wiring on the synthetic recovery archive: Core cost root, reviewed-pin
+    precheck, stage, bounded loader, 1m execution frame, diagnose, write-once outputs. Only the original preparation
+    archive metadata, the pins (synthetic archive) and the approval source (fixture) are substituted."""
+    import copy
+    from strategy_agent.approval.testkit import FixtureApprovals
+    from strategy_agent.execution import c1_runner as R
+    from strategy_agent.readiness import c1_authorization as CA
+    from strategy_agent.research_only import ta01_fill_diagnostic as TD
+    archive, approval, _ = archived
+    pins = C.inspect_archive(archive, conversion_approval=approval)['observed_pins']
+    monkeypatch.setattr(CA, 'PINS', pins)
+    monkeypatch.setattr(R, 'PINS', pins)
+    monkeypatch.setattr(CA, 'archive_metadata', lambda archive, root=None: {
+        'context': {'pin_review_evidence_ref': 'SYNTHETIC_FIXTURE'}, 'pins': {'observed_pins': pins}})
+    window = {'warmup_start': '2024-05-29T00:00:00-04:00', 'start': '2024-06-03T00:00:00-04:00',
+              'end': '2024-07-13T00:00:00-04:00'}
+    monkeypatch.setattr(C, 'WINDOW', window)
+    doc = copy.deepcopy(TD.load_authorization('RA-IBKR_TSM-TA01_FILLDIAG-0002'))
+    doc['scope']['window'] = window
+    doc['scope']['dataset']['reviewed_pins'] = pins
+    doc['scope']['inputs'].update(recovery_archive=str(archive), original_preparation_archive='SYNTHETIC_ORIGINAL')
+    fx = FixtureApprovals()
+    expires = (datetime.now(timezone.utc) + timedelta(hours=48)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    settings = {'confirm_authorization': doc['authorization_id'], 'code_sha': 'c' * 40,
+                'approval_url': fx.comment(TD.approval_line(doc, expires)), 'recovery_archive': str(archive),
+                'original_preparation_archive': 'SYNTHETIC_ORIGINAL', 'local_staging': str(tmp_path / 'staging')}
+    return TD, doc, settings, fx
+
+
+def test_ta01_fill_diagnostic_real_run_wiring_end_to_end(archived, tmp_path, monkeypatch):
+    TD, doc, settings, fx = _ta01_e2e(archived, tmp_path, monkeypatch)
+    drive = tmp_path / 'drive'
+    result = TD.run_production(doc, settings, drive_root=drive, verifier=fx.verifier)
+    assert result['status'] == 'COMPLETED' and result['inputs']['execution_frame']['execution_bars_minutes'] == 1
+    assert result['inputs']['holdout_accessed'] is False and result['inputs']['core_execution_engine_run'] is False
+    assert result['definitions']['participation_cap'] == 0.01            # read from the Core-pinned schedule
+    assert result['data']['rth_sessions'] > 20 and result['entry']['intents'] >= 0
+    out = drive / doc['authorization_id']
+    manifest = json.loads((out / 'MANIFEST.json').read_text())
+    assert manifest['status'] == 'SUCCEEDED' and not (out / 'FAILURE_MANIFEST.json').exists()
+    assert json.loads((out / 'ta01_fill_diagnostic.json').read_text())['status'] == 'COMPLETED'
+    with pytest.raises(TD.DiagnosticRefused, match='already attempted'):
+        TD.run_production(doc, settings, drive_root=drive, verifier=fx.verifier)
+
+
+def test_ta01_fill_diagnostic_wrong_recovery_path_fails_before_any_drive_write(archived, tmp_path, monkeypatch):
+    TD, doc, settings, fx = _ta01_e2e(archived, tmp_path, monkeypatch)
+    doc['scope']['inputs']['recovery_archive'] = settings['recovery_archive'] = str(tmp_path / 'missing_archive')
+    settings['approval_url'] = fx.comment(TD.approval_line(doc, (datetime.now(timezone.utc) + timedelta(hours=48))
+                                                           .strftime('%Y-%m-%dT%H:%M:%SZ')))
+    drive = tmp_path / 'drive'
+    with pytest.raises(TD.PreDataInputFailure, match='does not exist'):
+        TD.run_production(doc, settings, drive_root=drive, verifier=fx.verifier)
+    assert not drive.exists() and not (tmp_path / 'staging').exists()
