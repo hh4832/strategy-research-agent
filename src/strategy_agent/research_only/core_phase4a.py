@@ -278,7 +278,27 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
 
     A.check_core_bars(frame)
     rows, sbars = conservative_rows_and_bars(frame)
-    decs = sma_crossover(sbars, int(parameters["fast"]), int(parameters["slow"]))
+    family, ta01_params = signal_family(spec, parameters)
+    if family == "TA01":
+        # TA-01: `frame` is the Core 1m conservative frame (execution bars). The 15m signal buckets are rebuilt by
+        # Core's own prepare_conservative_bars from the 1m frame's carried native rows (the same recomputation Core
+        # uses in validate_conservative_bars); the Agent never re-times a bar.
+        from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+        import pandas as pd  # noqa: PLC0415
+        if {int(r["bar_minutes"]) for r in rows} != {TA.EXEC_MINUTES}:
+            raise Phase4ABindingError("TA-01 requires the Core 1m conservative frame as execution bars")
+        native = [r for group in frame["source_rows"] for r in group]
+        signal_frame = core.prepare_conservative_bars(pd.DataFrame(native), bar_minutes=TA.SIGNAL_MINUTES)
+        A.check_core_bars(signal_frame)
+        rows15, sbars15 = conservative_rows_and_bars(signal_frame)
+        delayed_open = TA.delayed_open_buckets(rows)            # Haw 2026-11-18: exclude delayed-open buckets
+        sbars15 = TA.apply_delayed_open_exclusion(sbars15, delayed_open)
+        try:
+            decs = TA.ta01_decisions(sbars15, TA.sessions_from_rows(rows15), ta01_params)
+        except TA.SameDayExitError as e:   # no same-day exit decision possible: the whole execution fails
+            raise TA01NoOvernightViolation(str(e)) from e
+    else:                                   # unchanged SMA path (every existing caller)
+        decs = sma_crossover(sbars, int(parameters["fast"]), int(parameters["slow"]))
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
     if spec.get("version")=="0.2.0" and sum(b.eligible and b.available_at<ws for b in sbars)<int(spec['data_requirements']['warmup_bars']):
         raise Phase4ABindingError('insufficient eligible pre-window warm-up bars')
@@ -296,8 +316,19 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
     sem = A.MarketSemantics(market="IBKR_EQUITY", bar_label="UNKNOWN", session_semantics="CONFIRMED",
                             timezone="America/New_York", initial_cash=cash, constant_tick_size=0.01,
                             available_at_policy=A.CONSERVATIVE)
-    orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
-                                 strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16], core=core)
+    if family == "TA01":   # Agent selects the 1m fill bar inside the window; Core fills exactly that bar (NEXT_BAR)
+        orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
+                                     strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16],
+                                     time_in_force="NEXT_BAR", core=core)
+        caps = {getattr(getattr(x, "base_profile", x), "volume_participation_cap", None)
+                for x in (dated_schedules or profiles or {}).values()}
+        if len(caps) != 1:
+            raise Phase4ABindingError(f"TA-01: scenarios disagree on volume_participation_cap {caps}")
+        orders, fill_selection = ta01_select_fills(orders, frame, window_minutes=ta01_params.fill_window_minutes,
+                                                   quantity=qty, participation_cap=caps.pop(), core=core)
+    else:
+        orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
+                                     strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16], core=core)
     cfg = A.core_config(request, sem, core_sha, core=core)
     if (profiles is None) == (dated_schedules is None):
         raise Phase4ABindingError("exactly one of profiles or dated_schedules is required")
@@ -336,14 +367,138 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
         if "family_trials_including_this" in exp:
             extra.update(family_id=exp.get("trial_family_id", "UNASSIGNED"),
                          family_trials=int(exp["family_trials_including_this"]))
-        metrics = evaluate(report, rows, initial_capital=cash, bar_minutes=15, bars_per_year=252 * 26,
+        bar_minutes, bars_per_year = (1, 252 * 390) if family == "TA01" else (15, 252 * 26)   # TA-01: 1m equity
+        metrics = evaluate(report, rows, initial_capital=cash, bar_minutes=bar_minutes, bars_per_year=bars_per_year,
                            parameters=parameters, symbol="TSM", order_qty=qty, **extra)
         metrics.update(preregistered_decompositions(report, rows, exp))
+        if family == "TA01":                # P5C-TA-01 is intraday: an exit that did not fill in-session is FAIL
+            from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+            ta01_check = TA.intraday_check(report.round_trips, report.open_position, ta01_params.timezone)
         out["scenarios"][name] = {"profile_sha256": profile.sha256,
                                   "cost_schedule_sha256": scenario_cost.sha256 if dated_schedules is not None else None,
                                   "result": result, "report": report,
                                   "m3a4_checks": checks, "cost_diagnostics": diag, "metrics": metrics}
+        if family == "TA01":
+            out["scenarios"][name]["ta01_intraday_check"] = ta01_check
+    if family == "TA01":
+        from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+        failed = {n: s["ta01_intraday_check"]["violations"] for n, s in out["scenarios"].items()
+                  if s["ta01_intraday_check"]["status"] != "PASS"}
+        if failed:                         # an exit that did not fill in-session invalidates the whole result
+            raise TA01NoOvernightViolation(f"TA-01 no-overnight violated: {failed}")
+        out["signal_family"] = {"family": "TA01", "structure_sha256": TA.STRUCTURE_SHA256,
+                                "params_sha256": TA.params_digest(ta01_params),
+                                "signal_bars_minutes": TA.SIGNAL_MINUTES, "execution_bars_minutes": TA.EXEC_MINUTES}
+        out["ta01_fill_window"] = {"window_minutes": ta01_params.fill_window_minutes, "time_in_force": "NEXT_BAR",
+                                   "window_measured_on": "Core bar_start (earliest possible open), (t, t+window]",
+                                   "known_volume_rule": KNOWN_VOLUME_RULE, **fill_selection}
+        out["ta01_delayed_open"] = {"policy": TA.DELAYED_OPEN_POLICY, "sessions": delayed_open}
     return out
+
+
+KNOWN_VOLUME_RULE = ("order quantity <= volume of the completed 1m bar available at the order time (Core "
+                     "modeled_available_at == t) x the cost profile's volume_participation_cap")
+
+
+def ta01_fill_candidates(frame, window_minutes: int):
+    """Per-contract lookup over the Core 1m frame used by fill selection and by the fill diagnostic."""
+    import pandas as pd  # noqa: PLC0415
+    f = frame[["contract", "source_timestamp", "bar_start", "modeled_available_at", "session_close", "volume",
+               "buy_execution_eligible", "sell_execution_eligible", "execution_rejection_reason"]].copy()
+    for c in ("source_timestamp", "bar_start", "session_close", "modeled_available_at"):
+        f[c] = pd.to_datetime(f[c], utc=True)
+    by_contract = {k: g.sort_values("bar_start", kind="stable").reset_index(drop=True) for k, g in f.groupby("contract")}
+    for g in by_contract.values():
+        if g["modeled_available_at"].duplicated().any():
+            raise Phase4ABindingError("duplicate 1m execution rows for one decision time")
+    return by_contract, pd.Timedelta(minutes=window_minutes)
+
+
+def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity: float, participation_cap):
+    """Facts for one order intent at time t (UTC Timestamp). Pure lookup on Core columns; nothing re-timed.
+    Window: candidates with Core bar_start in (t, t+window]; expected labels t+2 .. t+window+1."""
+    import pandas as pd  # noqa: PLC0415
+    g = by_contract.get(contract)
+    if g is None:
+        raise Phase4ABindingError(f"no 1m rows for contract {contract}")
+    sig = g[g["modeled_available_at"].eq(t)]
+    if sig.empty:
+        raise Phase4ABindingError(f"no 1m execution row at the decision time {t}")
+    known = float(sig["volume"].iat[0])
+    session_close = sig["session_close"].iat[0]
+    lo = int(g["bar_start"].searchsorted(t, side="right"))
+    hi = int(g["bar_start"].searchsorted(t + window, side="right"))
+    cand = g.iloc[lo:hi]
+    cand = cand[cand["session_close"].eq(session_close)]
+    expected = [t + pd.Timedelta(minutes=k) for k in range(2, int(window / pd.Timedelta(minutes=1)) + 2)]
+    present = set(cand["source_timestamp"])
+    elig_col = "buy_execution_eligible" if side == "BUY" else "sell_execution_eligible"
+    tradable = cand[cand[elig_col].astype(bool) & cand["volume"].gt(0)]
+    chosen = tradable.iloc[0] if len(tradable) else None
+    known_ok = participation_cap is None or quantity <= known * float(participation_cap)
+    lookahead_ok = (chosen is None or participation_cap is None
+                    or quantity <= float(chosen["volume"]) * float(participation_cap))
+    return {"t": t, "known_volume": known, "known_volume_ok": known_ok,
+            "missing_minutes": sum(lbl not in present for lbl in expected),
+            "zero_volume_minutes": int(cand["volume"].le(0).sum()),
+            "other_ineligible_minutes": int((~cand[elig_col].astype(bool) & cand["volume"].gt(0)).sum()),
+            "chosen": chosen, "chosen_index": None if chosen is None else int(list(cand.index).index(chosen.name)),
+            "core_full_bar_cap_would_reject": not lookahead_ok}
+
+
+def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, participation_cap, core):
+    """Haw, 2026-11-18. For each order at time t: the volume known at t (completed 1m bar available at t) must pass
+    the participation cap, otherwise the order is not submitted (KNOWN_VOLUME_CAP). Then the first Core-eligible 1m bar
+    with volume > 0 whose bar_start is in (t, t+window] is the fill bar; missing / zero-volume / ineligible minutes are
+    skipped. None -> not submitted (FILL_WINDOW_NO_TRADABLE_BAR). Core is not changed: the order is submitted as
+    NEXT_BAR with order_time = the earliest time at which the chosen bar is Core's FIRST candidate, i.e. t when it is
+    the first in-window bar, otherwise the bar_start of the skipped candidate before it (still <= t + window).
+    Core still applies its own participation check on the chosen bar's FULL-minute volume (not known before the
+    order; pinned in the cost profile, not changed here); such rejections are left to Core and counted."""
+    from dataclasses import replace as _replace
+    by_contract, window = ta01_fill_candidates(frame, window_minutes)
+    kept, not_submitted, shifted = [], [], 0
+    import pandas as pd  # noqa: PLC0415
+    for o in orders:
+        t = pd.Timestamp(o.order_time).tz_convert("UTC")
+        x = ta01_fill_examine(by_contract, window, o.contract, t, o.side, quantity, participation_cap)
+        base = {"order_id": o.order_id, "side": o.side, "order_time": t.isoformat(), "known_volume": x["known_volume"],
+                "missing_minutes": x["missing_minutes"], "zero_volume_minutes": x["zero_volume_minutes"],
+                "other_ineligible_minutes": x["other_ineligible_minutes"]}
+        if not x["known_volume_ok"]:
+            not_submitted.append(base | {"reason": "KNOWN_VOLUME_CAP"})
+            continue
+        if x["chosen"] is None:
+            not_submitted.append(base | {"reason": "FILL_WINDOW_NO_TRADABLE_BAR"})
+            continue
+        chosen_start = x["chosen"]["bar_start"]
+        g = by_contract[o.contract]
+        prev = g[(g["bar_start"] > t) & (g["bar_start"] < chosen_start)]["bar_start"]
+        if len(prev):
+            o = _replace(o, order_time=prev.iloc[-1].to_pydatetime())   # chosen bar becomes Core's first candidate
+            shifted += 1
+        kept.append(o)
+    return kept, {"not_submitted": not_submitted, "submitted": len(kept), "order_time_shifted": shifted}
+
+
+class TA01NoOvernightViolation(RuntimeError):
+    """P5C-TA-01 is intraday-only; any position not closed in its entry session fails the whole execution."""
+
+
+def signal_family(spec: dict, parameters: dict):
+    """Which signal function an execution uses. Every spec that is not a P5C-TA-01 spec keeps the historical SMA
+    path unchanged. A P5C-TA-01 spec is bound fail-closed (exact reviewed rule structure, fixed parameters equal to
+    the spec defaults); any binding error is a Phase4ABindingError before any order exists."""
+    from strategy_agent.signals import ta01 as TA  # noqa: PLC0415
+    from strategy_agent.signals.core import SignalInputError  # noqa: PLC0415
+    if not TA.is_ta01_spec(spec):
+        if TA.PARAMETER_KEYS & set(parameters):
+            raise Phase4ABindingError("TA-01 parameters supplied for a non-TA-01 spec")
+        return "SMA", None
+    try:
+        return "TA01", TA.params_from_spec(spec, parameters)
+    except (SignalInputError, KeyError, TypeError, ValueError) as e:
+        raise Phase4ABindingError(f"TA-01 spec binding refused: {e}") from e
 
 
 def sec_fill_date_mapping_sensitivity(result, schedule) -> dict:
