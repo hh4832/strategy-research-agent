@@ -22,9 +22,11 @@ Rule (one completed ELIGIBLE bar ``t``; ``[k]`` = k eligible bars back; windows 
   separate session-end exit rule (the spec must state flatten_before_session_end: false).
 
 EXECUTION (Haw, 2026-11-18): signals are evaluated on Core 15m buckets; once a signal is observed, the order is
-filled on the Core 1m bars that make up the 15m buckets: it fills on the first 1m bar strictly after the decision
-only if that bar's latest possible open is within ``fill_window_minutes`` (= max_fill_delay_bars x 1 min) of the
-decision and the bar is tradable; otherwise the order does not fill (no waiting for later bars).
+filled on the Core 1m bars that make up the 15m buckets. Candidates are 1m bars whose EARLIEST possible open (Core
+bar_start) is strictly after the decision t and at most t + ``fill_window_minutes`` (inclusive). Missing or
+untradable candidates are skipped; the first tradable one is used. The volume participation check uses the volume
+KNOWN before the order (the completed 1m bar available at t). No tradable candidate in the window -> no fill.
+Delayed-open sessions: the 15m buckets up to the first traded minute are excluded (``delayed_open_buckets``).
 
 NO OVERNIGHT (fail-closed). Every exit decision must be able to fill in the SAME session under the pinned Core rules
 (market-research-core 50ea3bf; see ``last_feasible_exit_decision``). Hence:
@@ -51,7 +53,7 @@ import math
 import re
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Iterable, Mapping, Sequence
 from zoneinfo import ZoneInfo
 
@@ -77,27 +79,82 @@ def last_feasible_exit_decision(session_close: datetime, *, fill_window_minutes:
     """Latest signal decision whose exit order can still fill in the same session within the fill window.
 
     Evidence (market-research-core 50ea3bf, read-only):
-      temporal.prepare_conservative_bars: an exec bar with source labels L..L+e-1 has bar_start = L - 1min,
-        possible_open_latest = L and is execution-eligible only if L + e < session_close (else
-        CLOSING_AUCTION_EXCLUDED) and every minute has volume.
-      execution.run: candidates need bar_start > max(signal available_at, order_time) (Agent core_config sets
-        same_timestamp_open_assumption=False) and the signal bucket's session_close; NEXT_BAR uses only the first one.
-    TA-01 fill window (Haw, 2026-11-18): the fill bar's possible_open_latest must be <= decision + window. So a
-    decision d on the signal grid is feasible iff some exec-grid label L has d + 1min < L <= d + window and
-    L + e < session_close. For 15m signals, 1m execution, a 2-minute window and a 16:00 close this gives 15:45
-    (Core's own signal window ends at 15:30, so TA-01 decisions never occur later than 15:30). NECESSARY only: the
-    single in-window bar may still be missing or ineligible, in which case the order does not fill."""
+      temporal.prepare_conservative_bars: an exec bar with source label L has bar_start = L - 1min (Core: "EARLIEST
+        possible open"), possible_open_latest = L, and is execution-eligible only if L + 1min < session_close (else
+        CLOSING_AUCTION_EXCLUDED) and its volume is > 0.
+    TA-01 fill window (Haw, 2026-11-18): a fill bar's EARLIEST possible open (Core bar_start) must be strictly after
+    the decision d and at most d + window (inclusive). Candidates are therefore labels d+2 .. d+window+1; missing or
+    untradable ones are skipped and the next one in the window is used. A decision is feasible iff some candidate
+    label L has L + 1min < session_close. For 15m signals, 1m execution, a 2-minute window and a 16:00 close this gives
+    15:45 (Core's own signal window ends at 15:30). NECESSARY only: every in-window bar may still be missing or
+    untradable, in which case the order does not fill."""
     if exec_minutes != 1 or signal_minutes != 15:
         raise SignalInputError("TA-01 supports 15m signal buckets with 1m execution bars only")
-    if fill_window_minutes < 2:
-        raise SignalInputError("fill window < 2 minutes can never fill: the first Core candidate opens at decision+2min")
+    if fill_window_minutes < 1:
+        raise SignalInputError("fill window must be >= 1 minute (the first Core candidate opens earliest at decision+1min)")
     close_min = int(session_close.timestamp() // 60)
     d = close_min - (close_min % signal_minutes)
     while d > close_min - 24 * 60:
-        if any(lbl + exec_minutes < close_min for lbl in range(d + 2, d + fill_window_minutes + 1)):
+        if any(lbl + exec_minutes < close_min for lbl in range(d + 2, d + fill_window_minutes + 2)):
             return datetime.fromtimestamp(d * 60, tz=session_close.tzinfo)
         d -= signal_minutes
     raise SignalInputError("no feasible exit decision in the session")
+
+
+DELAYED_OPEN_POLICY = "TA01-DELAYED-OPEN-EXCLUSION-v1"
+
+
+def delayed_open_buckets(rows_1m: Iterable[Mapping], signal_minutes: int = SIGNAL_MINUTES) -> dict[str, dict]:
+    """Sessions whose open looks delayed, keyed by session id (New York date), and the 15m buckets to exclude
+    (Haw, 2026-11-18). ``rows_1m``: Core 1m conservative rows (all rows, eligible or not) as produced by
+    ``conservative_rows_and_bars`` (tz-aware datetimes, ``session`` = New York date).
+
+    The source timestamp label convention is UNKNOWN (Core CONSERVATIVE_LABEL_AGNOSTIC), so a normal opening print at
+    the session open lands in label open+0 (START) or open+1 (END). A session is DELAYED_OPEN when neither of those two
+    minutes exists with volume > 0; the first traded minute in the session is then treated as the (possible) opening
+    auction, and every 15m bucket from the session open up to and including the bucket containing that minute is
+    excluded from signals, rolling windows and entries. A session with no traded minute is excluded whole.
+    LIMIT: OHLCV cannot identify the auction print (Core ibkr_tsm_audit: UNKNOWN_NO_TRADE_CONDITION_OR_TICK_DATA); a
+    delayed primary open with trades elsewhere at open+0/open+1 is not detected."""
+    by_session: dict[str, list] = {}
+    opens: dict[str, datetime] = {}
+    for r in rows_1m:
+        so, sc, ts = r.get("session_open"), r.get("session_close"), r["source_timestamp"]
+        if not isinstance(so, datetime) or not isinstance(sc, datetime) or not (so <= ts < sc):
+            continue
+        key = str(r["session"])
+        opens[key] = so
+        by_session.setdefault(key, []).append((ts, float(r["volume"])))
+    out = {}
+    for key, items in by_session.items():
+        so = opens[key]
+        if any(ts in (so, so + timedelta(minutes=1)) and v > 0 for ts, v in items):
+            continue
+        traded = sorted(ts for ts, v in items if v > 0)
+        first = traded[0] if traded else None
+        cutoff = None
+        if first is not None:
+            m = int(first.timestamp() // 60)
+            cutoff = datetime.fromtimestamp((m - m % signal_minutes) * 60, tz=first.tzinfo)   # bucket containing it
+        out[key] = {"session_open": so.isoformat(), "first_traded_label": first.isoformat() if first else None,
+                    "exclude_bucket_first_labels_through": cutoff.isoformat() if cutoff else "WHOLE_SESSION",
+                    "policy": DELAYED_OPEN_POLICY}
+    return out
+
+
+def apply_delayed_open_exclusion(bars: Sequence[SignalBar], excluded: Mapping[str, dict]) -> list[SignalBar]:
+    """Mark the affected 15m buckets ineligible. A bucket's first source label is SignalBar.ts + 1min (Core
+    bar_start = first label - 1min)."""
+    from dataclasses import replace as _replace
+    out = []
+    for b in bars:
+        info = excluded.get(b.session_id)
+        if info is not None and b.eligible:
+            through = info["exclude_bucket_first_labels_through"]
+            if through == "WHOLE_SESSION" or b.ts + timedelta(minutes=1) <= datetime.fromisoformat(through):
+                b = _replace(b, eligible=False)
+        out.append(b)
+    return out
 
 
 @dataclass(frozen=True)
@@ -122,8 +179,8 @@ class TA01Params:
         if not (self.last_entry_local <= self.flatten_local <= self.regular_close_local):
             raise SignalInputError("require last_entry_local <= flatten_local <= regular_close_local")
         ZoneInfo(self.timezone)
-        if not isinstance(self.fill_window_minutes, int) or self.fill_window_minutes < 2:
-            raise SignalInputError("fill_window_minutes must be an integer >= 2")
+        if not isinstance(self.fill_window_minutes, int) or self.fill_window_minutes < 1:
+            raise SignalInputError("fill_window_minutes must be an integer >= 1")
 
 
 def _hm(text: str) -> time:
@@ -176,9 +233,9 @@ def params_from_spec(spec: Mapping, parameters: Mapping) -> TA01Params:
     # possible open is within max_fill_delay_bars x 1 minute of the decision; otherwise it does not fill. The
     # canonical structure hash does not cover `execution`, so these fields are checked explicitly here.
     delay = spec.get("execution", {}).get("max_fill_delay_bars")
-    if not isinstance(delay, int) or isinstance(delay, bool) or delay < 2:
-        raise SignalInputError("TA01_FILL_WINDOW: execution.max_fill_delay_bars must be an integer >= 2 "
-                               "(1-minute execution bars; the first Core candidate opens at decision + 2 min)")
+    if not isinstance(delay, int) or isinstance(delay, bool) or delay < 1:
+        raise SignalInputError("TA01_FILL_WINDOW: execution.max_fill_delay_bars must be an integer >= 1 "
+                               "(minutes of 1m execution bars, measured on Core bar_start = earliest possible open)")
     if spec["universe"].get("source_timeframe") != "1m":
         raise SignalInputError("TA01: universe.source_timeframe must be 1m (execution bars)")
     tf = spec["universe"].get("timeframe")
