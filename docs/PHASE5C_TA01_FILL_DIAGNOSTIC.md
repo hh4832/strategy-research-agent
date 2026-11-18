@@ -1,7 +1,11 @@
 # Phase 5-C — TA-01 fill-feasibility diagnostic
 
-Status: **tooling only; nothing has been run on real data.** The authorization document is unsigned until hh4832
-posts the approval comment. This is not a backtest and produces no performance numbers.
+Status: **tooling only; no diagnostic result exists.** This is not a backtest and produces no performance numbers.
+
+| Authorization | State |
+|---|---|
+| `RA-IBKR_TSM-TA01_FILLDIAG-0001` | Approved by hh4832, then **PRE_DATA_INPUT_PATH_FAILURE**. Now **retired** in code: refused in PREPARE and RUN whatever exists on Drive. The empty Drive directory is left as is. Record: `docs/phase5c/ta01_fill_diagnostic_0001_disposition.json`. Document file kept byte-identical (its SHA is bound by the comment) |
+| `RA-IBKR_TSM-TA01_FILLDIAG-0002` | **Draft, NOT approved.** Same research scope as 0001. Adds pinned input paths (correct recovery archive), `supersedes` and the attempt protocol v2. `docs/phase5c/ta01_fill_diagnostic_authorization_0002.json` |
 
 ## Haw's decisions (2026-11-18)
 
@@ -69,3 +73,34 @@ Scope:
   Removing it is a separate decision.
 - Whether the volume unit is shares: compare `data.median_daily_rth_volume_by_year` with a public daily volume.
 - Normal-open auction placement still depends on the UNKNOWN label convention.
+
+## Attempt protocol v2 (after the 0001 failure)
+
+Root cause of 0001:
+- `RECOVERY_ARCHIVE` pointed to a non-existent path.
+- The v1 RUN created its one-time output directory **before** checking input paths.
+- The notebook did not capture the child process's output, so the error text was not visible in Colab.
+
+`ta01_fill_diagnostic.run_attempt` (order is the safety property):
+
+1. **Checks that do not touch Drive.** Retired ids refused; typed id; **bare** approval URL only (Markdown links,
+   brackets, spaces and query strings refused); recovery and preparation paths must equal those pinned in the
+   authorization; `drive_root` is fixed.
+2. **Prior attempt check.** Refuse if `_attempt_witness/<id>.ATTEMPT_STARTED.json` **or** `<id>/` exists. An empty
+   directory counts. Deleting the directory does not help, because the witness remains, and a retired id is refused
+   in code.
+3. **Pre-data checks.** Live approval verification, scope check, then `precheck_inputs`:
+   - original preparation archive: whitelisted JSON metadata and reviewed pins;
+   - recovery archive: directory, marker (status PASS) and provenance SHA, `binding.json` SHA, manifest file present
+     (existence only).
+
+   No Parquet and no market data are opened here. **Any failure here creates nothing on Drive.**
+4. **Durable attempt marker.** The witness file, then `<id>/ATTEMPT_STARTED.json`, both write-once. From here on
+   Development data may be read and the authorization is used up.
+5. **Data step.** Stage, load and diagnose.
+6. **Result.** Success: `ta01_fill_diagnostic.json` + `MANIFEST.json` (status SUCCEEDED). Failure:
+   `FAILURE_MANIFEST.json` (status FAILED, sanitized traceback). Everything is write-once, nothing is overwritten,
+   and a failed attempt needs a **new** authorization.
+
+The notebook runs every step with captured output. On failure it prints the **complete, sanitized** STDERR: the
+token value, `ghp_` / `github_pat_` tokens and `authorization/token/password/secret = …` are redacted.
