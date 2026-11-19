@@ -419,6 +419,70 @@ def test_q8_diagnostic_reports_variant_labels_and_open_core_blocker():
     d = diag(frame(), cap=0.01, spec=Q8)
     assert d['variant'] == {'strategy_id': Q8['strategy_id'], 'variant': 'P5C-TA01-Q8', 'units': 8,
                             'labels': ['POST_DIAGNOSTIC_VARIANT', 'EXPLORATORY_ONLY'],
-                            'parent_strategy_id': SPEC['strategy_id']}
+                            'parent_strategy_id': SPEC['strategy_id'], 'exit_fill_policy': 'WINDOW_ONLY'}
     assert [b['status'] for b in d['open_blockers']] == ['BLOCKER']
     assert d['open_blockers'][0]['id'] == 'CORE_FULL_MINUTE_CAP_LOOKAHEAD'
+
+
+# ------------------------------------------------------------------ P5C-TA01-Q8X (exits persist to session end)
+
+Q8X = json.loads((ROOT / "tests/fixtures/p5c_ta01/ta01_q8x_spec_variant.json").read_text(encoding="utf-8"))
+
+
+def test_q8x_equals_q8_when_every_exit_fills_in_the_window(schedule):
+    fr = frame()
+    q8, q8x = run(schedule, fr, spec=Q8), run(schedule, fr, spec=Q8X)
+    assert q8x['decisions'] == q8['decisions']
+    assert trips(q8x) == trips(q8) and q8x['ta01_fill_window']['exits_filled_after_window'] == []
+
+
+def test_q8x_exit_keeps_looking_after_the_window_while_q8_fails(schedule):
+    from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
+    fr = frame(zero_volume=('15:17', '15:18'))
+    with pytest.raises(TA01NoOvernightViolation):
+        run(schedule, fr, spec=Q8)
+    out = run(schedule, fr, spec=Q8X)
+    assert set(trips(out).values()) == {(('01-08 14:16', '01-08 15:18'),)}   # label 15:19: bar_start 15:18 > t+2
+    [p] = out['ta01_fill_window']['exits_filled_after_window']
+    assert p['side'] == 'SELL' and p['wait_minutes'] == 3
+    assert all(i['ta01_intraday_check']['status'] == 'PASS' for i in out['scenarios'].values())
+
+
+def test_q8x_persistence_still_applies_the_known_volume_cap_minute_by_minute():
+    # 15:19 and 15:20 candidates follow zero-volume minutes (known 0 < 800); the 15:21 bar follows 15:19 (1000)
+    out = run(make_schedule(cap=0.01), frame(zero_volume=('15:17', '15:18'), volumes={'14:14': 3000, '15:14': 3000}),
+              spec=Q8X)
+    assert set(trips(out).values()) == {(('01-08 14:16', '01-08 15:20'),)}
+    assert out['ta01_fill_window']['exits_filled_after_window'][0]['known_volume_at_fill_bar'] == 1000
+
+
+def test_q8x_entries_never_persist(schedule):
+    out = run(schedule, frame(zero_volume=('14:17', '14:18')), spec=Q8X)
+    assert [d['reason'] for d in out['ta01_fill_window']['not_submitted']][:1] == ['FILL_WINDOW_NO_TRADABLE_BAR']
+    assert all(len(i['result'].round_trips) == 0 for i in out['scenarios'].values())
+
+
+def test_q8x_no_fill_until_session_end_still_fails_whole_execution(schedule):
+    from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
+    late = tuple(f"{h:02d}:{m:02d}" for h in (15,) for m in range(17, 60))
+    with pytest.raises(TA01NoOvernightViolation):
+        run(schedule, frame(zero_volume=late), spec=Q8X)
+
+
+def test_q8x_diagnostic_counts_window_and_persistence_stages():
+    d = diag(frame(zero_volume=('15:17', '15:18')), cap=0.01, spec=Q8X)
+    e = d['exit']
+    assert (e['no_tradable_bar_in_window'], e['persisted_after_window'], e['persist_fill_found'], e['fillable']) == (1, 1, 1, 1)
+    assert e['persist_wait_minutes']['median'] == 5 and d['exit_failures']['count'] == 0
+    assert d['variant']['exit_fill_policy'] == 'PERSIST_TO_SESSION_END'
+    d = diag(frame(zero_volume=tuple(f"15:{m:02d}" for m in range(17, 60))), cap=0.01, spec=Q8X)
+    assert d['exit']['persist_no_fill_to_session_end'] == 1 and d['exit_failures']['items'][0]['reason'] == 'NO_FILL_TO_SESSION_END'
+    d = diag(frame(zero_volume=('14:17', '14:18')), cap=0.01, spec=Q8X)
+    assert d['entry']['persisted_after_window'] == 0 and d['entry']['fillable'] == 0
+
+
+def test_q8x_runner_archive_accepts_persisted_exit_order_time(tmp_path, schedule, monkeypatch):
+    out, seen, diag_ = _runner_execute(tmp_path, schedule, monkeypatch, 'tests/fixtures/p5c_ta01/ta01_q8x_spec_variant.json',
+                                       PARAMS, loaded(zero_volume=('15:17', '15:18')))
+    assert out['executed'] and diag_['ta01_fill_window']['exit_persist_to_session_end'] is True
+    assert all(t['status'] == 'PASS' for t in diag_['temporal'].values())

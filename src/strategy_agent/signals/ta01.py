@@ -205,7 +205,16 @@ REVIEWED_SIZING = {
         "variant": "P5C-TA01-Q8", "units": 8, "max_units": 8, "parent": "p5c_ta01_res20_strongclose_relvol_tsm_15m",
         "labels": ("POST_DIAGNOSTIC_VARIANT", "EXPLORATORY_ONLY"),
         "spec_sha256": "d35076f7f88375aaaedc9e2ab36ffce4a93036769d3245555f04553270a08110"},
+    # P5C-TA01-Q8X: Q8 + exit fill persistence (Haw, 2026-11-19, after the Q8 fill diagnostic). POST_DIAGNOSTIC_VARIANT,
+    # EXPLORATORY_ONLY. Exit orders with no fill in the 2-minute window keep looking minute by minute to the end of the
+    # same session (known-volume x 1% cap still applies); entries are unchanged. The schema's execution fields are
+    # constants, so the policy lives here, bound to this strategy_id and the exact spec SHA.
+    "p5c_ta01_q8x_res20_strongclose_relvol_tsm_15m": {
+        "variant": "P5C-TA01-Q8X", "units": 8, "max_units": 8, "parent": "p5c_ta01_q8_res20_strongclose_relvol_tsm_15m",
+        "labels": ("POST_DIAGNOSTIC_VARIANT", "EXPLORATORY_ONLY"), "exit_fill_policy": "PERSIST_TO_SESSION_END",
+        "spec_sha256": "ff6ecc042dace7d599f7cebda5d565b8ad581fbe72f46b2a45cb7fa59ef240a1"},
 }
+EXIT_FILL_POLICIES = ("WINDOW_ONLY", "PERSIST_TO_SESSION_END")
 
 
 def check_sizing(spec: Mapping) -> dict:

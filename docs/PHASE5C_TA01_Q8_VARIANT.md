@@ -58,3 +58,28 @@ It reports entries and exits separately:
 
 It uses the attempt protocol v2: pre-data checks first; a durable attempt marker; write-once success and failure
 manifests. 0001 and 0002 are retired, and their Drive contents are never touched.
+
+## P5C-TA01-Q8X — exits persist to the session end
+
+Haw proposed this on 2026-11-19, after the Q8 diagnostic: 7/326 exits were not fillable in the 2-minute window.
+**POST_DIAGNOSTIC_VARIANT, EXPLORATORY_ONLY.**
+
+- **Spec:** `tests/fixtures/p5c_ta01/ta01_q8x_spec_variant.json`, strategy_id
+  `p5c_ta01_q8x_res20_strongclose_relvol_tsm_15m`, canonical SHA
+  `ff6ecc042dace7d599f7cebda5d565b8ad581fbe72f46b2a45cb7fa59ef240a1`. It is identical to Q8 except `strategy_id`,
+  `name` and `provenance` (parent = Q8, with the file SHA).
+- **Exit fill policy** `PERSIST_TO_SESSION_END`. The schema's execution fields are constants, so the policy lives in
+  `signals.ta01.REVIEWED_SIZING`, bound to this strategy_id and the exact spec SHA:
+  - The 2-minute window stage is unchanged: volume known at t, candidates with `bar_start` in (t, t+2].
+  - If an **exit** gets no fill there, it keeps looking minute by minute **after** the window, in the same session.
+    It takes the first Core-eligible bar with volume > 0 whose **known** volume (the completed bar available when that
+    bar can open) × 1% ≥ 8 units.
+  - **Entries never persist.**
+  - No fill by the session's last eligible bar → the whole run fails (no overnight).
+- **Core is not changed.** The chosen bar becomes Core's first candidate through `order_time`; the archive temporal
+  check allows the order time to trail the signal within the same session for this variant only.
+- **The open BLOCKER stays:** Core's full-minute check can still reject the chosen bar. That ends the order, and it is
+  counted separately.
+- **Diagnostic draft** `RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001` (NOT approved). For exits it adds `persisted_after_window`,
+  `persist_fill_found`, `persist_wait_minutes`, `persist_core_full_minute_cap_would_reject` and
+  `persist_no_fill_to_session_end`.
