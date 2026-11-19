@@ -15,9 +15,14 @@ from strategy_agent.research_only import ta01_fill_diagnostic as D
 from strategy_agent.research_only.runner import write_once
 
 ROOT = Path(__file__).resolve().parents[1]
-ID1, ID2 = "RA-IBKR_TSM-TA01_FILLDIAG-0001", "RA-IBKR_TSM-TA01_FILLDIAG-0002"
+ID1, ID2, IDQ8 = ("RA-IBKR_TSM-TA01_FILLDIAG-0001", "RA-IBKR_TSM-TA01_FILLDIAG-0002",
+                   "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001")
 DOC1 = D.load_authorization(ID1, ROOT, allow_retired=True)
-DOC2 = D.load_authorization(ID2, ROOT)
+DOC2 = D.load_authorization(ID2, ROOT, allow_retired=True)       # used (SUCCEEDED 2026-11-19): retired
+DOCQ8 = D.load_authorization(IDQ8, ROOT)
+# hashes in hh4832's 0002 approval comment (pull/35#issuecomment-6994446298)
+APPROVED_0002 = ("3175c1d148bf9cd84894803f39acc9507878df29d906af6bd127bc73afbf1b30",
+                 "03b67ba69111feab71820e2a81a8311b50b055734b9a36bd01b6a5ba58e33517")
 # hashes in hh4832's 0001 approval comment (pull/34#issuecomment-6978313388)
 APPROVED_0001 = ("eacb3c0b8011faecff7bcd8cdf1b2bb0c72f4bd5d39ab79ac18ef03d261eccbf",
                  "d4ed88f48f6d4ca0f35f0c4cac1c15efd429bc4c7e2a3ba1bc7fb19f02448725")
@@ -44,9 +49,9 @@ def test_0001_document_is_unchanged_and_retired_in_every_mode(tmp_path):
         assert D.main(["--settings", str(s)]) == 2
 
 
-def test_0002_has_the_same_research_scope_and_is_not_approved():
+def test_0002_document_is_unchanged_and_kept_the_0001_research_scope():
     s1, s2 = DOC1["scope"], DOC2["scope"]
-    assert DOC2["status"] == "UNSIGNED_UNTIL_LEAD_APPROVAL_COMMENT" and "NOT approved" in DOC2["lead_decision_record"]
+    assert (D.sha256_of(DOC2), D.sha256_of(s2)) == APPROVED_0002          # bound by the 0002 approval comment
     assert sorted(k for k in set(s1) | set(s2) if s1.get(k) != s2.get(k)) == ["attempt_protocol", "inputs", "supersedes"]
     assert s2["dataset"]["reviewed_pins"] == PINS and s2["window"] == dict(C.WINDOW) and s2["holdout"]["access"] == "NONE"
     assert s2["strategy"]["spec_file_sha256"] == C.sha(ROOT / s2["strategy"]["spec_path"])
@@ -145,7 +150,7 @@ def test_precheck_metadata_failures(tmp_path, meta):
 # ------------------------------------------------------------------ one-time attempt protocol
 
 class Harness:
-    def __init__(self, tmp_path, doc=DOC2):
+    def __init__(self, tmp_path, doc=DOCQ8):
         self.fx = FixtureApprovals()
         self.doc = doc
         self.drive = tmp_path / "drive"
@@ -214,12 +219,12 @@ def test_failure_after_attempt_marker_leaves_sanitized_failure_manifest(tmp_path
         raise RuntimeError(f"stage failed reading snapshot; header Authorization: {token}")
     with pytest.raises(RuntimeError):
         h.run(execute=boom, secrets=(token,))
-    assert h.tree() == [ID2, f"{ID2}/ATTEMPT_STARTED.json", f"{ID2}/FAILURE_MANIFEST.json",
-                        "_attempt_witness", f"_attempt_witness/{ID2}.ATTEMPT_STARTED.json"]
-    fail = json.loads((h.drive / ID2 / "FAILURE_MANIFEST.json").read_text())
+    assert h.tree() == [IDQ8, f"{IDQ8}/ATTEMPT_STARTED.json", f"{IDQ8}/FAILURE_MANIFEST.json",
+                        "_attempt_witness", f"_attempt_witness/{IDQ8}.ATTEMPT_STARTED.json"]
+    fail = json.loads((h.drive / IDQ8 / "FAILURE_MANIFEST.json").read_text())
     assert fail["status"] == "FAILED" and token not in json.dumps(fail) and "[REDACTED]" in fail["error"]
     assert fail["files_sha256"]["ATTEMPT_STARTED.json"] == hashlib.sha256(
-        (h.drive / ID2 / "ATTEMPT_STARTED.json").read_bytes()).hexdigest()
+        (h.drive / IDQ8 / "ATTEMPT_STARTED.json").read_bytes()).hexdigest()
     with pytest.raises(D.DiagnosticRefused, match="already attempted"):    # no retry under the same id
         h.run()
 
@@ -227,7 +232,7 @@ def test_failure_after_attempt_marker_leaves_sanitized_failure_manifest(tmp_path
 def test_success_writes_manifest_and_outputs_cannot_be_overwritten(tmp_path):
     h = Harness(tmp_path)
     h.run()
-    out = h.drive / ID2
+    out = h.drive / IDQ8
     man = json.loads((out / "MANIFEST.json").read_text())
     assert man["status"] == "SUCCEEDED" and set(man["files_sha256"]) == {"ATTEMPT_STARTED.json",
                                                                           "ta01_fill_diagnostic.json"}
@@ -243,24 +248,24 @@ def test_performance_like_result_is_refused_and_recorded_as_failure(tmp_path):
     h = Harness(tmp_path)
     with pytest.raises(D.DiagnosticRefused):
         h.run(execute=lambda: {"diagnostic_id": "x", "entry": {"net_pnl": 1}})
-    assert (h.drive / ID2 / "FAILURE_MANIFEST.json").exists() and not (h.drive / ID2 / "MANIFEST.json").exists()
+    assert (h.drive / IDQ8 / "FAILURE_MANIFEST.json").exists() and not (h.drive / IDQ8 / "MANIFEST.json").exists()
 
 
 def test_existing_empty_directory_or_witness_blocks_and_deleting_the_directory_does_not_help(tmp_path):
     h = Harness(tmp_path)
-    (h.drive / ID2).mkdir()                                     # an empty directory counts as an attempt
+    (h.drive / IDQ8).mkdir()                                    # an empty directory counts as an attempt
     with pytest.raises(D.DiagnosticRefused, match="already attempted"):
         h.run()
-    (h.drive / ID2).rmdir()
+    (h.drive / IDQ8).rmdir()
     h2 = Harness(tmp_path / "second")
 
     def boom():
         raise RuntimeError("x")
     with pytest.raises(RuntimeError):
         h2.run(execute=boom)
-    for p in sorted((h2.drive / ID2).iterdir()):
+    for p in sorted((h2.drive / IDQ8).iterdir()):
         p.unlink()
-    (h2.drive / ID2).rmdir()                                    # directory removed, witness remains
+    (h2.drive / IDQ8).rmdir()                                    # directory removed, witness remains
     with pytest.raises(D.DiagnosticRefused, match="already attempted"):
         h2.run()
 
@@ -274,7 +279,7 @@ def test_0001_cannot_be_reused_even_with_an_empty_drive(tmp_path):
 
 def test_drive_root_cannot_be_changed_to_bypass(tmp_path):
     s = tmp_path / "s.json"
-    s.write_text(json.dumps({"mode": "RUN", "authorization_id": ID2, "drive_root": str(tmp_path / "elsewhere")}))
+    s.write_text(json.dumps({"mode": "RUN", "authorization_id": IDQ8, "drive_root": str(tmp_path / "elsewhere")}))
     assert D.main(["--settings", str(s)]) == 2
     assert not (tmp_path / "elsewhere").exists()
 
@@ -288,21 +293,24 @@ def test_output_guard_refuses_performance_fields():
     D.assert_no_performance_fields({"entry": {"intents": 3}, "not_output": ["PnL", "returns"]})
 
 
-def test_prepare_mode_prints_0002_approval_line_without_data(tmp_path, capsys):
+def test_prepare_mode_prints_q8_approval_line_without_data_and_refuses_used_0002(tmp_path, capsys):
     s = tmp_path / "s.json"
-    s.write_text(json.dumps({"mode": "PREPARE", "authorization_id": ID2, "approval_expires_utc": "2026-11-26T00:00:00Z"}))
+    s.write_text(json.dumps({"mode": "PREPARE", "authorization_id": IDQ8, "approval_expires_utc": "2026-11-26T00:00:00Z"}))
     assert D.main(["--settings", str(s)]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["data_read"] is False and out["status"] == "UNSIGNED_UNTIL_LEAD_APPROVAL_COMMENT"
-    assert out["document_sha256"] == D.sha256_of(DOC2) and f"authorization={ID2}" in out["approval_line"]
+    assert out["document_sha256"] == D.sha256_of(DOCQ8) and f"authorization={IDQ8}" in out["approval_line"]
+    s.write_text(json.dumps({"mode": "PREPARE", "authorization_id": ID2, "approval_expires_utc": "2026-11-26T00:00:00Z"}))
+    assert D.main(["--settings", str(s)]) == 2
+    assert (D.sha256_of(DOC2), D.sha256_of(DOC2["scope"])) == APPROVED_0002      # 0002 document never changed
 
 
 def test_main_prints_sanitized_complete_error(tmp_path, capsys, monkeypatch):
     token = "ghp_" + "B" * 36
     monkeypatch.setenv("GITHUB_TOKEN", token)
     s = tmp_path / "s.json"
-    s.write_text(json.dumps({"mode": "RUN", "authorization_id": ID2, "drive_root": D.DRIVE_OUTPUT_ROOT,
-                             "confirm_authorization": ID2, "approval_url": f"[x]({token})"}))
+    s.write_text(json.dumps({"mode": "RUN", "authorization_id": IDQ8, "drive_root": D.DRIVE_OUTPUT_ROOT,
+                             "confirm_authorization": IDQ8, "approval_url": f"[x]({token})"}))
     monkeypatch.setattr(D, "_main", lambda settings, secrets: (_ for _ in ()).throw(
         RuntimeError(f"failed with {token}")))
     assert D.main(["--settings", str(s)]) == 2
@@ -319,15 +327,16 @@ def test_notebook_prepare_never_mounts_drive_and_run_uses_pinned_paths():
         hits = [i for i, line in enumerate(lines) if needle in line]
         assert hits and all(i > gate and lines[i].startswith("    ") for i in hits), needle
     assert settings.startswith("# DO NOT set MODE=\"RUN\"") and 'MODE = "PREPARE"' in settings
-    assert f'AUTHORIZATION_ID = "{ID2}"' in settings
-    assert f'RECOVERY_ARCHIVE = "{DOC2["scope"]["inputs"]["recovery_archive"]}"' in settings
-    assert f'ORIGINAL_PREPARATION_ARCHIVE = "{DOC2["scope"]["inputs"]["original_preparation_archive"]}"' in settings
+    assert f'AUTHORIZATION_ID = "{IDQ8}"' in settings
+    assert f'RECOVERY_ARCHIVE = "{DOCQ8["scope"]["inputs"]["recovery_archive"]}"' in settings
+    assert f'ORIGINAL_PREPARATION_ARCHIVE = "{DOCQ8["scope"]["inputs"]["original_preparation_archive"]}"' in settings
+    assert ID1 in code and ID2 in code and "retired" in code
     assert "capture_output=True" in code and "STDERR (sanitized, complete)" in code
     assert "subprocess.run([" not in code.replace("subprocess.run(cmd", "")          # every step goes through run()
 
 
 def test_sanitize_keeps_authorization_ids_and_the_approval_line_intact():
-    line = D.approval_line(DOC2, "2026-11-26T00:00:00Z")
+    line = D.approval_line(DOCQ8, "2026-11-26T00:00:00Z")
     assert D.sanitize(line) == line
     assert D.sanitize("Authorization: ghp_" + "C" * 36) == "Authorization: [REDACTED]"
     assert D.sanitize("authorization=abc123secret") == "authorization=[REDACTED]"
@@ -337,3 +346,44 @@ def test_sanitize_keeps_authorization_ids_and_the_approval_line_intact():
     scope = {"re": re}
     exec(code[code.index("SECRETS = []"):code.index("def run(")], scope)      # the notebook's own clean()
     assert scope["clean"](line) == line and "[REDACTED]" in scope["clean"]("token=abcdefgh12345")
+
+
+# ------------------------------------------------------------------ P5C-TA01-Q8 authorization draft
+
+def test_q8_authorization_scope_matches_0002_except_strategy_and_labels():
+    s2, sq = DOC2["scope"], DOCQ8["scope"]
+    assert DOCQ8["status"] == "UNSIGNED_UNTIL_LEAD_APPROVAL_COMMENT" and "NOT approved" in DOCQ8["lead_decision_record"]
+    for k in ("dataset", "window", "holdout", "costs", "core_sha", "executor", "outputs", "max_runs",
+              "batch_consumption", "inputs", "attempt_protocol", "market_id", "kind"):
+        assert sq[k] == s2[k], k
+    assert sq["holdout"]["access"] == "NONE" and sq["max_runs"] == 1 and sq["batch_consumption"] == 0
+    st = sq["strategy"]
+    q8 = json.loads((ROOT / st["spec_path"]).read_text())
+    assert st["quantity"] == 8 and st["tuning"] == "NONE" and st["strategy_id"] == q8["strategy_id"]
+    assert st["spec_file_sha256"] == C.sha(ROOT / st["spec_path"]) and st["spec_canonical_sha256"] == q8["provenance"]["spec_sha256"]
+    assert st["parameters"] == s2["strategy"]["parameters"]
+    assert sq["variant_labels"] == ["POST_DIAGNOSTIC_VARIANT", "EXPLORATORY_ONLY"]
+    assert sq["open_blockers"][0]["id"] == "CORE_FULL_MINUTE_CAP_LOOKAHEAD" and sq["open_blockers"][0]["status"] == "BLOCKER"
+    assert sq["prior_diagnostic"]["authorization_id"] == ID2 and sq["prior_diagnostic"]["reuse"].startswith("NONE")
+    assert sq["inputs"]["recovery_archive"] == ("/content/drive/MyDrive/00Quant_Research/data/development_recovery_archives/"
+                                                "TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211_20261110T142034_335006Z")
+    assert {D.sha256_of(DOCQ8), D.sha256_of(sq)}.isdisjoint(set(APPROVED_0001) | set(APPROVED_0002))
+
+
+def test_q8_approval_binds_only_the_q8_document(tmp_path):
+    fx = FixtureApprovals()
+    line = D.approval_line(DOCQ8, expires())
+    assert D.verify_approval(DOCQ8, fx.comment(line), verifier=fx.verifier)["approval_source"]["trust"] == "ISOLATED_TEST"
+    with pytest.raises(ApprovalRejected):                         # 0002's approval cannot authorize Q8
+        D.verify_approval(DOCQ8, fx.comment(D.approval_line(DOC2, expires())), verifier=fx.verifier)
+    for i, retired in enumerate((DOC1, DOC2)):
+        doc = {**retired, "scope": {**retired["scope"], "inputs": DOCQ8["scope"]["inputs"]}}
+        h = Harness(tmp_path / f"r{i}", doc=doc)
+        with pytest.raises(D.DiagnosticRefused, match="retired"):
+            h.run()
+        assert h.tree() == []
+
+
+def test_minimum_minute_volume_for_8_units_at_1_percent_is_800():
+    assert D.min_minute_volume(8, 0.01) == 800 and D.min_minute_volume(100, 0.01) == 10000
+    assert 8 <= 800 * 0.01 and not 8 <= 799 * 0.01

@@ -32,17 +32,26 @@ AUTHORIZATION_PATH = "docs/phase5c/ta01_fill_diagnostic_authorization.json"     
 AUTHORIZATION_PATHS = {
     "RA-IBKR_TSM-TA01_FILLDIAG-0001": AUTHORIZATION_PATH,
     "RA-IBKR_TSM-TA01_FILLDIAG-0002": "docs/phase5c/ta01_fill_diagnostic_authorization_0002.json",
+    "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001": "docs/phase5c/ta01q8_fill_diagnostic_authorization_0001.json",
 }
 # Retired ids are refused in every mode, whatever exists or is deleted on Drive (one-time use is not Drive-dependent).
 RETIRED_AUTHORIZATIONS = {
     "RA-IBKR_TSM-TA01_FILLDIAG-0001": "PRE_DATA_INPUT_PATH_FAILURE (see docs/phase5c/ta01_fill_diagnostic_0001_disposition.json)",
+    "RA-IBKR_TSM-TA01_FILLDIAG-0002": "USED: SUCCEEDED 2026-11-19 (MANIFEST ta01_fill_diagnostic.json sha256 "
+                                      "683737a4ed94f106fe4b5dd0e8729c60fe54159e494a267542bea64ccde9d30b); no re-run",
 }
+OPEN_BLOCKERS = [
+    {"id": "CORE_FULL_MINUTE_CAP_LOOKAHEAD", "status": "BLOCKER",
+     "detail": "Core execution.py:413 rejects when qty > the fill bar's FULL-minute volume x cap; that volume is not "
+               "known at the open. Blocks any strategy execution until fixed in Core; a smaller quantity does not "
+               "resolve it. Counted separately in core_full_minute_cap_would_reject."},
+]
 DRIVE_OUTPUT_ROOT = "/content/drive/MyDrive/Quant_Research/strategy-research-agent/phase5c_ta01_fill_diagnostic"
 ATTEMPT_WITNESS_DIR = "_attempt_witness"
 APPROVAL_URL_RE = r"https://github\.com/hh4832/strategy-research-agent/(?:pull|issues)/[1-9][0-9]*#issuecomment-[1-9][0-9]*"
 DIAGNOSTIC_ID = "P5C-TA01-FILL-DIAGNOSTIC-v1"
 OUTPUT_KEYS = {"diagnostic_id", "status", "definitions", "data", "delayed_open", "entry", "exit", "by_decision_time",
-               "exit_failures", "not_output", "inputs"}
+               "exit_failures", "not_output", "inputs", "variant", "open_blockers"}
 FORBIDDEN_FRAGMENTS = ("pnl", "return", "sharpe", "drawdown", "win_rate", "profit", "equity", "price", "payoff",
                        "expectancy")
 
@@ -174,6 +183,7 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
                       "boundary included; missing / zero-volume / Core-ineligible minutes skipped",
             "known_volume_rule": P.KNOWN_VOLUME_RULE,
             "participation_cap": participation_cap, "quantity": qty,
+            "min_minute_volume_for_quantity": min_minute_volume(qty, participation_cap),
             "core_full_minute_cap": "Core execution.py:413 qty > chosen bar FULL-minute volume x cap; LOOK-AHEAD "
                                     "residual, reported separately, not a validated fill constraint",
             "exit_intent": "exists only after a fillable entry in the same session",
@@ -191,9 +201,22 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         "exit_failures": {"count": len(exit_failures), "items": exit_failures,
                           "meaning": "in a strategy execution each of these fails the WHOLE run (no overnight)"},
         "not_output": ["prices", "PnL", "returns", "win rate", "profit factor", "drawdown", "strategy validity"],
+        "variant": _variant(spec), "open_blockers": OPEN_BLOCKERS,
     }
     assert_no_performance_fields(result)
     return result
+
+
+def min_minute_volume(quantity: float, participation_cap) -> float | None:
+    """Smallest 1m volume that lets ``quantity`` pass ``quantity <= volume x cap`` (8 units at 0.01 -> 800)."""
+    return None if participation_cap is None else quantity / float(participation_cap)
+
+
+def _variant(spec: dict) -> dict:
+    from strategy_agent.signals.ta01 import check_sizing  # noqa: PLC0415
+    rev = check_sizing(spec)
+    return {"strategy_id": spec["strategy_id"], "variant": rev["variant"], "units": rev["units"],
+            "labels": list(rev.get("labels", ())), "parent_strategy_id": rev.get("parent")}
 
 
 def assert_no_performance_fields(obj, path="") -> None:
@@ -265,7 +288,9 @@ def check_scope(doc: dict, *, spec: dict, spec_sha256: str, core_sha: str, sched
                            "parameters": s["strategy"]["parameters"] == {k: v["default"] for k, v in
                                                                          spec["parameters"]["values"].items()},
                            "core": s["core_sha"] == core_sha, "cost_schedule": s["costs"]["dated_schedule_sha256"] == schedule_sha256,
-                           "pins": s["dataset"]["reviewed_pins"] == pins, "window": s["window"] == window}.items()
+                           "pins": s["dataset"]["reviewed_pins"] == pins, "window": s["window"] == window,
+                           "quantity": float(s["strategy"]["quantity"]) == float(spec["position_sizing"]["units"]),
+                           "strategy_id": s["strategy"].get("strategy_id") == spec["strategy_id"]}.items()
            if not ok]
     if bad:
         raise DiagnosticRefused(f"run differs from the authorized scope: {bad}")

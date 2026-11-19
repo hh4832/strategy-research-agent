@@ -5,7 +5,8 @@ Status: **tooling only; no diagnostic result exists.** This is not a backtest an
 | Authorization | State |
 |---|---|
 | `RA-IBKR_TSM-TA01_FILLDIAG-0001` | Approved by hh4832, then **PRE_DATA_INPUT_PATH_FAILURE**. Now **retired** in code: refused in PREPARE and RUN whatever exists on Drive. The empty Drive directory is left as is. Record: `docs/phase5c/ta01_fill_diagnostic_0001_disposition.json`. Document file kept byte-identical (its SHA is bound by the comment) |
-| `RA-IBKR_TSM-TA01_FILLDIAG-0002` | **Draft, NOT approved.** Same research scope as 0001. Adds pinned input paths (correct recovery archive), `supersedes` and the attempt protocol v2. `docs/phase5c/ta01_fill_diagnostic_authorization_0002.json` |
+| `RA-IBKR_TSM-TA01_FILLDIAG-0002` | Approved (pull/35#issuecomment-6994446298), **USED, SUCCEEDED 2026-11-19**. Result `ta01_fill_diagnostic.json` sha256 `683737a4…d30b`. At 100 units, 163/278 exits are not fillable under the participation cap, so P5C-TA-01 is BLOCKED. Retired in code; never re-run or overwritten |
+| `RA-IBKR_TSM-TA01Q8_FILLDIAG-0001` | **Draft, NOT approved.** For the **P5C-TA01-Q8** sizing variant (see `docs/PHASE5C_TA01_Q8_VARIANT.md`). Same dataset, window, Holdout NONE, cost schedule, Core, executor, inputs and attempt protocol as 0002; only the strategy (Q8 spec, 8 units) and the labels differ |
 
 ## Haw's decisions (2026-11-18)
 

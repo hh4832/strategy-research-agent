@@ -194,6 +194,47 @@ def structure_sha256(spec: Mapping) -> str:
     return structure_hash(dict(spec))
 
 
+# Reviewed sizing per strategy_id. Rules are identical (same STRUCTURE_SHA256); only the fixed quantity differs.
+# Any other id or quantity is refused: the binding never accepts an arbitrary size.
+REVIEWED_SIZING = {
+    "p5c_ta01_res20_strongclose_relvol_tsm_15m": {"variant": "P5C-TA-01", "units": 100, "max_units": 100,
+                                                  "spec_sha256": None},
+    # P5C-TA01-Q8: POST_DIAGNOSTIC_VARIANT, EXPLORATORY_ONLY (Haw, 2026-11-19, after RA-...-TA01_FILLDIAG-0002). The
+    # whole spec is pinned by its canonical SHA (provenance.spec_sha256), so no other field may differ either.
+    "p5c_ta01_q8_res20_strongclose_relvol_tsm_15m": {
+        "variant": "P5C-TA01-Q8", "units": 8, "max_units": 8, "parent": "p5c_ta01_res20_strongclose_relvol_tsm_15m",
+        "labels": ("POST_DIAGNOSTIC_VARIANT", "EXPLORATORY_ONLY"),
+        "spec_sha256": "d35076f7f88375aaaedc9e2ab36ffce4a93036769d3245555f04553270a08110"},
+}
+
+
+def check_sizing(spec: Mapping) -> dict:
+    """Fail-closed sizing binding: the strategy_id must be reviewed, sizing must be FIXED_UNITS with exactly the
+    reviewed integer units/max_units, and a pinned variant must match its canonical spec SHA."""
+    import copy  # noqa: PLC0415
+    from strategy_agent.spec.validate import canonical_hash  # noqa: PLC0415
+    sid = str(spec.get("strategy_id", ""))
+    rev = REVIEWED_SIZING.get(sid)
+    if rev is None:
+        raise SignalInputError(f"TA01_SIZING: strategy_id {sid!r} has no reviewed sizing")
+    sz = spec.get("position_sizing") or {}
+    for key in ("units", "max_units"):
+        v = sz.get(key)
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or float(v) != rev[key]:
+            raise SignalInputError(f"TA01_SIZING: {sid} position_sizing.{key} must be {rev[key]}, got {v!r}")
+    if sz.get("method") != "FIXED_UNITS":
+        raise SignalInputError("TA01_SIZING: only FIXED_UNITS is reviewed")
+    if rev["spec_sha256"] is not None:
+        prov = spec.get("provenance") or {}
+        blank = copy.deepcopy(dict(spec))
+        blank["provenance"] = {**prov, "spec_sha256": None}
+        if prov.get("spec_sha256") != rev["spec_sha256"] or canonical_hash(blank) != rev["spec_sha256"]:
+            raise SignalInputError(f"TA01_SIZING: {sid} differs from the reviewed spec {rev['spec_sha256'][:12]}")
+        if prov.get("parent_spec_id") != rev["parent"]:
+            raise SignalInputError("TA01_SIZING: parent reference missing or wrong")
+    return rev
+
+
 def is_ta01_spec(spec: Mapping) -> bool:
     return str(spec.get("strategy_id", "")).startswith(STRATEGY_PREFIX)
 
@@ -203,6 +244,7 @@ def params_from_spec(spec: Mapping, parameters: Mapping) -> TA01Params:
     the function implements exactly one rule structure, so a different spec is never silently re-interpreted."""
     if not is_ta01_spec(spec):
         raise SignalInputError("not a P5C-TA-01 spec")
+    check_sizing(spec)
     got = structure_sha256(spec)
     if got != STRUCTURE_SHA256:
         raise SignalInputError(f"TA01_STRUCTURE_MISMATCH: {got} != reviewed {STRUCTURE_SHA256}")

@@ -334,9 +334,9 @@ def test_runner_archive_accepts_shifted_order_time_within_window_only(tmp_path, 
 
 # ------------------------------------------------------------------ fill diagnostic (synthetic only; counts, no PnL)
 
-def diag(fr, cap=None):
+def diag(fr, cap=None, spec=SPEC):
     from strategy_agent.research_only import ta01_fill_diagnostic as D
-    return D.diagnose(core, fr, spec=SPEC, parameters=PARAMS, participation_cap=cap,
+    return D.diagnose(core, fr, spec=spec, parameters=PARAMS, participation_cap=cap,
                       window_start=DAYS[0] + 'T00:00:00-05:00', window_end=WINDOW_END)
 
 
@@ -381,3 +381,44 @@ def test_diagnostic_reports_delayed_open_and_data_summary_without_performance_fi
     assert d['delayed_open']['sessions'] == 1 and d['delayed_open']['dates'] == [DAYS[2]]
     assert d['data']['rth_sessions'] == 3 and 2025 in d['data']['median_daily_rth_volume_by_year']
     D.assert_no_performance_fields(d)
+
+
+# ------------------------------------------------------------------ P5C-TA01-Q8 (8 units; rules identical)
+
+Q8 = json.loads((ROOT / "tests/fixtures/p5c_ta01/ta01_q8_spec_variant.json").read_text(encoding="utf-8"))
+
+
+def test_q8_decisions_and_fill_times_equal_ta01_only_quantity_differs(schedule):
+    fr = frame()
+    base, q8 = run(schedule, fr), run(schedule, fr, spec=Q8)
+    assert q8['decisions'] == base['decisions'] and q8['orders'] == base['orders']
+    assert q8['ta01_fill_window'] == base['ta01_fill_window']
+    assert q8['ta01_delayed_open'] == base['ta01_delayed_open']
+    for name in SCENARIOS:
+        fb, fq = base['scenarios'][name]['result'].fills, q8['scenarios'][name]['result'].fills
+        assert list(fb['exec_ts']) == list(fq['exec_ts']) and list(fb['side']) == list(fq['side'])
+        assert set(fb['qty'].abs()) == {100} and set(fq['qty'].abs()) == {8}
+        rb, rq = base['scenarios'][name]['result'].round_trips, q8['scenarios'][name]['result'].round_trips
+        assert list(rb['entry_ts']) == list(rq['entry_ts']) and list(rb['exit_ts']) == list(rq['exit_ts'])
+
+
+def test_q8_minimum_minute_volume_is_800_at_one_percent():
+    # known volume at 14:15 is the 14:14 minute; at 15:15 the 15:14 minute (default 1000 >= 800)
+    d = diag(frame(volumes={'14:14': 800}), cap=0.01, spec=Q8)
+    assert d['definitions']['min_minute_volume_for_quantity'] == 800
+    assert d['entry']['fillable'] == 1 and d['exit']['fillable'] == 1
+    d = diag(frame(volumes={'14:14': 799}), cap=0.01, spec=Q8)
+    assert d['entry']['known_volume_cap_blocked'] == 1 and d['exit']['intents'] == 0
+    d = diag(frame(volumes={'14:17': 799}), cap=0.01, spec=Q8)       # known passes; Core full-minute check would not
+    assert d['entry']['core_full_minute_cap_would_reject'] == 1
+    d = diag(frame(), cap=0.01)                                      # same frame at 100 units: needs 10,000
+    assert d['entry']['known_volume_cap_blocked'] == 1 and d['definitions']['min_minute_volume_for_quantity'] == 10000
+
+
+def test_q8_diagnostic_reports_variant_labels_and_open_core_blocker():
+    d = diag(frame(), cap=0.01, spec=Q8)
+    assert d['variant'] == {'strategy_id': Q8['strategy_id'], 'variant': 'P5C-TA01-Q8', 'units': 8,
+                            'labels': ['POST_DIAGNOSTIC_VARIANT', 'EXPLORATORY_ONLY'],
+                            'parent_strategy_id': SPEC['strategy_id']}
+    assert [b['status'] for b in d['open_blockers']] == ['BLOCKER']
+    assert d['open_blockers'][0]['id'] == 'CORE_FULL_MINUTE_CAP_LOOKAHEAD'
