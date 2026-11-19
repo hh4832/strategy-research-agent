@@ -309,8 +309,10 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
                 for x in (dated_schedules or profiles or {}).values()}
         if len(caps) != 1:
             raise Phase4ABindingError(f"TA-01: scenarios disagree on volume_participation_cap {caps}")
-        orders, fill_selection = ta01_select_fills(orders, frame, window_minutes=ta01_params.fill_window_minutes,
-                                                   quantity=qty, participation_cap=caps.pop(), core=core)
+        from strategy_agent.signals.ta01 import check_sizing  # noqa: PLC0415
+        orders, fill_selection = ta01_select_fills(
+            orders, frame, window_minutes=ta01_params.fill_window_minutes, quantity=qty, participation_cap=caps.pop(),
+            core=core, exit_persist_to_session_end=check_sizing(spec).get("exit_fill_policy") == "PERSIST_TO_SESSION_END")
     else:
         orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
                                      strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16], core=core)
@@ -422,9 +424,15 @@ def ta01_fill_candidates(frame, window_minutes: int):
     return by_contract, pd.Timedelta(minutes=window_minutes)
 
 
-def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity: float, participation_cap):
+def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity: float, participation_cap,
+                      persist_to_session_end: bool = False):
     """Facts for one order intent at time t (UTC Timestamp). Pure lookup on Core columns; nothing re-timed.
-    Window: candidates with Core bar_start in (t, t+window]; expected labels t+2 .. t+window+1."""
+    Window: candidates with Core bar_start in (t, t+window]; expected labels t+2 .. t+window+1.
+
+    ``persist_to_session_end`` (exit orders of a reviewed variant only, Haw 2026-11-19): when the window stage gives no
+    fill (known-volume check at t failed, or no tradable bar in the window), keep looking minute by minute AFTER the
+    window, in the same session: the first Core-eligible bar with volume > 0 whose KNOWN volume (the completed 1m bar
+    available at that candidate's bar_start, i.e. before it can open) x cap >= quantity. Same cap; no look-ahead."""
     import pandas as pd  # noqa: PLC0415
     g = by_contract.get(contract)
     if g is None:
@@ -446,15 +454,41 @@ def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity
     known_ok = participation_cap is None or quantity <= known * float(participation_cap)
     lookahead_ok = (chosen is None or participation_cap is None
                     or quantity <= float(chosen["volume"]) * float(participation_cap))
-    return {"t": t, "known_volume": known, "known_volume_ok": known_ok,
-            "missing_minutes": sum(lbl not in present for lbl in expected),
-            "zero_volume_minutes": int(cand["volume"].le(0).sum()),
-            "other_ineligible_minutes": int((~cand[elig_col].astype(bool) & cand["volume"].gt(0)).sum()),
-            "chosen": chosen, "chosen_index": None if chosen is None else int(list(cand.index).index(chosen.name)),
-            "core_full_bar_cap_would_reject": not lookahead_ok}
+    out = {"t": t, "known_volume": known, "known_volume_ok": known_ok,
+           "missing_minutes": sum(lbl not in present for lbl in expected),
+           "zero_volume_minutes": int(cand["volume"].le(0).sum()),
+           "other_ineligible_minutes": int((~cand[elig_col].astype(bool) & cand["volume"].gt(0)).sum()),
+           "chosen": chosen, "chosen_index": None if chosen is None else int(list(cand.index).index(chosen.name)),
+           "core_full_bar_cap_would_reject": not lookahead_ok,
+           "persist_used": False, "persist_chosen": None, "persist_wait_minutes": None, "persist_known_volume": None,
+           "persist_core_full_bar_cap_would_reject": False}
+    window_ok = known_ok and chosen is not None
+    out["final_stage"], out["final_chosen"] = ("WINDOW", chosen) if window_ok else (None, None)
+    out["final_core_reject"] = window_ok and not lookahead_ok
+    if window_ok or not persist_to_session_end:
+        return out
+    out["persist_used"] = True
+    after = g.iloc[hi:]
+    after = after[after["session_close"].eq(session_close)]
+    known_at = dict(zip(g["modeled_available_at"], g["volume"].astype(float)))
+    for _, row in after.iterrows():
+        if not (bool(row[elig_col]) and float(row["volume"]) > 0):
+            continue
+        kv = known_at.get(row["bar_start"], 0.0)                 # completed bar available when this one can open
+        if participation_cap is not None and quantity > kv * float(participation_cap):
+            continue
+        out["persist_chosen"], out["persist_known_volume"] = row, kv
+        out["persist_wait_minutes"] = (row["bar_start"] - t) / pd.Timedelta(minutes=1)
+        out["persist_core_full_bar_cap_would_reject"] = (participation_cap is not None and
+                                                         quantity > float(row["volume"]) * float(participation_cap))
+        out["final_stage"], out["final_chosen"] = "PERSIST", row
+        out["final_core_reject"] = out["persist_core_full_bar_cap_would_reject"]
+        break
+    return out
 
 
-def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, participation_cap, core):
+def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, participation_cap, core,
+                      exit_persist_to_session_end: bool = False):
     """Haw, 2026-11-18. For each order at time t: the volume known at t (completed 1m bar available at t) must pass
     the participation cap, otherwise the order is not submitted (KNOWN_VOLUME_CAP). Then the first Core-eligible 1m bar
     with volume > 0 whose bar_start is in (t, t+window] is the fill bar; missing / zero-volume / ineligible minutes are
@@ -462,31 +496,36 @@ def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, pa
     NEXT_BAR with order_time = the earliest time at which the chosen bar is Core's FIRST candidate, i.e. t when it is
     the first in-window bar, otherwise the bar_start of the skipped candidate before it (still <= t + window).
     Core still applies its own participation check on the chosen bar's FULL-minute volume (not known before the
-    order; pinned in the cost profile, not changed here); such rejections are left to Core and counted."""
+    order; pinned in the cost profile, not changed here); such rejections are left to Core and counted.
+    ``exit_persist_to_session_end`` (reviewed variant only): SELL (exit) orders that get no fill in the window keep
+    looking after it, see ``ta01_fill_examine``; entries are never extended."""
     from dataclasses import replace as _replace
     by_contract, window = ta01_fill_candidates(frame, window_minutes)
-    kept, not_submitted, shifted = [], [], 0
+    kept, not_submitted, shifted, persisted = [], [], 0, []
     import pandas as pd  # noqa: PLC0415
     for o in orders:
         t = pd.Timestamp(o.order_time).tz_convert("UTC")
-        x = ta01_fill_examine(by_contract, window, o.contract, t, o.side, quantity, participation_cap)
+        persist = exit_persist_to_session_end and o.side == "SELL"
+        x = ta01_fill_examine(by_contract, window, o.contract, t, o.side, quantity, participation_cap, persist)
         base = {"order_id": o.order_id, "side": o.side, "order_time": t.isoformat(), "known_volume": x["known_volume"],
                 "missing_minutes": x["missing_minutes"], "zero_volume_minutes": x["zero_volume_minutes"],
                 "other_ineligible_minutes": x["other_ineligible_minutes"]}
-        if not x["known_volume_ok"]:
-            not_submitted.append(base | {"reason": "KNOWN_VOLUME_CAP"})
+        if x["final_chosen"] is None:
+            reason = "KNOWN_VOLUME_CAP" if not x["known_volume_ok"] else "FILL_WINDOW_NO_TRADABLE_BAR"
+            not_submitted.append(base | {"reason": reason + ("_THEN_NO_FILL_TO_SESSION_END" if persist else "")})
             continue
-        if x["chosen"] is None:
-            not_submitted.append(base | {"reason": "FILL_WINDOW_NO_TRADABLE_BAR"})
-            continue
-        chosen_start = x["chosen"]["bar_start"]
+        if x["final_stage"] == "PERSIST":
+            persisted.append(base | {"wait_minutes": x["persist_wait_minutes"],
+                                     "known_volume_at_fill_bar": x["persist_known_volume"]})
+        chosen_start = x["final_chosen"]["bar_start"]
         g = by_contract[o.contract]
         prev = g[(g["bar_start"] > t) & (g["bar_start"] < chosen_start)]["bar_start"]
         if len(prev):
             o = _replace(o, order_time=prev.iloc[-1].to_pydatetime())   # chosen bar becomes Core's first candidate
             shifted += 1
         kept.append(o)
-    return kept, {"not_submitted": not_submitted, "submitted": len(kept), "order_time_shifted": shifted}
+    return kept, {"not_submitted": not_submitted, "submitted": len(kept), "order_time_shifted": shifted,
+                  "exit_persist_to_session_end": exit_persist_to_session_end, "exits_filled_after_window": persisted}
 
 
 def execution_frame(core, loaded, spec: dict, parameters: dict):

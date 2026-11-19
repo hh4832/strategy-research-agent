@@ -161,7 +161,11 @@ def write_contract_archive(out_dir: Path, *, write_once, cfg: dict, run_id: str,
         m["cost_profile_sha256"] = sc["profile_sha256"]
         m["m3a4_checks"] = sc["m3a4_checks"]
         metrics[name] = m
-        temporal[name] = temporal_diagnostics(fills, (batch.get("ta01_fill_window") or {}).get("window_minutes"))
+        fw = batch.get("ta01_fill_window") or {}
+        # TA-01: order time may trail the signal by the fill window; a reviewed exit-persistence variant may trail it
+        # up to the end of the same session (Core only fills bars of the signal's own session).
+        delay = 390 if fw.get("exit_persist_to_session_end") else fw.get("window_minutes")
+        temporal[name] = temporal_diagnostics(fills, delay)
 
     native = loaded.native
     ts_col = "timestamp_utc" if "timestamp_utc" in native.columns else native.columns[0]

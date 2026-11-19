@@ -88,3 +88,38 @@ def test_q8_refuses_any_other_change_and_unknown_ids():
     s["provenance"]["spec_sha256"] = canonical_hash(blank)
     with pytest.raises(SignalInputError):
         T.params_from_spec(s, DEFAULTS)
+
+
+# ------------------------------------------------------------------ P5C-TA01-Q8X (Q8 + exit persistence)
+
+Q8X_PATH = "tests/fixtures/p5c_ta01/ta01_q8x_spec_variant.json"
+Q8X = json.loads((ROOT / Q8X_PATH).read_text())
+
+
+def test_q8x_differs_from_q8_only_in_identity_and_provenance():
+    fq, fx = flat(Q8), flat(Q8X)
+    changed = sorted(k for k in set(fq) | set(fx) if fq.get(k) != fx.get(k))
+    assert [k for k in changed if not k.startswith("provenance.")] == ["name", "strategy_id"]   # both v0.0.1
+    assert T.structure_sha256(Q8X) == T.STRUCTURE_SHA256 and Q8X["position_sizing"] == Q8["position_sizing"]
+    assert Q8X["execution"] == Q8["execution"] == BASE["execution"]       # schema constants; policy is Agent-side
+    prov = Q8X["provenance"]
+    assert prov["parent_spec_id"] == Q8["strategy_id"] and C.sha(ROOT / Q8_PATH) in prov["notes"]
+    for label in ("POST_DIAGNOSTIC_VARIANT", "EXPLORATORY_ONLY", "PERSIST_TO_SESSION_END", "OPEN BLOCKER"):
+        assert label in prov["notes"]
+    assert list(validate(Q8X)) == []
+
+
+def test_q8x_binding_and_exit_policy():
+    rev = T.check_sizing(Q8X)
+    assert rev["exit_fill_policy"] == "PERSIST_TO_SESSION_END" and rev["units"] == 8
+    assert "exit_fill_policy" not in T.check_sizing(Q8) and "exit_fill_policy" not in T.check_sizing(BASE)
+    assert T.params_from_spec(Q8X, DEFAULTS) == T.params_from_spec(Q8, DEFAULTS)
+    for units in (7, 9, 100):
+        s = copy.deepcopy(Q8X)
+        s["position_sizing"]["units"] = units
+        with pytest.raises(SignalInputError, match="TA01_SIZING"):
+            T.params_from_spec(s, DEFAULTS)
+    s = copy.deepcopy(Q8X)
+    s["experiment"]["seed"] += 1
+    with pytest.raises(SignalInputError, match="differs from the reviewed spec"):
+        T.params_from_spec(s, DEFAULTS)

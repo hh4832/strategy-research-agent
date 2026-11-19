@@ -33,12 +33,15 @@ AUTHORIZATION_PATHS = {
     "RA-IBKR_TSM-TA01_FILLDIAG-0001": AUTHORIZATION_PATH,
     "RA-IBKR_TSM-TA01_FILLDIAG-0002": "docs/phase5c/ta01_fill_diagnostic_authorization_0002.json",
     "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001": "docs/phase5c/ta01q8_fill_diagnostic_authorization_0001.json",
+    "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001": "docs/phase5c/ta01q8x_fill_diagnostic_authorization_0001.json",
 }
 # Retired ids are refused in every mode, whatever exists or is deleted on Drive (one-time use is not Drive-dependent).
 RETIRED_AUTHORIZATIONS = {
     "RA-IBKR_TSM-TA01_FILLDIAG-0001": "PRE_DATA_INPUT_PATH_FAILURE (see docs/phase5c/ta01_fill_diagnostic_0001_disposition.json)",
     "RA-IBKR_TSM-TA01_FILLDIAG-0002": "USED: SUCCEEDED 2026-11-19 (MANIFEST ta01_fill_diagnostic.json sha256 "
                                       "683737a4ed94f106fe4b5dd0e8729c60fe54159e494a267542bea64ccde9d30b); no re-run",
+    "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001": "USED: SUCCEEDED 2026-11-19 (MANIFEST ta01_fill_diagnostic.json sha256 "
+                                        "7e641f466672cf0c655e0803140e54375d51b9bec54244b400c938853f3f6d78); no re-run",
 }
 OPEN_BLOCKERS = [
     {"id": "CORE_FULL_MINUTE_CAP_LOOKAHEAD", "status": "BLOCKER",
@@ -85,7 +88,9 @@ def _side_counter():
             "no_tradable_bar_causes": Counter(), "intents_with_missing_minute_in_window": 0,
             "intents_with_zero_volume_minute_in_window": 0, "chosen_first_candidate": 0,
             "chosen_later_candidate_waited": 0, "core_full_minute_cap_would_reject": 0, "fillable": 0,
-            "_known_ratio": [], "_chosen_ratio": []}
+            "persisted_after_window": 0, "persist_fill_found": 0, "persist_core_full_minute_cap_would_reject": 0,
+            "persist_no_fill_to_session_end": 0,
+            "_known_ratio": [], "_chosen_ratio": [], "_persist_wait": []}
 
 
 def _cause(x, window_minutes: int) -> str:
@@ -111,6 +116,7 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
     qty = float(quantity if quantity is not None else spec["position_sizing"]["units"])
     if qty != float(spec["position_sizing"]["units"]):
         raise DiagnosticRefused("quantity must equal the frozen spec's fixed units")
+    exit_policy = _variant(spec)["exit_fill_policy"]
     rows, _ = P.conservative_rows_and_bars(frame_1m)
     decs, delayed_open = P.ta01_signals(core, frame_1m, rows, params)
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
@@ -124,8 +130,9 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         if side == "exit" and not long:
             continue                                        # flat: no exit order exists
         t = pd.Timestamp(d.decision_ts).tz_convert("UTC")
+        persist = side == "exit" and exit_policy == "PERSIST_TO_SESSION_END"
         x = P.ta01_fill_examine(by_contract, window, "TSM", t, "BUY" if side == "entry" else "SELL", qty,
-                                participation_cap)
+                                participation_cap, persist)
         c = sides[side]
         c["intents"] += 1
         c["intents_with_missing_minute_in_window"] += x["missing_minutes"] > 0
@@ -148,6 +155,20 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
             else:
                 c["fillable"] += 1
                 fillable, outcome = True, "FILLABLE"
+        if x["persist_used"]:                               # window stage gave no fill (not a Core rejection)
+            c["persisted_after_window"] += 1
+            if x["persist_chosen"] is None:
+                c["persist_no_fill_to_session_end"] += 1
+                outcome = "NO_FILL_TO_SESSION_END"
+            else:
+                c["persist_fill_found"] += 1
+                c["_persist_wait"].append(float(x["persist_wait_minutes"]))
+                if x["persist_core_full_bar_cap_would_reject"]:
+                    c["persist_core_full_minute_cap_would_reject"] += 1
+                    outcome = "PERSIST_CORE_FULL_MINUTE_CAP"
+                else:
+                    c["fillable"] += 1
+                    fillable, outcome = True, "FILLABLE_AFTER_PERSIST"
         hm = pd.Timestamp(d.decision_ts).tz_convert("America/New_York").strftime("%H:%M")
         by_time.setdefault(f"{side} {hm}", Counter())[outcome] += 1
         if side == "entry":
@@ -167,6 +188,8 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         out["not_fillable_total"] = n - c["fillable"]
         out["not_fillable_ratio"] = ((n - c["fillable"]) / n) if n else None
         out["known_volume_to_quantity"] = _quantiles(c["_known_ratio"])
+        out["persist_wait_minutes"] = _quantiles(c["_persist_wait"]) | (
+            {"max": max(c["_persist_wait"])} if c["_persist_wait"] else {})
         out["chosen_bar_volume_to_quantity"] = _quantiles(c["_chosen_ratio"])
         return out
 
@@ -187,6 +210,10 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
             "core_full_minute_cap": "Core execution.py:413 qty > chosen bar FULL-minute volume x cap; LOOK-AHEAD "
                                     "residual, reported separately, not a validated fill constraint",
             "exit_intent": "exists only after a fillable entry in the same session",
+            "exit_fill_policy": (exit_policy if exit_policy != "PERSIST_TO_SESSION_END" else
+                                 "PERSIST_TO_SESSION_END: an exit with no fill in the window keeps looking minute by "
+                                 "minute to the session end (known volume before each candidate x cap); persist_* "
+                                 "counts; entries never persist"),
             "volume_unit": "as stored in the Core source 'volume' column; unit UNVERIFIED (see data.median_daily_rth_volume_by_year)",
             "delayed_open_policy": "TA01-DELAYED-OPEN-EXCLUSION-v1"},
         "data": {"rows_1m": int(len(f)), "rth_sessions": int(daily.size),
@@ -216,7 +243,8 @@ def _variant(spec: dict) -> dict:
     from strategy_agent.signals.ta01 import check_sizing  # noqa: PLC0415
     rev = check_sizing(spec)
     return {"strategy_id": spec["strategy_id"], "variant": rev["variant"], "units": rev["units"],
-            "labels": list(rev.get("labels", ())), "parent_strategy_id": rev.get("parent")}
+            "labels": list(rev.get("labels", ())), "parent_strategy_id": rev.get("parent"),
+            "exit_fill_policy": rev.get("exit_fill_policy", "WINDOW_ONLY")}
 
 
 def assert_no_performance_fields(obj, path="") -> None:
