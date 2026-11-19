@@ -16,6 +16,7 @@ from strategy_agent.execution.c1_observe import run_logged
 from strategy_agent.governance.authorization_contracts import contract_id, C1_RECOVERY, EVENT_FIELDS
 from strategy_agent.registry.chain import ChainedLog
 from test_c1_execution_runner import staged, transport
+from _c1_fixed_clock import c1_fixed_clock  # noqa: F401  (autouse: RA02 window, see module)
 
 ROOT=Path(__file__).parents[1]
 

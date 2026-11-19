@@ -14,6 +14,7 @@ from strategy_agent.execution import c1_runner as R, c1_integration as C
 from strategy_agent.execution import c1_claim as K
 from strategy_agent.execution.c1_archive import archive_attempt, verify_archive
 from strategy_agent.readiness.c1_authorization import PINS
+from _c1_fixed_clock import c1_fixed_clock  # noqa: F401  (autouse: RA02 window, see module)
 
 ROOT=Path(__file__).resolve().parents[1]
 
