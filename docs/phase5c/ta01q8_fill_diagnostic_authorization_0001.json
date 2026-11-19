@@ -1,0 +1,123 @@
+{
+  "contract": "ta01-fill-diagnostic-authorization-v1",
+  "authorization_id": "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001",
+  "status": "UNSIGNED_UNTIL_LEAD_APPROVAL_COMMENT",
+  "lead_decision_record": "Haw (hh4832), chat 2026-11-19 13:22 Asia/Taipei: create the P5C-TA01-Q8 sizing variant and a fill-diagnostic authorization draft. NOT approved: effective only after an approval comment by hh4832 for THIS document, verified live by approval.verifier (V01-V09).",
+  "scope": {
+    "kind": "READ_ONLY_FILL_FEASIBILITY_DIAGNOSTIC",
+    "question": "For the frozen P5C-TA01-Q8 spec (8 units; TA-01 rules unchanged) on TSM Development 1m data: per entry and exit order intent, how often is there no tradable 1m bar within 2 minutes, how often does the known-volume participation check block 8 units, and how often would Core's full-minute check additionally reject?",
+    "market_id": "IBKR_TSM",
+    "dataset": {
+      "dataset_id": "ibkr_tsm_1m_normalized",
+      "snapshot_id": "TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211",
+      "producer_commit_sha": "7bcc61813a6cf2956c6df69ea796bf1c7f2b495f",
+      "reviewed_pins": {
+        "marker_sha256": "8a980bd92045da59d573b249162ba5dce581a1c74802663b0b02cbb0756ee7a5",
+        "recovery_provenance_sha256": "dddc8794c4bf52556c12d5c919e779d9bb3b7aba2770e73f34c838fe5ab8b6aa",
+        "binding_sha256": "9822ad8db3bdde056c0192cb056577bdc91485af92f45feb47d1246f5c6a8f1f",
+        "manifest_sha256": "edabc0abf38bab6cad013b2248b68344dc0073da105a6085dd5e8f05f85272e4",
+        "lineage_sha256": "baeac6bc2e794038646ee7b313edc27038090862ea0da73cc64a87e87a9adffa",
+        "parquet_sha256": "e1e7955401fcbe4a84e7486fa7b1cc8ae97a92513426086cf7902afcf958ee03"
+      },
+      "development_boundary": {
+        "end": "2025-01-01T00:00:00-05:00",
+        "interval": "[start,end)",
+        "start": "2016-10-19T00:00:00-04:00"
+      }
+    },
+    "window": {
+      "warmup_start": "2016-10-19T00:00:00-04:00",
+      "start": "2017-01-01T00:00:00-05:00",
+      "end": "2025-01-01T00:00:00-05:00"
+    },
+    "holdout": {
+      "lock_id": "HOLDOUT-TSM-15M-v1",
+      "start": "2025-01-01T00:00:00-05:00",
+      "end": "2026-10-17T00:00:00-04:00",
+      "access": "NONE"
+    },
+    "strategy": {
+      "spec_path": "tests/fixtures/p5c_ta01/ta01_q8_spec_variant.json",
+      "spec_file_sha256": "168c19a7a3bf1da34711a6d549cde6349035959b61d1ce64ec12f9e63462f2a7",
+      "strategy_id": "p5c_ta01_q8_res20_strongclose_relvol_tsm_15m",
+      "spec_canonical_sha256": "d35076f7f88375aaaedc9e2ab36ffce4a93036769d3245555f04553270a08110",
+      "parameters": {
+        "res_n": 20,
+        "vol_m": 20,
+        "vol_k": 2.0,
+        "close_pos": 0.75,
+        "sup_l": 10
+      },
+      "quantity": 8,
+      "tuning": "NONE",
+      "parent_strategy_id": "p5c_ta01_res20_strongclose_relvol_tsm_15m"
+    },
+    "costs": {
+      "dated_schedule_path": "configs/research/tsm_official_dated_costs_2017_2024.json",
+      "dated_schedule_sha256": "43b6045758760a40ad88d741b1a97a73cfb0b6cf6b2a4a7f1f3b31d5085a4216",
+      "used_for": "volume_participation_cap value only; no cost or PnL computed"
+    },
+    "core_sha": "50ea3bfa42df7708dd3a1b21f17798c206be054e",
+    "executor": {
+      "executor_id": "colab-hh4832-exec-01",
+      "consistency": "SINGLE_EXECUTOR_ONLY"
+    },
+    "outputs": [
+      "ta01_fill_diagnostic.json (counts, ratios, volume-to-quantity quantiles, delayed-open dates, data volume summary)",
+      "MANIFEST.json"
+    ],
+    "max_runs": 1,
+    "batch_consumption": 0,
+    "inputs": {
+      "recovery_archive": "/content/drive/MyDrive/00Quant_Research/data/development_recovery_archives/TSM_DEV_1M_20161019_20241231_ca9f87df83f31bd24211_20261110T142034_335006Z",
+      "original_preparation_archive": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/phase5c1/20261111_230118_690789",
+      "drive_output_root": "/content/drive/MyDrive/Quant_Research/strategy-research-agent/phase5c_ta01_fill_diagnostic",
+      "note": "RUN refuses any other path; these are pinned so a wrong path cannot be used under this id"
+    },
+    "attempt_protocol": {
+      "version": "TA01-FILLDIAG-ATTEMPT-v2",
+      "pre_data": "bare approval URL; pinned input paths; live approval; scope; path and metadata precheck (no market data). Failure creates nothing on Drive.",
+      "durable_marker": "_attempt_witness/<id>.ATTEMPT_STARTED.json and <id>/ATTEMPT_STARTED.json written once before any Development data can be read; either existing refuses a new attempt",
+      "results": "success: ta01_fill_diagnostic.json + MANIFEST.json; failure: FAILURE_MANIFEST.json (sanitized); all write-once",
+      "retry": "none under the same id; a used or retired id requires a new authorization"
+    },
+    "variant_labels": [
+      "POST_DIAGNOSTIC_VARIANT",
+      "EXPLORATORY_ONLY"
+    ],
+    "evidence_status": "EXPLORATORY_ONLY: proposed after seeing RA-IBKR_TSM-TA01_FILLDIAG-0002; TSM Development already used; no result may be called confirmatory, blind or out-of-sample",
+    "prior_diagnostic": {
+      "authorization_id": "RA-IBKR_TSM-TA01_FILLDIAG-0002",
+      "status": "USED_SUCCEEDED",
+      "result_sha256": "683737a4ed94f106fe4b5dd0e8729c60fe54159e494a267542bea64ccde9d30b",
+      "reuse": "NONE (not re-run, not overwritten)"
+    },
+    "open_blockers": [
+      {
+        "id": "CORE_FULL_MINUTE_CAP_LOOKAHEAD",
+        "status": "BLOCKER",
+        "detail": "Core execution.py:413 rejects when qty > the fill bar's FULL-minute volume x cap; that volume is not known at the open. Blocks any strategy execution until fixed in Core; a smaller quantity does not resolve it. Counted separately in core_full_minute_cap_would_reject."
+      }
+    ],
+    "required_outputs": [
+      "entry and exit reported separately",
+      "known_volume_cap_blocked",
+      "no_tradable_bar_in_window",
+      "core_full_minute_cap_would_reject (look-ahead residual, BLOCKER)",
+      "min_minute_volume_for_quantity (800 at 8 units x 0.01)"
+    ]
+  },
+  "does_not_authorize": [
+    "Holdout access",
+    "any backtest or Core ExecutionEngine run",
+    "prices, PnL, returns, win rate, profit factor, drawdown or any strategy-validity output",
+    "PREPARE / PREFLIGHT / CLAIM / EXECUTE or any research Batch",
+    "any change of spec, quantity, window, cap, costs, data pins or Core",
+    "a second run or retry under this id",
+    "formal GO"
+  ],
+  "approval": {
+    "method": "one RESEARCH-APPROVAL v1 BIND_AUTHORIZATION comment by hh4832 on the diagnostic PR, verified live by approval.verifier (V01-V09)",
+    "max_validity_hours": 336
+  }
+}

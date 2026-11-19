@@ -334,7 +334,7 @@ def _ta01_e2e(archived, tmp_path, monkeypatch):
     window = {'warmup_start': '2024-05-29T00:00:00-04:00', 'start': '2024-06-03T00:00:00-04:00',
               'end': '2024-07-13T00:00:00-04:00'}
     monkeypatch.setattr(C, 'WINDOW', window)
-    doc = copy.deepcopy(TD.load_authorization('RA-IBKR_TSM-TA01_FILLDIAG-0002'))
+    doc = copy.deepcopy(TD.load_authorization('RA-IBKR_TSM-TA01Q8_FILLDIAG-0001'))
     doc['scope']['window'] = window
     doc['scope']['dataset']['reviewed_pins'] = pins
     doc['scope']['inputs'].update(recovery_archive=str(archive), original_preparation_archive='SYNTHETIC_ORIGINAL')
@@ -353,6 +353,8 @@ def test_ta01_fill_diagnostic_real_run_wiring_end_to_end(archived, tmp_path, mon
     assert result['status'] == 'COMPLETED' and result['inputs']['execution_frame']['execution_bars_minutes'] == 1
     assert result['inputs']['holdout_accessed'] is False and result['inputs']['core_execution_engine_run'] is False
     assert result['definitions']['participation_cap'] == 0.01            # read from the Core-pinned schedule
+    assert result['definitions']['quantity'] == 8 and result['definitions']['min_minute_volume_for_quantity'] == 800
+    assert result['variant']['variant'] == 'P5C-TA01-Q8' and result['open_blockers'][0]['status'] == 'BLOCKER'
     assert result['data']['rth_sessions'] > 20 and result['entry']['intents'] >= 0
     out = drive / doc['authorization_id']
     manifest = json.loads((out / 'MANIFEST.json').read_text())
