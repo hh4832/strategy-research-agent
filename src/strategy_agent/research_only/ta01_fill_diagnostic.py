@@ -337,7 +337,8 @@ def sanitize(text: str, secrets: tuple[str, ...] = ()) -> str:
             out = out.replace(sec, "[REDACTED]")
     out = re.sub(r"(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED]", out)
     out = re.sub(r"(?i)\b(bearer|token)\s+(?!\[REDACTED\])[A-Za-z0-9_\-\.]{8,}", r"\1 [REDACTED]", out)
-    out = re.sub(r"(?i)\b(authorization|token|password|secret)(\s*[:=]\s*)(?!\[REDACTED\])\S+", r"\1\2[REDACTED]", out)
+    out = re.sub(r"(?i)\b(authorization|token|password|secret)(\s*[:=]\s*)(?!\[REDACTED\]|RA-[A-Z0-9_]+(?:-[A-Z0-9_]+)*-[0-9]{4}\b)\S+",
+                 r"\1\2[REDACTED]", out)          # authorization ids (RA-...-NNNN) are not credentials
     return out
 
 
@@ -440,12 +441,21 @@ def _main(settings: dict, secrets) -> int:
         raise DiagnosticRefused("mode must be PREPARE or RUN")
     if settings.get("drive_root") != DRIVE_OUTPUT_ROOT or doc["scope"]["inputs"]["drive_output_root"] != DRIVE_OUTPUT_ROOT:
         raise DiagnosticRefused("drive_root is fixed; changing it cannot bypass the one-attempt rule")
+    result = run_production(doc, settings, secrets, drive_root=Path(DRIVE_OUTPUT_ROOT))
+    print(json.dumps({k: result[k] for k in ("status", "entry", "exit", "delayed_open")}, indent=2, default=str))
+    return 0
+
+
+def run_production(doc: dict, settings: dict, secrets=(), *, drive_root: Path, verifier=None) -> dict:
+    """The real RUN wiring (Core, reviewed pins, staging, loader). ``verifier`` and ``drive_root`` are injectable only
+    for the synthetic end-to-end test; ``main`` always uses the live production verifier and the fixed Drive root."""
     from strategy_agent.execution import c1_integration as C  # noqa: PLC0415
     from strategy_agent.execution import c1_runner as R  # noqa: PLC0415
-    from strategy_agent.readiness.c1_authorization import PINS, archive_metadata  # noqa: PLC0415
-    from strategy_agent.adapters.mrc_phase4a import core_phase4a  # noqa: PLC0415
+    from strategy_agent.readiness import c1_authorization as CA  # noqa: PLC0415
+    from strategy_agent.adapters.mrc_phase4a import core_phase4a, core_repository_root  # noqa: PLC0415
     from strategy_agent.adapters.mrc_adapter import _core  # noqa: PLC0415
     from . import core_phase4a as P  # noqa: PLC0415
+    pins = CA.PINS
     native_mod, _costs = core_phase4a()
     ident = native_mod.core_code_identity()
     spec_path = ROOT / doc["scope"]["strategy"]["spec_path"]
@@ -455,12 +465,14 @@ def _main(settings: dict, secrets) -> int:
     def scope_check():
         if ident.get("core_tree_dirty"):
             raise DiagnosticRefused("Core tree is dirty")
-        schedules = C.load_dated_schedules(ROOT, expected_sha256=doc["scope"]["costs"]["dated_schedule_sha256"])
+        # The pinned schedule and its official SEC/FINRA source documents live in the Core checkout (as in C1).
+        schedules = C.load_dated_schedules(core_repository_root(),
+                                           expected_sha256=doc["scope"]["costs"]["dated_schedule_sha256"])
         caps.update(s.base_profile.volume_participation_cap for s in schedules.values())
         if len(caps) != 1:
             raise DiagnosticRefused(f"scenarios disagree on the participation cap {caps}")
         check_scope(doc, spec=spec, spec_sha256=C.sha(spec_path), core_sha=ident["core_git_sha"],
-                    schedule_sha256=C.SCHEDULE_SHA256, pins=PINS, window=dict(C.WINDOW))
+                    schedule_sha256=C.SCHEDULE_SHA256, pins=pins, window=dict(C.WINDOW))
 
     def execute():
         staged = R.stage(settings["recovery_archive"], settings["original_preparation_archive"],
@@ -468,6 +480,7 @@ def _main(settings: dict, secrets) -> int:
         cfg = {"snapshot_binding": {k: staged["bundle"][k] for k in (
             "manifest_relative_path", "manifest_sha256", "layout", "integrity_receipt", "integrity_receipt_sha256",
             "snapshot_pin")}}
+        cfg["snapshot_binding"]["diagnostic_parquet_relative_path"] = None      # footer diagnostics only (as C1)
         binding = P.SnapshotBinding.from_config(cfg)
         w, dev, hold = doc["scope"]["window"], doc["scope"]["dataset"]["development_boundary"], doc["scope"]["holdout"]
 
@@ -483,15 +496,14 @@ def _main(settings: dict, secrets) -> int:
                           participation_cap=next(iter(caps)), window_start=w["start"], window_end=w["end"])
         result["inputs"] = {"authorization_id": doc["authorization_id"],
                             "authorization_document_sha256": sha256_of(doc), "core_identity": ident,
-                            "agent_code_sha": settings["code_sha"], "data_pins": PINS, "execution_frame": frame_info,
-                            "holdout_accessed": False, "batch_consumed": False, "core_execution_engine_run": False}
+                            "agent_code_sha": settings.get("code_sha"), "data_pins": pins,
+                            "execution_frame": frame_info, "holdout_accessed": False, "batch_consumed": False,
+                            "core_execution_engine_run": False}
         return result
 
-    result = run_attempt(doc, settings=settings, drive_root=Path(DRIVE_OUTPUT_ROOT), scope_check=scope_check,
-                         precheck=lambda r, o: precheck_inputs(r, o, pins=PINS, metadata_fn=archive_metadata),
-                         execute=execute, secrets=secrets)
-    print(json.dumps({k: result[k] for k in ("status", "entry", "exit", "delayed_open")}, indent=2, default=str))
-    return 0
+    return run_attempt(doc, settings=settings, drive_root=Path(drive_root), scope_check=scope_check,
+                       precheck=lambda r, o: precheck_inputs(r, o, pins=pins, metadata_fn=CA.archive_metadata),
+                       execute=execute, secrets=tuple(secrets), verifier=verifier)
 
 
 if __name__ == "__main__":
