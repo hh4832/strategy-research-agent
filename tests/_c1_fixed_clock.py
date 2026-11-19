@@ -21,8 +21,9 @@ class _FixedDatetime(datetime):
 
 @pytest.fixture(autouse=True)
 def c1_fixed_clock(monkeypatch):
+    from strategy_agent.binding import service
     from strategy_agent.execution import c1_runner
     from strategy_agent.governance import research_authorization
-    monkeypatch.setattr(research_authorization, "datetime", _FixedDatetime)
-    monkeypatch.setattr(c1_runner, "datetime", _FixedDatetime)
+    for module in (research_authorization, c1_runner, service):      # the three wall clocks on the C1 RA02 path
+        monkeypatch.setattr(module, "datetime", _FixedDatetime)
     yield FIXED_NOW
