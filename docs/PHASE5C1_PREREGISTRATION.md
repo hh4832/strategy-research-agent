@@ -43,6 +43,12 @@ H0 is operationalized descriptively with the pre-registered **DRIFT-MATCHED-v1**
 | Execution time | `NEXT_ELIGIBLE_BAR_OPEN`, strictly later than signal availability; max fill delay 2 bars; market order |
 | Outcome period | Entry fill to exit fill of each round trip (net of costs). Equity is marked to market bar by bar. |
 
+> **Erratum (2026-11-18, wording only; the pre-registered text above is kept as written).** "max fill delay 2 bars"
+> was not enforced. The SMA execution path submits DAY market orders; an unfilled order expires at the first
+> session close after the order time (`ORDER_EXPIRED`). `max_fill_delay_bars` is declared in the spec but is read by
+> neither the Agent nor Core `50ea3bf`. The executed rule was therefore "fill at the first eligible bar of the same
+> session, else expire at the session close". No authorization, Batch, archive or result is changed by this note.
+
 ## 5. Development window (chosen by rule, not by results)
 
 - **Rule:** every complete calendar year inside the Development boundary [2016-10-19, 2025-01-01).

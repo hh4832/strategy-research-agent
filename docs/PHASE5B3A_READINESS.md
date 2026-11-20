@@ -97,6 +97,12 @@ B3A-01..B3A-08 全部 PASS，B3A-02 由 BLOCKED 轉為 PASS（exporter 接受、
 | D8 | 研究期間排除 Holdout | PASS | 窗口終點 ≤ Holdout 起點；原生最後時間 2024-06-28T23:59Z |
 | D9 | Core benchmark 與 readiness 證據仍適用 | PASS | `benchmark/results/mrc_b16179a7cc07` = BENCHMARK_PASS（B01–B12、G16、G17、G14b）；DATA_QUALITY gate PASS。formal market status 仍是 NO_GO（未變） |
 
+> **更正（2026-11-18）**：D6 依據欄「`max_fill_delay_bars` 到期即 `ORDER_EXPIRED`」不正確。SMA 的委託是 DAY，
+> 未成交時在下單後第一個 session close 到期（`ORDER_EXPIRED`，見 `evaluation/c3_reconciliation.py`）；spec 宣告的
+> `max_fill_delay_bars` 在 Agent 與 Core `50ea3bf` 都沒有被執行。D6 的判定只檢查 `INCOMPLETE_SOURCE_BUCKET`，
+> 所以 PASS 結果不受影響。上表原文保留；已封存的 `docs/evidence/` 證據檔中的同一句也保留原樣（封存不改）。
+> `readiness/checks.py` 之後產生的說明文字已更正。
+
 沒有重新開啟 Data Lake 驗證；也沒有發現可重現的執行阻擋缺陷。
 
 ## 4. 受控執行 readiness
