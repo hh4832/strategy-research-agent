@@ -1,0 +1,8 @@
+{
+  "validator": "strategy_agent.spec.validate.validate @ 8a5dc47 (pure, no data)",
+  "issues": [],
+  "errors": 0,
+  "warnings": 0,
+  "structure_sha256": "0c7bde1a867d21956a4f02b426ccdeb1884d1d2cc65040b494b2f8ec69f0246c",
+  "duplicate_specs_in_repo": []
+}
