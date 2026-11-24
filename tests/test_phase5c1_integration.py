@@ -325,6 +325,9 @@ def _ta01_e2e(archived, tmp_path, monkeypatch):
     from strategy_agent.execution import c1_runner as R
     from strategy_agent.readiness import c1_authorization as CA
     from strategy_agent.research_only import ta01_fill_diagnostic as TD
+    from strategy_agent.adapters.mrc_adapter import _core
+    from strategy_agent.adapters.mrc_phase4a import core_phase4a
+    from strategy_agent.research_only import core_phase4a as P
     archive, approval, _ = archived
     pins = C.inspect_archive(archive, conversion_approval=approval)['observed_pins']
     monkeypatch.setattr(CA, 'PINS', pins)
@@ -334,7 +337,14 @@ def _ta01_e2e(archived, tmp_path, monkeypatch):
     window = {'warmup_start': '2024-05-29T00:00:00-04:00', 'start': '2024-06-03T00:00:00-04:00',
               'end': '2024-07-13T00:00:00-04:00'}
     monkeypatch.setattr(C, 'WINDOW', window)
-    doc = copy.deepcopy(TD.load_authorization('RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001'))
+    doc = copy.deepcopy(TD.load_authorization('RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002'))
+    if P.core_participation_basis(_core()) == P.CORE_KNOWN_BASIS:      # CI job with Core 76902a1: the real draft
+        native, _ = core_phase4a()
+        monkeypatch.setattr(native, 'core_code_identity',
+                            lambda: {'core_git_sha': P.TA01_CORE_SHA, 'core_tree_dirty': False})
+    else:                                                               # Core 50ea3bf job: same wiring, legacy rule
+        doc['scope']['core_sha'] = C.CORE
+        doc['scope'].pop('core_participation_basis')
     doc['scope']['window'] = window
     doc['scope']['dataset']['reviewed_pins'] = pins
     doc['scope']['inputs'].update(recovery_archive=str(archive), original_preparation_archive='SYNTHETIC_ORIGINAL')
@@ -354,7 +364,12 @@ def test_ta01_fill_diagnostic_real_run_wiring_end_to_end(archived, tmp_path, mon
     assert result['inputs']['holdout_accessed'] is False and result['inputs']['core_execution_engine_run'] is False
     assert result['definitions']['participation_cap'] == 0.01            # read from the Core-pinned schedule
     assert result['definitions']['quantity'] == 8 and result['definitions']['min_minute_volume_for_quantity'] == 800
-    assert result['variant']['variant'] == 'P5C-TA01-Q8X' and result['open_blockers'][0]['status'] == 'BLOCKER'
+    from strategy_agent.research_only import core_phase4a as P
+    known = doc['scope'].get('core_participation_basis') == P.CORE_KNOWN_BASIS
+    assert result['variant']['variant'] == 'P5C-TA01-Q8X'
+    assert result['open_blockers'][0]['status'] == ('FIXED_IN_CORE_PENDING_REVIEW' if known else 'BLOCKER')
+    assert result['definitions']['core_participation_basis'] == (P.CORE_KNOWN_BASIS if known else P.CORE_LEGACY_BASIS)
+    assert result['inputs']['core_participation_basis'] == result['definitions']['core_participation_basis']
     assert result['variant']['exit_fill_policy'] == 'PERSIST_TO_SESSION_END'
     assert result['data']['rth_sessions'] > 20 and result['entry']['intents'] >= 0
     out = drive / doc['authorization_id']
@@ -374,3 +389,15 @@ def test_ta01_fill_diagnostic_wrong_recovery_path_fails_before_any_drive_write(a
     with pytest.raises(TD.PreDataInputFailure, match='does not exist'):
         TD.run_production(doc, settings, drive_root=drive, verifier=fx.verifier)
     assert not drive.exists() and not (tmp_path / 'staging').exists()
+
+
+def test_ta01_fill_diagnostic_refuses_core_without_the_authorized_basis(archived, tmp_path, monkeypatch):
+    from strategy_agent.research_only import core_phase4a as P
+    TD, doc, settings, fx = _ta01_e2e(archived, tmp_path, monkeypatch)
+    wanted = doc['scope'].get('core_participation_basis', P.CORE_LEGACY_BASIS)
+    other = P.CORE_LEGACY_BASIS if wanted == P.CORE_KNOWN_BASIS else P.CORE_KNOWN_BASIS
+    monkeypatch.setattr(P, 'core_participation_basis', lambda core: other)
+    drive = tmp_path / 'drive'
+    with pytest.raises(TD.DiagnosticRefused, match='participation basis'):
+        TD.run_production(doc, settings, drive_root=drive, verifier=fx.verifier)
+    assert not drive.exists()

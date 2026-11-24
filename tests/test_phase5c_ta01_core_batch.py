@@ -184,13 +184,34 @@ def test_known_volume_cap_blocks_order_before_submission():
     assert out['ta01_fill_window']['not_submitted'] == []
 
 
-def test_core_full_minute_cap_still_applies_after_known_volume_check():
-    # known volume passes (3000 x 0.05 = 150), but the chosen bar's FULL-minute volume is 100 -> Core rejects with its
-    # own pinned cap (not changed here); NEXT_BAR: no fill. Documented residual; counted by the fill diagnostic.
-    out = run(make_schedule(cap=0.05), frame(volumes={'14:17': 100, '15:14': 3000}))
+def test_core_no_longer_uses_the_fill_minutes_own_volume():
+    # Core 76902a1 known-volume basis: the chosen 14:17 bar's own (full-minute) volume of 100 is NOT used any more,
+    # so the order fills; under Core 50ea3bf this was rejected (look-ahead residual).
+    out = run(make_schedule(cap=0.05), frame(volumes={'14:15': 3000, '14:17': 100, '15:14': 3000, '15:15': 3000}))
+    for item in out['scenarios'].values():
+        assert len(item['result'].round_trips) == 1
+        assert 'VOLUME_PARTICIPATION_EXCEEDED' not in set(item['result'].rejections.get('reason', []))
+        assert item['result'].provenance['participation_volume_basis'] == 'LAST_COMPLETED_AT_FILL_OPEN'
+    assert out['ta01_fill_window']['core_participation_basis'] == 'LAST_COMPLETED_AT_FILL_OPEN'
+
+
+def test_core_known_volume_check_on_the_bar_known_at_the_fill_bars_open():
+    # Decision 14:15: the Agent's known volume is the 14:14 minute (3000 x 0.05 = 150 >= 100). The chosen bar is the
+    # 14:17 label (bar_start 14:16); Core's reference is the 14:15 label (modeled_available_at 14:16) = 100 -> Core
+    # rejects with KNOWN_VOLUME_PARTICIPATION_EXCEEDED; NEXT_BAR: no fill. Reported, not re-routed by the Agent.
+    out = run(make_schedule(cap=0.05), frame(volumes={'14:15': 100, '15:14': 3000}))
     for item in out['scenarios'].values():
         assert len(item['result'].round_trips) == 0
-        assert 'VOLUME_PARTICIPATION_EXCEEDED' in set(item['result'].rejections['reason'])
+        rej = item['result'].rejections
+        assert 'KNOWN_VOLUME_PARTICIPATION_EXCEEDED' in set(rej['reason'])
+        assert set(rej.loc[rej.reason.eq('KNOWN_VOLUME_PARTICIPATION_EXCEEDED'), 'participation_reference_volume']) == {100}
+
+
+def test_ta01_execution_refuses_a_core_without_the_known_volume_basis(schedule, monkeypatch):
+    from strategy_agent.research_only import core_phase4a as PP
+    monkeypatch.setattr(PP, 'core_participation_basis', lambda core: PP.CORE_LEGACY_BASIS)
+    with pytest.raises(PP.Phase4ABindingError, match='participation_volume_basis'):
+        run(schedule, frame())
 
 
 def test_delayed_open_is_recorded_and_its_buckets_excluded(schedule):
@@ -334,10 +355,14 @@ def test_runner_archive_accepts_shifted_order_time_within_window_only(tmp_path, 
 
 # ------------------------------------------------------------------ fill diagnostic (synthetic only; counts, no PnL)
 
-def diag(fr, cap=None, spec=SPEC):
+LEGACY = 'FILL_BAR_REALIZED'          # Core 50ea3bf rule, kept so the earlier diagnostics stay reproducible
+KNOWN = 'LAST_COMPLETED_AT_FILL_OPEN'  # Core 76902a1 rule
+
+
+def diag(fr, cap=None, spec=SPEC, core_basis=None):
     from strategy_agent.research_only import ta01_fill_diagnostic as D
     return D.diagnose(core, fr, spec=spec, parameters=PARAMS, participation_cap=cap,
-                      window_start=DAYS[0] + 'T00:00:00-05:00', window_end=WINDOW_END)
+                      window_start=DAYS[0] + 'T00:00:00-05:00', window_end=WINDOW_END, core_basis=core_basis)
 
 
 def test_diagnostic_counts_match_execute_batch_on_the_same_frame(schedule):
@@ -371,8 +396,40 @@ def test_diagnostic_participation_known_volume_and_core_residual():
     d = diag(frame(), cap=0.02)                                 # known 3000 x 0.02 = 60 < 100
     assert d['entry']['known_volume_cap_blocked'] == 1 and d['exit']['intents'] == 0
     assert d['entry']['known_volume_to_quantity']['median'] == 30.0
-    d = diag(frame(volumes={'14:17': 100, '15:14': 3000}), cap=0.05)
+    d = diag(frame(volumes={'14:17': 100, '15:14': 3000}), cap=0.05, core_basis=LEGACY)
     assert d['entry']['core_full_minute_cap_would_reject'] == 1 and d['entry']['fillable'] == 0
+    assert d['diagnostic_id'] == 'P5C-TA01-FILL-DIAGNOSTIC-v1' and d['definitions']['core_participation_basis'] == LEGACY
+
+
+def test_diagnostic_known_volume_basis_matches_new_core():
+    # Same frame: under the known-volume rule the 14:17 bar's own 100 no longer matters; the reference (14:15 label)
+    # does. Default basis = what the installed Core offers (76902a1 -> KNOWN).
+    fr = frame(volumes={'14:15': 3000, '14:17': 100, '15:14': 3000, '15:15': 3000})
+    d = diag(fr, cap=0.05)
+    assert d['definitions']['core_participation_basis'] == KNOWN and d['diagnostic_id'] == 'P5C-TA01-FILL-DIAGNOSTIC-v2'
+    assert d['entry']['core_known_volume_would_reject'] == 0 and d['entry']['fillable'] == 1
+    assert 'core_full_minute_cap_would_reject' not in d['entry']
+    assert [b['status'] for b in d['open_blockers']] == ['FIXED_IN_CORE_PENDING_REVIEW']
+    d = diag(frame(volumes={'14:15': 100, '15:14': 3000}), cap=0.05)
+    assert d['entry']['core_known_volume_would_reject'] == 1 and d['entry']['fillable'] == 0
+    assert d['by_decision_time'][next(k for k in d['by_decision_time'] if k.startswith('entry'))] == {'CORE_KNOWN_VOLUME': 1}
+
+
+def test_diagnostic_known_volume_predictions_equal_core_engine(schedule):
+    # The Agent's replication of the Core rule must agree with what Core 76902a1 actually does on the same frame.
+    for vols in ({'14:15': 100, '15:14': 3000}, {'14:15': 3000, '14:17': 100, '15:14': 3000, '15:15': 3000},
+                 {'14:15': 3000, '15:14': 3000, '15:15': 50}):
+        fr = frame(volumes=vols)
+        d = diag(fr, cap=0.05)
+        try:
+            out = run(make_schedule(cap=0.05), fr)
+        except Exception as e:                                   # an unfilled exit fails the whole run
+            assert 'no-overnight' in str(e) and d['exit']['core_known_volume_would_reject'] == 1
+            continue
+        res = out['scenarios']['BASE']['result']
+        core_rejects = int((res.rejections.get('reason', pd.Series(dtype=str)) == 'KNOWN_VOLUME_PARTICIPATION_EXCEEDED').sum())
+        assert core_rejects == d['entry']['core_known_volume_would_reject'] + d['exit']['core_known_volume_would_reject']
+        assert len(res.fills) == d['entry']['fillable'] + d['exit']['fillable']
 
 
 def test_diagnostic_reports_delayed_open_and_data_summary_without_performance_fields():
@@ -404,19 +461,19 @@ def test_q8_decisions_and_fill_times_equal_ta01_only_quantity_differs(schedule):
 
 def test_q8_minimum_minute_volume_is_800_at_one_percent():
     # known volume at 14:15 is the 14:14 minute; at 15:15 the 15:14 minute (default 1000 >= 800)
-    d = diag(frame(volumes={'14:14': 800}), cap=0.01, spec=Q8)
+    d = diag(frame(volumes={'14:14': 800}), cap=0.01, spec=Q8, core_basis=LEGACY)
     assert d['definitions']['min_minute_volume_for_quantity'] == 800
     assert d['entry']['fillable'] == 1 and d['exit']['fillable'] == 1
-    d = diag(frame(volumes={'14:14': 799}), cap=0.01, spec=Q8)
+    d = diag(frame(volumes={'14:14': 799}), cap=0.01, spec=Q8, core_basis=LEGACY)
     assert d['entry']['known_volume_cap_blocked'] == 1 and d['exit']['intents'] == 0
-    d = diag(frame(volumes={'14:17': 799}), cap=0.01, spec=Q8)       # known passes; Core full-minute check would not
+    d = diag(frame(volumes={'14:17': 799}), cap=0.01, spec=Q8, core_basis=LEGACY)  # known passes; Core full-minute check would not
     assert d['entry']['core_full_minute_cap_would_reject'] == 1
     d = diag(frame(), cap=0.01)                                      # same frame at 100 units: needs 10,000
     assert d['entry']['known_volume_cap_blocked'] == 1 and d['definitions']['min_minute_volume_for_quantity'] == 10000
 
 
 def test_q8_diagnostic_reports_variant_labels_and_open_core_blocker():
-    d = diag(frame(), cap=0.01, spec=Q8)
+    d = diag(frame(), cap=0.01, spec=Q8, core_basis=LEGACY)
     assert d['variant'] == {'strategy_id': Q8['strategy_id'], 'variant': 'P5C-TA01-Q8', 'units': 8,
                             'labels': ['POST_DIAGNOSTIC_VARIANT', 'EXPLORATORY_ONLY'],
                             'parent_strategy_id': SPEC['strategy_id'], 'exit_fill_policy': 'WINDOW_ONLY'}

@@ -36,9 +36,12 @@ NY = ZoneInfo("America/New_York")
 
 # DAY order keeps waiting after these bar-level codes (execution.py live loop; DAY branch). Explicit allow-list:
 # anything else - including Core-retried cost-schedule codes - is NOT accepted as temporary.
+# Core 76902a1 adds KNOWN_VOLUME_PARTICIPATION_EXCEEDED / KNOWN_VOLUME_UNAVAILABLE on the same DAY branch (temporary);
+# they never occur under Core 50ea3bf.
 TEMPORARY_DAY_BAR_CODES = frozenset({"OUTSIDE_SESSION", "BAR_NOT_ELIGIBLE", "ZERO_VOLUME_BAR",
                                      "VOLUME_PARTICIPATION_EXCEEDED", "BUY_NOT_ELIGIBLE", "SELL_NOT_ELIGIBLE",
-                                     "LIMIT_NOT_TOUCHED"})
+                                     "LIMIT_NOT_TOUCHED", "KNOWN_VOLUME_PARTICIPATION_EXCEEDED",
+                                     "KNOWN_VOLUME_UNAVAILABLE"})
 TERMINAL_BAR_CODES = frozenset({"BAR_IN_EXCLUSION_WINDOW", "INSUFFICIENT_MARGIN", "RISK_LIMIT"})
 ACTIVATION_TERMINAL_CODES = frozenset({"TARGET_SIDE_MISMATCH"})
 PRE_ACTIVATION_CODES = frozenset({"PIT_VIOLATION", "UNSUPPORTED_CONSERVATIVE_ORDER_TYPE"})

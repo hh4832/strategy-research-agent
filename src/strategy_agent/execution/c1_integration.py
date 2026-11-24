@@ -132,16 +132,19 @@ def validate_cost_scenario_compatibility(root, schedules):
             'taf_cat_assumption':'BOTH_SIDE_NO_CAP_CONSERVATIVE_RESEARCH_ASSUMPTION'}
 
 
-def inspect_archive(archive_root, *, conversion_approval: dict, trusted_pins: dict | None=None):
+def inspect_archive(archive_root, *, conversion_approval: dict, trusted_pins: dict | None=None,
+                    reader_core_shas: tuple=(CORE,)):
     """Verify only the given recovery archive. Does not open any conversion-source path.
 
     Without independently reviewed pins results stay OBSERVED_NOT_TRUSTED.
     The archived local receipt is retained as historical evidence, never reused.
+    ``reader_core_shas``: reviewed Core commits allowed to read the archive (C1: only CORE). A caller may add a Core
+    commit only when its reader/development code is identical to CORE's (P5C-TA01: 76902a1 changes execution.py only).
     """
     from strategy_agent.adapters.mrc_phase4a import core_development
     dev,native=core_development()
     identity=native.core_code_identity()
-    if identity['core_git_sha']!=CORE or identity['core_tree_dirty'] is not False:
+    if identity['core_git_sha'] not in reader_core_shas or identity['core_tree_dirty'] is not False:
         raise ValueError('clean pinned Core required')
     root=Path(archive_root).resolve(strict=True)
     marker_path=inside(root,'RECOVERY_VERIFIED.json');marker=json.loads(marker_path.read_text())
@@ -187,7 +190,7 @@ def inspect_archive(archive_root, *, conversion_approval: dict, trusted_pins: di
     return {'status':'REVIEWED_PINS_VERIFIED' if trusted_pins is not None else 'OBSERVED_NOT_TRUSTED',
             'observed_pins':observed,'bundle':bundle,'snapshot_root':str(sr),'snapshot_files':inventory,
             'original_producer_sha':PRODUCER,'recovery_core_sha':rec['recovery_core_sha'],
-            'reader_core_sha':CORE,'conversion_plan_sha256':PLAN,'strategy_execution':'NOT_EXECUTED'}
+            'reader_core_sha':identity['core_git_sha'],'conversion_plan_sha256':PLAN,'strategy_execution':'NOT_EXECUTED'}
 
 
 def stage_archive(inspection: dict,local_directory):

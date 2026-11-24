@@ -71,14 +71,15 @@ def validate_data_report(report):
         raise ValueError('FRESH_C1_DATA_PREFLIGHT_REQUIRED')
 
 
-def stage(archive, original_preparation_archive, local, *, code_root=C.ROOT):
+def stage(archive, original_preparation_archive, local, *, code_root=C.ROOT, reader_core_shas=(C.CORE,)):
     """Fresh Runtime: verified original metadata, exact reviewed pins, receipt renewal, full Core PIT preflight."""
     from strategy_agent.readiness.c1_authorization import archive_metadata
     metadata=archive_metadata(original_preparation_archive,code_root)
     if not metadata['context'].get('pin_review_evidence_ref') or metadata['pins']['observed_pins']!=PINS:
         raise ValueError('PERSONAL_DATA_PIN_REVIEW_REQUIRED')
     provenance=read(Path(archive)/'recovery_provenance.json')
-    inspected=C.inspect_archive(archive,conversion_approval=provenance['conversion_approval'],trusted_pins=PINS)
+    inspected=C.inspect_archive(archive,conversion_approval=provenance['conversion_approval'],trusted_pins=PINS,
+                              reader_core_shas=reader_core_shas)
     staged=C.stage_archive(inspected,local)
     validate_data_report(staged['preflight'])
     return staged

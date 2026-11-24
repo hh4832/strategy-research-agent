@@ -578,5 +578,31 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e '.[test,research]' -e ./market-research-core
-      - run: pytest -q -p no:cacheprovider tests/test_phase5c1*.py tests/test_phase5b3c_execution.py tests/test_phase4a_research_only.py tests/test_c1_execution_runner.py tests/test_phase5c_ta01_core_batch.py
+      - run: pytest -q -p no:cacheprovider tests/test_phase5c1*.py tests/test_phase5b3c_execution.py tests/test_phase4a_research_only.py tests/test_c1_execution_runner.py
+      - run: git diff --exit-code -- governance registry configs specs docs/evidence
+
+  phase5c-ta01-known-volume-core:
+    # P5C-TA-01 under market-research-core 76902a1 (known-volume participation basis, no look-ahead; Haw 2026-11-24).
+    # TA-01 strategy execution fails closed on an older Core, so its Core-batch tests run only here. The TA-01 fill
+    # diagnostic end-to-end wiring runs here (new rule) and in phase5c1-integration (legacy rule, Core 50ea3bf).
+    # Synthetic only; no Development archive, Holdout, authorization or batch.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Checkout pinned Core (known-volume participation basis)
+        run: |
+          git clone https://github.com/hh4832/market-research-core.git market-research-core
+          git -C market-research-core checkout --detach 76902a14245f73bbf1f957c8def737869a6c7254
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e '.[test,research]' -e ./market-research-core
+      - run: pytest -q -p no:cacheprovider tests/test_phase5c_ta01_core_batch.py tests/test_phase5c_ta01_fill_diagnostic.py
+      - run: pytest -q -p no:cacheprovider tests/test_phase5c1_integration.py -k ta01
       - run: git diff --exit-code -- governance registry configs specs docs/evidence
