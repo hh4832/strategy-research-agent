@@ -213,8 +213,18 @@ REVIEWED_SIZING = {
         "variant": "P5C-TA01-Q8X", "units": 8, "max_units": 8, "parent": "p5c_ta01_q8_res20_strongclose_relvol_tsm_15m",
         "labels": ("POST_DIAGNOSTIC_VARIANT", "EXPLORATORY_ONLY"), "exit_fill_policy": "PERSIST_TO_SESSION_END",
         "spec_sha256": "ff6ecc042dace7d599f7cebda5d565b8ad581fbe72f46b2a45cb7fa59ef240a1"},
+    # P5C-TA01-Q8XK: Q8X + per-candidate known volume in the 2-minute window (Haw, 2026-11-24, after
+    # RA-...-TA01Q8X_FILLDIAG-0002 under Core 76902a1; docs/PHASE5C_TA01_Q8XK_VARIANT.md). POST_DIAGNOSTIC_VARIANT,
+    # EXPLORATORY_ONLY. A window candidate fills only if the completed bar known at ITS earliest open (Core 76902a1's
+    # reference row) x cap >= quantity; entries and exits. Exits still persist to the session end with the same rule.
+    "p5c_ta01_q8xk_res20_strongclose_relvol_tsm_15m": {
+        "variant": "P5C-TA01-Q8XK", "units": 8, "max_units": 8, "parent": "p5c_ta01_q8x_res20_strongclose_relvol_tsm_15m",
+        "labels": ("POST_DIAGNOSTIC_VARIANT", "EXPLORATORY_ONLY"), "exit_fill_policy": "PERSIST_TO_SESSION_END",
+        "candidate_volume_check": "KNOWN_AT_CANDIDATE_OPEN",
+        "spec_sha256": "78be9af41ea4cd6db6d165c65531e5a9d42cb2aaa40bb771013ac3ef6291f9be"},
 }
 EXIT_FILL_POLICIES = ("WINDOW_ONLY", "PERSIST_TO_SESSION_END")
+CANDIDATE_VOLUME_CHECKS = ("ORDER_TIME_ONLY", "KNOWN_AT_CANDIDATE_OPEN")
 
 
 def check_sizing(spec: Mapping) -> dict:

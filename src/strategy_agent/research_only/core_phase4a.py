@@ -318,7 +318,8 @@ def execute_batch(core, core_costs, *, frame, core_sha: str, profiles: dict | No
         orders, fill_selection = ta01_select_fills(
             orders, frame, window_minutes=ta01_params.fill_window_minutes, quantity=qty, participation_cap=caps.pop(),
             core=core, exit_persist_to_session_end=check_sizing(spec).get("exit_fill_policy") == "PERSIST_TO_SESSION_END",
-            core_basis=CORE_KNOWN_BASIS)
+            core_basis=CORE_KNOWN_BASIS,
+            candidate_known_check=check_sizing(spec).get("candidate_volume_check") == "KNOWN_AT_CANDIDATE_OPEN")
     else:
         orders = A.targets_to_orders(A.decisions_to_targets(kept), symbol="TSM", market=sem.market, quantity=qty,
                                      strategy_id=str(spec["strategy_id"]), experiment_id=spec_sha[:16], core=core)
@@ -480,7 +481,8 @@ def ta01_fill_candidates(frame, window_minutes: int):
 
 
 def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity: float, participation_cap,
-                      persist_to_session_end: bool = False, core_basis: str = CORE_LEGACY_BASIS):
+                      persist_to_session_end: bool = False, core_basis: str = CORE_LEGACY_BASIS,
+                      candidate_known_check: bool = False):
     """Facts for one order intent at time t (UTC Timestamp). Pure lookup on Core columns; nothing re-timed.
     Window: candidates with Core bar_start in (t, t+window]; expected labels t+2 .. t+window+1.
 
@@ -491,7 +493,12 @@ def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity
 
     ``core_basis`` says which Core participation check the chosen bar must still pass ("core_*_would_reject"):
     CORE_LEGACY_BASIS (Core 50ea3bf: the bar's own full-minute volume, look-ahead) or CORE_KNOWN_BASIS (Core 76902a1:
-    the completed bar known at the candidate's earliest open)."""
+    the completed bar known at the candidate's earliest open).
+
+    ``candidate_known_check`` (reviewed variant P5C-TA01-Q8XK only, Haw 2026-11-24): in the window, a tradable
+    candidate is chosen only if the bar known at ITS earliest open (Core 76902a1's reference row; none -> fails)
+    x cap >= quantity; the first such candidate wins. Tradable bars that all fail -> no window fill
+    (``window_known_volume_at_open_blocked``); exits may then persist as above."""
     if core_basis not in (CORE_LEGACY_BASIS, CORE_KNOWN_BASIS):
         raise Phase4ABindingError(f"unknown Core participation basis {core_basis!r}")
     import pandas as pd  # noqa: PLC0415
@@ -512,6 +519,15 @@ def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity
     elig_col = "buy_execution_eligible" if side == "BUY" else "sell_execution_eligible"
     tradable = cand[cand[elig_col].astype(bool) & cand["volume"].gt(0)]
     chosen = tradable.iloc[0] if len(tradable) else None
+    at_open_blocked = False
+    if candidate_known_check and chosen is not None:
+        chosen = None
+        for _, row in tradable.iterrows():
+            ref = _core_reference_volume(g, row["bar_start"], row["session_close"])
+            if ref is not None and (participation_cap is None or quantity <= ref * float(participation_cap)):
+                chosen = row
+                break
+        at_open_blocked = chosen is None
     known_ok = participation_cap is None or quantity <= known * float(participation_cap)
     lookahead_ok = not _core_would_reject(g, chosen, quantity, participation_cap, core_basis)
     out = {"t": t, "known_volume": known, "known_volume_ok": known_ok,
@@ -520,6 +536,7 @@ def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity
            "other_ineligible_minutes": int((~cand[elig_col].astype(bool) & cand["volume"].gt(0)).sum()),
            "chosen": chosen, "chosen_index": None if chosen is None else int(list(cand.index).index(chosen.name)),
            "core_basis": core_basis, "core_full_bar_cap_would_reject": not lookahead_ok,
+           "candidate_known_check": candidate_known_check, "window_known_volume_at_open_blocked": at_open_blocked,
            "persist_used": False, "persist_chosen": None, "persist_wait_minutes": None, "persist_known_volume": None,
            "persist_core_full_bar_cap_would_reject": False}
     window_ok = known_ok and chosen is not None
@@ -548,7 +565,8 @@ def ta01_fill_examine(by_contract, window, contract: str, t, side: str, quantity
 
 
 def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, participation_cap, core,
-                      exit_persist_to_session_end: bool = False, core_basis: str = CORE_LEGACY_BASIS):
+                      exit_persist_to_session_end: bool = False, core_basis: str = CORE_LEGACY_BASIS,
+                      candidate_known_check: bool = False):
     """Haw, 2026-11-18. For each order at time t: the volume known at t (completed 1m bar available at t) must pass
     the participation cap, otherwise the order is not submitted (KNOWN_VOLUME_CAP). Then the first Core-eligible 1m bar
     with volume > 0 whose bar_start is in (t, t+window] is the fill bar; missing / zero-volume / ineligible minutes are
@@ -559,7 +577,9 @@ def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, pa
     completed bar known at the chosen bar's earliest open; under Core 50ea3bf its FULL-minute volume, look-ahead).
     Such rejections are left to Core and reported; the Agent does not move on to another bar because of them.
     ``exit_persist_to_session_end`` (reviewed variant only): SELL (exit) orders that get no fill in the window keep
-    looking after it, see ``ta01_fill_examine``; entries are never extended."""
+    looking after it, see ``ta01_fill_examine``; entries are never extended.
+    ``candidate_known_check`` (reviewed variant Q8XK only): window candidates must also pass the known volume at
+    their own open, see ``ta01_fill_examine``; reason FILL_WINDOW_KNOWN_VOLUME_AT_OPEN when all tradable ones fail."""
     from dataclasses import replace as _replace
     by_contract, window = ta01_fill_candidates(frame, window_minutes)
     kept, not_submitted, shifted, persisted = [], [], 0, []
@@ -568,12 +588,13 @@ def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, pa
         t = pd.Timestamp(o.order_time).tz_convert("UTC")
         persist = exit_persist_to_session_end and o.side == "SELL"
         x = ta01_fill_examine(by_contract, window, o.contract, t, o.side, quantity, participation_cap, persist,
-                              core_basis)
+                              core_basis, candidate_known_check)
         base = {"order_id": o.order_id, "side": o.side, "order_time": t.isoformat(), "known_volume": x["known_volume"],
                 "missing_minutes": x["missing_minutes"], "zero_volume_minutes": x["zero_volume_minutes"],
                 "other_ineligible_minutes": x["other_ineligible_minutes"]}
         if x["final_chosen"] is None:
-            reason = "KNOWN_VOLUME_CAP" if not x["known_volume_ok"] else "FILL_WINDOW_NO_TRADABLE_BAR"
+            reason = ("KNOWN_VOLUME_CAP" if not x["known_volume_ok"] else "FILL_WINDOW_KNOWN_VOLUME_AT_OPEN"
+                      if x["window_known_volume_at_open_blocked"] else "FILL_WINDOW_NO_TRADABLE_BAR")
             not_submitted.append(base | {"reason": reason + ("_THEN_NO_FILL_TO_SESSION_END" if persist else "")})
             continue
         if x["final_stage"] == "PERSIST":
@@ -587,7 +608,7 @@ def ta01_select_fills(orders, frame, *, window_minutes: int, quantity: float, pa
             shifted += 1
         kept.append(o)
     return kept, {"not_submitted": not_submitted, "submitted": len(kept), "order_time_shifted": shifted,
-                  "core_participation_basis": core_basis,
+                  "core_participation_basis": core_basis, "candidate_known_check": candidate_known_check,
                   "exit_persist_to_session_end": exit_persist_to_session_end, "exits_filled_after_window": persisted}
 
 

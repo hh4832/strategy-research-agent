@@ -36,6 +36,7 @@ AUTHORIZATION_PATHS = {
     "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001": "docs/phase5c/ta01q8_fill_diagnostic_authorization_0001.json",
     "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001": "docs/phase5c/ta01q8x_fill_diagnostic_authorization_0001.json",
     "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002": "docs/phase5c/ta01q8x_fill_diagnostic_authorization_0002.json",
+    "RA-IBKR_TSM-TA01Q8XK_FILLDIAG-0001": "docs/phase5c/ta01q8xk_fill_diagnostic_authorization_0001.json",
 }
 # Retired ids are refused in every mode, whatever exists or is deleted on Drive (one-time use is not Drive-dependent).
 RETIRED_AUTHORIZATIONS = {
@@ -46,6 +47,9 @@ RETIRED_AUTHORIZATIONS = {
                                         "7e641f466672cf0c655e0803140e54375d51b9bec54244b400c938853f3f6d78); no re-run",
     "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001": "USED: SUCCEEDED (ta01_fill_diagnostic.json sha256 "
                                          "3459121075a1b819ecb235cd5e5ef8c9aef8408727655a2e3b7a09cf441209cb); no re-run",
+    "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002": "USED: SUCCEEDED 2026-11-24 under Core 76902a1 (ta01_fill_diagnostic.json "
+                                         "sha256 b41f8f7f22edb189bdf640c117eea50389203a5b60940175e1aa3076636c6129); "
+                                         "no re-run",
 }
 OPEN_BLOCKERS = [
     {"id": "CORE_FULL_MINUTE_CAP_LOOKAHEAD", "status": "BLOCKER",
@@ -97,7 +101,7 @@ def _quantiles(values: list[float]) -> dict:
     return {"n": len(v), "min": v[0], "p01": q(.01), "p05": q(.05), "p25": q(.25), "median": q(.5)}
 
 
-def _side_counter(known_basis: bool = False):
+def _side_counter(known_basis: bool = False, cand_check: bool = False):
     core_key = "core_known_volume_would_reject" if known_basis else "core_full_minute_cap_would_reject"
     return {"intents": 0, "known_volume_cap_blocked": 0, "no_tradable_bar_in_window": 0,
             "no_tradable_bar_causes": Counter(), "intents_with_missing_minute_in_window": 0,
@@ -105,6 +109,7 @@ def _side_counter(known_basis: bool = False):
             "chosen_later_candidate_waited": 0, core_key: 0, "fillable": 0,
             "persisted_after_window": 0, "persist_fill_found": 0, "persist_" + core_key: 0,
             "persist_no_fill_to_session_end": 0,
+            **({"window_known_volume_at_open_blocked": 0} if cand_check else {}),
             "_known_ratio": [], "_chosen_ratio": [], "_persist_wait": []}
 
 
@@ -137,12 +142,13 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
     if qty != float(spec["position_sizing"]["units"]):
         raise DiagnosticRefused("quantity must equal the frozen spec's fixed units")
     exit_policy = _variant(spec)["exit_fill_policy"]
+    cand_check = _variant(spec).get("candidate_volume_check") == "KNOWN_AT_CANDIDATE_OPEN"
     rows, _ = P.conservative_rows_and_bars(frame_1m)
     decs, delayed_open = P.ta01_signals(core, frame_1m, rows, params)
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
     kept = [d for d in decs if ws <= d.decision_ts < we]
     by_contract, window = P.ta01_fill_candidates(frame_1m, params.fill_window_minutes)
-    sides = {"entry": _side_counter(known_basis), "exit": _side_counter(known_basis)}
+    sides = {"entry": _side_counter(known_basis, cand_check), "exit": _side_counter(known_basis, cand_check)}
     by_time: dict[str, Counter] = {}
     exit_failures, long = [], False
     for d in kept:
@@ -152,7 +158,7 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         t = pd.Timestamp(d.decision_ts).tz_convert("UTC")
         persist = side == "exit" and exit_policy == "PERSIST_TO_SESSION_END"
         x = P.ta01_fill_examine(by_contract, window, "TSM", t, "BUY" if side == "entry" else "SELL", qty,
-                                participation_cap, persist, core_basis)
+                                participation_cap, persist, core_basis, cand_check)
         c = sides[side]
         c["intents"] += 1
         c["intents_with_missing_minute_in_window"] += x["missing_minutes"] > 0
@@ -162,6 +168,9 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         if not x["known_volume_ok"]:
             c["known_volume_cap_blocked"] += 1
             outcome = "KNOWN_VOLUME_CAP"
+        elif x["window_known_volume_at_open_blocked"]:
+            c["window_known_volume_at_open_blocked"] += 1
+            outcome = "WINDOW_KNOWN_VOLUME_AT_OPEN"
         elif x["chosen"] is None:
             c["no_tradable_bar_in_window"] += 1
             outcome = _cause(x, params.fill_window_minutes)
@@ -203,7 +212,8 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         out = {k: v for k, v in c.items() if not k.startswith("_")}
         out["no_tradable_bar_causes"] = dict(c["no_tradable_bar_causes"])
         for k in ("known_volume_cap_blocked", "no_tradable_bar_in_window", core_key,
-                  "intents_with_missing_minute_in_window", "intents_with_zero_volume_minute_in_window"):
+                  "intents_with_missing_minute_in_window", "intents_with_zero_volume_minute_in_window",
+                  *(("window_known_volume_at_open_blocked",) if cand_check else ())):
             out[k + "_ratio"] = (out[k] / n) if n else None
         out["not_fillable_total"] = n - c["fillable"]
         out["not_fillable_ratio"] = ((n - c["fillable"]) / n) if n else None
@@ -239,6 +249,11 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
                                  "PERSIST_TO_SESSION_END: an exit with no fill in the window keeps looking minute by "
                                  "minute to the session end (known volume before each candidate x cap); persist_* "
                                  "counts; entries never persist"),
+            **({"candidate_volume_check": "KNOWN_AT_CANDIDATE_OPEN: a window candidate is chosen only if the RTH "
+                                          "bar of the same session whose modeled_available_at equals its bar_start "
+                                          "(Core's reference row) x cap >= quantity; none passes -> "
+                                          "window_known_volume_at_open_blocked (exits may then persist)"}
+               if cand_check else {}),
             "volume_unit": "as stored in the Core source 'volume' column; unit UNVERIFIED (see data.median_daily_rth_volume_by_year)",
             "delayed_open_policy": "TA01-DELAYED-OPEN-EXCLUSION-v1"},
         "data": {"rows_1m": int(len(f)), "rth_sessions": int(daily.size),
@@ -269,7 +284,8 @@ def _variant(spec: dict) -> dict:
     rev = check_sizing(spec)
     return {"strategy_id": spec["strategy_id"], "variant": rev["variant"], "units": rev["units"],
             "labels": list(rev.get("labels", ())), "parent_strategy_id": rev.get("parent"),
-            "exit_fill_policy": rev.get("exit_fill_policy", "WINDOW_ONLY")}
+            "exit_fill_policy": rev.get("exit_fill_policy", "WINDOW_ONLY"),
+            **({"candidate_volume_check": rev["candidate_volume_check"]} if "candidate_volume_check" in rev else {})}
 
 
 def assert_no_performance_fields(obj, path="") -> None:
@@ -343,7 +359,9 @@ def check_scope(doc: dict, *, spec: dict, spec_sha256: str, core_sha: str, sched
                            "core": s["core_sha"] == core_sha, "cost_schedule": s["costs"]["dated_schedule_sha256"] == schedule_sha256,
                            "pins": s["dataset"]["reviewed_pins"] == pins, "window": s["window"] == window,
                            "quantity": float(s["strategy"]["quantity"]) == float(spec["position_sizing"]["units"]),
-                           "strategy_id": s["strategy"].get("strategy_id") == spec["strategy_id"]}.items()
+                           "strategy_id": s["strategy"].get("strategy_id") == spec["strategy_id"],
+                           "candidate_volume_check": s["strategy"].get("candidate_volume_check")
+                           == _variant(spec).get("candidate_volume_check")}.items()
            if not ok]
     if bad:
         raise DiagnosticRefused(f"run differs from the authorized scope: {bad}")
