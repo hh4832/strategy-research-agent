@@ -69,7 +69,8 @@ def dataset_readiness(m: dict) -> dict:
     out["D6_missing_data_explicit_policy"] = _c(
         "INCOMPLETE_SOURCE_BUCKET" in rej and (diag.get("rejections_by_scenario") is not None),
         {"policy": "Core conservative aggregation: an incomplete source bucket is never executable "
-                   "(INCOMPLETE_SOURCE_BUCKET); orders not filled within max_fill_delay_bars expire (ORDER_EXPIRED); "
+                   "(INCOMPLETE_SOURCE_BUCKET); unfilled DAY orders expire at the first session close after the "
+                   "order time (ORDER_EXPIRED); the spec's max_fill_delay_bars is not enforced by Agent or Core; "
                    "no forward fill", "observed": {"INCOMPLETE_SOURCE_BUCKET": rej.get("INCOMPLETE_SOURCE_BUCKET")}},
         attested=True)
     cps = info.get("cost_profile_sha256")
