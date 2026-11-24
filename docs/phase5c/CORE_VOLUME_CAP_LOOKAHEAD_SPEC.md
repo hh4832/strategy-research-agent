@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **DRAFT_FOR_HAW_REVIEW**. Spec only |
+| Status | **APPROVED by Haw 2026-11-24** (D1–D4 as recommended; D5: implement). Implementation: `market-research-core` branch `feat/participation-known-volume-basis` @ `ae372e0`, based on `50ea3bf`; not merged |
 | Written | 2026-11-24 |
 | Core reviewed | `hh4832/market-research-core` @ `50ea3bfa42df7708dd3a1b21f17798c206be054e` (pinned, unmodified) |
 | Agent reviewed | `main` @ `1840ae1` |
@@ -80,7 +80,7 @@ The setting lives on `ExecutionConfig`, not on the cost profile: it is a timing 
 ### 2.2 Reference bar
 
 For a candidate row `c` of contract `k`, the reference bar `r` is the row of the **same frame, same symbol, market
-and contract `k`, same session** (`session_close` equal) with:
+and contract `k`, same session** (`session_close` equal, and the row's own `session` is `RTH`) with:
 
 ```
 r.modeled_available_at == c.bar_start
@@ -121,7 +121,9 @@ elif qty > known * cap:           reason = "KNOWN_VOLUME_PARTICIPATION_EXCEEDED"
 
 ### 2.4 Provenance
 
-Every fill and every participation rejection carries:
+Under `LAST_COMPLETED_AT_FILL_OPEN` (with a cap set), every fill and every `KNOWN_VOLUME_*` rejection carries the
+fields below. Under the legacy basis, fill and rejection rows are left exactly as before; only run-level provenance
+changes:
 - `participation_volume_basis`;
 - `participation_reference_modeled_available_at`, `participation_reference_volume`;
 - `participation_cap`.
@@ -189,6 +191,9 @@ thinner than the minute at `t`. That is a real, non-look-ahead rejection and sho
 ## 5. Acceptance criteria
 
 - Diff limited to `execution.py` (setting, reference lookup, check, provenance) and new tests.
+- Note on D4: under the current temporal policy (signals from 10:00 ET, same-session candidates only), a candidate
+  whose reference would be a non-RTH row cannot be reached by an order. The code still rejects it
+  (`KNOWN_VOLUME_UNAVAILABLE`), but no synthetic order can exercise it; it is covered by the missing-reference test.
 - No change to `costs.py`, cost configs, temporal policy, data access or bar preparation.
 - Existing Core tests pass unchanged.
 - New tests 2–10 pass.
@@ -208,7 +213,9 @@ thinner than the minute at `t`. That is a real, non-look-ahead rejection and sho
 
 ## 7. Decisions for Haw
 
-| # | Question | Recommendation |
+Haw, 2026-11-24: D1–D4 as recommended; D5 go ahead with the Core implementation.
+
+| # | Question | Recommendation (approved) |
 |---|---|---|
 | D1 | Reference point for Core: at the candidate's open (this spec), or at the order time? | Candidate's open. It is the generic rule; the stricter order-time rule already lives in the Agent |
 | D2 | Missing reference minute: reject (`KNOWN_VOLUME_UNAVAILABLE`), or fall back to the latest older bar? | Reject; no fallback |
