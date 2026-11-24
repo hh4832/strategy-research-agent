@@ -1,0 +1,483 @@
+{
+  "schema_version": "1.0.0",
+  "status": "PROPOSED",
+  "review_status": "NEEDS_REVIEW",
+  "origin": {
+    "user_hypothesis": "A completed 15m RTH bucket that closes above the highest high of the prior 20 eligible buckets, closes in the top quarter of its own range, and trades at least twice the prior 20-bucket average volume marks accepted resistance breaks that continue over the next hours.",
+    "adapter_id": "CLAUDE_AUTHORED_P5C_TA01_BACKFILL_COMPLETION_FILE",
+    "draft_sha256": "a836ef1feaa36e72cf70fe93b461b031496c8d80196e377ca303b04bf1cb8673",
+    "agent_commit_sha": "231d3ed2f6e41efdf0b288a71932ddbdb6e4b872",
+    "created_at": "2026-11-20T15:00:00+08:00",
+    "input_kind": "USER_HYPOTHESIS"
+  },
+  "draft": {
+    "title": "P5C-TA-01 (BACKFILLED A2 RECORD 2026-11-20 of the 2026-11-17 AI proposal): do 20-bucket resistance breaks with a strong close and >=2x relative volume on TSM 15m continue beyond a random-entry null and costs?",
+    "hypothesis": {
+      "question": "A completed 15m RTH bucket that closes above the highest high of the prior 20 eligible buckets, closes in the top quarter of its own range, and trades at least twice the prior 20-bucket average volume marks accepted resistance breaks that continue over the next hours.",
+      "testable_claim": "Mean net PnL per closed trade at BASE cost exceeds the pre-registered random-entry null with identical exits and costs.",
+      "null_hypothesis": "Mean net PnL per closed trade at BASE cost does not exceed the random-entry null.",
+      "expected_direction": "POSITIVE",
+      "purpose": "AI-proposed hypothesis (Claude, 2026-11-17, Phase 5-C; PROPOSAL_ONLY). This A2 record is a BACKFILL made on 2026-11-20 from the original proposal (docs/phase5c/ta01_origin/P5C_TA01_PROPOSAL.md, sha256 da8fe5c1...) and the original 0.0.1 draft spec (p5c_ta01_spec_draft.json, sha256 235288ee...). It reconstructs the pre-diagnostic proposal only: it adds no rule and does not include later execution decisions or the post-diagnostic variants Q8/Q8X. Written after fill-feasibility diagnostics were seen; no performance result exists. Development data only; Holdout never read."
+    },
+    "market_mechanism": {
+      "category": "MOMENTUM",
+      "causal_logic": "Resistance at a recent high concentrates resting sell orders; a strong close on unusually high volume indicates that this supply was absorbed by aggressive buyers rather than a thin, quickly reversed probe.",
+      "failure_modes": [
+        "breakout failure / stop runs",
+        "volume spikes from auctions or news mis-attributed",
+        "edge below costs"
+      ]
+    },
+    "strategy_rules": {
+      "entry_condition": "Long at the decision time of a completed eligible 15m RTH bucket when ALL hold: close > highest high of the prior 20 eligible buckets (excluding the current one); close > open and close - low >= 0.75 x (high - low) with high > low; volume >= 2.0 x mean volume of the prior 20 eligible buckets; decision time before 14:30 ET; at most one entry per session; no entry on early-close sessions.",
+      "exit_condition": "First of: close < lowest low of the prior 10 eligible buckets; held 8 eligible buckets; first decision time >= 15:15 ET.",
+      "position_sizing": "FIXED_UNITS 100 shares (max 100); initial capital 100000 USD.",
+      "exit_policy": "Support break, maximum hold or 15:15 ET time exit; intraday only (no overnight); no stop-loss or take-profit beyond these.",
+      "holding_horizon": "up to 8 eligible 15m buckets; flat by the 15:15 ET decision",
+      "signal_time": "BAR_AVAILABLE_AT",
+      "execution_time": "STRICTLY_AFTER_SIGNAL_AVAILABILITY",
+      "universe": {
+        "market": "IBKR",
+        "symbols": [
+          "TSM"
+        ],
+        "timeframe": "15m"
+      }
+    },
+    "required_data": {
+      "market": "IBKR",
+      "symbols": [
+        "TSM"
+      ],
+      "timeframe": "15m",
+      "price_fields": [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "additional_features": [],
+      "coverage": {
+        "start": "2016-10-19",
+        "end": "2024-12-31"
+      },
+      "pit_requirements": [
+        "Use only fully completed buckets and original timestamps.",
+        "Rolling windows exclude the current bucket (lag 1).",
+        "Never access Holdout HOLDOUT-TSM-15M-v1; Development data only."
+      ],
+      "pit_timing": "Signal at the completed bucket's Core modeled_available_at; fill strictly later on an eligible bar (CONSERVATIVE_LABEL_AGNOSTIC).",
+      "source_ref": "20261101_205431_06359faf7ef4_IBKR_FINAL_GATE_FULL",
+      "availability": "NOT_VERIFIED"
+    },
+    "research_variables": {
+      "changes": [
+        {
+          "core_variable": "strategy family (new hypothesis; not a variant of an executed study)",
+          "baseline": "random-entry null with identical entry window, exits, quantity, fill and cost rules (pre-registered primary comparator)",
+          "proposed_change": "enter only on buckets meeting the three TA-01 conditions",
+          "expected_improvement": "mean net PnL per closed trade at BASE cost above the random-entry null; no performance claimed",
+          "potential_side_effects": "TSM Development data already used by earlier SMA studies (repeated-data risk); one symbol; RESEARCH_ONLY costs; random-entry seed/draws/quantile not yet fixed (NEEDS_CONFIRMATION)"
+        }
+      ],
+      "parameter_search": {
+        "mode": "FIXED",
+        "max_trials": 1
+      },
+      "selection_basis": "HYPOTHESIS_DRIVEN",
+      "prior_experiment_refs": [
+        "docs/phase5c1/research_proposal.json"
+      ]
+    },
+    "challenger_view": {
+      "failure_reason": "Could breakout failures and stop runs, or auction/news volume spikes misread as absorption, invalidate the mechanism?",
+      "falsification": "Would mean net PnL per closed trade at BASE cost not exceeding the pre-registered random-entry null refute this hypothesis?",
+      "market_beta": "Would TSM's own drift over the same holding windows explain any apparent edge (compare with the drift-matched baseline)?",
+      "regime_dependence": "Would the effect disappear outside a few high-volatility periods or concentrate in the morning (intraday U-shaped volume)?",
+      "trade_concentration": "Would removing the largest-contributing trades eliminate the apparent effect?"
+    },
+    "strategy_spec_fragment": {
+      "universe": {
+        "market": "IBKR",
+        "symbols": [
+          "TSM"
+        ],
+        "timeframe": "15m",
+        "source_timeframe": "1m",
+        "aggregation": {
+          "label": "start",
+          "closed": "left",
+          "require_complete": true,
+          "session_anchored": true
+        },
+        "timezone": "America/New_York",
+        "contract_policy": {
+          "type": "NOT_APPLICABLE",
+          "continuous_inferred": false,
+          "indicator_series": "NOT_APPLICABLE"
+        },
+        "sessions": {
+          "allowed": [
+            "RTH"
+          ],
+          "calendar_ref": "NYSE RTH 09:30-16:00 America/New_York (DST-aware; source timestamps are UTC)",
+          "exclude_closing_auction": true,
+          "no_overnight": true
+        }
+      },
+      "parameters": {
+        "values": {
+          "res_n": {
+            "type": "integer",
+            "default": 20,
+            "min": 20,
+            "max": 20,
+            "step": 1,
+            "description": "resistance lookback (eligible 15m buckets, excluding current)"
+          },
+          "vol_m": {
+            "type": "integer",
+            "default": 20,
+            "min": 20,
+            "max": 20,
+            "step": 1,
+            "description": "relative-volume baseline length (eligible buckets, excluding current)"
+          },
+          "vol_k": {
+            "type": "number",
+            "default": 2.0,
+            "min": 2.0,
+            "max": 2.0,
+            "step": 0.5,
+            "description": "relative-volume multiple"
+          },
+          "close_pos": {
+            "type": "number",
+            "default": 0.75,
+            "min": 0.75,
+            "max": 0.75,
+            "step": 0.05,
+            "description": "strong close: close in top (1-close_pos) of the bar range"
+          },
+          "sup_l": {
+            "type": "integer",
+            "default": 10,
+            "min": 10,
+            "max": 10,
+            "step": 1,
+            "description": "trailing support lookback for the exit"
+          }
+        },
+        "constraints": [],
+        "search": {
+          "mode": "FIXED",
+          "max_trials": 1
+        }
+      },
+      "signal": {
+        "evaluation_time": "BAR_CLOSE",
+        "indicators": [
+          {
+            "id": "res",
+            "type": "ROLLING_MAX",
+            "input": "high",
+            "params": {
+              "period": {
+                "param": "res_n"
+              }
+            },
+            "lag": 1,
+            "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+          },
+          {
+            "id": "vol_avg",
+            "type": "SMA",
+            "input": "volume",
+            "params": {
+              "period": {
+                "param": "vol_m"
+              }
+            },
+            "lag": 1,
+            "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+          },
+          {
+            "id": "sup",
+            "type": "ROLLING_MIN",
+            "input": "low",
+            "params": {
+              "period": {
+                "param": "sup_l"
+              }
+            },
+            "lag": 1,
+            "series_scope": "CONTINUOUS_ELIGIBLE_BARS"
+          }
+        ],
+        "entry_rules": [
+          {
+            "id": "res_break_strong_close_relvol",
+            "action": "ENTER_LONG",
+            "description": "all three must hold on the same completed eligible bucket",
+            "when": {
+              "op": "and",
+              "args": [
+                {
+                  "op": "is_flat"
+                },
+                {
+                  "op": "time_lt",
+                  "time_local": "14:30"
+                },
+                {
+                  "op": "gt",
+                  "left": {
+                    "ref": "close"
+                  },
+                  "right": {
+                    "ref": "res"
+                  }
+                },
+                {
+                  "op": "gt",
+                  "left": {
+                    "ref": "close"
+                  },
+                  "right": {
+                    "ref": "open"
+                  }
+                },
+                {
+                  "op": "gt",
+                  "left": {
+                    "ref": "high"
+                  },
+                  "right": {
+                    "ref": "low"
+                  }
+                },
+                {
+                  "op": "ge",
+                  "left": {
+                    "op": "sub",
+                    "args": [
+                      {
+                        "ref": "close"
+                      },
+                      {
+                        "ref": "low"
+                      }
+                    ]
+                  },
+                  "right": {
+                    "op": "mul",
+                    "args": [
+                      {
+                        "param": "close_pos"
+                      },
+                      {
+                        "op": "sub",
+                        "args": [
+                          {
+                            "ref": "high"
+                          },
+                          {
+                            "ref": "low"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "op": "ge",
+                  "left": {
+                    "ref": "volume"
+                  },
+                  "right": {
+                    "op": "mul",
+                    "args": [
+                      {
+                        "param": "vol_k"
+                      },
+                      {
+                        "ref": "vol_avg"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "exit_rules": [
+          {
+            "id": "support_break",
+            "action": "EXIT_LONG",
+            "when": {
+              "op": "lt",
+              "left": {
+                "ref": "close"
+              },
+              "right": {
+                "ref": "sup"
+              }
+            }
+          }
+        ],
+        "max_entries_per_session": 1
+      },
+      "position_sizing": {
+        "method": "FIXED_UNITS",
+        "units": 100,
+        "max_units": 100,
+        "initial_capital": 100000
+      },
+      "risk_exits": {
+        "stop_loss": {
+          "type": "NONE"
+        },
+        "take_profit": {
+          "type": "NONE"
+        },
+        "time_exit": {
+          "max_holding_bars": 8,
+          "flatten_decision_time_local": "15:15",
+          "flatten_before_session_end": true
+        }
+      },
+      "risk_constraints": {
+        "allowed_directions": [
+          "LONG"
+        ],
+        "max_position_units": 100,
+        "max_trades_per_session": 1,
+        "max_drawdown_halt": 0.25
+      },
+      "execution": {
+        "convention": "oracle-execution-convention-v1",
+        "signal_time": "BAR_AVAILABLE_AT",
+        "order_time": "SIGNAL_TIME",
+        "fill_rule": "NEXT_ELIGIBLE_BAR_OPEN",
+        "order_type": "MARKET",
+        "time_in_force": "UNTIL_END_OF_NEXT_SESSION_END",
+        "max_fill_delay_bars": 2,
+        "partial_fills": false,
+        "same_bar_reentry": false
+      }
+    }
+  },
+  "evaluation_plan": {
+    "protocol": "QUANT_EVALUATION_PROTOCOL v1.0",
+    "metrics": [
+      "Trade Count",
+      "Win Rate",
+      "Payoff Ratio",
+      "Expectancy",
+      "Profit Factor",
+      "Maximum Drawdown",
+      "Tail Risk",
+      "Cost Sensitivity",
+      "Market Regime",
+      "Annual Performance",
+      "Symbol Concentration",
+      "Holding Duration",
+      "Parameter Robustness"
+    ],
+    "threshold_policy": "USE_EXISTING_PROTOCOL_ONLY; NO_NEW_THRESHOLDS"
+  },
+  "bias_risk_checklist": [
+    {
+      "risk": "LOOK_AHEAD_BIAS",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review LOOK_AHEAD_BIAS under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "SURVIVORSHIP_BIAS",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review SURVIVORSHIP_BIAS under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "SELECTION_BIAS",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review SELECTION_BIAS under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "DATA_SNOOPING",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review DATA_SNOOPING under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "TRANSACTION_COSTS",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review TRANSACTION_COSTS under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "SLIPPAGE",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review SLIPPAGE under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "LIQUIDITY",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review LIQUIDITY under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "SAMPLE_SIZE",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review SAMPLE_SIZE under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "CONCENTRATED_PROFIT",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review CONCENTRATED_PROFIT under existing Quant Evaluation Protocol before any request can be executed."
+    },
+    {
+      "risk": "HOLDOUT_CONTAMINATION",
+      "status": "NOT_VERIFIED",
+      "required_check": "Review HOLDOUT_CONTAMINATION under existing Quant Evaluation Protocol before any request can be executed."
+    }
+  ],
+  "fingerprints": {
+    "hypothesis": "6e505899f8bbbec9a2f27ff1d3dead7815452417e97669a74ffa577d5f32e457",
+    "strategy_family": "0c7bde1a867d21956a4f02b426ccdeb1884d1d2cc65040b494b2f8ec69f0246c",
+    "parameter_values": "ab7aff18e174b2b3a7e7781f142fadb40729d897fe4085813aba4a5d4e7029d6",
+    "method": "EXISTING_CANONICAL_STRUCTURE"
+  },
+  "research_change_record": [
+    {
+      "core_variable": "strategy family (new hypothesis; not a variant of an executed study)",
+      "baseline": "random-entry null with identical entry window, exits, quantity, fill and cost rules (pre-registered primary comparator)",
+      "proposed_change": "enter only on buckets meeting the three TA-01 conditions",
+      "expected_improvement": "mean net PnL per closed trade at BASE cost above the random-entry null; no performance claimed",
+      "potential_side_effects": "TSM Development data already used by earlier SMA studies (repeated-data risk); one symbol; RESEARCH_ONLY costs; random-entry seed/draws/quantile not yet fixed (NEEDS_CONFIRMATION)"
+    }
+  ],
+  "validation": {
+    "schema_valid": true,
+    "blockers": [],
+    "risk_flags": [
+      {
+        "code": "DATA_AND_CAUSAL_MECHANISM_NOT_VERIFIED",
+        "message": "Design assertions are not data approval or evidence of strategy effect."
+      }
+    ]
+  },
+  "prior_proposal_refs": [
+    {
+      "proposal_id": "PROP-3a8bcb14c2f791ca14b8",
+      "proposal_sha256": "0dceaf17e64baf7a2867efc03f2b2c811a3c5f23bac0ac0317e86f0f6d62aba5"
+    }
+  ],
+  "holdout_policy": "NO_ACCESS; PROPOSAL_ONLY; NO_AUTHORIZATION",
+  "request_contract": "PINNED_SHARED_SCHEMA; BINDINGS_AND_HUMAN_APPROVAL_REQUIRED",
+  "execution_policy": "PENDING_HUMAN_REVIEW; NEVER_EXECUTE_OR_AUTHORIZE",
+  "request_contract_pin": {
+    "commit_sha": "5d088c4de362add925344d8e48b36c2e9d728d96",
+    "schema_sha256": "1b0530f321c6c71e9eac1bbe5f9c33e3f92e4af4c4ce11b80777c9a94c5324eb",
+    "status": "PINNED_SCHEMA_ONLY; NOT_AUTHORIZATION"
+  },
+  "proposal_id": "PROP-5904571d4fa332291676",
+  "proposal_sha256": "0c8b84160e3e6c943e392d7b9c6222301907afbf52689d602a8d027bad0b13a3"
+}
