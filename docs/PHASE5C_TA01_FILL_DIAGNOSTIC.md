@@ -7,7 +7,22 @@ Status: **tooling only; no diagnostic result exists.** This is not a backtest an
 | `RA-IBKR_TSM-TA01_FILLDIAG-0001` | Approved by hh4832, then **PRE_DATA_INPUT_PATH_FAILURE**. Now **retired** in code: refused in PREPARE and RUN whatever exists on Drive. The empty Drive directory is left as is. Record: `docs/phase5c/ta01_fill_diagnostic_0001_disposition.json`. Document file kept byte-identical (its SHA is bound by the comment) |
 | `RA-IBKR_TSM-TA01_FILLDIAG-0002` | Approved (pull/35#issuecomment-6994446298), **USED, SUCCEEDED 2026-11-19**. Result `ta01_fill_diagnostic.json` sha256 `683737a4…d30b`. At 100 units, 163/278 exits are not fillable under the participation cap, so P5C-TA-01 is BLOCKED. Retired in code; never re-run or overwritten |
 | `RA-IBKR_TSM-TA01Q8_FILLDIAG-0001` | Approved (pull/37#issuecomment-7001566877), **USED, SUCCEEDED 2026-11-19**. Result sha256 `7e641f46…6d78`. At 8 units, 0/326 entries and 7/326 exits are not fillable (4 known-volume, 3 Core full-minute). Retired in code |
-| `RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001` | **Draft, NOT approved.** For **P5C-TA01-Q8X** (Q8 + exits persist to the session end). Same scope as Q8 except strategy, records and the persistence outputs |
+| `RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001` | Approved (pull/38#issuecomment-7010269865), **USED, SUCCEEDED**. Result sha256 `34591210…09cb`, under Core `50ea3bf`. At 8 units with exits persisting: 3/326 exits not fillable, all Core full-minute (look-ahead). Retired in code |
+| `RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002` | **Draft, NOT approved.** Same P5C-TA01-Q8X scope as Q8X-0001, bound to **market-research-core `76902a1`** (known-volume participation basis, Haw 2026-11-24). Only the Core participation rule differs; outputs `core_known_volume_would_reject` instead of the full-minute residual |
+
+## Core participation rule (2026-11-24)
+
+Haw approved `docs/phase5c/CORE_VOLUME_CAP_LOOKAHEAD_SPEC.md` (D1–D4) and its Core implementation
+(market-research-core PR #5, `76902a1`).
+- **TA-01 strategy execution** (`execute_batch`) now requires that Core and sets
+  `participation_volume_basis=LAST_COMPLETED_AT_FILL_OPEN`. It fails closed on an older Core.
+- **The diagnostic** evaluates the rule of the installed Core:
+  - Core `50ea3bf`: `P5C-TA01-FILL-DIAGNOSTIC-v1` and `core_full_minute_cap_would_reject`. The earlier results stay
+    reproducible.
+  - Core `76902a1`: `P5C-TA01-FILL-DIAGNOSTIC-v2` and `core_known_volume_would_reject`. The open blocker is reported as
+    `FIXED_IN_CORE_PENDING_REVIEW`.
+- **An authorization naming `core_participation_basis`** runs only on a Core that provides exactly that basis.
+- **Closing the blocker** needs Haw's review of the Q8X-0002 result. That does not authorize a performance backtest.
 
 ## Haw's decisions (2026-11-18)
 

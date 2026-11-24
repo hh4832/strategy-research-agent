@@ -7,9 +7,10 @@ What it does (pure counting on Core columns; nothing re-timed, no Core Execution
   * decisions: ``core_phase4a.ta01_signals`` (the same code path execute_batch uses, delayed-open exclusion included);
   * fill facts per intent: ``core_phase4a.ta01_fill_examine`` (same lookup ta01_select_fills uses);
   * an exit intent exists only after a fillable entry (the strategy is flat otherwise);
-  * Core's own full-minute participation check (execution.py:413) is evaluated on the chosen bar with Core's formula
-    ``qty > volume x cap`` and reported separately as a LOOK-AHEAD residual (the full-minute volume is not known at the
-    open). It is not a validated opening-fill constraint.
+  * Core's own participation check on the chosen bar is evaluated with the installed Core's rule and reported
+    separately. Core 50ea3bf: the bar's FULL-minute volume (``core_full_minute_cap_would_reject``, a LOOK-AHEAD
+    residual, not a validated fill constraint). Core 76902a1 or later: the completed bar known at the chosen bar's
+    earliest open (``core_known_volume_would_reject``; no look-ahead, spec docs/phase5c/CORE_VOLUME_CAP_LOOKAHEAD_SPEC.md).
 
 What it never outputs: prices, PnL, returns, win rate, profit factor, drawdown or any strategy-validity statement.
 The output whitelist is ``OUTPUT_KEYS``; ``assert_no_performance_fields`` enforces it before anything is written.
@@ -34,6 +35,7 @@ AUTHORIZATION_PATHS = {
     "RA-IBKR_TSM-TA01_FILLDIAG-0002": "docs/phase5c/ta01_fill_diagnostic_authorization_0002.json",
     "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001": "docs/phase5c/ta01q8_fill_diagnostic_authorization_0001.json",
     "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001": "docs/phase5c/ta01q8x_fill_diagnostic_authorization_0001.json",
+    "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002": "docs/phase5c/ta01q8x_fill_diagnostic_authorization_0002.json",
 }
 # Retired ids are refused in every mode, whatever exists or is deleted on Drive (one-time use is not Drive-dependent).
 RETIRED_AUTHORIZATIONS = {
@@ -42,6 +44,8 @@ RETIRED_AUTHORIZATIONS = {
                                       "683737a4ed94f106fe4b5dd0e8729c60fe54159e494a267542bea64ccde9d30b); no re-run",
     "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001": "USED: SUCCEEDED 2026-11-19 (MANIFEST ta01_fill_diagnostic.json sha256 "
                                         "7e641f466672cf0c655e0803140e54375d51b9bec54244b400c938853f3f6d78); no re-run",
+    "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001": "USED: SUCCEEDED (ta01_fill_diagnostic.json sha256 "
+                                         "3459121075a1b819ecb235cd5e5ef8c9aef8408727655a2e3b7a09cf441209cb); no re-run",
 }
 OPEN_BLOCKERS = [
     {"id": "CORE_FULL_MINUTE_CAP_LOOKAHEAD", "status": "BLOCKER",
@@ -49,6 +53,16 @@ OPEN_BLOCKERS = [
                "known at the open. Blocks any strategy execution until fixed in Core; a smaller quantity does not "
                "resolve it. Counted separately in core_full_minute_cap_would_reject."},
 ]
+# Under Core 76902a1+ (known-volume basis) the same item is reported as fixed in Core but not yet closed: closing it
+# needs Haw's review of a run under the new Core. It never authorizes a performance backtest.
+OPEN_BLOCKERS_KNOWN_BASIS = [
+    {"id": "CORE_FULL_MINUTE_CAP_LOOKAHEAD", "status": "FIXED_IN_CORE_PENDING_REVIEW",
+     "detail": "Core 76902a1 participation_volume_basis=LAST_COMPLETED_AT_FILL_OPEN: the cap is checked against the "
+               "completed bar known at the fill bar's earliest open (no look-ahead). Remaining Core rejections are "
+               "counted in core_known_volume_would_reject. Closing this item needs Haw's review; it does not "
+               "authorize a performance backtest."},
+]
+DIAGNOSTIC_ID_KNOWN_BASIS = "P5C-TA01-FILL-DIAGNOSTIC-v2"
 DRIVE_OUTPUT_ROOT = "/content/drive/MyDrive/Quant_Research/strategy-research-agent/phase5c_ta01_fill_diagnostic"
 ATTEMPT_WITNESS_DIR = "_attempt_witness"
 APPROVAL_URL_RE = r"https://github\.com/hh4832/strategy-research-agent/(?:pull|issues)/[1-9][0-9]*#issuecomment-[1-9][0-9]*"
@@ -83,12 +97,13 @@ def _quantiles(values: list[float]) -> dict:
     return {"n": len(v), "min": v[0], "p01": q(.01), "p05": q(.05), "p25": q(.25), "median": q(.5)}
 
 
-def _side_counter():
+def _side_counter(known_basis: bool = False):
+    core_key = "core_known_volume_would_reject" if known_basis else "core_full_minute_cap_would_reject"
     return {"intents": 0, "known_volume_cap_blocked": 0, "no_tradable_bar_in_window": 0,
             "no_tradable_bar_causes": Counter(), "intents_with_missing_minute_in_window": 0,
             "intents_with_zero_volume_minute_in_window": 0, "chosen_first_candidate": 0,
-            "chosen_later_candidate_waited": 0, "core_full_minute_cap_would_reject": 0, "fillable": 0,
-            "persisted_after_window": 0, "persist_fill_found": 0, "persist_core_full_minute_cap_would_reject": 0,
+            "chosen_later_candidate_waited": 0, core_key: 0, "fillable": 0,
+            "persisted_after_window": 0, "persist_fill_found": 0, "persist_" + core_key: 0,
             "persist_no_fill_to_session_end": 0,
             "_known_ratio": [], "_chosen_ratio": [], "_persist_wait": []}
 
@@ -105,11 +120,16 @@ def _cause(x, window_minutes: int) -> str:
 
 
 def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap, window_start: str, window_end: str,
-             quantity: float | None = None) -> dict:
-    """Counts only. ``frame_1m``: Core 1m conservative frame (from ``core_phase4a.execution_frame``)."""
+             quantity: float | None = None, core_basis: str | None = None) -> dict:
+    """Counts only. ``frame_1m``: Core 1m conservative frame (from ``core_phase4a.execution_frame``).
+    ``core_basis``: Core participation rule to evaluate; default = what the installed Core supports."""
     import pandas as pd  # noqa: PLC0415
 
     from . import core_phase4a as P  # noqa: PLC0415
+    core_basis = core_basis or P.core_participation_basis(core)
+    known_basis = core_basis == P.CORE_KNOWN_BASIS
+    core_key = "core_known_volume_would_reject" if known_basis else "core_full_minute_cap_would_reject"
+    core_outcome = "CORE_KNOWN_VOLUME" if known_basis else "CORE_FULL_MINUTE_CAP"
     family, params = P.signal_family(spec, parameters)
     if family != "TA01":
         raise DiagnosticRefused("the fill diagnostic is defined for the TA-01 spec only")
@@ -122,7 +142,7 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
     ws, we = datetime.fromisoformat(window_start), datetime.fromisoformat(window_end)
     kept = [d for d in decs if ws <= d.decision_ts < we]
     by_contract, window = P.ta01_fill_candidates(frame_1m, params.fill_window_minutes)
-    sides = {"entry": _side_counter(), "exit": _side_counter()}
+    sides = {"entry": _side_counter(known_basis), "exit": _side_counter(known_basis)}
     by_time: dict[str, Counter] = {}
     exit_failures, long = [], False
     for d in kept:
@@ -132,7 +152,7 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         t = pd.Timestamp(d.decision_ts).tz_convert("UTC")
         persist = side == "exit" and exit_policy == "PERSIST_TO_SESSION_END"
         x = P.ta01_fill_examine(by_contract, window, "TSM", t, "BUY" if side == "entry" else "SELL", qty,
-                                participation_cap, persist)
+                                participation_cap, persist, core_basis)
         c = sides[side]
         c["intents"] += 1
         c["intents_with_missing_minute_in_window"] += x["missing_minutes"] > 0
@@ -150,8 +170,8 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
             c["chosen_first_candidate" if x["chosen_index"] == 0 else "chosen_later_candidate_waited"] += 1
             c["_chosen_ratio"].append(float(x["chosen"]["volume"]) / qty)
             if x["core_full_bar_cap_would_reject"]:
-                c["core_full_minute_cap_would_reject"] += 1
-                outcome = "CORE_FULL_MINUTE_CAP"
+                c[core_key] += 1
+                outcome = core_outcome
             else:
                 c["fillable"] += 1
                 fillable, outcome = True, "FILLABLE"
@@ -164,8 +184,8 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
                 c["persist_fill_found"] += 1
                 c["_persist_wait"].append(float(x["persist_wait_minutes"]))
                 if x["persist_core_full_bar_cap_would_reject"]:
-                    c["persist_core_full_minute_cap_would_reject"] += 1
-                    outcome = "PERSIST_CORE_FULL_MINUTE_CAP"
+                    c["persist_" + core_key] += 1
+                    outcome = "PERSIST_" + core_outcome
                 else:
                     c["fillable"] += 1
                     fillable, outcome = True, "FILLABLE_AFTER_PERSIST"
@@ -182,7 +202,7 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         n = c["intents"]
         out = {k: v for k, v in c.items() if not k.startswith("_")}
         out["no_tradable_bar_causes"] = dict(c["no_tradable_bar_causes"])
-        for k in ("known_volume_cap_blocked", "no_tradable_bar_in_window", "core_full_minute_cap_would_reject",
+        for k in ("known_volume_cap_blocked", "no_tradable_bar_in_window", core_key,
                   "intents_with_missing_minute_in_window", "intents_with_zero_volume_minute_in_window"):
             out[k + "_ratio"] = (out[k] / n) if n else None
         out["not_fillable_total"] = n - c["fillable"]
@@ -200,15 +220,20 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
     by_year = daily.groupby(pd.Index([d.year for d in daily.index])).median()
     zero = f[in_rth].groupby(days[in_rth].map(lambda d: d.year))["volume"].apply(lambda v: float((v <= 0).mean()))
     result = {
-        "diagnostic_id": DIAGNOSTIC_ID, "status": "COMPLETED",
+        "diagnostic_id": DIAGNOSTIC_ID_KNOWN_BASIS if known_basis else DIAGNOSTIC_ID, "status": "COMPLETED",
         "definitions": {
             "window": f"Core bar_start (earliest possible open) in (t, t+{params.fill_window_minutes} min], "
                       "boundary included; missing / zero-volume / Core-ineligible minutes skipped",
             "known_volume_rule": P.KNOWN_VOLUME_RULE,
             "participation_cap": participation_cap, "quantity": qty,
             "min_minute_volume_for_quantity": min_minute_volume(qty, participation_cap),
-            "core_full_minute_cap": "Core execution.py:413 qty > chosen bar FULL-minute volume x cap; LOOK-AHEAD "
-                                    "residual, reported separately, not a validated fill constraint",
+            "core_participation_basis": core_basis,
+            **({"core_known_volume": "Core participation_volume_basis=LAST_COMPLETED_AT_FILL_OPEN: qty > volume of the "
+                                     "RTH bar of the same session whose modeled_available_at equals the chosen bar's "
+                                     "bar_start x cap (no fallback; missing reference rejects); no look-ahead"}
+               if known_basis else
+               {"core_full_minute_cap": "Core execution.py:413 qty > chosen bar FULL-minute volume x cap; LOOK-AHEAD "
+                                        "residual, reported separately, not a validated fill constraint"}),
             "exit_intent": "exists only after a fillable entry in the same session",
             "exit_fill_policy": (exit_policy if exit_policy != "PERSIST_TO_SESSION_END" else
                                  "PERSIST_TO_SESSION_END: an exit with no fill in the window keeps looking minute by "
@@ -228,7 +253,7 @@ def diagnose(core, frame_1m, *, spec: dict, parameters: dict, participation_cap,
         "exit_failures": {"count": len(exit_failures), "items": exit_failures,
                           "meaning": "in a strategy execution each of these fails the WHOLE run (no overnight)"},
         "not_output": ["prices", "PnL", "returns", "win rate", "profit factor", "drawdown", "strategy validity"],
-        "variant": _variant(spec), "open_blockers": OPEN_BLOCKERS,
+        "variant": _variant(spec), "open_blockers": OPEN_BLOCKERS_KNOWN_BASIS if known_basis else OPEN_BLOCKERS,
     }
     assert_no_performance_fields(result)
     return result
@@ -514,8 +539,10 @@ def run_production(doc: dict, settings: dict, secrets=(), *, drive_root: Path, v
     spec_path = ROOT / doc["scope"]["strategy"]["spec_path"]
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     caps: set = set()
+    basis = None
 
     def scope_check():
+        nonlocal basis
         if ident.get("core_tree_dirty"):
             raise DiagnosticRefused("Core tree is dirty")
         # The pinned schedule and its official SEC/FINRA source documents live in the Core checkout (as in C1).
@@ -526,10 +553,15 @@ def run_production(doc: dict, settings: dict, secrets=(), *, drive_root: Path, v
             raise DiagnosticRefused(f"scenarios disagree on the participation cap {caps}")
         check_scope(doc, spec=spec, spec_sha256=C.sha(spec_path), core_sha=ident["core_git_sha"],
                     schedule_sha256=C.SCHEDULE_SHA256, pins=pins, window=dict(C.WINDOW))
+        # Documents that name a Core participation basis require the installed Core to provide exactly it.
+        wanted = doc["scope"].get("core_participation_basis", P.CORE_LEGACY_BASIS)
+        basis = wanted
+        if P.core_participation_basis(_core()) != wanted:
+            raise DiagnosticRefused(f"installed Core does not provide the authorized participation basis {wanted}")
 
     def execute():
         staged = R.stage(settings["recovery_archive"], settings["original_preparation_archive"],
-                         Path(settings["local_staging"]))
+                         Path(settings["local_staging"]), reader_core_shas=(C.CORE, P.TA01_CORE_SHA))
         cfg = {"snapshot_binding": {k: staged["bundle"][k] for k in (
             "manifest_relative_path", "manifest_sha256", "layout", "integrity_receipt", "integrity_receipt_sha256",
             "snapshot_pin")}}
@@ -546,12 +578,13 @@ def run_production(doc: dict, settings: dict, secrets=(), *, drive_root: Path, v
         core = _core()
         frame, frame_info = P.execution_frame(core, loaded, spec, doc["scope"]["strategy"]["parameters"])
         result = diagnose(core, frame, spec=spec, parameters=doc["scope"]["strategy"]["parameters"],
-                          participation_cap=next(iter(caps)), window_start=w["start"], window_end=w["end"])
+                          participation_cap=next(iter(caps)), window_start=w["start"], window_end=w["end"],
+                          core_basis=basis)
         result["inputs"] = {"authorization_id": doc["authorization_id"],
                             "authorization_document_sha256": sha256_of(doc), "core_identity": ident,
                             "agent_code_sha": settings.get("code_sha"), "data_pins": pins,
                             "execution_frame": frame_info, "holdout_accessed": False, "batch_consumed": False,
-                            "core_execution_engine_run": False}
+                            "core_execution_engine_run": False, "core_participation_basis": basis}
         return result
 
     return run_attempt(doc, settings=settings, drive_root=Path(drive_root), scope_check=scope_check,
