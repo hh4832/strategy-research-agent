@@ -50,6 +50,10 @@ RETIRED_AUTHORIZATIONS = {
     "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002": "USED: SUCCEEDED 2026-11-24 under Core 76902a1 (ta01_fill_diagnostic.json "
                                          "sha256 b41f8f7f22edb189bdf640c117eea50389203a5b60940175e1aa3076636c6129); "
                                          "no re-run",
+    "RA-IBKR_TSM-TA01Q8XK_FILLDIAG-0001": "USED: SUCCEEDED 2026-11-24 under Core 76902a1 (ta01_fill_diagnostic.json "
+                                          "sha256 9e3b9691cd3d7f0d2c71200981e6a52c59db42d9844c7f7fdeb8ceadcbf49283); "
+                                          "no re-run. Case P5C-TA-01 CLOSED 2026-11-24 "
+                                          "(docs/phase5c/ta01_case_disposition.json)",
 }
 OPEN_BLOCKERS = [
     {"id": "CORE_FULL_MINUTE_CAP_LOOKAHEAD", "status": "BLOCKER",

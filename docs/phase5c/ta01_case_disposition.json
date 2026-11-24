@@ -1,0 +1,125 @@
+{
+  "record": "P5C-TA-01 case disposition",
+  "case_id": "P5C-TA-01",
+  "status": "CLOSED",
+  "disposition": "FILL_FEASIBLE_PERFORMANCE_NOT_TESTED",
+  "decided_by": "Haw (hh4832), chat 2026-11-24 18:23 Asia/Taipei: 「解除, 結案吧」",
+  "recorded_by": "Claude (Agent), 2026-11-24",
+  "hypothesis": "20-bucket resistance break with strong close and >=2x relative volume on TSM 15m RTH continues intraday beyond a random-entry null and costs (long only, no overnight)",
+  "origin": {
+    "proposed_by": "Claude, 2026-11-17 (AI-proposed)",
+    "evidence": "docs/phase5c/ta01_origin/ (original proposal, v0.0.1 draft, static validation, feasibility review, backfilled A2 proposal PROP-5904571d4fa332291676)"
+  },
+  "conclusion": "Under the reviewed execution rules (15m signal, 1m execution, fill within 2 minutes, volume known before the order, 1% participation cap, delayed-open exclusion, no overnight) TSM 15m TA-01 orders are fillable at 8 units in the Development window when exits may persist to the session end and every candidate bar must pass the volume known at its own open (variant Q8XK). Fill feasibility only: no PnL, return or performance of any kind was computed.",
+  "final_variant": {
+    "variant": "P5C-TA01-Q8XK",
+    "strategy_id": "p5c_ta01_q8xk_res20_strongclose_relvol_tsm_15m",
+    "spec_canonical_sha256": "78be9af41ea4cd6db6d165c65531e5a9d42cb2aaa40bb771013ac3ef6291f9be",
+    "labels": [
+      "POST_DIAGNOSTIC_VARIANT",
+      "EXPLORATORY_ONLY"
+    ]
+  },
+  "evidence_status": "EXPLORATORY_ONLY. Quantity, exit persistence and the candidate rule were each chosen after seeing diagnostic results (4 data-informed changes incl. the Core fix). TSM Development 2016-10-19..2025-01-01 had already been used by SMA studies. Nothing here is confirmatory, blind or out-of-sample.",
+  "performance_backtest": "NOT_RUN",
+  "holdout": "NEVER_ACCESSED",
+  "batch_consumption": 0,
+  "diagnostics": [
+    {
+      "authorization_id": "RA-IBKR_TSM-TA01_FILLDIAG-0001",
+      "variant": "P5C-TA01 (100 units)",
+      "core": "50ea3bf",
+      "status": "PRE_DATA_INPUT_PATH_FAILURE",
+      "result_sha256": null,
+      "approval": "https://github.com/hh4832/strategy-research-agent/pull/34#issuecomment-6978313388",
+      "finding": "no data read; see docs/phase5c/ta01_fill_diagnostic_0001_disposition.json"
+    },
+    {
+      "authorization_id": "RA-IBKR_TSM-TA01_FILLDIAG-0002",
+      "variant": "P5C-TA01 (100 units)",
+      "core": "50ea3bf",
+      "status": "SUCCEEDED",
+      "result_sha256": "683737a4ed94f106fe4b5dd0e8729c60fe54159e494a267542bea64ccde9d30b",
+      "approval": "https://github.com/hh4832/strategy-research-agent/pull/35#issuecomment-6994446298",
+      "finding": "exits not fillable 163/278 (known-volume cap at 100 units)"
+    },
+    {
+      "authorization_id": "RA-IBKR_TSM-TA01Q8_FILLDIAG-0001",
+      "variant": "P5C-TA01-Q8 (8 units)",
+      "core": "50ea3bf",
+      "status": "SUCCEEDED",
+      "result_sha256": "7e641f466672cf0c655e0803140e54375d51b9bec54244b400c938853f3f6d78",
+      "approval": "https://github.com/hh4832/strategy-research-agent/pull/37#issuecomment-7001566877",
+      "finding": "exits not fillable 7/326 (4 known-volume cap in window, 3 Core full-minute look-ahead)"
+    },
+    {
+      "authorization_id": "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001",
+      "variant": "P5C-TA01-Q8X (exits persist to session end)",
+      "core": "50ea3bf",
+      "status": "SUCCEEDED",
+      "result_sha256": "3459121075a1b819ecb235cd5e5ef8c9aef8408727655a2e3b7a09cf441209cb",
+      "approval": "https://github.com/hh4832/strategy-research-agent/pull/38#issuecomment-7010269865",
+      "finding": "exits not fillable 3/326, all Core full-minute look-ahead (2017-03-16, 2017-10-26, 2018-01-18)"
+    },
+    {
+      "authorization_id": "RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002",
+      "variant": "P5C-TA01-Q8X",
+      "core": "76902a1",
+      "status": "SUCCEEDED",
+      "result_sha256": "b41f8f7f22edb189bdf640c117eea50389203a5b60940175e1aa3076636c6129",
+      "approval": "https://github.com/hh4832/strategy-research-agent/pull/42#issuecomment-7120964254",
+      "finding": "look-ahead fixed (the 3 above fill); 3 other 12:00 exits (2017-03-30, 2017-07-25, 2018-01-05) rejected by Core's known-volume check: Agent checked volume known at t, Core at the chosen bar's open"
+    },
+    {
+      "authorization_id": "RA-IBKR_TSM-TA01Q8XK_FILLDIAG-0001",
+      "variant": "P5C-TA01-Q8XK (per-candidate known volume)",
+      "core": "76902a1",
+      "status": "SUCCEEDED",
+      "result_sha256": "9e3b9691cd3d7f0d2c71200981e6a52c59db42d9844c7f7fdeb8ceadcbf49283",
+      "approval": "https://github.com/hh4832/strategy-research-agent/pull/43#issuecomment-7124779602",
+      "finding": "entries 326/326 and exits 326/326 fillable; Core rejections 0; 4 exits filled after persisting 3 minutes"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "CORE_FULL_MINUTE_CAP_LOOKAHEAD",
+      "status": "CLOSED",
+      "closed_by": "Haw 2026-11-24 18:23",
+      "evidence": [
+        "spec docs/phase5c/CORE_VOLUME_CAP_LOOKAHEAD_SPEC.md (PR #41, D1-D4 approved)",
+        "market-research-core PR #5, merge 76902a14245f73bbf1f957c8def737869a6c7254",
+        "Agent PR #42 (TA-01 on Core 76902a1, fails closed on older Core)",
+        "Q8X-0002: the 3 look-ahead rejections of Q8X-0001 fill",
+        "Q8XK-0001: Core rejections 0/652 intents"
+      ],
+      "note": "Diagnostic outputs produced before closure still say FIXED_IN_CORE_PENDING_REVIEW; this record supersedes that status."
+    }
+  ],
+  "engineering": {
+    "agent_prs": [
+      31,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43
+    ],
+    "core_pr": "hh4832/market-research-core#5",
+    "core_sha_final": "76902a14245f73bbf1f957c8def737869a6c7254",
+    "agent_main_at_last_run": "f79b10b9c143fcb1905c53b0d5b47141d6e22a69"
+  },
+  "open_items_not_part_of_closure": [
+    "Workflow gaps from the 2026-11-20 review: W-2 review records, W-3 interpretation artifact, W-6 no cap on post-diagnostic variants, W-7 Drive results not indexed (W-1 addressed by this record; W-4/W-5 by PR #40)",
+    "Evaluator rule: legacy Core participation basis + cap = LOOK_AHEAD for formal runs (spec section 2.4)",
+    "Cost schedule minimum-commission review for small (8-unit) orders",
+    "market-research-core feature/phase4a-tsm-native-research-adapter (PR #4) still unmerged; Agent pins SHAs on it",
+    "Old Agent PRs #5, #6, #7 open"
+  ],
+  "reopen_requires": "a new proposal and new authorization; any performance study of TA-01 needs its own authorization and stays EXPLORATORY_ONLY on this data"
+}

@@ -24,7 +24,7 @@ DOC2 = D.load_authorization(ID2, ROOT, allow_retired=True)       # used (SUCCEED
 DOCQ8 = D.load_authorization(IDQ8, ROOT, allow_retired=True)     # used (SUCCEEDED 2026-11-19): retired
 DOCQ8X = D.load_authorization(IDQ8X, ROOT, allow_retired=True)   # used (SUCCEEDED): retired
 DOCQ8X2 = D.load_authorization(IDQ8X2, ROOT, allow_retired=True)  # used (SUCCEEDED, Core 76902a1): retired
-DOCK = D.load_authorization(IDK, ROOT)                          # current draft: P5C-TA01-Q8XK
+DOCK = D.load_authorization(IDK, ROOT, allow_retired=True)      # used (SUCCEEDED); case closed: retired
 # hashes in hh4832's Q8 approval comment (pull/37#issuecomment-7001566877)
 APPROVED_Q8 = ("230151b5f14a44137c99454e93bb94bc6a4f517b404e590a94485bb918a98013",
                "339fafba9e02519c864c0ec8acf63046c5ca2cb1e2eca621a0e680ffcef1c38a")
@@ -156,6 +156,16 @@ def test_precheck_metadata_failures(tmp_path, meta):
 
 
 # ------------------------------------------------------------------ one-time attempt protocol
+
+@pytest.fixture(autouse=True)
+def _protocol_on_last_document(request, monkeypatch):
+    """Case P5C-TA-01 is closed and every TA-01 authorization is retired. The attempt-protocol mechanics are still
+    tested on the last real document (IDK) with its retirement lifted for that test only; tests whose name says
+    'retired' or 'closed' see the real retirement table."""
+    name = request.node.name
+    if "retired" not in name and "closed" not in name:
+        monkeypatch.delitem(D.RETIRED_AUTHORIZATIONS, IDK, raising=False)
+
 
 class Harness:
     def __init__(self, tmp_path, doc=DOCK):
@@ -501,3 +511,15 @@ def test_q8xk_scope_check_refuses_a_spec_without_the_candidate_rule():
         D.check_scope(doc, spec=spec, spec_sha256=doc["scope"]["strategy"]["spec_file_sha256"],
                       core_sha=doc["scope"]["core_sha"], schedule_sha256=doc["scope"]["costs"]["dated_schedule_sha256"],
                       pins=doc["scope"]["dataset"]["reviewed_pins"], window=doc["scope"]["window"])
+
+
+def test_case_closed_every_ta01_authorization_is_retired_and_cannot_be_prepared(tmp_path, capsys):
+    assert set(D.AUTHORIZATION_PATHS) == set(D.RETIRED_AUTHORIZATIONS)
+    assert "9e3b9691cd3d7f0d2c71200981e6a52c59db42d9844c7f7fdeb8ceadcbf49283" in D.RETIRED_AUTHORIZATIONS[IDK]
+    s = tmp_path / "s.json"
+    s.write_text(json.dumps({"mode": "PREPARE", "authorization_id": IDK, "approval_expires_utc": "2026-11-26T00:00:00Z"}))
+    assert D.main(["--settings", str(s)]) == 2
+    disp = json.loads((ROOT / "docs/phase5c/ta01_case_disposition.json").read_text())
+    assert disp["status"] == "CLOSED" and disp["performance_backtest"] == "NOT_RUN"
+    assert [d["authorization_id"] for d in disp["diagnostics"]][-1] == IDK
+    assert {b["id"]: b["status"] for b in disp["blockers"]}["CORE_FULL_MINUTE_CAP_LOOKAHEAD"] == "CLOSED"

@@ -9,7 +9,9 @@ Status: **tooling only; no diagnostic result exists.** This is not a backtest an
 | `RA-IBKR_TSM-TA01Q8_FILLDIAG-0001` | Approved (pull/37#issuecomment-7001566877), **USED, SUCCEEDED 2026-11-19**. Result sha256 `7e641f46…6d78`. At 8 units, 0/326 entries and 7/326 exits are not fillable (4 known-volume, 3 Core full-minute). Retired in code |
 | `RA-IBKR_TSM-TA01Q8X_FILLDIAG-0001` | Approved (pull/38#issuecomment-7010269865), **USED, SUCCEEDED**. Result sha256 `34591210…09cb`, under Core `50ea3bf`. At 8 units with exits persisting: 3/326 exits not fillable, all Core full-minute (look-ahead). Retired in code |
 | `RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002` | Approved (pull/42#issuecomment-7120964254), **USED, SUCCEEDED 2026-11-24** under Core `76902a1`. Result sha256 `b41f8f7f…6129`. The 3 Q8X-0001 look-ahead rejections now fill. 3 *other* 12:00 exits (2017-03-30, 2017-07-25, 2018-01-05) fail Core's known-volume check on the chosen bar, because the Agent checked the volume known at `t` and Core the one known at the bar's open. Retired in code |
-| `RA-IBKR_TSM-TA01Q8XK_FILLDIAG-0001` | **Draft, NOT approved.** For **P5C-TA01-Q8XK** (`docs/PHASE5C_TA01_Q8XK_VARIANT.md`): Q8X + each window candidate must pass the volume known at its own open (Core `76902a1`'s reference). Same scope as Q8X-0002 except strategy and records |
+| `RA-IBKR_TSM-TA01Q8XK_FILLDIAG-0001` | Approved (pull/43#issuecomment-7124779602), **USED, SUCCEEDED 2026-11-24** under Core `76902a1`. Result sha256 `9e3b9691…9283`. P5C-TA01-Q8XK: entries 326/326 and exits 326/326 fillable; Core rejections 0. Retired in code |
+
+**Case P5C-TA-01 CLOSED 2026-11-24** (Haw): `FILL_FEASIBLE_PERFORMANCE_NOT_TESTED`. `CORE_FULL_MINUTE_CAP_LOOKAHEAD` CLOSED. All TA-01 diagnostic authorizations are retired. See `docs/phase5c/ta01_case_disposition.json` and `docs/phase5c/TA01_CASE_CLOSURE.md`.
 
 ## Core participation rule (2026-11-24)
 
