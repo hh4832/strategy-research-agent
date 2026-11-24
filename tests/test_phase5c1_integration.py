@@ -337,7 +337,7 @@ def _ta01_e2e(archived, tmp_path, monkeypatch):
     window = {'warmup_start': '2024-05-29T00:00:00-04:00', 'start': '2024-06-03T00:00:00-04:00',
               'end': '2024-07-13T00:00:00-04:00'}
     monkeypatch.setattr(C, 'WINDOW', window)
-    doc = copy.deepcopy(TD.load_authorization('RA-IBKR_TSM-TA01Q8X_FILLDIAG-0002'))
+    doc = copy.deepcopy(TD.load_authorization('RA-IBKR_TSM-TA01Q8XK_FILLDIAG-0001'))
     if P.core_participation_basis(_core()) == P.CORE_KNOWN_BASIS:      # CI job with Core 76902a1: the real draft
         native, _ = core_phase4a()
         monkeypatch.setattr(native, 'core_code_identity',
@@ -366,7 +366,7 @@ def test_ta01_fill_diagnostic_real_run_wiring_end_to_end(archived, tmp_path, mon
     assert result['definitions']['quantity'] == 8 and result['definitions']['min_minute_volume_for_quantity'] == 800
     from strategy_agent.research_only import core_phase4a as P
     known = doc['scope'].get('core_participation_basis') == P.CORE_KNOWN_BASIS
-    assert result['variant']['variant'] == 'P5C-TA01-Q8X'
+    assert result['variant']['variant'] == 'P5C-TA01-Q8XK'
     assert result['open_blockers'][0]['status'] == ('FIXED_IN_CORE_PENDING_REVIEW' if known else 'BLOCKER')
     assert result['definitions']['core_participation_basis'] == (P.CORE_KNOWN_BASIS if known else P.CORE_LEGACY_BASIS)
     assert result['inputs']['core_participation_basis'] == result['definitions']['core_participation_basis']

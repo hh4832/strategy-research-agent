@@ -543,3 +543,66 @@ def test_q8x_runner_archive_accepts_persisted_exit_order_time(tmp_path, schedule
                                        PARAMS, loaded(zero_volume=('15:17', '15:18')))
     assert out['executed'] and diag_['ta01_fill_window']['exit_persist_to_session_end'] is True
     assert all(t['status'] == 'PASS' for t in diag_['temporal'].values())
+
+
+# ------------------------------------------------------------------ P5C-TA01-Q8XK (per-candidate known volume)
+# Exit decision 15:15. Agent order-time known volume = the 15:14 minute. Window candidates: label 15:17 (bar_start
+# 15:16; Core reference = label 15:15) and label 15:18 (bar_start 15:17; reference = label 15:16). Cap 0.01, 8 units:
+# a reference below 800 fails.
+
+Q8XK = json.loads((ROOT / "tests/fixtures/p5c_ta01/ta01_q8xk_spec_variant.json").read_text(encoding="utf-8"))
+
+
+def test_q8xk_equals_q8x_when_every_reference_passes(schedule):
+    fr = frame()
+    a, b = run(make_schedule(cap=0.01), fr, spec=Q8X), run(make_schedule(cap=0.01), fr, spec=Q8XK)
+    assert trips(a) == trips(b) and b['ta01_fill_window']['candidate_known_check'] is True
+    assert a['ta01_fill_window']['candidate_known_check'] is False
+
+
+def test_q8xk_skips_a_window_candidate_core_would_reject(schedule):
+    # Q8X-0002 pattern: order-time known volume passes, the first candidate's reference (15:15) is thin.
+    from strategy_agent.research_only.core_phase4a import TA01NoOvernightViolation
+    fr = frame(volumes={'14:14': 3000, '15:14': 3000, '15:15': 500})
+    with pytest.raises(TA01NoOvernightViolation):
+        run(make_schedule(cap=0.01), fr, spec=Q8X)                      # Core rejects the chosen bar; no re-route
+    out = run(make_schedule(cap=0.01), fr, spec=Q8XK)
+    assert set(trips(out).values()) == {(('01-08 14:16', '01-08 15:17'),)}  # second window candidate
+    for item in out['scenarios'].values():
+        assert 'KNOWN_VOLUME_PARTICIPATION_EXCEEDED' not in set(item['result'].rejections.get('reason', []))
+    assert out['ta01_fill_window']['exits_filled_after_window'] == []
+
+
+def test_q8xk_exit_persists_when_no_window_candidate_passes_at_its_open(schedule):
+    fr = frame(volumes={'14:14': 3000, '15:14': 3000, '15:15': 500, '15:16': 500})
+    out = run(make_schedule(cap=0.01), fr, spec=Q8XK)
+    assert set(trips(out).values()) == {(('01-08 14:16', '01-08 15:18'),)}  # label 15:19, reference 15:17 = 1000
+    [p] = out['ta01_fill_window']['exits_filled_after_window']
+    assert p['wait_minutes'] == 3 and p['known_volume_at_fill_bar'] == 1000
+
+
+def test_q8xk_entries_are_never_extended(schedule):
+    out = run(make_schedule(cap=0.01), frame(volumes={'14:14': 3000, '14:15': 500, '14:16': 500}), spec=Q8XK)
+    assert [d['reason'] for d in out['ta01_fill_window']['not_submitted']][:1] == ['FILL_WINDOW_KNOWN_VOLUME_AT_OPEN']
+    assert all(len(i['result'].round_trips) == 0 for i in out['scenarios'].values())
+
+
+def test_q8xk_diagnostic_counts_and_matches_core_engine():
+    cases = ({'14:14': 3000, '15:14': 3000, '15:15': 500},
+             {'14:14': 3000, '15:14': 3000, '15:15': 500, '15:16': 500},
+             {'14:14': 3000, '14:15': 500, '14:16': 500})
+    for vols in cases:
+        fr = frame(volumes=vols)
+        d = diag(fr, cap=0.01, spec=Q8XK)
+        assert d['definitions']['candidate_volume_check'].startswith('KNOWN_AT_CANDIDATE_OPEN')
+        assert d['variant']['candidate_volume_check'] == 'KNOWN_AT_CANDIDATE_OPEN'
+        assert d['entry']['core_known_volume_would_reject'] == d['exit']['core_known_volume_would_reject'] == 0
+        assert d['exit']['persist_core_known_volume_would_reject'] == 0
+        res = run(make_schedule(cap=0.01), fr, spec=Q8XK)['scenarios']['BASE']['result']
+        assert len(res.fills) == d['entry']['fillable'] + d['exit']['fillable']
+        assert not set(res.rejections.get('reason', [])) & {'KNOWN_VOLUME_PARTICIPATION_EXCEEDED', 'KNOWN_VOLUME_UNAVAILABLE'}
+    d = diag(frame(volumes=cases[1]), cap=0.01, spec=Q8XK)
+    assert d['exit']['window_known_volume_at_open_blocked'] == 1 and d['exit']['persist_fill_found'] == 1
+    d = diag(frame(volumes=cases[2]), cap=0.01, spec=Q8XK)
+    assert d['entry']['window_known_volume_at_open_blocked'] == 1 and d['entry']['fillable'] == 0
+    assert 'window_known_volume_at_open_blocked' not in diag(frame(), cap=0.01, spec=Q8X)['exit']
