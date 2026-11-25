@@ -337,6 +337,8 @@ def _ta01_e2e(archived, tmp_path, monkeypatch):
     window = {'warmup_start': '2024-05-29T00:00:00-04:00', 'start': '2024-06-03T00:00:00-04:00',
               'end': '2024-07-13T00:00:00-04:00'}
     monkeypatch.setattr(C, 'WINDOW', window)
+    # Case P5C-TA-01 is closed (all authorizations retired); the RUN wiring is still tested on the last document.
+    monkeypatch.delitem(TD.RETIRED_AUTHORIZATIONS, 'RA-IBKR_TSM-TA01Q8XK_FILLDIAG-0001')
     doc = copy.deepcopy(TD.load_authorization('RA-IBKR_TSM-TA01Q8XK_FILLDIAG-0001'))
     if P.core_participation_basis(_core()) == P.CORE_KNOWN_BASIS:      # CI job with Core 76902a1: the real draft
         native, _ = core_phase4a()
