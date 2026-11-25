@@ -82,6 +82,7 @@ def validate_events(events: list[dict], approvers: set[str]) -> dict[str, dict]:
     v = _validator()
     active: dict[str, dict] = {}
     revoked: set[str] = set()
+    amendments_seen: list[dict] = []
     for n, raw in enumerate(events):
         ev = {k: x for k, x in raw.items() if k not in CHAIN_FIELDS}
         errs = sorted(v.iter_errors(ev), key=lambda e: list(e.path))
@@ -108,6 +109,12 @@ def validate_events(events: list[dict], approvers: set[str]) -> dict[str, dict]:
             if any(s == "PASS" for g, s in ev["formal_gate_pin"]["gates"].items()
                    if g in ("TEMPORAL_SAFETY", "COST_APPROVAL", "FORMAL_EXECUTION_ELIGIBILITY")):
                 raise AuthorizationBookInvalid(f"event {n}: research-only authorization must not pin a passed formal gate")
+            if "amendment" in ev:       # Phase 5-C2 C2-3: post-data amendment budget (governance/amendments.py)
+                from .amendments import problems as _amendment_problems  # noqa: PLC0415
+                bad = _amendment_problems(ev["amendment"], amendments_seen)
+                if bad:
+                    raise AuthorizationBookInvalid(f"event {n}: amendment: {'; '.join(bad)}")
+                amendments_seen.append(dict(ev["amendment"], authorization_id=aid))
             active[aid] = ev
         else:
             if aid not in active:

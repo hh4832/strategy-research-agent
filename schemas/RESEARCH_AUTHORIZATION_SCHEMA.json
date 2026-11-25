@@ -15,6 +15,15 @@
       "type": "object", "additionalProperties": false, "required": ["start", "end", "interval"],
       "properties": {"start": {"$ref": "#/$defs/iso"}, "end": {"$ref": "#/$defs/iso"}, "interval": {"const": "[start,end)"}}
     },
+    "amendment": {
+      "description": "Phase 5-C2 C2-3: post-data amendment governance (docs/governance/AMENDMENT_GOVERNANCE.md). Optional; absent = legacy authorization. Budget and ordering are enforced by strategy_agent.governance.amendments.",
+      "type": "object", "additionalProperties": false, "required": ["kind", "case_id", "index"],
+      "properties": {"kind": {"enum": ["CASE_INITIAL", "POST_DATA_AMENDMENT", "FRAMEWORK_FIX"]},
+                     "case_id": {"type": "string", "minLength": 1}, "index": {"type": "integer", "minimum": 0, "maximum": 2},
+                     "amendment_of": {"type": ["string", "null"]}, "trigger_result_sha256": {"$ref": "#/$defs/sha"},
+                     "change": {"type": "string", "minLength": 1}, "stop_condition": {"type": "string", "minLength": 1},
+                     "evidence_level": {"enum": ["EXPLORATORY_ONLY", "CONFIRMATORY"]}}
+    },
     "approve": {
       "type": "object", "additionalProperties": false,
       "required": ["action", "contract", "authorization_id", "scope", "market_id", "symbol", "dataset", "temporal_policy",
@@ -79,7 +88,8 @@
           "description": "Phase 5-B3-B: the ONE executor allowed to run this authorization (SINGLE_EXECUTOR_ONLY). Optional for older records; REQUIRED by the real-execution activation gate.",
           "type": "object", "additionalProperties": false, "required": ["executor_id", "consistency"],
           "properties": {"executor_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{2,63}$"},
-                         "consistency": {"const": "SINGLE_EXECUTOR_ONLY"}}}
+                         "consistency": {"const": "SINGLE_EXECUTOR_ONLY"}}},
+        "amendment": {"$ref": "#/$defs/amendment"}
       }
     },
     "revoke": {
